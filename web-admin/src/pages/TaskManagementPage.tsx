@@ -2802,13 +2802,13 @@ const hasSyncedRef = useRef(false);
                               </button>
                             )}
                             
-                            {isUserTaskAssignee(authStore.user, t, engineers) && (t.status === 'Chờ nhận việc' || t.status === 'Có thắc mắc') && (
+                            {isUserTaskAssignee(authStore.user, t, engineers) && (t.status === 'Chờ nhận việc' || t.status === 'Có thắc mắc' || (t.status === 'Chưa làm' && t.assignedEngineerId)) && (
                               <div className="flex items-center gap-1 w-full pointer-events-auto">
                                 <button onClick={(e) => { e.stopPropagation(); handleAcceptTask(t); }} className="text-[9px] bg-emerald-500 hover:bg-emerald-600 text-white px-1.5 py-0.5 rounded shadow-sm flex-1 font-bold cursor-pointer">Nhận việc</button>
                                 <button onClick={(e) => { e.stopPropagation(); setDiscussionTask(t); }} className="text-[9px] bg-amber-500 hover:bg-amber-600 text-white px-1.5 py-0.5 rounded shadow-sm flex-1 font-bold cursor-pointer">Thắc mắc</button>
                               </div>
                             )}
-                            {isUserTaskAssignee(authStore.user, t, engineers) && (t.status === 'Đang làm' || t.status === 'Chưa làm') && (
+                            {isUserTaskAssignee(authStore.user, t, engineers) && t.status === 'Đang làm' && (
                               <button onClick={(e) => { e.stopPropagation(); handleReportDone(t); }} className="text-[9px] bg-blue-500 pointer-events-auto hover:bg-blue-600 text-white px-2 py-0.5 rounded shadow-sm w-full font-bold cursor-pointer">Báo cáo hoàn thành</button>
                             )}
                             {canApproveTask(authStore.user, t) && (

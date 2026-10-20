@@ -1,11 +1,10 @@
 {
-  "version": "3.8.261",
+  "version": "3.8.262",
   "date": "2026-10-20",
   "notes": [
-    "Chặn nút Nhận việc nếu chưa đủ 2 điều kiện (Tình trạng 'Đáp ứng' và TT Đặt hàng 'Đã có hàng').",
-    "Bảo toàn trạng thái Chờ nhận việc / Có thắc mắc khi đồng bộ vật tư sang công việc.",
-    "Hỗ trợ tạo đơn xin nghỉ 1 buổi (buổi sáng / buổi chiều) tương ứng 0.5 ngày công.",
-    "Sửa lỗi nhảy số khi nhập phần trăm tạm ứng và giá trị hợp đồng trong quản lý hồ sơ.",
-    "Khắc phục thuật toán sinh STT mới tránh trùng lặp."
+    "Sửa lỗi hiển thị nút Báo cáo hoàn thành khi nhân sự chưa nhận việc.",
+    "Khắc phục việc chuyển trạng thái vật tư làm tự động biến task thành Đang làm khi chưa thi công.",
+    "Chỉ hiển thị nút Báo cáo hoàn thành khi trạng thái công việc thực sự là Đang làm.",
+    "Chặn nhận việc khi chưa đủ 2 điều kiện vật tư (Đáp ứng + Đã có hàng)."
   ]
 }

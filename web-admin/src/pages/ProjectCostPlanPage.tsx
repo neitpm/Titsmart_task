@@ -442,9 +442,12 @@ export const ProjectCostPlanPage: React.FC = () => {
             nextStatus = 'Hoàn thành';
           } else if (matchingTask.status === 'Chờ nhận việc' || matchingTask.status === 'Có thắc mắc') {
             nextStatus = matchingTask.status; // Giữ nguyên trạng thái chờ nhận việc / có thắc mắc
-          } else if (nextProgress > 0) {
+          } else if (matchingTask.status === 'Đang làm') {
+            nextStatus = 'Đang làm';
+          } else if (nextConstrStatus && nextConstrStatus !== 'Chưa thi công') {
             nextStatus = 'Đang làm';
           } else {
+            // Task chưa nhận việc hoặc chưa thi công, dù có hàng vẫn chỉ là Chờ nhận việc (nếu có người) hoặc Chưa làm
             nextStatus = matchingTask.assignedEngineerId ? 'Chờ nhận việc' : 'Chưa làm';
           }
 
