@@ -8,7 +8,7 @@ import { Task } from '../types';
 import { TaskDiscussionModal } from '../components/tasks/TaskDiscussionModal';
 import { Toast } from '../components/common/Toast';
 import { appendTaskDiscussion, getLatestDiscussion } from '../utils/taskDiscussion';
-import { isUserTaskAssignee, isUserTaskAssigner, isUserTaskFollower, getTaskFollowerNames } from '../utils/taskPermission';
+import { isUserTaskAssignee, isUserTaskAssigner, isUserTaskFollower, getTaskFollowerNames, isTaskReadyForAssignment } from '../utils/taskPermission';
 
 export const MyTasksPage: React.FC = () => {
   const navigate = useNavigate();
@@ -16,6 +16,7 @@ export const MyTasksPage: React.FC = () => {
   const projects = useRealtimeStore(state => state.projects);
   const engineers = useRealtimeStore(state => state.engineers);
   const updateTask = useRealtimeStore(state => state.updateTask);
+  const materialPlans = useRealtimeStore(state => state.materialPlans);
   const user = useAuthStore(state => state.user);
   const [searchParams] = useSearchParams();
 
@@ -269,6 +270,13 @@ export const MyTasksPage: React.FC = () => {
   }, [myCategoryTasks, projects]);
 
   const handleAcceptTask = async (task: any) => {
+    // Kiểm tra điều kiện tiên quyết trước khi cho phép nhận việc
+    const readiness = isTaskReadyForAssignment(task, materialPlans);
+    if (!readiness.ready) {
+      triggerToast(readiness.reason || 'Công việc chưa đủ điều kiện nhận việc (cần Tình trạng "Đáp ứng" và TT Đặt hàng "Đã có hàng")!', 'warning');
+      return;
+    }
+
     const constrStatus = task.constrStatus && task.constrStatus !== 'Chưa thi công' ? task.constrStatus : 'Đang thi công';
     const nextProgress = calculateTaskProgressFromStatuses(task.purchaseStatus, constrStatus);
     updateTask(task.id, { 

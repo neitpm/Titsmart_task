@@ -437,6 +437,17 @@ export const ProjectCostPlanPage: React.FC = () => {
           const nextConstrStatus = matchingTask.constrStatus || 'Chưa thi công';
           const nextProgress = calculateAutoProgressRatio(nextPurchaseStatus, nextConstrStatus);
 
+          let nextStatus = matchingTask.status;
+          if (nextProgress >= 1) {
+            nextStatus = 'Hoàn thành';
+          } else if (matchingTask.status === 'Chờ nhận việc' || matchingTask.status === 'Có thắc mắc') {
+            nextStatus = matchingTask.status; // Giữ nguyên trạng thái chờ nhận việc / có thắc mắc
+          } else if (nextProgress > 0) {
+            nextStatus = 'Đang làm';
+          } else {
+            nextStatus = matchingTask.assignedEngineerId ? 'Chờ nhận việc' : 'Chưa làm';
+          }
+
           updateTask(matchingTask.id, {
             stt: updates.stt !== undefined ? updates.stt : matchingTask.stt,
             name: updates.jobContent !== undefined ? updates.jobContent : matchingTask.name,
@@ -445,7 +456,7 @@ export const ProjectCostPlanPage: React.FC = () => {
             purchaseStatus: nextPurchaseStatus,
             progress: nextProgress,
             isDone: nextProgress >= 1,
-            status: nextProgress >= 1 ? 'Hoàn thành' : nextProgress > 0 ? 'Đang làm' : 'Chưa làm'
+            status: nextStatus
           });
         }
       }

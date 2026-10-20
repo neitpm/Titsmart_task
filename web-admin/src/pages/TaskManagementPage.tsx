@@ -244,6 +244,13 @@ export const TaskManagementPage: React.FC = () => {
   }, [isHighlightActive, tasks]);
 
   const handleAcceptTask = async (task: Task) => {
+    // Kiểm tra điều kiện tiên quyết trước khi cho phép nhận việc
+    const readiness = isTaskReadyForAssignment(task, materialPlans);
+    if (!readiness.ready) {
+      triggerToast(readiness.reason || 'Công việc chưa đủ điều kiện nhận việc (cần Tình trạng "Đáp ứng" và TT Đặt hàng "Đã có hàng")!', 'warning');
+      return;
+    }
+
     const constrStatus = task.constrStatus && task.constrStatus !== 'Chưa thi công' ? task.constrStatus : 'Đang thi công';
     const nextProgress = calculateTaskProgressFromStatuses(task.purchaseStatus, constrStatus);
     handleUpdateTaskSync(task.id, { 

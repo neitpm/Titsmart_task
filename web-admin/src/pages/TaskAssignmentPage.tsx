@@ -124,6 +124,14 @@ export const TaskAssignmentPage: React.FC = () => {
   const handleAcceptTask = async (taskToAccept: Task) => {
     try {
       const isDirect = taskToAccept.sectionName === 'Giao việc trực tiếp' || taskToAccept.projectCode === 'COMPANY' || taskToAccept.code?.startsWith('TASK-DIRECT');
+      if (!isDirect) {
+        const readiness = isTaskReadyForAssignment(taskToAccept, materialPlans);
+        if (!readiness.ready) {
+          triggerToast(readiness.reason || 'Công việc chưa đủ điều kiện nhận việc (cần Tình trạng "Đáp ứng" và TT Đặt hàng "Đã có hàng")!', 'warning');
+          return;
+        }
+      }
+
       const nextStatus = 'Đang làm';
       const constrStatus = taskToAccept.constrStatus && taskToAccept.constrStatus !== 'Chưa thi công' ? taskToAccept.constrStatus : 'Đang thi công';
       const nextProgress = calculateTaskProgressFromStatuses(taskToAccept.purchaseStatus, constrStatus);
