@@ -1035,7 +1035,13 @@ export const DocumentTrackingPage: React.FC = () => {
                     }`} 
                     onClick={() => {
                       setIsHighlightActive(false);
-                      setEditingDoc({ ...track, notes: (track.notes || '').replace(/\[STATUS:[^\]]+\]/g, '').trim() });
+                      const rawPct = Number(track.prepayPercent || 0);
+                      const displayPct = rawPct > 0 && rawPct <= 1 ? Math.round(rawPct * 100) : rawPct;
+                      setEditingDoc({ 
+                        ...track, 
+                        prepayPercent: displayPct,
+                        notes: (track.notes || '').replace(/\[STATUS:[^\]]+\]/g, '').trim() 
+                      });
                     }}
                   >
                     <td className="px-2 py-2 text-center whitespace-nowrap">
@@ -1219,8 +1225,9 @@ export const DocumentTrackingPage: React.FC = () => {
           setIsSubmitting(true);
           try {
             const val = Number(newDoc.contractValue || 0);
-            const prepayPct = Number(newDoc.prepayPercent || 0);
-            const prepayAmt = val * prepayPct;
+            const rawPct = Number(newDoc.prepayPercent || 0);
+            const prepayPct = rawPct > 1 ? rawPct / 100 : rawPct;
+            const prepayAmt = newDoc.prepayAmount || Math.round(val * prepayPct);
 
             await addDocumentTrack({
               stt: newDoc.stt || String(documentTracks.length + 1),
@@ -1304,8 +1311,46 @@ export const DocumentTrackingPage: React.FC = () => {
             <div><label className="block font-bold mb-1 text-amber-900">Hạn nộp / Hẹn trả 🔔</label><input type="date" value={newDoc.dueDate || ''} onChange={(e) => setNewDoc({...newDoc, dueDate: e.target.value})} className="w-full border border-amber-300 rounded-lg p-2 bg-white font-bold text-amber-900" /></div>
           </div>
           <div className="grid grid-cols-3 gapx-1 py-1 bg-slate-50 p-2 rounded-lg border">
-            <div><label className="block font-bold mb-1">Giá trị HĐ (đ)</label><input type="number" step="any" value={newDoc.contractValue === 0 ? '' : (newDoc.contractValue ?? '')} placeholder="0" onChange={(e) => setNewDoc({...newDoc, contractValue: e.target.value === '' ? 0 : Number(e.target.value)})} className="w-full border rounded-lg p-2 bg-white font-bold" /></div>
-            <div><label className="block font-bold mb-1">Tạm ứng (%)</label><input type="number" step="0.1" min="0" max="100" value={!newDoc.prepayPercent ? '' : (newDoc.prepayPercent * 100)} placeholder="0" onChange={(e) => setNewDoc({...newDoc, prepayPercent: e.target.value === '' ? 0 : Number(e.target.value) / 100})} className="w-full border rounded-lg p-2 bg-white" /></div>
+            <div>
+              <label className="block font-bold mb-1">Giá trị HĐ (đ)</label>
+              <input 
+                type="number" 
+                step="any" 
+                value={newDoc.contractValue === 0 ? '' : (newDoc.contractValue ?? '')} 
+                placeholder="0" 
+                onChange={(e) => {
+                  const val = e.target.value === '' ? 0 : Number(e.target.value);
+                  const pct = Number(newDoc.prepayPercent || 0);
+                  setNewDoc({
+                    ...newDoc, 
+                    contractValue: val,
+                    prepayAmount: Math.round(val * (pct / 100))
+                  });
+                }} 
+                className="w-full border rounded-lg p-2 bg-white font-bold" 
+              />
+            </div>
+            <div>
+              <label className="block font-bold mb-1">Tạm ứng (%)</label>
+              <input 
+                type="number" 
+                step="any" 
+                min="0" 
+                max="100" 
+                value={newDoc.prepayPercent === 0 ? '' : (newDoc.prepayPercent ?? '')} 
+                placeholder="0" 
+                onChange={(e) => {
+                  const pct = e.target.value === '' ? 0 : Number(e.target.value);
+                  const val = Number(newDoc.contractValue || 0);
+                  setNewDoc({
+                    ...newDoc, 
+                    prepayPercent: pct,
+                    prepayAmount: Math.round(val * (pct / 100))
+                  });
+                }} 
+                className="w-full border rounded-lg p-2 bg-white font-bold" 
+              />
+            </div>
             <div>
               <label className="block font-bold mb-1">Thanh toán</label>
               <CustomSelect value={newDoc.paymentStatus || 'Chưa thanh toán'} onChange={(e) => setNewDoc({...newDoc, paymentStatus: e.target.value})} className="w-full border rounded-lg p-2 bg-white font-bold">
@@ -1353,11 +1398,13 @@ export const DocumentTrackingPage: React.FC = () => {
             setIsSubmitting(true);
             try {
               const val = Number(editingDoc.contractValue || 0);
-              const prepayPct = Number(editingDoc.prepayPercent || 0);
-              const prepayAmt = val * prepayPct;
+              const rawPct = Number(editingDoc.prepayPercent || 0);
+              const prepayPct = rawPct > 1 ? rawPct / 100 : rawPct;
+              const prepayAmt = editingDoc.prepayAmount || Math.round(val * prepayPct);
 
               await updateDocumentTrack(editingDoc.id, {
                 ...editingDoc,
+                prepayPercent: prepayPct,
                 notes: (editingDoc.notes || '').replace(/\[STATUS:[^\]]+\]/g, '').trim(),
                 prepayAmount: prepayAmt
               });
@@ -1418,8 +1465,46 @@ export const DocumentTrackingPage: React.FC = () => {
                 <div><label className="block font-bold mb-1 text-amber-900">Hạn nộp / Hẹn trả 🔔</label><input type="date" value={editingDoc.dueDate || ''} onChange={(e) => setEditingDoc({...editingDoc, dueDate: e.target.value})} className="w-full border border-amber-300 rounded-lg p-2 bg-white font-bold text-amber-900" /></div>
               </div>
               <div className="grid grid-cols-3 gapx-1 py-1 bg-slate-50 p-2 rounded-lg border">
-                <div><label className="block font-bold mb-1">Giá trị HĐ (đ)</label><input type="number" step="any" value={editingDoc.contractValue === 0 ? '' : (editingDoc.contractValue ?? '')} placeholder="0" onChange={(e) => setEditingDoc({...editingDoc, contractValue: e.target.value === '' ? 0 : Number(e.target.value)})} className="w-full border rounded-lg p-2 bg-white font-bold" /></div>
-                <div><label className="block font-bold mb-1">Tạm ứng (%)</label><input type="number" step="0.1" min="0" max="100" value={!editingDoc.prepayPercent ? '' : (editingDoc.prepayPercent * 100)} placeholder="0" onChange={(e) => setEditingDoc({...editingDoc, prepayPercent: e.target.value === '' ? 0 : Number(e.target.value) / 100})} className="w-full border rounded-lg p-2 bg-white" /></div>
+                <div>
+                  <label className="block font-bold mb-1">Giá trị HĐ (đ)</label>
+                  <input 
+                    type="number" 
+                    step="any" 
+                    value={editingDoc.contractValue === 0 ? '' : (editingDoc.contractValue ?? '')} 
+                    placeholder="0" 
+                    onChange={(e) => {
+                      const val = e.target.value === '' ? 0 : Number(e.target.value);
+                      const pct = Number(editingDoc.prepayPercent || 0);
+                      setEditingDoc({
+                        ...editingDoc, 
+                        contractValue: val,
+                        prepayAmount: Math.round(val * (pct / 100))
+                      });
+                    }} 
+                    className="w-full border rounded-lg p-2 bg-white font-bold" 
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold mb-1">Tạm ứng (%)</label>
+                  <input 
+                    type="number" 
+                    step="any" 
+                    min="0" 
+                    max="100" 
+                    value={editingDoc.prepayPercent === 0 ? '' : (editingDoc.prepayPercent ?? '')} 
+                    placeholder="0" 
+                    onChange={(e) => {
+                      const pct = e.target.value === '' ? 0 : Number(e.target.value);
+                      const val = Number(editingDoc.contractValue || 0);
+                      setEditingDoc({
+                        ...editingDoc, 
+                        prepayPercent: pct,
+                        prepayAmount: Math.round(val * (pct / 100))
+                      });
+                    }} 
+                    className="w-full border rounded-lg p-2 bg-white font-bold" 
+                  />
+                </div>
                 <div>
                   <label className="block font-bold mb-1">Thanh toán</label>
                   <CustomSelect value={editingDoc.paymentStatus || 'Chưa thanh toán'} onChange={(e) => setEditingDoc({...editingDoc, paymentStatus: e.target.value})} className="w-full border rounded-lg p-2 bg-white font-bold">

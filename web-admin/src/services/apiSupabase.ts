@@ -2295,6 +2295,7 @@ export const api = {
       startDate: string;
       endDate: string;
       totalDays: number;
+      session?: string;
       reason: string;
       step1ReviewerId?: string;
       step1ReviewerName?: string;
@@ -2310,6 +2311,7 @@ export const api = {
         startDate: input.startDate,
         endDate: input.endDate,
         totalDays: input.totalDays,
+        session: input.session || 'ALL_DAY',
         reason: input.reason,
         status: input.step1ReviewerId ? 'PENDING_STEP1' : 'PENDING',
         step1ReviewerId: input.step1ReviewerId || null,

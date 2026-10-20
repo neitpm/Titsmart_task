@@ -807,10 +807,20 @@ const hasSyncedRef = useRef(false);
     let nextStt = parentSttPrefix ? `${parentSttPrefix}.1` : '1';
 
     if (siblingTasks.length > 0) {
-      const lastStt = siblingTasks[siblingTasks.length - 1].stt?.trim() || '';
-      const match = lastStt.match(/^(.*?)(\d+)$/);
-      if (match) {
-        nextStt = `${match[1]}${parseInt(match[2], 10) + 1}`;
+      let maxPrefix = '';
+      let maxNum = 0;
+      siblingTasks.forEach(st => {
+        const m = (st.stt?.trim() || '').match(/^(.*?)(\d+)$/);
+        if (m) {
+          const num = parseInt(m[2], 10);
+          if (num > maxNum) {
+            maxNum = num;
+            maxPrefix = m[1];
+          }
+        }
+      });
+      if (maxNum > 0) {
+        nextStt = `${maxPrefix}${maxNum + 1}`;
       } else if (parentSttPrefix) {
         nextStt = `${parentSttPrefix}.${siblingTasks.length + 1}`;
       }
@@ -1007,14 +1017,26 @@ const hasSyncedRef = useRef(false);
     
     setSectionSelect(targetSection);
     
-    // Calculate intelligent next STT
+    // Calculate intelligent next STT based on maximum existing suffix in section
     const siblingTasks = tasks.filter(t => t.projectCode === activeCode && !t.parentId && (targetSection === 'default' || t.sectionName === targetSection) && !t.isSectionHeader);
     let nextStt = '1';
     if (siblingTasks.length > 0) {
-      const lastStt = siblingTasks[siblingTasks.length - 1].stt?.trim() || '';
-      const match = lastStt.match(/^(.*?)(\d+)$/);
-      if (match) {
-        nextStt = `${match[1]}${parseInt(match[2], 10) + 1}`;
+      let maxPrefix = '';
+      let maxNum = 0;
+      siblingTasks.forEach(st => {
+        const m = (st.stt?.trim() || '').match(/^(.*?)(\d+)$/);
+        if (m) {
+          const num = parseInt(m[2], 10);
+          if (num > maxNum) {
+            maxNum = num;
+            maxPrefix = m[1];
+          }
+        }
+      });
+      if (maxNum > 0) {
+        nextStt = `${maxPrefix}${maxNum + 1}`;
+      } else {
+        nextStt = String(siblingTasks.length + 1);
       }
     } else if (targetSection !== 'default') {
       const secHeader = tasks.find(t => t.projectCode === activeCode && t.isSectionHeader && (t.name === targetSection || t.sectionName === targetSection));

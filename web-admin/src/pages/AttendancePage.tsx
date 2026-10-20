@@ -134,6 +134,7 @@ export const AttendancePage: React.FC = () => {
   const [leaveType, setLeaveType] = useState<LeaveType>('Nghỉ phép năm');
   const [leaveStartDate, setLeaveStartDate] = useState(new Date().toISOString().split('T')[0]);
   const [leaveEndDate, setLeaveEndDate] = useState(new Date().toISOString().split('T')[0]);
+  const [leaveSession, setLeaveSession] = useState<'ALL_DAY' | 'MORNING' | 'AFTERNOON'>('ALL_DAY');
   const [leaveReason, setLeaveReason] = useState('');
   const [step1ReviewerId, setStep1ReviewerId] = useState('');
   const [step2ReviewerId, setStep2ReviewerId] = useState('');
@@ -909,8 +910,14 @@ export const AttendancePage: React.FC = () => {
     setModalError(null);
     setIsSubmitting(true);
     try {
-      const diffTime = Math.max(0, end.getTime() - start.getTime());
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+      let diffDays = Math.max(0, end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24) + 1;
+      diffDays = Math.ceil(diffDays);
+
+      const isSingleDay = leaveStartDate === leaveEndDate;
+      const actualSession = isSingleDay ? leaveSession : 'ALL_DAY';
+      if (isSingleDay && (actualSession === 'MORNING' || actualSession === 'AFTERNOON')) {
+        diffDays = 0.5;
+      }
 
       const step1Eng = step1ReviewerId ? engineers.find(e => e.id === step1ReviewerId) : undefined;
       const step2Eng = step2ReviewerId ? engineers.find(e => e.id === step2ReviewerId) : undefined;
@@ -924,6 +931,7 @@ export const AttendancePage: React.FC = () => {
         startDate: leaveStartDate,
         endDate: leaveEndDate,
         totalDays: diffDays,
+        session: actualSession,
         reason: leaveReason.trim(),
         step1ReviewerId: step1ReviewerId || undefined,
         step1ReviewerName: step1Eng?.name || undefined,
@@ -940,6 +948,7 @@ export const AttendancePage: React.FC = () => {
       setStep1ReviewerId('');
       setStep2ReviewerId('');
       setFollowerIds([]);
+      setLeaveSession('ALL_DAY');
       setModalError(null);
       showToast('Gửi đơn xin nghỉ phép thành công!', 'success');
 
@@ -2042,7 +2051,15 @@ export const AttendancePage: React.FC = () => {
                           <td className="p-3 whitespace-nowrap text-slate-700">
                             {formatDate(l.startDate)} → {formatDate(l.endDate)}
                           </td>
-                          <td className="p-3 text-center font-bold text-slate-800">{l.totalDays} ngày</td>
+                          <td className="p-3 text-center whitespace-nowrap">
+                            <span className="font-bold text-slate-800">{l.totalDays} ngày</span>
+                            {l.session === 'MORNING' && (
+                              <span className="block text-[10px] font-bold text-amber-700 bg-amber-50 rounded px-1 mt-0.5 border border-amber-200">Sáng</span>
+                            )}
+                            {l.session === 'AFTERNOON' && (
+                              <span className="block text-[10px] font-bold text-blue-700 bg-blue-50 rounded px-1 mt-0.5 border border-blue-200">Chiều</span>
+                            )}
+                          </td>
                           <td className="p-3 text-slate-600 max-w-[180px] truncate" title={l.reason}>
                             {l.reason}
                           </td>
@@ -2606,7 +2623,10 @@ export const AttendancePage: React.FC = () => {
               <input
                 type="date"
                 value={leaveStartDate}
-                onChange={e => setLeaveStartDate(e.target.value)}
+                onChange={e => {
+                  setLeaveStartDate(e.target.value);
+                  if (e.target.value > leaveEndDate) setLeaveEndDate(e.target.value);
+                }}
                 className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm"
               />
             </div>
@@ -2615,11 +2635,64 @@ export const AttendancePage: React.FC = () => {
               <input
                 type="date"
                 value={leaveEndDate}
-                onChange={e => setLeaveEndDate(e.target.value)}
+                onChange={e => {
+                  setLeaveEndDate(e.target.value);
+                  if (e.target.value < leaveStartDate) setLeaveStartDate(e.target.value);
+                }}
                 className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm"
               />
             </div>
           </div>
+
+          {/* Buổi nghỉ (áp dụng khi nghỉ trong 1 ngày) */}
+          {leaveStartDate === leaveEndDate && (
+            <div className="p-3 bg-blue-50/60 border border-blue-200 rounded-xl space-y-1.5 animate-in fade-in">
+              <label className="block text-xs font-bold text-slate-800 flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-sm text-primary">schedule</span>
+                  <span>Thời gian nghỉ trong ngày</span>
+                </span>
+                <span className="text-[11px] font-bold text-primary">
+                  {leaveSession === 'ALL_DAY' ? '1 ngày' : '0.5 ngày (1 buổi)'}
+                </span>
+              </label>
+              <div className="grid grid-cols-3 gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setLeaveSession('ALL_DAY')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                    leaveSession === 'ALL_DAY'
+                      ? 'bg-primary text-white border-primary shadow-xs'
+                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                  }`}
+                >
+                  Cả ngày (1.0)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLeaveSession('MORNING')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                    leaveSession === 'MORNING'
+                      ? 'bg-primary text-white border-primary shadow-xs'
+                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                  }`}
+                >
+                  Buổi sáng (0.5)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLeaveSession('AFTERNOON')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                    leaveSession === 'AFTERNOON'
+                      ? 'bg-primary text-white border-primary shadow-xs'
+                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                  }`}
+                >
+                  Buổi chiều (0.5)
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Gom Quản lý trực tiếp duyệt & Người theo dõi lên cùng 1 hàng */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

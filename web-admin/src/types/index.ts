@@ -210,6 +210,7 @@ export interface NotificationItem {
 
 export type LeaveType = 'Nghỉ phép năm' | 'Nghỉ bệnh' | 'Nghỉ việc riêng' | 'Nghỉ không lương' | 'Khác';
 export type LeaveStatus = 'PENDING_STEP1' | 'PENDING' | 'APPROVED_STEP1' | 'APPROVED' | 'REJECTED';
+export type LeaveSession = 'ALL_DAY' | 'MORNING' | 'AFTERNOON';
 
 export interface LeaveRequest {
   id: string;
@@ -219,6 +220,7 @@ export interface LeaveRequest {
   startDate: string;
   endDate: string;
   totalDays: number;
+  session?: LeaveSession;
   reason: string;
   status: LeaveStatus;
   // Cấp 1: Người duyệt được chỉ định (Quản lý trực tiếp / Chỉ huy trưởng)
