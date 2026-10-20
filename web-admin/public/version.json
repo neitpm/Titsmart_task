@@ -1,8 +1,11 @@
 {
-  "version": "3.8.146",
-  "date": "2026-10-02",
+  "version": "3.8.261",
+  "date": "2026-10-20",
   "notes": [
-    "Khắc phục triệt để lỗi đứng màn hình đang tải khi cập nhật ứng dụng trên điện thoại Android.",
-    "Cải thiện luồng tải và cài đặt file APK mới, hiển thị hướng dẫn mở file APK cài đặt trực tiếp không gây đơ ứng dụng."
+    "Chặn nút Nhận việc nếu chưa đủ 2 điều kiện (Tình trạng 'Đáp ứng' và TT Đặt hàng 'Đã có hàng').",
+    "Bảo toàn trạng thái Chờ nhận việc / Có thắc mắc khi đồng bộ vật tư sang công việc.",
+    "Hỗ trợ tạo đơn xin nghỉ 1 buổi (buổi sáng / buổi chiều) tương ứng 0.5 ngày công.",
+    "Sửa lỗi nhảy số khi nhập phần trăm tạm ứng và giá trị hợp đồng trong quản lý hồ sơ.",
+    "Khắc phục thuật toán sinh STT mới tránh trùng lặp."
   ]
 }
