@@ -32,8 +32,12 @@ export const FileViewerItem: React.FC<FileViewerItemProps> = ({ url, index }) =>
 
   const [sheetNames, setSheetNames] = useState<string[]>([]);
   const [activeSheet, setActiveSheet] = useState<string>('');
-  const [sheetsHtmlMap, setSheetsHtmlMap] = useState<Record<string, string>>({});
+  const [workbookRef, setWorkbookRef] = useState<any>(null);
+  const [currentSheetData, setCurrentSheetData] = useState<any[][]>([]);
+  const [excelVisibleRows, setExcelVisibleRows] = useState<number>(100);
+  const [excelSearch, setExcelSearch] = useState<string>('');
   const [excelLoading, setExcelLoading] = useState<boolean>(false);
+  const [excelError, setExcelError] = useState<string>('');
 
   // PDF Viewer State (pdfjs-dist for in-app mobile canvas view)
   const [pdfLoading, setPdfLoading] = useState<boolean>(false);
@@ -50,36 +54,48 @@ export const FileViewerItem: React.FC<FileViewerItemProps> = ({ url, index }) =>
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const [dragMode, setDragMode] = useState<boolean>(false);
 
-  // Parse Excel locally
+  // 1. Parse Excel Workbook (Tải nhị phân và đọc cấu trúc, không convert HTML toàn bộ để tránh đơ)
   useEffect(() => {
     if (!isExcel || !resolvedUrl) return;
     let isMounted = true;
     setExcelLoading(true);
+    setExcelError('');
     setSheetNames([]);
     setActiveSheet('');
-    setSheetsHtmlMap({});
+    setWorkbookRef(null);
+    setCurrentSheetData([]);
+    setExcelVisibleRows(100);
+    setExcelSearch('');
 
-    fetch(resolvedUrl)
-      .then((res) => res.arrayBuffer())
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+    fetch(resolvedUrl, { signal: controller.signal })
+      .then((res) => {
+        if (!res.ok) throw new Error('Không thể tải tệp Excel từ máy chủ');
+        return res.arrayBuffer();
+      })
       .then((buffer) => {
+        clearTimeout(timeoutId);
         if (!isMounted) return;
-        const workbook = XLSX.read(buffer, { type: 'array', cellStyles: true, cellFormula: true, cellDates: true });
-        const names = workbook.SheetNames || [];
-        const htmlMap: Record<string, string> = {};
-
-        names.forEach((name) => {
-          const sheet = workbook.Sheets[name];
-          if (sheet) {
-            htmlMap[name] = XLSX.utils.sheet_to_html(sheet, { editable: false });
-          }
+        const workbook = XLSX.read(buffer, {
+          type: 'array',
+          cellStyles: false,
+          cellDates: true,
+          cellNF: false,
+          raw: false
         });
-
+        const names = workbook.SheetNames || [];
+        setWorkbookRef(workbook);
         setSheetNames(names);
-        if (names.length > 0) setActiveSheet(names[0]);
-        setSheetsHtmlMap(htmlMap);
+        if (names.length > 0) {
+          setActiveSheet(names[0]);
+        }
       })
       .catch((err) => {
+        if (!isMounted) return;
         console.warn('Failed to parse Excel arrayBuffer locally:', err);
+        setExcelError(err.name === 'AbortError' ? 'Thời gian tải tệp quá lâu' : (err.message || 'Lỗi đọc tệp Excel'));
       })
       .finally(() => {
         if (isMounted) setExcelLoading(false);
@@ -87,8 +103,36 @@ export const FileViewerItem: React.FC<FileViewerItemProps> = ({ url, index }) =>
 
     return () => {
       isMounted = false;
+      clearTimeout(timeoutId);
+      controller.abort();
     };
   }, [resolvedUrl, isExcel]);
+
+  // 2. Chuyển đổi dữ liệu thô của riêng Sheet đang kích hoạt (chỉ lấy mảng row để render ảo nhẹ nhàng)
+  useEffect(() => {
+    if (!workbookRef || !activeSheet) {
+      setCurrentSheetData([]);
+      return;
+    }
+    try {
+      const sheet = workbookRef.Sheets[activeSheet];
+      if (!sheet) {
+        setCurrentSheetData([]);
+        return;
+      }
+      const rawAoa = XLSX.utils.sheet_to_json<any[]>(sheet, {
+        header: 1,
+        blankrows: false,
+        defval: ''
+      });
+      setCurrentSheetData(rawAoa || []);
+      setExcelVisibleRows(100);
+      setExcelSearch('');
+    } catch (e) {
+      console.warn('Lỗi parse sheet data:', e);
+      setCurrentSheetData([]);
+    }
+  }, [workbookRef, activeSheet]);
 
   // Load PDF and render high-res page + thumbnails when useCanvasPdf is active
   useEffect(() => {
@@ -607,48 +651,154 @@ export const FileViewerItem: React.FC<FileViewerItemProps> = ({ url, index }) =>
             ) : isExcel ? (
               <div className="w-full h-full relative flex flex-col bg-white overflow-hidden border border-slate-200 rounded">
                 {excelLoading ? (
-                  <div className="flex flex-col items-center justify-center h-full gap-2 text-slate-500">
-                    <span className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                    <span className="text-xs font-bold">Đang tải và đọc tập tin Excel...</span>
+                  <div className="flex flex-col items-center justify-center h-full gap-3 text-slate-600">
+                    <span className="w-8 h-8 border-3 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+                    <div className="text-center">
+                      <span className="text-sm font-bold text-slate-800 block">Đang nạp bảng tính Excel...</span>
+                      <span className="text-xs text-slate-400">Đang tối ưu dữ liệu để hiển thị siêu mượt</span>
+                    </div>
                   </div>
-                ) : activeSheet && sheetsHtmlMap[activeSheet] ? (
-                  <div className="flex-1 flex flex-col min-h-0 overflow-hidden relative">
-                    <div 
-                      className="excel-viewer-table flex-1 overflow-auto p-4 text-xs text-slate-800"
-                      dangerouslySetInnerHTML={{ __html: sheetsHtmlMap[activeSheet] }} 
-                    />
-                    
-                    {/* Excel Sheet Tabs */}
-                    {sheetNames.length > 0 && (
-                      <div className="flex items-center gap-1 px-2 py-1 bg-slate-100 border-t border-slate-200 overflow-x-auto shrink-0 select-none">
-                        <span className="text-[11px] font-bold text-slate-500 px-1 shrink-0">Sheet:</span>
-                        {sheetNames.map((name) => (
-                          <button
-                            key={name}
-                            onClick={() => setActiveSheet(name)}
-                            className={`px-3 py-1 text-xs font-bold rounded transition-colors whitespace-nowrap ${
-                              activeSheet === name
-                                ? 'bg-white text-emerald-700 shadow-xs border border-slate-300 border-b-2 border-b-emerald-600'
-                                : 'text-slate-600 hover:bg-slate-200'
-                            }`}
-                          >
-                            {name}
-                          </button>
-                        ))}
+                ) : excelError ? (
+                  <div className="flex flex-col items-center justify-center h-full gap-3 text-slate-600 p-6 text-center">
+                    <span className="material-symbols-outlined text-4xl text-rose-500">error</span>
+                    <p className="font-bold text-sm text-slate-800">{excelError}</p>
+                    <a
+                      href={resolvedUrl}
+                      download
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-4 py-2 bg-primary text-white text-xs font-bold rounded-lg shadow-sm flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <span className="material-symbols-outlined text-base">download</span> Tải tệp về máy
+                    </a>
+                  </div>
+                ) : currentSheetData.length > 0 ? (
+                  (() => {
+                    const filteredRows = excelSearch.trim()
+                      ? currentSheetData.filter((row, idx) => {
+                          if (idx === 0) return true;
+                          return row.some(cell => String(cell || '').toLowerCase().includes(excelSearch.toLowerCase()));
+                        })
+                      : currentSheetData;
+
+                    const displayedRows = filteredRows.slice(0, excelVisibleRows);
+                    const totalRows = filteredRows.length;
+                    const maxCols = Math.min(
+                      Math.max(...displayedRows.map(r => (Array.isArray(r) ? r.length : 0)), 1),
+                      50
+                    );
+
+                    return (
+                      <div className="flex-1 flex flex-col min-h-0 overflow-hidden relative">
+                        {/* Thanh công cụ xem Excel: Tìm kiếm & Thông tin dòng */}
+                        <div className="px-3 py-1.5 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2 shrink-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-slate-700 flex items-center gap-1">
+                              <span className="material-symbols-outlined text-emerald-600 text-sm">table_chart</span>
+                              <span>{activeSheet}</span>
+                            </span>
+                            <span className="text-[11px] text-slate-500 font-medium bg-slate-200/70 px-2 py-0.5 rounded-full">
+                              Hiển thị {Math.min(excelVisibleRows, totalRows)} / {totalRows.toLocaleString('vi-VN')} dòng
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <div className="relative">
+                              <span className="material-symbols-outlined absolute left-2 top-1.5 text-slate-400 text-sm">search</span>
+                              <input
+                                type="text"
+                                value={excelSearch}
+                                onChange={e => setExcelSearch(e.target.value)}
+                                placeholder="Lọc nội dung..."
+                                className="pl-7 pr-2 py-1 text-xs bg-white border border-slate-300 rounded-md focus:outline-none focus:border-emerald-600 w-36 sm:w-48 font-medium"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Bảng dữ liệu hiển thị mượt mà */}
+                        <div className="flex-1 overflow-auto bg-white p-2">
+                          <table className="border-collapse w-max min-w-full text-xs font-mono select-text">
+                            <tbody>
+                              {displayedRows.map((row, rIdx) => {
+                                const isHeader = rIdx === 0;
+                                return (
+                                  <tr 
+                                    key={rIdx}
+                                    className={isHeader ? 'bg-slate-100 font-bold sticky top-0 shadow-xs z-10' : 'hover:bg-blue-50/50 transition-colors'}
+                                  >
+                                    <td className="border border-slate-300 px-2 py-1 text-center bg-slate-50 text-slate-400 font-sans text-[10px] select-none min-w-[36px]">
+                                      {rIdx + 1}
+                                    </td>
+                                    {Array.from({ length: maxCols }).map((_, cIdx) => {
+                                      const cellVal = row && row[cIdx] !== undefined ? String(row[cIdx]) : '';
+                                      return (
+                                        <td 
+                                          key={cIdx}
+                                          className={`border border-slate-200 px-2.5 py-1 text-slate-800 whitespace-nowrap max-w-[320px] truncate ${isHeader ? 'bg-slate-100 font-bold text-slate-900 border-slate-300' : ''}`}
+                                          title={cellVal}
+                                        >
+                                          {cellVal}
+                                        </td>
+                                      );
+                                    })}
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+
+                          {excelVisibleRows < totalRows && (
+                            <div className="py-3 flex items-center justify-center border-t border-slate-200 bg-slate-50/50 mt-2">
+                              <button
+                                type="button"
+                                onClick={() => setExcelVisibleRows(prev => prev + 200)}
+                                className="px-4 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-lg text-xs font-bold shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                              >
+                                <span className="material-symbols-outlined text-sm">expand_more</span>
+                                <span>Tải thêm 200 dòng tiếp theo...</span>
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Excel Sheet Tabs */}
+                        {sheetNames.length > 0 && (
+                          <div className="flex items-center gap-1 px-2 py-1 bg-slate-100 border-t border-slate-200 overflow-x-auto shrink-0 select-none">
+                            <span className="text-[11px] font-bold text-slate-500 px-1 shrink-0 flex items-center gap-1">
+                              <span className="material-symbols-outlined text-sm text-emerald-600">sheets</span>
+                              <span>Trang:</span>
+                            </span>
+                            {sheetNames.map((name) => (
+                              <button
+                                key={name}
+                                type="button"
+                                onClick={() => setActiveSheet(name)}
+                                className={`px-3 py-1 text-xs font-bold rounded transition-colors whitespace-nowrap cursor-pointer ${
+                                  activeSheet === name
+                                    ? 'bg-white text-emerald-700 shadow-xs border border-slate-300 border-b-2 border-b-emerald-600'
+                                    : 'text-slate-600 hover:bg-slate-200'
+                                }`}
+                              >
+                                {name}
+                              </button>
+                            ))}
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
+                    );
+                  })()
                 ) : (
                   <div className="flex flex-col items-center justify-center h-full gap-3 text-slate-600 p-6 text-center">
                     <span className="material-symbols-outlined text-4xl text-amber-500">description</span>
-                    <p className="font-bold text-sm">Không thể xem trực tiếp tệp Excel trên trình duyệt</p>
+                    <p className="font-bold text-sm">Không tìm thấy dữ liệu trong bảng tính này</p>
                     <div className="flex gap-2 mt-2">
                       <a
                         href={resolvedUrl}
                         download
                         target="_blank"
                         rel="noreferrer"
-                        className="px-4 py-2 bg-primary text-white text-xs font-bold rounded-lg shadow-sm flex items-center gap-1.5"
+                        className="px-4 py-2 bg-primary text-white text-xs font-bold rounded-lg shadow-sm flex items-center gap-1.5 cursor-pointer"
                       >
                         <span className="material-symbols-outlined text-base">download</span> Tải tệp về máy
                       </a>

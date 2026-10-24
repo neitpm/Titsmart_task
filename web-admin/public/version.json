@@ -1,9 +1,9 @@
 {
-  "version": "3.8.270",
+  "version": "3.8.271",
   "date": "2026-10-24",
   "notes": [
-    "Đồng bộ toàn bộ cơ chế tải file/ảnh (ImageUpload, FileUpload, Chấm công, Chi phí, Vật tư, Hồ sơ) sang uploadAttachment với chuẩn nén Canvas an toàn và Timeout chống treo điện thoại.",
-    "Tự động xử lý Fallback và ngắt timeout 15s giúp upload trên điện thoại luôn phản hồi nhanh, không bao giờ bị đơ xoay mãi."
+    "Tối ưu hóa bộ xem trước tệp Excel (.xlsx, .xls, .csv) mượt mà, loại bỏ hiện tượng đơ lag.",
+    "Lazy loading theo từng sheet, hiển thị nhanh 100 dòng đầu và bổ sung thanh tìm kiếm tiện lợi."
   ],
-  "buildDate": "2026-10-24T04:42:36.867Z"
+  "buildDate": "2026-10-24T07:11:00.000Z"
 }
