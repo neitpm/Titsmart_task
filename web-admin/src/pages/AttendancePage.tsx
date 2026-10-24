@@ -2660,7 +2660,7 @@ export const AttendancePage: React.FC = () => {
                   }`}
                 >
                   <span className="material-symbols-outlined text-base">schedule</span>
-                  <span>Nghỉ 1 buổi (0.5 ngày)</span>
+                  <span>Nghỉ 1 buổi</span>
                 </button>
               </div>
             </div>
@@ -2680,12 +2680,7 @@ export const AttendancePage: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
-                    <span>Chọn buổi nghỉ</span>
-                    <span className="text-[11px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
-                      Tính: 0.5 ngày công
-                    </span>
-                  </label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">Chọn buổi nghỉ</label>
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       type="button"
@@ -2697,7 +2692,7 @@ export const AttendancePage: React.FC = () => {
                       }`}
                     >
                       <span className="material-symbols-outlined text-base">wb_sunny</span>
-                      <span>Buổi sáng (0.5 ngày)</span>
+                      <span>Buổi sáng</span>
                     </button>
                     <button
                       type="button"
@@ -2709,7 +2704,7 @@ export const AttendancePage: React.FC = () => {
                       }`}
                     >
                       <span className="material-symbols-outlined text-base">dark_mode</span>
-                      <span>Buổi chiều (0.5 ngày)</span>
+                      <span>Buổi chiều</span>
                     </button>
                   </div>
                 </div>
