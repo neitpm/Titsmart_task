@@ -1917,7 +1917,7 @@ export const api = {
         taskId: d.task_id,
         createdById: d.created_by_id || d.created_by || '',
         createdByName: d.created_by_name || d.created_by || d.updated_by || '',
-        updatedBy: d.updated_by || '',
+        updatedBy: d.updated_by || d.created_by_name || d.created_by || '',
         updatedAt: d.updated_at || '',
       }));
     },

@@ -1,9 +1,9 @@
 {
-  "version": "3.8.263",
+  "version": "3.8.264",
   "date": "2026-10-24",
   "notes": [
-    "Nâng cấp cơ chế tải ảnh hiện trường sử dụng uploadAttachment với chuẩn nén Canvas tự động.",
-    "Bổ sung cơ chế Fallback chống lỗi nghẽn mạng / lỗi Storage giúp tải ảnh hiện trường luôn thành công.",
-    "Cập nhật giao diện và cải thiện độ ổn định."
+    "Đồng bộ chính xác tên người cập nhật nhật ký hiện trường (hiển thị Phạm Minh Tiên thay vì admin khi có nhật ký mới).",
+    "Tối ưu upload ảnh hiện trường trên thiết bị di động (hỗ trợ nén ảnh Canvas và chấp nhận mọi định dạng ảnh từ camera điện thoại).",
+    "Liên kết chi tiết lịch sử cập nhật công việc trong bảng nhật ký hiện trường."
   ]
 }

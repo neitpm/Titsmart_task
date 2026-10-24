@@ -549,15 +549,15 @@ export const FieldLogsTaskTable: React.FC<FieldLogsTaskTableProps> = ({ selected
                       const logTime = latestLog ? parseAuditTime(latestLog.updatedAt || latestLog.timestamp) : 0;
                       const taskTime = parseAuditTime(t.updatedAt);
 
-                      const effectiveUpdater = logTime >= taskTime 
-                        ? (latestLog?.updatedBy || latestLog?.createdByName || t.updatedBy)
+                      const effectiveUpdater = (latestLog && (logTime >= taskTime || !t.updatedBy))
+                        ? (latestLog.updatedBy || latestLog.createdByName || t.updatedBy)
                         : (t.updatedBy || latestLog?.updatedBy || latestLog?.createdByName);
 
-                      const effectiveTime = logTime >= taskTime
-                        ? (latestLog?.updatedAt || latestLog?.timestamp || t.updatedAt)
+                      const effectiveTime = (latestLog && (logTime >= taskTime || !t.updatedAt))
+                        ? (latestLog.updatedAt || latestLog.timestamp || t.updatedAt)
                         : (t.updatedAt || latestLog?.updatedAt || latestLog?.timestamp);
 
-                      return <AuditInfoCell updatedBy={effectiveUpdater} updatedAt={effectiveTime} projectCode={t.projectCode} />;
+                      return <AuditInfoCell updatedBy={effectiveUpdater} updatedAt={effectiveTime} projectCode={t.projectCode} itemTitle={t.name} />;
                     })()}
                   </td>
                   {/* CỘT THAO TÁC */}
