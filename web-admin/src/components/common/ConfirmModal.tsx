@@ -11,6 +11,7 @@ interface ConfirmModalProps {
   cancelText?: string;
   icon?: string;
   isDestructive?: boolean;
+  zIndexClass?: string;
 }
 
 export const ConfirmModal: React.FC<ConfirmModalProps> = ({
@@ -23,9 +24,10 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
   cancelText = 'Hủy',
   icon = 'help_outline',
   isDestructive = true,
+  zIndexClass,
 }) => {
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={title} icon={icon} size="md" requireConfirmOnClose={false}>
+    <Modal isOpen={isOpen} onClose={onClose} title={title} icon={icon} size="md" requireConfirmOnClose={false} zIndexClass={zIndexClass}>
       <div className="py-2 text-slate-600 text-sm">{message}</div>
       <div className="mt-6 pt-4 border-t border-slate-100 flex justify-end gap-3">
         <button

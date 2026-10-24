@@ -23,6 +23,7 @@ export const AppExitConfirmModal: React.FC<AppExitConfirmModalProps> = ({
       cancelText="Ở lại"
       icon="power_settings_new"
       isDestructive={true}
+      zIndexClass="z-[999999]"
     />
   );
 };

@@ -106,9 +106,16 @@ export const App: React.FC = () => {
 
   const handleGlobalBack = (): boolean => {
     // 1. Ưu tiên đóng Modal/Dialog/Popup đang mở nếu có
+    // Nếu modal xác nhận thoát ứng dụng đang mở -> đóng modal này trước
+    if (isExitConfirmOpen) {
+      setIsExitConfirmOpen(false);
+      return true;
+    }
+
+    // Tìm tất cả các nút đóng modal trên màn hình (ngoại trừ modal thoát ứng dụng)
     const modalCloseButtons = Array.from(
       document.querySelectorAll(
-        '.fixed.inset-0 button[title="Đóng"], .fixed.inset-0 button[aria-label="Đóng"], .fixed.inset-0 button[aria-label="Close"], .fixed.inset-0 button.close-btn'
+        '.fixed.inset-0:not([data-app-exit]) button[title="Đóng"], .fixed.inset-0:not([data-app-exit]) button[aria-label="Đóng"], .fixed.inset-0:not([data-app-exit]) button[aria-label="Close"], .fixed.inset-0:not([data-app-exit]) button.close-btn'
       )
     ) as HTMLButtonElement[];
 
@@ -116,15 +123,31 @@ export const App: React.FC = () => {
       const topModalBtn = modalCloseButtons[modalCloseButtons.length - 1];
       if (topModalBtn) {
         topModalBtn.click();
-        return true; // đã xử lý đóng modal
+        return true;
       }
     }
 
-    const genericModalCloseBtn = document.querySelector(
-      '.fixed.inset-0 button:has(.material-symbols-outlined)'
-    ) as HTMLButtonElement;
-    if (genericModalCloseBtn) {
-      genericModalCloseBtn.click();
+    // Bổ sung tìm các nút đóng modal thông dụng chứa icon close/arrow_back
+    const anyCloseBtn = Array.from(
+      document.querySelectorAll(
+        '.fixed.inset-0:not([data-app-exit]) button:has(span.material-symbols-outlined)'
+      )
+    ) as HTMLButtonElement[];
+
+    const matchingCloseBtn = anyCloseBtn.reverse().find((btn) => {
+      const text = btn.textContent || '';
+      return text.includes('close') || text.includes('arrow_back') || text.includes('cancel') || btn.title === 'Đóng';
+    });
+
+    if (matchingCloseBtn) {
+      matchingCloseBtn.click();
+      return true;
+    }
+
+    // Kiểm tra xem có bất kỳ modal / overlay nào khác đang hiển thị không
+    const hasOpenModal = document.querySelector('.fixed.inset-0:not([data-app-exit]):not(.pointer-events-none)');
+    if (hasOpenModal) {
+      // Đang có modal khác mở nhưng không có nút đóng tiêu chuẩn -> Không mở thoát ứng dụng
       return true;
     }
 
