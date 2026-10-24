@@ -977,28 +977,46 @@ export const DocumentTrackingPage: React.FC = () => {
           className="flex-1 w-full min-w-0 flex flex-col overflow-hidden"
         >
           <div className="w-full flex-1 overflow-x-auto overflow-y-auto custom-scrollbar min-w-0">
-            <table className="w-full text-left border-collapse table-auto min-w-[1420px]">
-               <thead className="bg-slate-50 border-b border-slate-200 text-[11px] font-extrabold text-slate-600 uppercase tracking-tight sticky top-0 z-10 leading-tight shadow-xs">
-                 <tr>
-                   <th className="px-2.5 py-2.5 text-center whitespace-nowrap leading-tight min-w-[70px] bg-slate-50">Bên</th>
-                   {!projectId && <th className="px-3 py-2.5 whitespace-nowrap leading-tight min-w-[110px] bg-slate-50">Dự án</th>}
-                   <th className="px-3 py-2.5 whitespace-nowrap leading-tight min-w-[100px] bg-slate-50">Số HĐ</th>
-                   <th className="px-3 py-2.5 whitespace-nowrap leading-tight min-w-[190px] bg-slate-50">Tên hợp đồng</th>
-                   <th className="px-3 py-2.5 whitespace-nowrap leading-tight min-w-[160px] bg-slate-50">Công ty / Đối tác</th>
-                   <th className="px-3 py-2.5 whitespace-nowrap leading-tight min-w-[120px] bg-slate-50">Người nhận</th>
-                   <th className="px-2.5 py-2.5 text-center whitespace-nowrap leading-tight min-w-[90px] bg-slate-50">Ngày gửi</th>
-                   <th className="px-2.5 py-2.5 text-center whitespace-nowrap leading-tight min-w-[90px] bg-slate-50">Ngày nhận</th>
-                   <th className="px-2.5 py-2.5 text-center whitespace-nowrap leading-tight min-w-[110px] bg-slate-50">Hạn nộp</th>
-                   <th className="px-3 py-2.5 text-right whitespace-nowrap leading-tight min-w-[125px] bg-slate-50">Giá trị HĐ (đ)</th>
-                   <th className="px-2.5 py-2.5 text-center whitespace-nowrap leading-tight min-w-[105px] bg-slate-50">Tạm ứng</th>
-                   <th className="px-2.5 py-2.5 text-center whitespace-nowrap leading-tight min-w-[105px] bg-slate-50">Thanh toán</th>
-                   <th className="px-2 py-2.5 text-center whitespace-nowrap leading-tight min-w-[55px] bg-slate-50">File</th>
-                   <th className="px-2.5 py-2.5 text-center whitespace-nowrap leading-tight min-w-[85px] bg-slate-50">Hồ sơ</th>
-                   <th className="px-3 py-2.5 text-center whitespace-nowrap leading-tight min-w-[140px] bg-slate-50">Người cập nhật</th>
-                   <th className="px-2 py-2.5 text-center whitespace-nowrap leading-tight min-w-[55px] bg-slate-50">TT</th>
-                 </tr>
-               </thead>
-                <tbody className="divide-y divide-slate-100 text-[11px] text-slate-700 leading-tight">
+            <table className="w-full text-left border-collapse table-fixed min-w-[1680px]">
+              <colgroup>
+                <col style={{ width: 75 }} />
+                {!projectId && <col style={{ width: 120 }} />}
+                <col style={{ width: 110 }} />
+                <col style={{ width: 220 }} />
+                <col style={{ width: 180 }} />
+                <col style={{ width: 140 }} />
+                <col style={{ width: 95 }} />
+                <col style={{ width: 95 }} />
+                <col style={{ width: 115 }} />
+                <col style={{ width: 130 }} />
+                <col style={{ width: 110 }} />
+                <col style={{ width: 110 }} />
+                <col style={{ width: 55 }} />
+                <col style={{ width: 90 }} />
+                <col style={{ width: 145 }} />
+                <col style={{ width: 60 }} />
+              </colgroup>
+              <thead className="bg-slate-50 border-b border-slate-200 text-[11px] font-extrabold text-slate-600 uppercase tracking-tight sticky top-0 z-10 leading-tight shadow-xs">
+                <tr>
+                  <th className="px-2.5 py-2.5 text-center whitespace-nowrap leading-tight w-[75px] bg-slate-50">Bên</th>
+                  {!projectId && <th className="px-3 py-2.5 whitespace-nowrap leading-tight w-[120px] bg-slate-50">Dự án</th>}
+                  <th className="px-3 py-2.5 whitespace-nowrap leading-tight w-[110px] bg-slate-50">Số HĐ</th>
+                  <th className="px-3 py-2.5 whitespace-nowrap leading-tight w-[220px] bg-slate-50">Tên hợp đồng</th>
+                  <th className="px-3 py-2.5 whitespace-nowrap leading-tight w-[180px] bg-slate-50">Công ty / Đối tác</th>
+                  <th className="px-3 py-2.5 whitespace-nowrap leading-tight w-[140px] bg-slate-50">Người nhận</th>
+                  <th className="px-2.5 py-2.5 text-center whitespace-nowrap leading-tight w-[95px] bg-slate-50">Ngày gửi</th>
+                  <th className="px-2.5 py-2.5 text-center whitespace-nowrap leading-tight w-[95px] bg-slate-50">Ngày nhận</th>
+                  <th className="px-2.5 py-2.5 text-center whitespace-nowrap leading-tight w-[115px] bg-slate-50">Hạn nộp</th>
+                  <th className="px-3 py-2.5 text-right whitespace-nowrap leading-tight w-[130px] bg-slate-50">Giá trị HĐ (đ)</th>
+                  <th className="px-2.5 py-2.5 text-center whitespace-nowrap leading-tight w-[110px] bg-slate-50">Tạm ứng</th>
+                  <th className="px-2.5 py-2.5 text-center whitespace-nowrap leading-tight w-[110px] bg-slate-50">Thanh toán</th>
+                  <th className="px-2 py-2.5 text-center whitespace-nowrap leading-tight w-[55px] bg-slate-50">File</th>
+                  <th className="px-2.5 py-2.5 text-center whitespace-nowrap leading-tight w-[90px] bg-slate-50">Hồ sơ</th>
+                  <th className="px-3 py-2.5 text-center whitespace-nowrap leading-tight w-[145px] bg-slate-50">Người cập nhật</th>
+                  <th className="px-2 py-2.5 text-center whitespace-nowrap leading-tight w-[60px] bg-slate-50">TT</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-[11px] text-slate-700 leading-tight">
                 {filteredTracks.map((track) => {
                   const isMatch = isHighlightActive && Boolean(
                     (highlightId && track.id === highlightId) ||
