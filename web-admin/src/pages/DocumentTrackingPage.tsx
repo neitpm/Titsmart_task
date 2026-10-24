@@ -976,43 +976,25 @@ export const DocumentTrackingPage: React.FC = () => {
           }}
           className="custom-scrollbar flex-1 w-full overflow-x-auto min-w-0"
         >
-          <table className="w-full text-left border-collapse table-fixed min-w-[960px] md:min-w-full">
-            <colgroup>
-              <col style={{ width: '4.5%' }} />
-              {!projectId && <col style={{ width: '6.5%' }} />}
-              <col style={{ width: '5.5%' }} />
-              <col style={{ width: '12%' }} />
-              <col style={{ width: '11%' }} />
-              <col style={{ width: '8.5%' }} />
-              <col style={{ width: '6.5%' }} />
-              <col style={{ width: '6.5%' }} />
-              <col style={{ width: '7.5%' }} />
-              <col style={{ width: '8.5%' }} />
-              <col style={{ width: '6%' }} />
-              <col style={{ width: '7.5%' }} />
-              <col style={{ width: '3.5%' }} />
-              <col style={{ width: '5.5%' }} />
-              {!projectId ? <col style={{ width: '8%' }} /> : <col style={{ width: '9%' }} />}
-              <col style={{ width: '3.5%' }} />
-            </colgroup>
-               <thead className="bg-slate-50/90 border-b border-slate-200 text-[10.5px] font-extrabold text-slate-500 uppercase tracking-tight sticky top-0 z-10 leading-tight">
+          <table className="w-full text-left border-collapse table-auto min-w-[1350px]">
+               <thead className="bg-slate-50/90 border-b border-slate-200 text-[11px] font-extrabold text-slate-500 uppercase tracking-tight sticky top-0 z-10 leading-tight">
                  <tr>
-                   <th className="px-1 py-2 text-center whitespace-nowrap leading-tight">Bên</th>
-                   {!projectId && <th className="px-1.5 py-2 whitespace-nowrap leading-tight">Dự án</th>}
-                   <th className="px-1.5 py-2 whitespace-nowrap leading-tight">Số HĐ</th>
-                   <th className="px-1.5 py-2 whitespace-nowrap leading-tight">Tên hợp đồng</th>
-                   <th className="px-1.5 py-2 whitespace-nowrap leading-tight">Công ty / Đối tác</th>
-                   <th className="px-1.5 py-2 whitespace-nowrap leading-tight">Người nhận</th>
-                   <th className="px-1 py-2 text-center whitespace-nowrap leading-tight">Ngày gửi</th>
-                   <th className="px-1 py-2 text-center whitespace-nowrap leading-tight">Ngày nhận</th>
-                   <th className="px-1 py-2 text-center whitespace-nowrap leading-tight">Hạn nộp</th>
-                   <th className="px-1.5 py-2 text-right whitespace-nowrap leading-tight">Giá trị HĐ (đ)</th>
-                   <th className="px-1 py-2 text-center whitespace-nowrap leading-tight">Tạm ứng</th>
-                   <th className="px-1 py-2 text-center whitespace-nowrap leading-tight">Thanh toán</th>
-                   <th className="px-1 py-2 text-center whitespace-nowrap leading-tight">File</th>
-                   <th className="px-1 py-2 text-center whitespace-nowrap leading-tight">Hồ sơ</th>
-                   <th className="px-1.5 py-2 text-center whitespace-nowrap leading-tight">Cập nhật</th>
-                   <th className="px-1 py-2 text-center whitespace-nowrap leading-tight">TT</th>
+                   <th className="px-2.5 py-2.5 text-center whitespace-nowrap leading-tight min-w-[65px]">Bên</th>
+                   {!projectId && <th className="px-3 py-2.5 whitespace-nowrap leading-tight min-w-[110px]">Dự án</th>}
+                   <th className="px-3 py-2.5 whitespace-nowrap leading-tight min-w-[90px]">Số HĐ</th>
+                   <th className="px-3 py-2.5 whitespace-nowrap leading-tight min-w-[170px]">Tên hợp đồng</th>
+                   <th className="px-3 py-2.5 whitespace-nowrap leading-tight min-w-[150px]">Công ty / Đối tác</th>
+                   <th className="px-3 py-2.5 whitespace-nowrap leading-tight min-w-[110px]">Người nhận</th>
+                   <th className="px-2.5 py-2.5 text-center whitespace-nowrap leading-tight min-w-[85px]">Ngày gửi</th>
+                   <th className="px-2.5 py-2.5 text-center whitespace-nowrap leading-tight min-w-[85px]">Ngày nhận</th>
+                   <th className="px-2.5 py-2.5 text-center whitespace-nowrap leading-tight min-w-[105px]">Hạn nộp</th>
+                   <th className="px-3 py-2.5 text-right whitespace-nowrap leading-tight min-w-[115px]">Giá trị HĐ (đ)</th>
+                   <th className="px-2.5 py-2.5 text-center whitespace-nowrap leading-tight min-w-[95px]">Tạm ứng</th>
+                   <th className="px-2.5 py-2.5 text-center whitespace-nowrap leading-tight min-w-[95px]">Thanh toán</th>
+                   <th className="px-2 py-2.5 text-center whitespace-nowrap leading-tight min-w-[50px]">File</th>
+                   <th className="px-2.5 py-2.5 text-center whitespace-nowrap leading-tight min-w-[80px]">Hồ sơ</th>
+                   <th className="px-3 py-2.5 text-center whitespace-nowrap leading-tight min-w-[130px]">Người cập nhật</th>
+                   <th className="px-2 py-2.5 text-center whitespace-nowrap leading-tight min-w-[50px]">TT</th>
                  </tr>
                </thead>
                 <tbody className="divide-y divide-slate-100 text-[11px] text-slate-700 leading-tight">
@@ -1060,36 +1042,36 @@ export const DocumentTrackingPage: React.FC = () => {
                         </div>
                       </td>
                     )}
-                    <td className="px-1.5 py-2 font-mono text-[11px] text-slate-800 leading-tight">
+                    <td className="px-2.5 py-2 font-mono text-[11px] text-slate-800 leading-tight">
                       <div className="truncate" title={track.contractNo}>
                         {track.contractNo || '-'}
                       </div>
                     </td>
-                    <td className="px-1.5 py-2">
+                    <td className="px-2.5 py-2">
                       <div className="font-bold text-slate-900 leading-tight truncate" title={track.contractName}>
                         {track.contractName}
                       </div>
                     </td>
-                    <td className="px-1.5 py-2">
+                    <td className="px-2.5 py-2">
                       <div className="font-medium text-slate-800 leading-tight truncate" title={track.company}>
                         {track.company || '-'}
                       </div>
                     </td>
-                    <td className="px-1.5 py-2">
+                    <td className="px-2.5 py-2">
                       <div className="font-medium text-slate-700 leading-tight truncate" title={track.receiverName}>{track.receiverName || '-'}</div>
                       {track.phone && <div className="text-[10px] text-slate-400 font-mono mt-0.5 truncate">{track.phone}</div>}
                     </td>
-                    <td className="px-1 py-2 text-center">
+                    <td className="px-2 py-2 text-center">
                       <span className={`px-1 py-0.5 rounded text-[10px] font-mono block truncate ${track.sendDate ? 'bg-slate-100 text-slate-700' : 'text-slate-300'}`}>
                         {track.sendDate ? new Date(track.sendDate).toLocaleDateString('vi-VN') : '-'}
                       </span>
                     </td>
-                    <td className="px-1 py-2 text-center">
+                    <td className="px-2 py-2 text-center">
                       <span className={`px-1 py-0.5 rounded text-[10px] font-mono block truncate ${track.receiveDate ? 'bg-blue-50 text-blue-700 font-bold' : 'text-slate-300'}`}>
                         {track.receiveDate ? new Date(track.receiveDate).toLocaleDateString('vi-VN') : '-'}
                       </span>
                     </td>
-                    <td className="px-1 py-2 text-center">
+                    <td className="px-2 py-2 text-center">
                       {(() => {
                         const info = getDueInfo(track);
                         const effDate = track.dueDate || track.receiveDate || track.sendDate;
@@ -1133,16 +1115,16 @@ export const DocumentTrackingPage: React.FC = () => {
                         );
                       })()}
                     </td>
-                    <td className="px-1 py-2 text-right font-bold text-slate-900 text-[10.5px]">
+                    <td className="px-2.5 py-2 text-right font-bold text-slate-900 text-[10.5px]">
                       <div className="truncate" title={(track.contractValue || 0).toLocaleString('vi-VN')}>
                         {(track.contractValue || 0).toLocaleString('vi-VN')}
                       </div>
                     </td>
-                    <td className="px-1 py-2 text-center">
+                    <td className="px-2 py-2 text-center">
                       <div className="font-bold text-blue-700 text-[10.5px] truncate">{(track.prepayPercent ? (track.prepayPercent * 100).toFixed(0) : '0')}%</div>
                       <div className="text-[9px] text-slate-500 font-mono mt-0.5 truncate">{(track.prepayAmount || 0).toLocaleString('vi-VN')}đ</div>
                     </td>
-                    <td className="px-1 py-2 text-center">
+                    <td className="px-2 py-2 text-center">
                       <span className={`inline-block px-1 py-0.5 rounded text-[9.5px] font-bold truncate max-w-full ${track.paymentStatus?.includes('Đã') ? 'text-emerald-700 bg-emerald-50' : 'text-rose-700 bg-rose-50'}`}>
                         {track.paymentStatus || 'Chưa TT'}
                       </span>
@@ -1157,7 +1139,7 @@ export const DocumentTrackingPage: React.FC = () => {
                         <span className="text-slate-300 text-xs">-</span>
                       )}
                     </td>
-                    <td className="px-1 py-2 text-center">
+                    <td className="px-2 py-2 text-center">
                       <span className={`inline-block px-1 py-0.5 rounded text-[9.5px] font-bold truncate max-w-full ${
                         track.docStatus === 'Đã ký' || track.docStatus === 'Đã nhận đủ' 
                           ? 'text-emerald-700 bg-emerald-50' 
@@ -1168,7 +1150,7 @@ export const DocumentTrackingPage: React.FC = () => {
                         {track.docStatus || 'Chưa ký'}
                       </span>
                     </td>
-                    <td className="px-1 py-2">
+                    <td className="px-2.5 py-2">
                       <AuditInfoCell 
                         updatedBy={track.updatedBy || track.createdByName} 
                         updatedAt={track.updatedAt} 

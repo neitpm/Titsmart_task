@@ -1,9 +1,8 @@
 {
-  "version": "3.8.265",
+  "version": "3.8.266",
   "date": "2026-10-24",
   "notes": [
-    "Thêm cơ chế Timeout và Fallback chống xoay vô hạn khi upload ảnh trên điện thoại.",
-    "Tự động vượt lỗi nén Canvas trên trình duyệt di động.",
-    "Đảm bảo lưu ảnh thành công trên điện thoại kể cả khi mạng 3G/4G yếu hoặc Storage phản hồi chậm."
+    "Khắc phục triệt để lỗi các cột trong tab Hồ sơ dự án bị đè/chèn ép lên nhau.",
+    "Chuyển bảng Hồ sơ sang table-auto với độ rộng tối thiểu từng cột chuẩn xác và thanh cuộn ngang mượt mà."
   ]
 }
