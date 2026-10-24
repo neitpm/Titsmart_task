@@ -125,20 +125,14 @@ export async function uploadAttachment(
     const finalFileName = `${timestamp}_${safeRandom}.${isImage ? 'jpg' : fileExt}`;
     const filePath = `${folder}/${finalFileName}`;
 
-    // 3. Tải lên Supabase Storage bucket 'titsmart-images' kèm timeout 15 giây
-    const uploadPromise = supabase.storage
+    // 3. Tải lên Supabase Storage bucket 'titsmart-images' (không ngắt timeout 15s để tải tệp lớn thoải mái)
+    const { error: uploadError } = await supabase.storage
       .from('titsmart-images')
       .upload(filePath, uploadData, {
         cacheControl: '31536000',
         upsert: true,
         contentType: isImage ? 'image/jpeg' : file.type || 'application/octet-stream'
       });
-
-    const timeoutPromise = new Promise<{ error: any }>((resolve) =>
-      setTimeout(() => resolve({ error: new Error('Upload timeout sau 15 giây') }), 15000)
-    );
-
-    const { error: uploadError } = (await Promise.race([uploadPromise, timeoutPromise])) as any;
 
     if (uploadError) {
       console.warn('[Storage] Supabase Storage upload warning, falling back to base64:', uploadError);

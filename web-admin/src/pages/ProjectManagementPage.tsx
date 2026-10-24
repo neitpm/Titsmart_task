@@ -42,16 +42,21 @@ const TEXT = {
   materialSyncNote: '\u0110\u1ed3ng b\u1ed9 t\u1eeb ph\u1ee5 l\u1ee5c khi t\u1ea1o d\u1ef1 \u00e1n',
 };
 
-const slugProjectCode = (value: string) => {
-  const normalized = value
+export const sanitizeProjectCode = (value: string) => {
+  return value
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[\u0111\u0110]/g, 'd')
+    .replace(/[\u0111\u0110]/g, 'D')
     .toUpperCase()
-    .replace(/[^A-Z0-9]+/g, '_')
-    .replace(/^_+|_+$/g, '')
-    .slice(0, 40);
-  return normalized || `PRJ_${Math.floor(Math.random() * 1000)}`;
+    .replace(/[^A-Z0-9_-]+/g, '-')
+    .replace(/[-_]{2,}/g, '-')
+    .replace(/^[-_]+|[-_]+$/g, '')
+    .slice(0, 50);
+};
+
+const slugProjectCode = (value: string) => {
+  const normalized = sanitizeProjectCode(value);
+  return normalized || `PRJ-${Math.floor(Math.random() * 1000)}`;
 };
 
 const normalizeLabel = (value: string) =>
@@ -366,7 +371,7 @@ export const ProjectManagementPage: React.FC = () => {
     setLoading(true);
     setLoadingMessage('Đang tạo dự án...');
     try {
-    const code = newProjCode.trim() ? newProjCode.trim().toUpperCase() : slugProjectCode(newProjName);
+    const code = newProjCode.trim() ? sanitizeProjectCode(newProjCode) : slugProjectCode(newProjName);
 
     const selectedEngineers = engineers.filter(eng => selectedEngineerIds.includes(eng.id));
     const managerEng = engineers.find(eng => eng.id === newProjManagerId);
@@ -1141,7 +1146,21 @@ export const ProjectManagementPage: React.FC = () => {
           </div>
           <div><label className="block font-bold text-slate-700 mb-1">Tên Dự án / Công trình mới *</label><input required value={newProjName} onChange={(event) => setNewProjName(event.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none" /></div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div><label className="block font-bold text-slate-700 mb-1">Mã Dự án</label><input value={newProjCode} onChange={(event) => setNewProjCode(event.target.value)} placeholder="Tự sinh nếu bỏ trống" className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none" /></div>
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Mã Dự án</label>
+              <input
+                value={newProjCode}
+                onChange={(event) => {
+                  const raw = event.target.value.toUpperCase();
+                  // Tự động chuyển ký tự đặc biệt, dấu gạch chéo /, dấu cách thành dấu gạch nối -
+                  const cleaned = raw.replace(/[^A-Z0-9_-]/g, '-').replace(/[-_]{2,}/g, '-');
+                  setNewProjCode(cleaned);
+                }}
+                placeholder="Tự sinh nếu bỏ trống (VD: DA-2026-01)"
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none font-semibold text-slate-800"
+              />
+              <span className="text-[11px] text-slate-400 mt-0.5 block">* Ký tự đặc biệt, dấu gạch chéo (/) và khoảng trắng tự động chuyển thành dấu gạch nối (-)</span>
+            </div>
             <div><label className="block font-bold text-slate-700 mb-1">Địa điểm công trình</label><input value={newProjLocation} onChange={(event) => setNewProjLocation(event.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none" /></div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
