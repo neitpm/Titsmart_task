@@ -1,9 +1,9 @@
 {
-  "version": "3.8.264",
+  "version": "3.8.265",
   "date": "2026-10-24",
   "notes": [
-    "Đồng bộ chính xác tên người cập nhật nhật ký hiện trường (hiển thị Phạm Minh Tiên thay vì admin khi có nhật ký mới).",
-    "Tối ưu upload ảnh hiện trường trên thiết bị di động (hỗ trợ nén ảnh Canvas và chấp nhận mọi định dạng ảnh từ camera điện thoại).",
-    "Liên kết chi tiết lịch sử cập nhật công việc trong bảng nhật ký hiện trường."
+    "Thêm cơ chế Timeout và Fallback chống xoay vô hạn khi upload ảnh trên điện thoại.",
+    "Tự động vượt lỗi nén Canvas trên trình duyệt di động.",
+    "Đảm bảo lưu ảnh thành công trên điện thoại kể cả khi mạng 3G/4G yếu hoặc Storage phản hồi chậm."
   ]
 }

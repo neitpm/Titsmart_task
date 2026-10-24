@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 /**
  * Nén hình ảnh phía Client bằng HTML5 Canvas để giảm dung lượng file xuống < 300KB-500KB
  * Giúp tải lên cực nhanh qua 3G/4G và tương thích tối đa với Cloud Storage
+ * Có cơ chế Timeout 4 giây phòng ngừa thiết bị di động bị đơ khi đọc file quá lớn
  */
 export async function compressImage(
   file: File | Blob,
@@ -17,60 +18,73 @@ export async function compressImage(
       return;
     }
 
+    // Safety timeout: nếu sau 4 giây Canvas không phản hồi thì giữ nguyên file
+    const timer = setTimeout(() => {
+      resolve(file);
+    }, 4000);
+
+    const done = (result: Blob) => {
+      clearTimeout(timer);
+      resolve(result);
+    };
+
     const reader = new FileReader();
     reader.onload = (event) => {
       const img = new Image();
       img.onload = () => {
-        let { width, height } = img;
+        try {
+          let { width, height } = img;
 
-        // Tính tỉ lệ thu nhỏ nếu vượt quá maxWidth/maxHeight
-        if (width > maxWidth || height > maxHeight) {
-          if (width > height) {
-            height = Math.round((height * maxWidth) / width);
-            width = maxWidth;
-          } else {
-            width = Math.round((width * maxHeight) / height);
-            height = maxHeight;
-          }
-        }
-
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          resolve(file);
-          return;
-        }
-
-        // Vẽ ảnh lên canvas với kích thước mới
-        ctx.drawImage(img, 0, 0, width, height);
-
-        // Xuất ra Blob định dạng image/jpeg chất lượng tối ưu
-        canvas.toBlob(
-          (blob) => {
-            if (blob && blob.size < file.size) {
-              resolve(blob);
+          // Tính tỉ lệ thu nhỏ nếu vượt quá maxWidth/maxHeight
+          if (width > maxWidth || height > maxHeight) {
+            if (width > height) {
+              height = Math.round((height * maxWidth) / width);
+              width = maxWidth;
             } else {
-              // Nếu nén không giảm được dung lượng thì giữ nguyên
-              resolve(file);
+              width = Math.round((width * maxHeight) / height);
+              height = maxHeight;
             }
-          },
-          'image/jpeg',
-          quality
-        );
+          }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            done(file);
+            return;
+          }
+
+          // Vẽ ảnh lên canvas với kích thước mới
+          ctx.drawImage(img, 0, 0, width, height);
+
+          // Xuất ra Blob định dạng image/jpeg chất lượng tối ưu
+          canvas.toBlob(
+            (blob) => {
+              if (blob && blob.size < file.size) {
+                done(blob);
+              } else {
+                done(file);
+              }
+            },
+            'image/jpeg',
+            quality
+          );
+        } catch {
+          done(file);
+        }
       };
 
       img.onerror = () => {
-        resolve(file);
+        done(file);
       };
 
       img.src = event.target?.result as string;
     };
 
     reader.onerror = () => {
-      resolve(file);
+      done(file);
     };
 
     reader.readAsDataURL(file);
@@ -87,6 +101,7 @@ export interface UploadResult {
 /**
  * Tải file / ảnh lên Supabase Storage (Bucket 'titsmart-images')
  * Tự động nén ảnh trước khi tải và trả về Public URL chuẩn
+ * Có cơ chế timeout 15 giây cho mạng di động 3G/4G
  */
 export async function uploadAttachment(
   file: File,
@@ -110,8 +125,8 @@ export async function uploadAttachment(
     const finalFileName = `${timestamp}_${safeRandom}.${isImage ? 'jpg' : fileExt}`;
     const filePath = `${folder}/${finalFileName}`;
 
-    // 3. Tải lên Supabase Storage bucket 'titsmart-images'
-    const { error: uploadError } = await supabase.storage
+    // 3. Tải lên Supabase Storage bucket 'titsmart-images' kèm timeout 15 giây
+    const uploadPromise = supabase.storage
       .from('titsmart-images')
       .upload(filePath, uploadData, {
         cacheControl: '31536000',
@@ -119,10 +134,16 @@ export async function uploadAttachment(
         contentType: isImage ? 'image/jpeg' : file.type || 'application/octet-stream'
       });
 
+    const timeoutPromise = new Promise<{ error: any }>((resolve) =>
+      setTimeout(() => resolve({ error: new Error('Upload timeout sau 15 giây') }), 15000)
+    );
+
+    const { error: uploadError } = (await Promise.race([uploadPromise, timeoutPromise])) as any;
+
     if (uploadError) {
-      console.warn('[Storage] Supabase Storage upload warning:', uploadError);
-      
-      // Fallback: nếu lỗi Storage bucket, chuyển ảnh sang base64 siêu nhẹ (< 200KB) để không nghẽn database
+      console.warn('[Storage] Supabase Storage upload warning, falling back to base64:', uploadError);
+
+      // Fallback: nếu lỗi Storage bucket hoặc mạng yếu, chuyển ảnh sang base64 tối ưu để lưu được ngay
       if (isImage) {
         const lightBlob = await compressImage(file, 1000, 1000, 0.65);
         const lightBase64 = await blobToBase64(lightBlob);
@@ -133,7 +154,7 @@ export async function uploadAttachment(
           size: lightBlob.size
         };
       }
-      
+
       throw uploadError;
     }
 
