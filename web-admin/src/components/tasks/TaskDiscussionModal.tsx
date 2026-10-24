@@ -405,8 +405,8 @@ export const TaskDiscussionModal: React.FC<TaskDiscussionModalProps> = ({
           </div>
         )}
 
-        {/* THAO TÁC ĐÍNH KÈM & NHẬP LIỆU (Ẩn khi task hoàn thành) */}
-        {!isCompleted && (
+        {/* THAO TÁC ĐÍNH KÈM & NHẬP LIỆU */}
+        {true && (
           <div className="space-y-2 pt-2 border-t border-slate-100 relative">
             {/* Thẻ xem trước File đang đính kèm */}
             {selectedFile && (
@@ -471,12 +471,12 @@ export const TaskDiscussionModal: React.FC<TaskDiscussionModalProps> = ({
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
                 <span className="material-symbols-outlined text-base text-primary">
-                  {isAssignee && (isWaitingAccept || hasQuestion) ? 'help' : 'chat'}
+                  {isAssignee ? 'help' : 'chat'}
                 </span>
-                {isAssignee && (isWaitingAccept || hasQuestion)
-                  ? 'Nội dung thắc mắc / Cần làm rõ:'
-                  : isAssigner && (hasQuestion || isWaitingAccept)
-                    ? 'Phản hồi giải đáp thắc mắc & Giao lại việc:'
+                {isAssignee
+                  ? 'Nội dung thắc mắc / Trao đổi:'
+                  : isAssigner
+                    ? 'Phản hồi hướng dẫn / Ghi chú:'
                     : 'Ghi chú / Trao đổi thêm:'}
               </label>
               <span className="text-[10px] text-slate-400 font-medium italic">
@@ -633,15 +633,27 @@ export const TaskDiscussionModal: React.FC<TaskDiscussionModalProps> = ({
               >
                 Đóng
               </button>
-              <button 
-                type="button"
-                onClick={handleGenericSubmit}
-                disabled={isSubmitting || (!inputText.trim() && !selectedFile)}
-                className="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-primary hover:bg-primary/90 disabled:opacity-50 shadow-sm hover:shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-base">send</span>
-                {isSubmitting ? 'Đang gửi...' : 'Gửi trao đổi'}
-              </button>
+              {isAssignee ? (
+                <button 
+                  type="button"
+                  onClick={handleQuestionSubmit}
+                  disabled={isSubmitting || (!inputText.trim() && !selectedFile)}
+                  className="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-orange-600 hover:bg-orange-700 disabled:opacity-50 shadow-sm hover:shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-base">send</span>
+                  {isSubmitting ? 'Đang gửi...' : 'Gửi thắc mắc'}
+                </button>
+              ) : (
+                <button 
+                  type="button"
+                  onClick={handleGenericSubmit}
+                  disabled={isSubmitting || (!inputText.trim() && !selectedFile)}
+                  className="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-primary hover:bg-primary/90 disabled:opacity-50 shadow-sm hover:shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-base">send</span>
+                  {isSubmitting ? 'Đang gửi...' : 'Gửi trao đổi'}
+                </button>
+              )}
             </>
           )}
         </div>

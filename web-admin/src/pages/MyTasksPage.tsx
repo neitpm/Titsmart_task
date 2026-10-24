@@ -309,7 +309,7 @@ export const MyTasksPage: React.FC = () => {
     const userName = user?.name || user?.username || 'Nhân sự';
     const userId = user?.id || '';
     const isCurrentlyDoing = task.status === 'Đang làm';
-    const nextStatus = isCurrentlyDoing ? 'Đang làm' : 'Có thắc mắc';
+    const nextStatus = 'Có thắc mắc';
 
     const updatedNotes = appendTaskDiscussion(task.notes || '', {
       senderId: userId,
@@ -939,10 +939,21 @@ export const MyTasksPage: React.FC = () => {
                             )
                           )}
                           {isCompleted && (
-                            <span className="text-slate-700 font-semibold flex items-center gap-1 bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200 text-xs">
-                              <span className="material-symbols-outlined text-[16px] text-slate-500">verified</span>
-                              Đã nghiệm thu
-                            </span>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-slate-700 font-semibold flex items-center gap-1 bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200 text-xs">
+                                <span className="material-symbols-outlined text-[16px] text-slate-500">verified</span>
+                                Đã nghiệm thu
+                              </span>
+                              <button 
+                                type="button"
+                                onClick={() => setDiscussionTask(t)}
+                                className="flex items-center gap-1 px-2.5 py-1 bg-orange-50 hover:bg-orange-100 border border-orange-300 text-orange-700 font-bold rounded-lg shadow-2xs transition-all text-xs cursor-pointer active:scale-95"
+                                title="Gửi thắc mắc hoặc phản hồi về công việc"
+                              >
+                                <span className="material-symbols-outlined text-[14px]">help</span>
+                                Thắc mắc
+                              </button>
+                            </div>
                           )}
                           {isFollowerOnly && !isWaitingApproval && !isCompleted && (
                             <button 

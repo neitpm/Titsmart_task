@@ -2817,6 +2817,12 @@ const hasSyncedRef = useRef(false);
                                 Nghiệm thu
                               </button>
                             )}
+                            {t.status === 'Hoàn thành' && (
+                              <button onClick={(e) => { e.stopPropagation(); setDiscussionTask(t); }} className="text-[9px] bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-300 pointer-events-auto px-1.5 py-0.5 rounded shadow-2xs w-full font-bold flex items-center justify-center gap-0.5 cursor-pointer" title="Gửi thắc mắc hoặc trao đổi thêm">
+                                <span className="material-symbols-outlined text-[11px]">help</span>
+                                Thắc mắc
+                              </button>
+                            )}
                           </div>
                         </td>
                       )}
