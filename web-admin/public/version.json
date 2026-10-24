@@ -1,10 +1,9 @@
 {
-  "version": "3.8.262",
-  "date": "2026-10-20",
+  "version": "3.8.263",
+  "date": "2026-10-24",
   "notes": [
-    "Sửa lỗi hiển thị nút Báo cáo hoàn thành khi nhân sự chưa nhận việc.",
-    "Khắc phục việc chuyển trạng thái vật tư làm tự động biến task thành Đang làm khi chưa thi công.",
-    "Chỉ hiển thị nút Báo cáo hoàn thành khi trạng thái công việc thực sự là Đang làm.",
-    "Chặn nhận việc khi chưa đủ 2 điều kiện vật tư (Đáp ứng + Đã có hàng)."
+    "Nâng cấp cơ chế tải ảnh hiện trường sử dụng uploadAttachment với chuẩn nén Canvas tự động.",
+    "Bổ sung cơ chế Fallback chống lỗi nghẽn mạng / lỗi Storage giúp tải ảnh hiện trường luôn thành công.",
+    "Cập nhật giao diện và cải thiện độ ổn định."
   ]
 }

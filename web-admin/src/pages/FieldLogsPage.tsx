@@ -12,6 +12,7 @@ import { Modal } from '../components/common/Modal';
 import { ConfirmModal } from '../components/common/ConfirmModal';
 import { supabase } from '../lib/supabase';
 import { PullToRefresh } from '../components/common/PullToRefresh';
+import { uploadAttachment } from '../utils/fileUploadHelper';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -156,13 +157,10 @@ const UploadModal: React.FC<{
     try {
       const urls: string[] = [];
       for (const file of files) {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
-        const filePath = `field_logs/${fileName}`;
-        const { error: uploadError } = await supabase.storage.from('titsmart-images').upload(filePath, file);
-        if (uploadError) throw uploadError;
-        const { data: { publicUrl } } = supabase.storage.from('titsmart-images').getPublicUrl(filePath);
-        urls.push(publicUrl);
+        const res = await uploadAttachment(file, 'field_logs');
+        if (res?.url) {
+          urls.push(res.url);
+        }
       }
       const timestampIso = logDate ? new Date(`${logDate}T12:00:00`).toISOString() : new Date().toISOString();
       if (editLog && onUpdate) {
