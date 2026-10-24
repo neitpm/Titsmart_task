@@ -8,6 +8,8 @@ interface CostPlanSummaryTableProps {
   labors: LaborPayroll[];
   projects?: { code: string; name: string }[];
   currentProjectCode?: string;
+  selectedSpender?: string;
+  onSelectSpender?: (spender: string) => void;
   onAllocateFund?: (spenderName: string, amount?: number, date?: string) => void;
   onTransferFund?: (params: {
     fromSpender: string;
@@ -26,13 +28,14 @@ export const CostPlanSummaryTable: React.FC<CostPlanSummaryTableProps> = ({
   labors, 
   projects = [],
   currentProjectCode = '',
+  selectedSpender = 'all',
+  onSelectSpender,
   onAllocateFund,
   onTransferFund
 }) => {
   const [showAddFundModal, setShowAddFundModal] = useState(false);
   const [fundAmountInput, setFundAmountInput] = useState('');
   const [fundDateInput, setFundDateInput] = useState(new Date().toISOString().split('T')[0]);
-  const [editingProjectFund, setEditingProjectFund] = useState(false);
   const [showPersonalModal, setShowPersonalModal] = useState(false);
 
   const [showTransferFundModal, setShowTransferFundModal] = useState(false);
@@ -92,29 +95,25 @@ export const CostPlanSummaryTable: React.FC<CostPlanSummaryTableProps> = ({
     setTransferNotesInput('');
     setShowTransferFundModal(true);
   };
-  
-
-  
 
   const summary = useMemo(() => {
-    const bySpender: Record<string, { chi: number; quy: number }> = {};
+    const bySpender: Record<string, { chi: number; quy: number; count: number }> = {};
     let totalProjectExpense = 0;
     let totalProjectFund = 0;
 
     expenses.forEach((exp) => {
-      
-      
       const name = (exp.spenderName || '').trim() || 'KHÁC';
       if (!bySpender[name]) {
-        bySpender[name] = { chi: 0, quy: 0 };
+        bySpender[name] = { chi: 0, quy: 0, count: 0 };
       }
       
       const isFundRow = (exp.content || '').trim().toLowerCase() === 'quỹ';
-      const chi = isFundRow ? 0 : (exp.totalAmount || 0);
-      const quy = exp.incomeAmount || 0;
+      const chi = isFundRow ? 0 : Number(exp.totalAmount || 0);
+      const quy = Number(exp.incomeAmount || 0);
       
       bySpender[name].chi += chi;
       bySpender[name].quy += quy;
+      if (chi > 0) bySpender[name].count += 1;
       
       totalProjectExpense += chi;
       totalProjectFund += quy;
@@ -122,7 +121,6 @@ export const CostPlanSummaryTable: React.FC<CostPlanSummaryTableProps> = ({
 
     const totalChi = totalProjectExpense;
     const tonCuoiKy = totalProjectFund - totalProjectExpense;
-
     const totalLabor = labors.reduce((acc, curr) => acc + (curr.totalAmount || 0), 0);
 
     return {
@@ -135,235 +133,275 @@ export const CostPlanSummaryTable: React.FC<CostPlanSummaryTableProps> = ({
     };
   }, [expenses, labors]);
 
-  const spenderNames = Object.keys(summary.bySpender).filter(n => n !== 'KHÁC' || summary.bySpender[n].chi > 0 || summary.bySpender[n].quy > 0);
+  const spenderNames = useMemo(() => {
+    return Object.keys(summary.bySpender)
+      .filter(n => n !== 'KHÁC' || summary.bySpender[n].chi > 0 || summary.bySpender[n].quy > 0)
+      .sort((a, b) => {
+        if (a === 'DỰ ÁN') return -1;
+        if (b === 'DỰ ÁN') return 1;
+        return summary.bySpender[b].chi - summary.bySpender[a].chi;
+      });
+  }, [summary.bySpender]);
+
+  // Dữ liệu khi lọc một cá nhân cụ thể
+  const isPersonalFiltered = selectedSpender && selectedSpender !== 'all';
+  const currentSpenderData = isPersonalFiltered ? (summary.bySpender[selectedSpender] || { chi: 0, quy: 0, count: 0 }) : null;
+  const currentFund = isPersonalFiltered ? (currentSpenderData?.quy || 0) : summary.totalProjectFund;
+  const currentChi = isPersonalFiltered ? (currentSpenderData?.chi || 0) : summary.totalChi;
+  const currentTon = isPersonalFiltered ? ((currentSpenderData?.quy || 0) - (currentSpenderData?.chi || 0)) : summary.tonCuoiKy;
 
   return (
-    <div className="w-full bg-slate-50/50 p-2 md:p-3 border-b border-slate-200">
-      <div className="w-full overflow-x-auto custom-scrollbar">
-        <div className="flex gap-2 md:gap-3 w-full items-stretch justify-start md:justify-center min-w-max pb-1">
+    <div className="w-full bg-slate-50/70 p-2 md:p-3 border-b border-slate-200">
+      {/* 1. THANH CHỈ SỐ TỒN QUỸ & TỔNG CHI TRỰC QUAN */}
+      <div className="w-full overflow-x-auto custom-scrollbar pb-1">
+        <div className="flex gap-2 md:gap-3 w-full items-stretch justify-start min-w-max">
           
-          {/* QUỸ */}
-          <table className="border-collapse text-xs md:text-sm flex-1 min-w-[120px] md:min-w-[140px] max-w-[200px] bg-white shadow-xs rounded-lg overflow-hidden border border-slate-300">
-            <thead>
-              <tr>
-                <th className="border-b border-slate-300 bg-blue-100 text-blue-900 h-[26px] md:h-[30px] p-0 text-[10px] md:text-[11px] font-bold text-center uppercase whitespace-nowrap">
-                  <div className="h-full flex items-center justify-center gap-1 px-1">
-                    <span>QUỸ</span>
-                    {onAllocateFund && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setFundAmountInput('');
-                          setFundDateInput(new Date().toISOString().split('T')[0]);
-                          setShowAddFundModal(true);
-                        }}
-                        className="inline-flex items-center justify-center p-0.5 rounded text-blue-600 hover:text-blue-800 hover:bg-blue-200 transition-colors cursor-pointer"
-                        title="Thêm / Nạp Quỹ"
-                      >
-                        <span className="material-symbols-outlined text-[15px] leading-none">add_circle</span>
-                      </button>
-                    )}
-                    {onTransferFund && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openTransferModal('DỰ ÁN');
-                        }}
-                        className="inline-flex items-center justify-center p-0.5 rounded text-amber-600 hover:text-amber-800 hover:bg-amber-200 transition-colors cursor-pointer"
-                        title="Chuyển Quỹ Dự Án"
-                      >
-                        <span className="material-symbols-outlined text-[15px] leading-none">swap_horiz</span>
-                      </button>
-                    )}
-                  </div>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td className="text-center h-[28px] md:h-[32px] px-1 md:px-2 text-xs md:text-sm font-bold text-slate-800 align-middle">
-                  <span>{money(summary.totalProjectFund)}</span>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+          {/* THẺ 1: QUỸ CÔNG TRÌNH / QUỸ CÁ NHÂN */}
+          <div className="flex-1 min-w-[140px] md:min-w-[170px] max-w-[240px] bg-white shadow-xs rounded-xl overflow-hidden border border-slate-200/80 hover:border-blue-300 transition-all flex flex-col justify-between p-2.5 md:p-3">
+            <div className="flex items-center justify-between gap-1 text-[11px] font-bold text-slate-500 uppercase tracking-tight">
+              <div className="flex items-center gap-1 text-blue-700">
+                <span className="material-symbols-outlined text-[15px]">account_balance_wallet</span>
+                <span>{isPersonalFiltered ? `QUỸ (${selectedSpender})` : 'TỔNG QUỸ DỰ ÁN'}</span>
+              </div>
+              <div className="flex items-center gap-0.5">
+                {onAllocateFund && !isPersonalFiltered && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setFundAmountInput('');
+                      setFundDateInput(new Date().toISOString().split('T')[0]);
+                      setShowAddFundModal(true);
+                    }}
+                    className="p-1 rounded-md text-blue-600 hover:text-blue-800 hover:bg-blue-50 transition-colors cursor-pointer"
+                    title="Thêm / Nạp Quỹ Dự Án"
+                  >
+                    <span className="material-symbols-outlined text-[16px] leading-none">add_circle</span>
+                  </button>
+                )}
+                {onTransferFund && !isPersonalFiltered && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openTransferModal('DỰ ÁN');
+                    }}
+                    className="p-1 rounded-md text-amber-600 hover:text-amber-800 hover:bg-amber-50 transition-colors cursor-pointer"
+                    title="Chuyển Quỹ Dự Án sang DA khác"
+                  >
+                    <span className="material-symbols-outlined text-[16px] leading-none">swap_horiz</span>
+                  </button>
+                )}
+              </div>
+            </div>
+            <div className="mt-1 text-sm md:text-base font-black text-slate-900 tracking-tight">
+              {money(currentFund)} <span className="text-[10px] text-slate-400 font-normal">đ</span>
+            </div>
+          </div>
 
-          {/* TỔNG CHI */}
-          <table className="border-collapse text-xs md:text-sm flex-1 min-w-[120px] md:min-w-[140px] max-w-[200px] bg-white shadow-xs rounded-lg overflow-hidden border border-slate-300">
-            <thead>
-              <tr>
-                <th className="border-b border-slate-300 bg-blue-100 text-blue-900 h-[26px] md:h-[30px] p-0 text-[10px] md:text-[11px] font-bold text-center uppercase whitespace-nowrap">
-                  <div className="h-full flex items-center justify-center px-1">TỔNG CHI</div>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td className="text-center h-[28px] md:h-[32px] px-1 md:px-2 text-xs md:text-sm font-bold text-slate-800 align-middle">
-                  {money(summary.totalChi)}
-                </td>
-              </tr>
-            </tbody>
-          </table>
+          {/* THẺ 2: TỔNG CHI */}
+          <div className="flex-1 min-w-[140px] md:min-w-[170px] max-w-[240px] bg-white shadow-xs rounded-xl overflow-hidden border border-slate-200/80 hover:border-indigo-300 transition-all flex flex-col justify-between p-2.5 md:p-3">
+            <div className="flex items-center gap-1 text-[11px] font-bold text-indigo-700 uppercase tracking-tight">
+              <span className="material-symbols-outlined text-[15px]">payments</span>
+              <span>{isPersonalFiltered ? `ĐÃ CHI (${selectedSpender})` : 'TỔNG ĐÃ CHI'}</span>
+            </div>
+            <div className="mt-1 text-sm md:text-base font-black text-slate-900 tracking-tight">
+              {money(currentChi)} <span className="text-[10px] text-slate-400 font-normal">đ</span>
+            </div>
+          </div>
 
-          {/* TỒN CUỐI KỲ */}
-          <table className="border-collapse text-xs md:text-sm flex-1 min-w-[120px] md:min-w-[140px] max-w-[200px] bg-white shadow-xs rounded-lg overflow-hidden border border-slate-300">
-            <thead>
-              <tr>
-                <th className="border-b border-slate-300 bg-blue-100 text-blue-900 h-[26px] md:h-[30px] p-0 text-[10px] md:text-[11px] font-bold text-center uppercase whitespace-nowrap">
-                  <div className="h-full flex items-center justify-center px-1">TỒN CUỐI KỲ</div>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td className="text-center h-[28px] md:h-[32px] px-1 md:px-2 text-xs md:text-sm font-bold text-slate-800 align-middle">
-                  {money(summary.tonCuoiKy)}
-                </td>
-              </tr>
-            </tbody>
-          </table>
+          {/* THẺ 3: TỒN QUỸ */}
+          <div className={`flex-1 min-w-[150px] md:min-w-[190px] max-w-[260px] bg-white shadow-xs rounded-xl overflow-hidden border ${
+            currentTon < 0 ? 'border-red-300 bg-red-50/20' : 'border-emerald-300 bg-emerald-50/20'
+          } transition-all flex flex-col justify-between p-2.5 md:p-3`}>
+            <div className="flex items-center justify-between gap-1 text-[11px] font-bold uppercase tracking-tight">
+              <div className={`flex items-center gap-1 ${currentTon < 0 ? 'text-red-700' : 'text-emerald-700'}`}>
+                <span className="material-symbols-outlined text-[16px]">
+                  {currentTon < 0 ? 'warning' : 'savings'}
+                </span>
+                <span>{isPersonalFiltered ? `TỒN QUỸ (${selectedSpender})` : 'TỒN QUỸ DỰ ÁN'}</span>
+              </div>
+              <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${
+                currentTon < 0 ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-800'
+              }`}>
+                {currentTon < 0 ? 'Âm quỹ' : 'Còn dư'}
+              </span>
+            </div>
+            <div className={`mt-1 text-sm md:text-base font-black tracking-tight ${
+              currentTon < 0 ? 'text-red-600' : 'text-emerald-700'
+            }`}>
+              {money(currentTon)} <span className="text-[10px] font-normal opacity-70">đ</span>
+            </div>
+          </div>
 
-          {/* TRÌNH */}
-          <table className="border-collapse text-xs md:text-sm flex-1 min-w-[120px] md:min-w-[140px] max-w-[200px] bg-white shadow-xs rounded-lg overflow-hidden border border-slate-300">
-            <thead>
-              <tr>
-                <th className="border-b border-slate-300 bg-orange-200 text-orange-900 h-[26px] md:h-[30px] p-0 text-[10px] md:text-[11px] font-bold text-center uppercase whitespace-nowrap">
-                  <div className="h-full flex items-center justify-center px-1">TRÌNH</div>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td className="text-center h-[28px] md:h-[32px] px-1 md:px-2 text-xs md:text-sm font-bold text-slate-800 align-middle">
-                  {money(summary.totalProjectExpense)}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-
-          {/* CHI TIẾT CÁ NHÂN (Button to open Modal) */}
-          <table className="border-collapse text-xs md:text-sm w-32 md:w-44 shrink-0 bg-white cursor-pointer hover:shadow-md transition-shadow shadow-xs rounded-lg overflow-hidden border border-slate-300" onClick={() => setShowPersonalModal(true)}>
-            <thead>
-              <tr>
-                <th className="border-b border-slate-300 bg-emerald-100 text-emerald-900 h-[26px] md:h-[30px] p-0 text-[10px] md:text-[11px] font-bold text-center uppercase whitespace-nowrap">
-                  <div className="h-full flex items-center justify-center px-1">CHI TIẾT CÁ NHÂN</div>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td className="text-center h-[28px] md:h-[32px] px-1 md:px-2 text-xs md:text-sm font-bold text-emerald-700 bg-emerald-50 align-middle">
-                  <div className="h-full flex items-center justify-center gap-1">
-                    <span className="material-symbols-outlined text-[14px] md:text-[18px]">group</span>
-                    <span className="hidden sm:inline">Xem chi tiết</span>
-                    <span className="sm:hidden text-[11px]">Xem</span>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+          {/* THẺ 4: TỔNG CHI PHÍ THEO NHÂN SỰ (Nút mở bảng tổng hợp toàn bộ nhân sự) */}
+          <div 
+            onClick={() => setShowPersonalModal(true)}
+            className="flex-1 min-w-[150px] md:min-w-[210px] max-w-[280px] bg-gradient-to-r from-blue-50/80 to-indigo-50/80 hover:from-blue-100/80 hover:to-indigo-100/80 cursor-pointer shadow-xs rounded-xl overflow-hidden border border-blue-200/80 transition-all flex flex-col justify-between p-2.5 md:p-3 select-none group"
+            title="Bấm để xem bảng tổng hợp toàn diện chi phí theo từng nhân sự"
+          >
+            <div className="flex items-center justify-between gap-1 text-[11px] font-bold text-blue-900 uppercase tracking-tight">
+              <div className="flex items-center gap-1">
+                <span className="material-symbols-outlined text-[16px] text-blue-600">group</span>
+                <span>TỔNG HỢP THEO NHÂN SỰ</span>
+              </div>
+              <span className="material-symbols-outlined text-[16px] text-blue-500 group-hover:translate-x-0.5 transition-transform">arrow_forward</span>
+            </div>
+            <div className="mt-1 flex items-center justify-between text-xs text-blue-700 font-semibold">
+              <span>{spenderNames.length} nhân sự / đối tượng</span>
+              <span className="text-[11px] text-primary font-bold underline">Xem bảng &gt;</span>
+            </div>
+          </div>
 
         </div>
       </div>
 
-      <Modal isOpen={showPersonalModal} onClose={() => setShowPersonalModal(false)} title="CHI TIẾT QUỸ CÁ NHÂN" size="xl">
-        <div className="space-y-4 p-1 md:p-2 max-h-[75vh] overflow-y-auto custom-scrollbar">
-          {spenderNames.length === 0 && (
-            <div className="text-slate-500 italic py-4 text-center">Chưa có dữ liệu quỹ cá nhân.</div>
-          )}
-          <div className="flex flex-col md:flex-row md:flex-wrap gap-3 items-center justify-center">
-            {spenderNames.map((name, idx) => {
-              const ton = summary.bySpender[name].quy - summary.bySpender[name].chi;
-              const colorClass = idx % 3 === 0 ? 'bg-red-100 text-red-800' : idx % 3 === 1 ? 'bg-teal-100 text-teal-800' : 'bg-indigo-100 text-indigo-800';
-              
-              return (
-                <div key={name} className="w-full md:w-auto flex items-center justify-between gap-1.5 bg-slate-50 p-2 rounded-xl border border-slate-200 overflow-x-auto custom-scrollbar">
-                  <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                  {/* TỔNG CHI CÁ NHÂN */}
-                  <table className="border-collapse text-sm w-36 shrink-0 bg-white shadow-xs rounded overflow-hidden">
-                    <thead>
-                      <tr>
-                        <th className={`border border-slate-200 py-1 px-2 text-[10px] font-bold text-center ${colorClass}`}>
-                          TỔNG CHI ({name})
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td className="border border-slate-200 text-center py-1.5 px-2 text-xs font-bold text-slate-800">
-                          {money(summary.bySpender[name].chi)}
+      {/* MODAL TỔNG HỢP CHI TIẾT TẤT CẢ NHÂN SỰ */}
+      <Modal isOpen={showPersonalModal} onClose={() => setShowPersonalModal(false)} title="TỔNG HỢP CHI PHÍ DỰ ÁN THEO NHÂN SỰ" size="xl">
+        <div className="space-y-4 p-1 md:p-3 max-h-[75vh] overflow-y-auto custom-scrollbar">
+          <div className="flex flex-wrap items-center justify-between gap-2 bg-blue-50/60 p-3 rounded-xl border border-blue-100 text-xs text-slate-700">
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-blue-600 text-base">info</span>
+              <span>Bảng tổng hợp phản ánh số tiền được cấp (Quỹ nhận), số tiền đã chi tiêu và số dư tồn quỹ của từng nhân sự phụ trách.</span>
+            </div>
+            <div className="text-slate-500 text-[11px]">
+              Dự án: <strong className="text-slate-800">{currentProjectCode || 'Hiện tại'}</strong>
+            </div>
+          </div>
+
+          {spenderNames.length === 0 ? (
+            <div className="text-slate-400 italic py-8 text-center">Chưa có dữ liệu giao dịch chi phí của nhân sự nào.</div>
+          ) : (
+            <div className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-xs">
+              <table className="w-full text-left border-collapse min-w-[650px] text-xs">
+                <thead>
+                  <tr className="bg-slate-100/80 border-b border-slate-200 text-[11px] font-bold text-slate-600 uppercase tracking-tight">
+                    <th className="py-2.5 px-3 text-center w-12">STT</th>
+                    <th className="py-2.5 px-3 min-w-[140px]">Người phụ trách / Nhân sự</th>
+                    <th className="py-2.5 px-3 text-right min-w-[110px]">Quỹ nhận (đ)</th>
+                    <th className="py-2.5 px-3 text-right min-w-[110px]">Đã chi (đ)</th>
+                    <th className="py-2.5 px-3 text-right min-w-[110px]">Tồn quỹ (đ)</th>
+                    <th className="py-2.5 px-3 text-center w-28">Trạng thái</th>
+                    <th className="py-2.5 px-3 text-center w-28">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                  {spenderNames.map((name, idx) => {
+                    const data = summary.bySpender[name];
+                    const ton = data.quy - data.chi;
+                    const isOver = ton < 0;
+                    const isSelected = selectedSpender === name;
+
+                    return (
+                      <tr 
+                        key={name}
+                        className={`hover:bg-blue-50/40 transition-colors ${isSelected ? 'bg-blue-50/70 font-semibold' : ''}`}
+                      >
+                        <td className="py-2.5 px-3 text-center text-slate-400 text-[11px]">{idx + 1}</td>
+                        <td className="py-2.5 px-3 font-bold text-slate-900">
+                          <div className="flex items-center gap-1.5">
+                            <span className="material-symbols-outlined text-[15px] text-slate-400">
+                              {name === 'DỰ ÁN' ? 'apartment' : 'person'}
+                            </span>
+                            <span>{name}</span>
+                            {isSelected && (
+                              <span className="text-[10px] px-1 py-0.2 bg-blue-100 text-blue-700 rounded">Đang lọc</span>
+                            )}
+                          </div>
                         </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                  
-                  {/* TỒN QUỸ CÁ NHÂN */}
-                  <table className="border-collapse text-sm w-36 shrink-0 bg-white shadow-xs rounded overflow-hidden">
-                    <thead>
-                      <tr>
-                        <th className={`border border-slate-200 py-1 px-2 text-[10px] font-bold text-center ${colorClass}`}>
-                          TỒN QUỸ ({name})
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td className={`border border-slate-200 text-center py-1.5 px-2 text-xs font-bold ${ton < 0 ? 'text-red-600' : 'text-emerald-700'}`}>
+                        <td className="py-2.5 px-3 text-right font-semibold text-slate-800">
+                          {money(data.quy)}
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-semibold text-slate-800">
+                          {money(data.chi)}
+                        </td>
+                        <td className={`py-2.5 px-3 text-right font-bold ${isOver ? 'text-red-600' : 'text-emerald-700'}`}>
                           {money(ton)}
                         </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                  
-                  {/* TỔNG QUỸ CÁ NHÂN */}
-                  <table className="border-collapse text-sm w-36 shrink-0 bg-white shadow-xs rounded overflow-hidden">
-                    <thead>
-                      <tr>
-                        <th className={`border border-slate-200 py-1 px-2 text-[10px] font-bold text-center ${colorClass}`}>
-                          TỔNG QUỸ ({name})
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td 
-                          className="border border-slate-200 text-center py-1.5 px-2 text-xs font-bold text-slate-800 cursor-pointer hover:bg-blue-50 transition-colors"
-                          onClick={() => {
-                            if (onAllocateFund) onAllocateFund(name);
-                          }}
-                          title="Bấm để nạp thêm quỹ"
-                        >
-                          <div className="flex items-center justify-center gap-1 group">
-                            <span>{money(summary.bySpender[name].quy)}</span>
-                            <span className="material-symbols-outlined text-[13px] text-blue-500 opacity-0 group-hover:opacity-100">add_circle</span>
+                        <td className="py-2.5 px-3 text-center">
+                          <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            isOver 
+                              ? 'bg-red-100 text-red-700 border border-red-200' 
+                              : ton === 0 
+                                ? 'bg-slate-100 text-slate-600' 
+                                : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                          }`}>
+                            {isOver ? 'Âm quỹ' : ton === 0 ? 'Đã hết quỹ' : 'Còn giữ quỹ'}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3 text-center">
+                          <div className="flex items-center justify-center gap-1">
+                            {onSelectSpender && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  onSelectSpender(isSelected ? 'all' : name);
+                                  setShowPersonalModal(false);
+                                }}
+                                className="p-1 text-primary hover:bg-blue-100 rounded text-xs font-semibold cursor-pointer"
+                                title="Lọc xem phiếu chi của nhân sự này"
+                              >
+                                <span className="material-symbols-outlined text-[16px]">filter_alt</span>
+                              </button>
+                            )}
+                            {onAllocateFund && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setShowPersonalModal(false);
+                                  onAllocateFund(name);
+                                }}
+                                className="p-1 text-emerald-600 hover:bg-emerald-100 rounded text-xs cursor-pointer"
+                                title="Cấp / Nạp thêm quỹ cho nhân sự này"
+                              >
+                                <span className="material-symbols-outlined text-[16px]">add_circle</span>
+                              </button>
+                            )}
+                            {onTransferFund && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setShowPersonalModal(false);
+                                  openTransferModal(name);
+                                }}
+                                className="p-1 text-amber-600 hover:bg-amber-100 rounded text-xs cursor-pointer"
+                                title="Chuyển quỹ từ nhân sự này sang dự án khác"
+                              >
+                                <span className="material-symbols-outlined text-[16px]">swap_horiz</span>
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
-                    </tbody>
-                  </table>
-                  </div>
-
-                  {/* CHUYỂN QUỸ CÁ NHÂN BUTTON */}
-                  {onTransferFund && (
-                    <button
-                      type="button"
-                      onClick={() => openTransferModal(name)}
-                      className="p-1.5 rounded-lg border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors shadow-xs flex items-center justify-center shrink-0 cursor-pointer ml-1"
-                      title={`Chuyển quỹ từ ${name} sang dự án khác`}
-                    >
-                      <span className="material-symbols-outlined text-[18px]">swap_horiz</span>
-                    </button>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                    );
+                  })}
+                </tbody>
+                <tfoot>
+                  <tr className="bg-slate-100/90 font-black border-t-2 border-slate-300 text-slate-900">
+                    <td colSpan={2} className="py-2.5 px-3 text-right uppercase text-[11px]">
+                      Tổng cộng toàn dự án:
+                    </td>
+                    <td className="py-2.5 px-3 text-right text-blue-900">
+                      {money(summary.totalProjectFund)}
+                    </td>
+                    <td className="py-2.5 px-3 text-right text-indigo-900">
+                      {money(summary.totalChi)}
+                    </td>
+                    <td className={`py-2.5 px-3 text-right ${summary.tonCuoiKy < 0 ? 'text-red-600' : 'text-emerald-700'}`}>
+                      {money(summary.tonCuoiKy)}
+                    </td>
+                    <td colSpan={2} className="py-2.5 px-3 text-center text-slate-500 font-normal text-[11px]">
+                      {summary.tonCuoiKy < 0 ? 'Dự án đang âm quỹ' : 'Dự án còn tồn quỹ'}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          )}
         </div>
       </Modal>
 
+      {/* MODAL THÊM / NẠP QUỸ CÔNG TRÌNH */}
       <Modal isOpen={showAddFundModal} onClose={() => setShowAddFundModal(false)} title="THÊM / NẠP QUỸ CÔNG TRÌNH" size="md">
         <form onSubmit={handleSaveFundModal} className="p-4 space-y-4">
           <div className="bg-blue-50/60 p-3.5 rounded-xl border border-blue-100 space-y-2 text-xs">

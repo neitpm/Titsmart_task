@@ -1396,6 +1396,7 @@ export const ProjectCostPlanPage: React.FC = () => {
   const [expenseFilterDateFrom, setExpenseFilterDateFrom] = useState('');
   const [expenseFilterDateTo, setExpenseFilterDateTo] = useState('');
   const [expenseFilterContent, setExpenseFilterContent] = useState('all');
+  const [expenseFilterSpender, setExpenseFilterSpender] = useState('all');
   const [expenseFilterUnit, setExpenseFilterUnit] = useState('all');
 
   // Labor Tab Filters
@@ -1814,11 +1815,12 @@ export const ProjectCostPlanPage: React.FC = () => {
         (!expenseFilterDateFrom || (exp.date && exp.date >= expenseFilterDateFrom)) &&
         (!expenseFilterDateTo || (exp.date && exp.date <= expenseFilterDateTo)) &&
         (expenseFilterContent === 'all' || exp.content === expenseFilterContent) &&
-        (expenseFilterUnit === 'all' || exp.unit === expenseFilterUnit);
+        (expenseFilterUnit === 'all' || exp.unit === expenseFilterUnit) &&
+        (expenseFilterSpender === 'all' || (exp.spenderName || '').trim() === expenseFilterSpender);
 
       return matchSearch && matchColumn;
     });
-  }, [currentProjExpenses, searchQuery, expenseFilterDateFrom, expenseFilterDateTo, expenseFilterContent, expenseFilterUnit]);
+  }, [currentProjExpenses, searchQuery, expenseFilterDateFrom, expenseFilterDateTo, expenseFilterContent, expenseFilterUnit, expenseFilterSpender]);
 
   const currentProjLabor = useMemo(() => {
     const validCodes = getValidProjectCodeSet(selectedProject || resolvedProjectCode || projectId || '');
@@ -2379,6 +2381,21 @@ export const ProjectCostPlanPage: React.FC = () => {
                     <input type="date" value={expenseFilterDateTo} onChange={e => setExpenseFilterDateTo(e.target.value)} className="bg-transparent border-none outline-none text-xs w-[115px] text-slate-700 cursor-pointer" />
                   </div>
                 </div>
+                <div className="flex items-center gap-1.5 md:gap-2">
+                  <span className="text-slate-500 font-medium whitespace-nowrap text-xs">Người PT/Chi:</span>
+                  <div className="min-w-[130px] max-w-[200px]">
+                    <CustomSelect
+                      value={expenseFilterSpender}
+                      onChange={(e) => setExpenseFilterSpender(e.target.value)}
+                      className="h-7 text-xs bg-white border border-slate-200 rounded px-2 text-slate-700 font-medium cursor-pointer shadow-xs"
+                    >
+                      <option value="all">-- Tất cả người chi --</option>
+                      {expenseSpenderNames.map((name) => (
+                        <option key={name} value={name}>{name}</option>
+                      ))}
+                    </CustomSelect>
+                  </div>
+                </div>
               </div>
 
               <div className="flex items-center gap-2 w-full md:w-auto justify-between md:justify-end md:ml-auto">
@@ -2475,6 +2492,20 @@ export const ProjectCostPlanPage: React.FC = () => {
                   <span className="hidden sm:inline">Thêm phiếu chi</span>
                 </button>
               </div>
+            </div>
+
+            {/* KHỐI TỔNG QUAN TỒN QUỸ & TỔNG CHI PHÍ */}
+            <div className="shrink-0 w-full overflow-x-auto border-b border-slate-200 bg-slate-50/50">
+              <CostPlanSummaryTable
+                expenses={currentProjExpenses}
+                labors={currentProjLabor}
+                projects={projects}
+                currentProjectCode={selectedProject}
+                selectedSpender={expenseFilterSpender}
+                onSelectSpender={setExpenseFilterSpender}
+                onTransferFund={handleExpenseTransferFund}
+                onAllocateFund={handleExpenseAllocateFund}
+              />
             </div>
 
             {/* 2. CHI TIẾT PHIẾU CHI */}
@@ -2654,17 +2685,6 @@ export const ProjectCostPlanPage: React.FC = () => {
             </table>
             </div>
 
-            {/* 3. BẢNG TỔNG QUAN CHI PHÍ (ĐẶT Ở DƯỚI) */}
-            <div className="shrink-0 w-full overflow-x-auto border-t border-slate-200 bg-slate-50/50">
-              <CostPlanSummaryTable
-                expenses={currentProjExpenses}
-                labors={currentProjLabor}
-                projects={projects}
-                currentProjectCode={selectedProject}
-                onTransferFund={handleExpenseTransferFund}
-                onAllocateFund={handleExpenseAllocateFund}
-              />
-            </div>
 
             </div>
             </div>
