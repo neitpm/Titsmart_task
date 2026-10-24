@@ -4,6 +4,7 @@ import { useRealtimeStore } from '../services/realtimeStore';
 import { useAuthStore } from '../services/authStore';
 import { api } from '../services/apiSupabase';
 import { supabase } from '../lib/supabase';
+import { uploadAttachment } from '../utils/fileUploadHelper';
 import { Modal } from '../components/common/Modal';
 import { ConfirmModal } from '../components/common/ConfirmModal';
 import { CustomSelect } from '../components/common/CustomSelect';
@@ -1082,12 +1083,8 @@ export const AttendancePage: React.FC = () => {
   };
 
   const uploadImage = async (file: File): Promise<string> => {
-    const ext = file.name.split('.').pop();
-    const fileName = `attendance/${Date.now()}_${Math.random().toString(36).substring(7)}.${ext}`;
-    const { error } = await supabase.storage.from('titsmart-images').upload(fileName, file);
-    if (error) throw error;
-    const { data } = supabase.storage.from('titsmart-images').getPublicUrl(fileName);
-    return data.publicUrl;
+    const res = await uploadAttachment(file, 'attendance');
+    return res.url;
   };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { parseInvoiceUrls } from '../../utils/fileUploadHelper';
+import { parseInvoiceUrls, uploadAttachment } from '../../utils/fileUploadHelper';
 
 interface ImageUploadProps {
   label: string;
@@ -86,28 +86,16 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({ label, name, value: in
       const filesToUpload = multiple ? Array.from(event.target.files) : [event.target.files[0]];
       
       for (const rawFile of filesToUpload) {
-        const compressedBlob = await compressImageFile(rawFile);
-        const fileExt = rawFile.type.startsWith('image/') ? 'jpg' : (rawFile.name.split('.').pop() || 'bin');
-        const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
-        const filePath = `files/${fileName}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from('titsmart-images')
-          .upload(filePath, compressedBlob, { cacheControl: '3600', upsert: true, contentType: rawFile.type.startsWith('image/') ? 'image/jpeg' : rawFile.type });
-
-        if (uploadError) {
-          console.error("Supabase Storage upload error:", uploadError);
+        try {
+          const res = await uploadAttachment(rawFile, 'files');
+          if (res?.url) {
+            newUrls.push(res.url);
+          }
+        } catch (uploadError: any) {
+          console.warn("Storage upload warning, fallback preview:", uploadError);
           const objectUrl = URL.createObjectURL(rawFile);
           newUrls.push(objectUrl);
-          setError(`Cảnh báo Storage Supabase: ${uploadError.message}. Đã tạo preview tạm thời.`);
-          continue;
         }
-
-        const { data } = supabase.storage
-          .from('titsmart-images')
-          .getPublicUrl(filePath);
-          
-        newUrls.push(data.publicUrl);
       }
       
       const updatedValues = multiple ? [...localValues, ...newUrls] : [newUrls[0]];

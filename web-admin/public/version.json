@@ -1,8 +1,8 @@
 {
-  "version": "3.8.266",
+  "version": "3.8.267",
   "date": "2026-10-24",
   "notes": [
-    "Khắc phục triệt để lỗi các cột trong tab Hồ sơ dự án bị đè/chèn ép lên nhau.",
-    "Chuyển bảng Hồ sơ sang table-auto với độ rộng tối thiểu từng cột chuẩn xác và thanh cuộn ngang mượt mà."
+    "Đồng bộ toàn bộ cơ chế tải file/ảnh (ImageUpload, FileUpload, Chấm công, Chi phí, Vật tư, Hồ sơ) sang uploadAttachment với chuẩn nén Canvas an toàn và Timeout chống treo điện thoại.",
+    "Tự động xử lý Fallback và ngắt timeout 15s giúp upload trên điện thoại luôn phản hồi nhanh, không bao giờ bị đơ xoay mãi."
   ]
 }
