@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useRealtimeStore } from '../services/realtimeStore';
 import { useAuthStore } from '../services/authStore';
 import { isUserMemberOfProject } from '../utils/projectMemberUtils';
+import { PersonnelCostSummaryCard } from '../components/dashboard/PersonnelCostSummaryCard';
 import { 
   ResponsiveContainer, 
   BarChart, 
@@ -399,7 +400,7 @@ export const DashboardPage: React.FC = () => {
     <div className="flex flex-col flex-1 h-full w-full min-w-0 max-w-full bg-slate-50 overflow-hidden text-slate-800">
       
       {/* HEADER BAR */}
-      <section className="sticky top-0 z-40 border-b border-slate-200 bg-white shadow-sm px-3 md:px-6 md:pr-20 py-2.5 md:py-0 md:h-12 flex flex-col md:flex-row justify-between items-start md:items-center gap-2 md:gap-4 shrink-0 relative no-drag-region electron-no-drag" style={{ WebkitAppRegion: 'no-drag' } as any}>
+      <section className="sticky top-0 z-40 border-b border-slate-200 bg-white shadow-sm px-2 sm:px-3 md:px-4 md:pr-20 py-2 md:py-0 md:h-12 flex flex-col md:flex-row justify-between items-start md:items-center gap-2 md:gap-4 shrink-0 relative no-drag-region electron-no-drag" style={{ WebkitAppRegion: 'no-drag' } as any}>
         <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4 w-full md:w-auto">
           <div className="flex items-center gap-2 shrink-0">
             <h1 className="page-title text-sm md:text-base font-extrabold text-slate-900 border-l-4 border-primary pl-2 font-['Inter'] whitespace-nowrap shrink-0">Tổng quan chung</h1>
@@ -477,7 +478,7 @@ export const DashboardPage: React.FC = () => {
       </section>
 
       {/* MAIN CONTENT AREA */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden p-3 md:p-5 space-y-4 md:space-y-5 w-full min-w-0 max-w-full">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden p-2 sm:p-3 space-y-3 w-full min-w-0 max-w-full">
         
         {/* TOP SUMMARY KPI CARDS */}
         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3.5 w-full min-w-0">
@@ -569,6 +570,14 @@ export const DashboardPage: React.FC = () => {
           </div>
 
         </div>
+
+        {/* BẢNG DASHBOARD THEO DÕI TỒN QUỸ & CHI PHÍ THEO NHÂN SỰ */}
+        <PersonnelCostSummaryCard
+          expenses={expenses}
+          projects={projects}
+          selectedProjectCodes={selectedProjects.length > 0 ? selectedProjects : undefined}
+        />
+
 
         {displayEnhancedProjects.length === 0 ? (
           <div className="text-center py-16 bg-white border border-dashed border-slate-300 rounded-xl">

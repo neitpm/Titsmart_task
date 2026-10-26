@@ -37,6 +37,7 @@ export const CostPlanSummaryTable: React.FC<CostPlanSummaryTableProps> = ({
   const [fundAmountInput, setFundAmountInput] = useState('');
   const [fundDateInput, setFundDateInput] = useState(new Date().toISOString().split('T')[0]);
   const [showPersonalModal, setShowPersonalModal] = useState(false);
+  const [viewMode, setViewMode] = useState<'cards' | 'grid'>('grid'); // 'grid': Bảng dashboard nhân sự; 'cards': Thẻ vuốt ngang
 
   const [showTransferFundModal, setShowTransferFundModal] = useState(false);
   const [transferFromSpender, setTransferFromSpender] = useState('DỰ ÁN');
@@ -151,113 +152,313 @@ export const CostPlanSummaryTable: React.FC<CostPlanSummaryTableProps> = ({
   const currentTon = isPersonalFiltered ? ((currentSpenderData?.quy || 0) - (currentSpenderData?.chi || 0)) : summary.tonCuoiKy;
 
   return (
-    <div className="w-full bg-slate-50/70 p-2 md:p-3 border-b border-slate-200">
-      {/* 1. THANH CHỈ SỐ TỒN QUỸ & TỔNG CHI TRỰC QUAN */}
-      <div className="w-full overflow-x-auto custom-scrollbar pb-1">
-        <div className="flex gap-2 md:gap-3 w-full items-stretch justify-start min-w-max">
-          
-          {/* THẺ 1: QUỸ CÔNG TRÌNH / QUỸ CÁ NHÂN */}
-          <div className="flex-1 min-w-[140px] md:min-w-[170px] max-w-[240px] bg-white shadow-xs rounded-xl overflow-hidden border border-slate-200/80 hover:border-blue-300 transition-all flex flex-col justify-between p-2.5 md:p-3">
-            <div className="flex items-center justify-between gap-1 text-[11px] font-bold text-slate-500 uppercase tracking-tight">
-              <div className="flex items-center gap-1 text-blue-700">
-                <span className="material-symbols-outlined text-[15px]">account_balance_wallet</span>
-                <span>{isPersonalFiltered ? `QUỸ (${selectedSpender})` : 'TỔNG QUỸ DỰ ÁN'}</span>
-              </div>
-              <div className="flex items-center gap-0.5">
-                {onAllocateFund && !isPersonalFiltered && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setFundAmountInput('');
-                      setFundDateInput(new Date().toISOString().split('T')[0]);
-                      setShowAddFundModal(true);
-                    }}
-                    className="p-1 rounded-md text-blue-600 hover:text-blue-800 hover:bg-blue-50 transition-colors cursor-pointer"
-                    title="Thêm / Nạp Quỹ Dự Án"
-                  >
-                    <span className="material-symbols-outlined text-[16px] leading-none">add_circle</span>
-                  </button>
-                )}
-                {onTransferFund && !isPersonalFiltered && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      openTransferModal('DỰ ÁN');
-                    }}
-                    className="p-1 rounded-md text-amber-600 hover:text-amber-800 hover:bg-amber-50 transition-colors cursor-pointer"
-                    title="Chuyển Quỹ Dự Án sang DA khác"
-                  >
-                    <span className="material-symbols-outlined text-[16px] leading-none">swap_horiz</span>
-                  </button>
-                )}
-              </div>
-            </div>
-            <div className="mt-1 text-sm md:text-base font-black text-slate-900 tracking-tight">
-              {money(currentFund)} <span className="text-[10px] text-slate-400 font-normal">đ</span>
-            </div>
+    <div className="w-full bg-slate-50/80 p-2.5 md:p-3 border-b border-slate-200 space-y-2.5">
+      {/* 1. THANH CHỈ SỐ TỒN QUỸ DỰ ÁN & TIỆN ÍCH */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 font-bold text-slate-800 text-xs md:text-sm">
+            <span className="material-symbols-outlined text-primary text-[18px]">monitoring</span>
+            <span>DASHBOARD CHI PHÍ & TỒN QUỸ</span>
+          </div>
+          {isPersonalFiltered && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-100 text-blue-800 border border-blue-200">
+              <span>Đang lọc: {selectedSpender}</span>
+              <button 
+                onClick={() => onSelectSpender && onSelectSpender('all')}
+                className="hover:text-red-600 ml-0.5 text-xs font-bold leading-none cursor-pointer"
+                title="Bỏ lọc nhân sự"
+              >
+                ×
+              </button>
+            </span>
+          )}
+        </div>
+
+        {/* NÚT ĐIỀU HƯỚNG / CHUYỂN CHẾ ĐỘ XEM */}
+        <div className="flex items-center gap-1.5 text-xs">
+          <div className="inline-flex rounded-lg border border-slate-200 bg-white p-0.5 shadow-2xs">
+            <button
+              type="button"
+              onClick={() => setViewMode('grid')}
+              className={`px-2 py-1 rounded-md text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer ${
+                viewMode === 'grid' 
+                  ? 'bg-primary text-white shadow-xs' 
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+              }`}
+              title="Xem danh sách bảng dashboard chi tiết từng người"
+            >
+              <span className="material-symbols-outlined text-[14px]">table_rows</span>
+              <span>Bảng nhân sự</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('cards')}
+              className={`px-2 py-1 rounded-md text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer ${
+                viewMode === 'cards' 
+                  ? 'bg-primary text-white shadow-xs' 
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+              }`}
+              title="Xem các thẻ chỉ số tóm tắt"
+            >
+              <span className="material-symbols-outlined text-[14px]">view_column</span>
+              <span>Thẻ tóm tắt</span>
+            </button>
           </div>
 
-          {/* THẺ 2: TỔNG CHI */}
-          <div className="flex-1 min-w-[140px] md:min-w-[170px] max-w-[240px] bg-white shadow-xs rounded-xl overflow-hidden border border-slate-200/80 hover:border-indigo-300 transition-all flex flex-col justify-between p-2.5 md:p-3">
-            <div className="flex items-center gap-1 text-[11px] font-bold text-indigo-700 uppercase tracking-tight">
-              <span className="material-symbols-outlined text-[15px]">payments</span>
-              <span>{isPersonalFiltered ? `ĐÃ CHI (${selectedSpender})` : 'TỔNG ĐÃ CHI'}</span>
-            </div>
-            <div className="mt-1 text-sm md:text-base font-black text-slate-900 tracking-tight">
-              {money(currentChi)} <span className="text-[10px] text-slate-400 font-normal">đ</span>
-            </div>
-          </div>
-
-          {/* THẺ 3: TỒN QUỸ */}
-          <div className={`flex-1 min-w-[150px] md:min-w-[190px] max-w-[260px] bg-white shadow-xs rounded-xl overflow-hidden border ${
-            currentTon < 0 ? 'border-red-300 bg-red-50/20' : 'border-emerald-300 bg-emerald-50/20'
-          } transition-all flex flex-col justify-between p-2.5 md:p-3`}>
-            <div className="flex items-center justify-between gap-1 text-[11px] font-bold uppercase tracking-tight">
-              <div className={`flex items-center gap-1 ${currentTon < 0 ? 'text-red-700' : 'text-emerald-700'}`}>
-                <span className="material-symbols-outlined text-[16px]">
-                  {currentTon < 0 ? 'warning' : 'savings'}
-                </span>
-                <span>{isPersonalFiltered ? `TỒN QUỸ (${selectedSpender})` : 'TỒN QUỸ DỰ ÁN'}</span>
-              </div>
-              <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${
-                currentTon < 0 ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-800'
-              }`}>
-                {currentTon < 0 ? 'Âm quỹ' : 'Còn dư'}
-              </span>
-            </div>
-            <div className={`mt-1 text-sm md:text-base font-black tracking-tight ${
-              currentTon < 0 ? 'text-red-600' : 'text-emerald-700'
-            }`}>
-              {money(currentTon)} <span className="text-[10px] font-normal opacity-70">đ</span>
-            </div>
-          </div>
-
-          {/* THẺ 4: TỔNG CHI PHÍ THEO NHÂN SỰ (Nút mở bảng tổng hợp toàn bộ nhân sự) */}
-          <div 
+          <button
+            type="button"
             onClick={() => setShowPersonalModal(true)}
-            className="flex-1 min-w-[150px] md:min-w-[210px] max-w-[280px] bg-gradient-to-r from-blue-50/80 to-indigo-50/80 hover:from-blue-100/80 hover:to-indigo-100/80 cursor-pointer shadow-xs rounded-xl overflow-hidden border border-blue-200/80 transition-all flex flex-col justify-between p-2.5 md:p-3 select-none group"
-            title="Bấm để xem bảng tổng hợp toàn diện chi phí theo từng nhân sự"
+            className="px-2.5 py-1 rounded-lg border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 text-[11px] font-bold flex items-center gap-1 shadow-2xs cursor-pointer transition-all"
+            title="Mở toàn màn hình bảng tổng hợp theo nhân sự"
           >
-            <div className="flex items-center justify-between gap-1 text-[11px] font-bold text-blue-900 uppercase tracking-tight">
-              <div className="flex items-center gap-1">
-                <span className="material-symbols-outlined text-[16px] text-blue-600">group</span>
-                <span>TỔNG HỢP THEO NHÂN SỰ</span>
-              </div>
-              <span className="material-symbols-outlined text-[16px] text-blue-500 group-hover:translate-x-0.5 transition-transform">arrow_forward</span>
-            </div>
-            <div className="mt-1 flex items-center justify-between text-xs text-blue-700 font-semibold">
-              <span>{spenderNames.length} nhân sự / đối tượng</span>
-              <span className="text-[11px] text-primary font-bold underline">Xem bảng &gt;</span>
-            </div>
-          </div>
-
+            <span className="material-symbols-outlined text-[14px]">open_in_full</span>
+            <span className="hidden sm:inline">Xem toàn màn hình</span>
+          </button>
         </div>
       </div>
 
-      {/* MODAL TỔNG HỢP CHI TIẾT TẤT CẢ NHÂN SỰ */}
-      <Modal isOpen={showPersonalModal} onClose={() => setShowPersonalModal(false)} title="TỔNG HỢP CHI PHÍ DỰ ÁN THEO NHÂN SỰ" size="xl">
+      {/* 2. CHẾ ĐỘ THẺ TÓM TẮT (CARDS) */}
+      {viewMode === 'cards' && (
+        <div className="w-full overflow-x-auto custom-scrollbar pb-1">
+          <div className="flex gap-2 md:gap-3 w-full items-stretch justify-start min-w-max">
+            
+            {/* THẺ 1: QUỸ CÔNG TRÌNH / QUỸ CÁ NHÂN */}
+            <div className="flex-1 min-w-[140px] md:min-w-[170px] max-w-[240px] bg-white shadow-xs rounded-xl overflow-hidden border border-slate-200/80 hover:border-blue-300 transition-all flex flex-col justify-between p-2.5 md:p-3">
+              <div className="flex items-center justify-between gap-1 text-[11px] font-bold text-slate-500 uppercase tracking-tight">
+                <div className="flex items-center gap-1 text-blue-700">
+                  <span className="material-symbols-outlined text-[15px]">account_balance_wallet</span>
+                  <span>{isPersonalFiltered ? `QUỸ (${selectedSpender})` : 'TỔNG QUỸ DỰ ÁN'}</span>
+                </div>
+                <div className="flex items-center gap-0.5">
+                  {onAllocateFund && !isPersonalFiltered && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setFundAmountInput('');
+                        setFundDateInput(new Date().toISOString().split('T')[0]);
+                        setShowAddFundModal(true);
+                      }}
+                      className="p-1 rounded-md text-blue-600 hover:text-blue-800 hover:bg-blue-50 transition-colors cursor-pointer"
+                      title="Thêm / Nạp Quỹ Dự Án"
+                    >
+                      <span className="material-symbols-outlined text-[16px] leading-none">add_circle</span>
+                    </button>
+                  )}
+                  {onTransferFund && !isPersonalFiltered && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openTransferModal('DỰ ÁN');
+                      }}
+                      className="p-1 rounded-md text-amber-600 hover:text-amber-800 hover:bg-amber-50 transition-colors cursor-pointer"
+                      title="Chuyển Quỹ Dự Án sang DA khác"
+                    >
+                      <span className="material-symbols-outlined text-[16px] leading-none">swap_horiz</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div className="mt-1 text-sm md:text-base font-black text-slate-900 tracking-tight">
+                {money(currentFund)} <span className="text-[10px] text-slate-400 font-normal">đ</span>
+              </div>
+            </div>
+
+            {/* THẺ 2: TỔNG CHI */}
+            <div className="flex-1 min-w-[140px] md:min-w-[170px] max-w-[240px] bg-white shadow-xs rounded-xl overflow-hidden border border-slate-200/80 hover:border-indigo-300 transition-all flex flex-col justify-between p-2.5 md:p-3">
+              <div className="flex items-center gap-1 text-[11px] font-bold text-indigo-700 uppercase tracking-tight">
+                <span className="material-symbols-outlined text-[15px]">payments</span>
+                <span>{isPersonalFiltered ? `ĐÃ CHI (${selectedSpender})` : 'TỔNG ĐÃ CHI'}</span>
+              </div>
+              <div className="mt-1 text-sm md:text-base font-black text-slate-900 tracking-tight">
+                {money(currentChi)} <span className="text-[10px] text-slate-400 font-normal">đ</span>
+              </div>
+            </div>
+
+            {/* THẺ 3: TỒN QUỸ */}
+            <div className={`flex-1 min-w-[150px] md:min-w-[190px] max-w-[260px] bg-white shadow-xs rounded-xl overflow-hidden border ${
+              currentTon < 0 ? 'border-red-300 bg-red-50/20' : 'border-emerald-300 bg-emerald-50/20'
+            } transition-all flex flex-col justify-between p-2.5 md:p-3`}>
+              <div className="flex items-center justify-between gap-1 text-[11px] font-bold uppercase tracking-tight">
+                <div className={`flex items-center gap-1 ${currentTon < 0 ? 'text-red-700' : 'text-emerald-700'}`}>
+                  <span className="material-symbols-outlined text-[16px]">
+                    {currentTon < 0 ? 'warning' : 'savings'}
+                  </span>
+                  <span>{isPersonalFiltered ? `TỒN QUỸ (${selectedSpender})` : 'TỒN QUỸ DỰ ÁN'}</span>
+                </div>
+                <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${
+                  currentTon < 0 ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-800'
+                }`}>
+                  {currentTon < 0 ? 'Âm quỹ' : 'Còn dư'}
+                </span>
+              </div>
+              <div className={`mt-1 text-sm md:text-base font-black tracking-tight ${
+                currentTon < 0 ? 'text-red-600' : 'text-emerald-700'
+              }`}>
+                {money(currentTon)} <span className="text-[10px] font-normal opacity-70">đ</span>
+              </div>
+            </div>
+
+            {/* THẺ 4: TỔNG HỢP NHANH SỐ NHÂN SỰ */}
+            <div 
+              onClick={() => setViewMode('grid')}
+              className="flex-1 min-w-[150px] md:min-w-[210px] max-w-[280px] bg-gradient-to-r from-blue-50/80 to-indigo-50/80 hover:from-blue-100/80 hover:to-indigo-100/80 cursor-pointer shadow-xs rounded-xl overflow-hidden border border-blue-200/80 transition-all flex flex-col justify-between p-2.5 md:p-3 select-none group"
+              title="Bấm để xem bảng chi tiết từng nhân sự"
+            >
+              <div className="flex items-center justify-between gap-1 text-[11px] font-bold text-blue-900 uppercase tracking-tight">
+                <div className="flex items-center gap-1">
+                  <span className="material-symbols-outlined text-[16px] text-blue-600">group</span>
+                  <span>THEO NHÂN SỰ</span>
+                </div>
+                <span className="material-symbols-outlined text-[16px] text-blue-500 group-hover:translate-x-0.5 transition-transform">table_rows</span>
+              </div>
+              <div className="mt-1 flex items-center justify-between text-xs text-blue-700 font-semibold">
+                <span>{spenderNames.length} nhân sự / đối tượng</span>
+                <span className="text-[11px] text-primary font-bold underline">Mở bảng &gt;</span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* 3. CHẾ ĐỘ BẢNG DASHBOARD TỔNG THỂ TỪNG NHÂN SỰ (HIỂN THỊ TRỰC TIẾP KHÔNG CẦN BẤM MODAL) */}
+      {viewMode === 'grid' && (
+        <div className="border border-slate-200/90 rounded-xl overflow-hidden bg-white shadow-2xs">
+          <div className="overflow-x-auto custom-scrollbar">
+            <table className="w-full text-left border-collapse min-w-[700px] text-xs">
+              <thead>
+                <tr className="bg-slate-100/90 border-b border-slate-200 text-[11px] font-bold text-slate-600 uppercase tracking-tight">
+                  <th className="py-2 px-3 text-center w-10">STT</th>
+                  <th className="py-2 px-3 min-w-[140px]">Nhân sự / Người phụ trách</th>
+                  <th className="py-2 px-3 text-right min-w-[110px]">Quỹ nhận (đ)</th>
+                  <th className="py-2 px-3 text-right min-w-[110px]">Đã chi (đ)</th>
+                  <th className="py-2 px-3 text-right min-w-[110px]">Còn tồn quỹ (đ)</th>
+                  <th className="py-2 px-3 text-center min-w-[100px]">Trạng thái</th>
+                  <th className="py-2 px-3 text-center w-28">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-slate-700">
+                {spenderNames.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="py-4 text-center text-slate-400 italic">Chưa có giao dịch chi phí của nhân sự nào.</td>
+                  </tr>
+                ) : (
+                  spenderNames.map((name, idx) => {
+                    const data = summary.bySpender[name];
+                    const ton = data.quy - data.chi;
+                    const isOver = ton < 0;
+                    const isSelected = selectedSpender === name;
+
+                    return (
+                      <tr 
+                        key={name}
+                        onClick={() => onSelectSpender && onSelectSpender(isSelected ? 'all' : name)}
+                        className={`hover:bg-blue-50/50 transition-colors cursor-pointer ${
+                          isSelected ? 'bg-blue-50/80 font-semibold' : (idx % 2 === 1 ? 'bg-slate-50/30' : '')
+                        }`}
+                        title={isSelected ? 'Bấm để hủy lọc' : `Bấm để lọc xem phiếu chi của ${name}`}
+                      >
+                        <td className="py-2 px-3 text-center text-slate-400 text-[11px]">{idx + 1}</td>
+                        <td className="py-2 px-3 font-bold text-slate-900">
+                          <div className="flex items-center gap-1.5">
+                            <span className="material-symbols-outlined text-[15px] text-slate-400">
+                              {name === 'DỰ ÁN' ? 'apartment' : 'person'}
+                            </span>
+                            <span>{name}</span>
+                            {isSelected && (
+                              <span className="text-[10px] px-1.5 py-0.2 bg-blue-100 text-blue-700 rounded-full font-bold">Đang lọc</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-2 px-3 text-right font-semibold text-slate-800">
+                          {money(data.quy)}
+                        </td>
+                        <td className="py-2 px-3 text-right font-semibold text-slate-800">
+                          {money(data.chi)}
+                        </td>
+                        <td className={`py-2 px-3 text-right font-bold ${isOver ? 'text-red-600' : 'text-emerald-700'}`}>
+                          {money(ton)}
+                        </td>
+                        <td className="py-2 px-3 text-center">
+                          <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            isOver 
+                              ? 'bg-red-100 text-red-700 border border-red-200' 
+                              : ton === 0 
+                                ? 'bg-slate-100 text-slate-600' 
+                                : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                          }`}>
+                            {isOver ? 'Âm quỹ' : ton === 0 ? 'Hết quỹ' : 'Còn giữ quỹ'}
+                          </span>
+                        </td>
+                        <td className="py-2 px-3 text-center" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center justify-center gap-1">
+                            {onSelectSpender && (
+                              <button
+                                type="button"
+                                onClick={() => onSelectSpender(isSelected ? 'all' : name)}
+                                className={`p-1 rounded text-xs cursor-pointer ${
+                                  isSelected ? 'bg-blue-600 text-white' : 'text-primary hover:bg-blue-100'
+                                }`}
+                                title={isSelected ? 'Hủy lọc' : `Lọc xem phiếu chi của ${name}`}
+                              >
+                                <span className="material-symbols-outlined text-[15px]">filter_alt</span>
+                              </button>
+                            )}
+                            {onAllocateFund && (
+                              <button
+                                type="button"
+                                onClick={() => onAllocateFund(name)}
+                                className="p-1 text-emerald-600 hover:bg-emerald-100 rounded text-xs cursor-pointer"
+                                title={`Cấp / Nạp thêm quỹ cho ${name}`}
+                              >
+                                <span className="material-symbols-outlined text-[15px]">add_circle</span>
+                              </button>
+                            )}
+                            {onTransferFund && (
+                              <button
+                                type="button"
+                                onClick={() => openTransferModal(name)}
+                                className="p-1 text-amber-600 hover:bg-amber-100 rounded text-xs cursor-pointer"
+                                title={`Chuyển quỹ từ ${name} sang dự án khác`}
+                              >
+                                <span className="material-symbols-outlined text-[15px]">swap_horiz</span>
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+              <tfoot>
+                <tr className="bg-slate-100 font-black border-t-2 border-slate-300 text-slate-900 text-xs">
+                  <td colSpan={2} className="py-2.5 px-3 text-right uppercase text-[11px] text-slate-700">
+                    Tổng cộng toàn dự án:
+                  </td>
+                  <td className="py-2.5 px-3 text-right text-blue-900 font-bold">
+                    {money(summary.totalProjectFund)} đ
+                  </td>
+                  <td className="py-2.5 px-3 text-right text-indigo-900 font-bold">
+                    {money(summary.totalChi)} đ
+                  </td>
+                  <td className={`py-2.5 px-3 text-right font-black ${summary.tonCuoiKy < 0 ? 'text-red-600' : 'text-emerald-700'}`}>
+                    {money(summary.tonCuoiKy)} đ
+                  </td>
+                  <td colSpan={2} className="py-2.5 px-3 text-center text-[11px] font-semibold text-slate-600">
+                    {summary.tonCuoiKy < 0 ? '⚠️ Toàn DA đang âm quỹ' : '✓ Toàn DA còn tồn quỹ'}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL TỔNG HỢP CHI TIẾT TẤT CẢ NHÂN SỰ (FULL DIALOG KHI CẦN XEM TOÀN MÀN HÌNH) */}
+      <Modal isOpen={showPersonalModal} onClose={() => setShowPersonalModal(false)} title="DASHBOARD CHI PHÍ & TỒN QUỸ THEO TỪNG NHÂN SỰ" size="xl">
         <div className="space-y-4 p-1 md:p-3 max-h-[75vh] overflow-y-auto custom-scrollbar">
           <div className="flex flex-wrap items-center justify-between gap-2 bg-blue-50/60 p-3 rounded-xl border border-blue-100 text-xs text-slate-700">
             <div className="flex items-center gap-2">
