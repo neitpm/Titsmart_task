@@ -429,9 +429,10 @@ export const MyTasksPage: React.FC = () => {
   };
 
   const handleReportDone = async (task: any) => {
+    const nextProgress = calculateTaskProgressFromStatuses(task.purchaseStatus, 'Chờ nghiệm thu');
     updateTask(task.id, { 
       status: 'Chờ nghiệm thu', 
-      progress: 0.95, 
+      progress: nextProgress, 
       constrStatus: 'Chờ nghiệm thu', 
       isDone: false 
     });

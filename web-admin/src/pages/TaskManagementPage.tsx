@@ -2812,10 +2812,16 @@ const hasSyncedRef = useRef(false);
                               <button onClick={(e) => { e.stopPropagation(); handleReportDone(t); }} className="text-[9px] bg-blue-500 pointer-events-auto hover:bg-blue-600 text-white px-2 py-0.5 rounded shadow-sm w-full font-bold cursor-pointer">Báo cáo hoàn thành</button>
                             )}
                             {canApproveTask(authStore.user, t) && (
-                              <button onClick={(e) => { e.stopPropagation(); handleApproveTask(t); }} className="text-[9px] bg-purple-600 pointer-events-auto hover:bg-purple-700 text-white px-2 py-0.5 rounded shadow-xs w-full font-bold flex items-center justify-center gap-0.5 animate-pulse cursor-pointer">
-                                <span className="material-symbols-outlined text-[11px]">verified</span>
-                                Nghiệm thu
-                              </button>
+                              <div className="flex items-center gap-1 w-full pointer-events-auto">
+                                <button onClick={(e) => { e.stopPropagation(); handleApproveTask(t); }} className="text-[9px] bg-purple-600 hover:bg-purple-700 text-white px-1.5 py-0.5 rounded shadow-xs flex-1 font-bold flex items-center justify-center gap-0.5 animate-pulse cursor-pointer" title="Nghiệm thu hoàn thành công việc">
+                                  <span className="material-symbols-outlined text-[11px]">verified</span>
+                                  Nghiệm thu
+                                </button>
+                                <button onClick={(e) => { e.stopPropagation(); setDiscussionTask(t); }} className="text-[9px] bg-amber-500 hover:bg-amber-600 text-white px-1.5 py-0.5 rounded shadow-xs flex-1 font-bold flex items-center justify-center gap-0.5 cursor-pointer" title="Gửi thắc mắc hoặc yêu cầu chỉnh sửa">
+                                  <span className="material-symbols-outlined text-[11px]">help</span>
+                                  Thắc mắc
+                                </button>
+                              </div>
                             )}
                             {t.status === 'Hoàn thành' && (
                               <button onClick={(e) => { e.stopPropagation(); setDiscussionTask(t); }} className="text-[9px] bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-300 pointer-events-auto px-1.5 py-0.5 rounded shadow-2xs w-full font-bold flex items-center justify-center gap-0.5 cursor-pointer" title="Gửi thắc mắc hoặc trao đổi thêm">
