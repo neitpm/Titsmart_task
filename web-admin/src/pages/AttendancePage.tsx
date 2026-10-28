@@ -1751,12 +1751,7 @@ export const AttendancePage: React.FC = () => {
                       <tr key={log.id} className="hover:bg-slate-50 transition-colors">
                         <td className="p-3 font-bold text-slate-800">{log.userName}</td>
                         <td className="p-3 text-slate-700 font-medium whitespace-nowrap">
-                          <div>{formatDateTime(log.checkInTime)}</div>
-                          {log.notes?.includes('[Chấm công bù') && (
-                            <div className="text-[10px] text-blue-600 font-normal mt-0.5">
-                              (Chấm công bù{log.createdAt ? ` • Đơn tạo: ${formatDateTime(log.createdAt)}` : ''})
-                            </div>
-                          )}
+                          {formatDateTime(log.checkInTime)}
                         </td>
                         <td className="p-3 text-slate-600 max-w-[200px] truncate" title={log.projectName}>
                           {log.projectName || <span className="text-slate-400">—</span>}
