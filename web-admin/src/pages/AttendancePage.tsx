@@ -27,6 +27,7 @@ interface AttendanceLog {
   checkInImage?: string;
   checkOutImage?: string;
   notes?: string;
+  createdAt?: string;
 }
 
 const formatDateTime = (iso: string) => {
@@ -793,6 +794,7 @@ export const AttendancePage: React.FC = () => {
           });
           // Ghi đè thời gian chính xác
           logObj.checkInTime = inIso;
+          logObj.createdAt = updatedAdj.createdAt;
           if (updatedAdj.adjustmentType !== 'Bù vào ca') {
             logObj.checkOutTime = outIso;
           }
@@ -807,6 +809,7 @@ export const AttendancePage: React.FC = () => {
             projectId: updatedAdj.projectId,
             projectName: updatedAdj.projectName,
             checkInTime: inIso,
+            createdAt: updatedAdj.createdAt,
             checkOutTime: updatedAdj.adjustmentType !== 'Bù vào ca' ? outIso : undefined,
             notes: `[Chấm công bù - Đã duyệt] ${updatedAdj.adjustmentType}: ${updatedAdj.reason}`,
           };
@@ -1748,7 +1751,12 @@ export const AttendancePage: React.FC = () => {
                       <tr key={log.id} className="hover:bg-slate-50 transition-colors">
                         <td className="p-3 font-bold text-slate-800">{log.userName}</td>
                         <td className="p-3 text-slate-700 font-medium whitespace-nowrap">
-                          {formatDateTime(log.checkInTime)}
+                          <div>{formatDateTime(log.checkInTime)}</div>
+                          {log.notes?.includes('[Chấm công bù') && (
+                            <div className="text-[10px] text-blue-600 font-normal mt-0.5">
+                              (Chấm công bù{log.createdAt ? ` • Đơn tạo: ${formatDateTime(log.createdAt)}` : ''})
+                            </div>
+                          )}
                         </td>
                         <td className="p-3 text-slate-600 max-w-[200px] truncate" title={log.projectName}>
                           {log.projectName || <span className="text-slate-400">—</span>}
@@ -2289,7 +2297,12 @@ export const AttendancePage: React.FC = () => {
 
 
           {/* Adjustment List / Table Area */}
-          <div className="flex-1 overflow-y-auto bg-slate-50 md:bg-white">
+          <PullToRefresh
+            onRefresh={async () => {
+              await Promise.all([fetchAdjustments(), fetchLogs(true)]);
+            }}
+            className="flex-1 bg-slate-50 md:bg-white"
+          >
             {displayedAdjustments.length === 0 ? (
               <div className="p-12 text-center text-slate-400 text-xs sm:text-sm flex flex-col items-center justify-center gap-2">
                 <span className="material-symbols-outlined text-4xl text-slate-300">edit_calendar</span>
@@ -2451,7 +2464,7 @@ export const AttendancePage: React.FC = () => {
                 </div>
               </>
             )}
-          </div>
+          </PullToRefresh>
         </div>
       )}
 
