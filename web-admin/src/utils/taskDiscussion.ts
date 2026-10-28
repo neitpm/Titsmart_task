@@ -76,6 +76,8 @@ export const parseTaskDiscussions = (notes?: string, issue?: string): TaskDiscus
       .replace(/\[THREAD:[\s\S]*$/gi, '')
       .replace(/\[FOLLOWERS:[^\]]*\]/gi, '')
       .replace(/\[ASSIGNER:[^\]]*\]/gi, '')
+      .replace(/\[tech-status:[^\]]*\]/gi, '')
+      .replace(/\[STATUS:[^\]]*\]/gi, '')
       .replace(/\[order:[\d.]+\]/gi, '')
       .replace(/\[section\]/gi, '')
       .replace(/\[contractor\]/gi, '')
@@ -88,7 +90,7 @@ export const parseTaskDiscussions = (notes?: string, issue?: string): TaskDiscus
       .replace(/Đồng bộ từ phụ lục khi tạo dự án/gi, '')
       .split('|')
       .map(s => s.trim())
-      .filter(s => Boolean(s) && !s.startsWith('{') && !s.includes('"senderId"') && !s.includes('[FOLLOWERS:') && !s.includes('[ASSIGNER:'))
+      .filter(s => Boolean(s) && !s.startsWith('{') && !s.includes('"senderId"') && !s.includes('[FOLLOWERS:') && !s.includes('[ASSIGNER:') && !s.includes('[tech-status:'))
       .join(' | ')
       .trim();
 

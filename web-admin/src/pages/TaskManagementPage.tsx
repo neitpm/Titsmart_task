@@ -2702,8 +2702,11 @@ const hasSyncedRef = useRef(false);
                             {(() => {
                               const latestDisc = getLatestDiscussion(t.notes, t.issue);
                               if (t.status !== 'Có thắc mắc' && !latestDisc && !t.issue) return null;
+                              // Bỏ qua nếu nội dung là các tag kỹ thuật ẩn
+                              const rawContent = latestDisc?.content || t.issue || '';
+                              if (rawContent.includes('[tech-status:') || rawContent.includes('[FOLLOWERS:') || rawContent.includes('[ASSIGNER:')) return null;
                               const isQuestion = t.status === 'Có thắc mắc' || (latestDisc && (latestDisc.type === 'question' || latestDisc.senderRole === 'Người nhận việc')) || Boolean(t.issue);
-                              const displayContent = latestDisc?.content || t.issue || 'Cần làm rõ yêu cầu công việc';
+                              const displayContent = rawContent || 'Cần làm rõ yêu cầu công việc';
                               return (
                                 <div 
                                   onClick={(e) => {
