@@ -369,6 +369,7 @@ export interface ProjectExpense {
   content: string;
   description: string;
   spenderName?: string;
+  createdByName?: string;
   unit: string;
   quantity: number;
   unitPrice: number;

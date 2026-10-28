@@ -2,7 +2,7 @@ import React, { useMemo, useState, useRef, useEffect } from 'react';
 import * as XLSX from 'xlsx';
 import { exportToStyledExcel } from '../utils/excelExportUtils';
 import { cleanNotes } from '../utils/cleanNotesUtils';
-import { useParams, useOutletContext } from 'react-router-dom';
+import { useParams, useOutletContext, useSearchParams } from 'react-router-dom';
 import { useRealtimeStore } from '../services/realtimeStore';
 import { useAuthStore } from '../services/authStore';
 import { CostPlanSummaryTable } from './cost-plan/CostPlanSummaryTable';
@@ -1367,8 +1367,24 @@ export const ProjectCostPlanPage: React.FC = () => {
     }
   }, [resolvedProjectCode, projectOptions, selectedProject]);
 
-  const [activeTab, setActiveTab] = useState<any>('TECH');
+  const [searchParams] = useSearchParams();
+  const initialTab = searchParams.get('tab') || 'TECH';
+  const initialSpender = searchParams.get('spender') || 'all';
+
+  const [activeTab, setActiveTab] = useState<any>(initialTab);
   const outletContext = useOutletContext<{ setSubTitle?: (title: string) => void }>();
+
+  // Đồng bộ tab từ URL searchParams nếu có thay đổi
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam && ['TECH', 'DOCS', 'FINANCE', 'EXPENSE'].includes(tabParam)) {
+      setActiveTab(tabParam);
+    }
+    const spenderParam = searchParams.get('spender');
+    if (spenderParam) {
+      setExpenseFilterSpender(spenderParam);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (outletContext?.setSubTitle) {
@@ -1426,6 +1442,26 @@ export const ProjectCostPlanPage: React.FC = () => {
   const [editingLabor, setEditingLabor] = useState<LaborPayroll | null>(null);
   const [isNewLaborOpen, setIsNewLaborOpen] = useState(false);
   const [triggerAddDoc, setTriggerAddDoc] = useState(false);
+
+  // State Modal cấp/nạp quỹ (thay thế window.prompt bị Electron/Web chặn)
+  const [allocateModal, setAllocateModal] = useState<{
+    isOpen: boolean;
+    name: string;
+    currentFund: number;
+    amountInput: string;
+    notesInput: string;
+  } | null>(null);
+
+  // State xác nhận rút quỹ hoàn bù từ dự án khác
+  const [refundPrompt, setRefundPrompt] = useState<{
+    isOpen: boolean;
+    spenderName: string;
+    expenseAmount: number;
+    candidateProjects: Array<{ projectCode: string; projectName: string; balance: number }>;
+    selectedSourceProject: string;
+    isConfirmedWithSpender: boolean;
+    pendingAction: () => Promise<void>;
+  } | null>(null);
 
   // ----------------------------------------------------
   // FILTER DATA BY SELECTED PROJECT
@@ -1967,19 +2003,20 @@ export const ProjectCostPlanPage: React.FC = () => {
 
   const COLORS = ['#0284c7', '#e11d48', '#f59e0b'];
 
-  const handleExpenseTransferFund = async ({ fromSpender, toProjectCode, toSpender, amount, date, notes }: any) => {
+  const handleExpenseTransferFund = async ({ fromProjectCode, fromSpender, toProjectCode, toSpender, amount, date, notes, fromNotes, toNotes }: any) => {
     try {
+      const sourceProjectCode = fromProjectCode || selectedProject;
       const toProjObj = projects.find(p => p.code === toProjectCode);
       const toProjName = toProjObj ? toProjObj.name : toProjectCode;
-      const fromProjObj = projects.find(p => p.code === selectedProject);
-      const fromProjName = fromProjObj ? fromProjObj.name : selectedProject;
+      const fromProjObj = projects.find(p => p.code === sourceProjectCode);
+      const fromProjName = fromProjObj ? fromProjObj.name : sourceProjectCode;
 
-      // 1. Dòng Xuất/Chi giảm quỹ tại Dự án hiện tại
+      // 1. Dòng Xuất/Chi giảm quỹ tại Dự án nguồn
       await addExpense({
-        projectCode: selectedProject,
+        projectCode: sourceProjectCode,
         spenderName: fromSpender || 'DỰ ÁN',
         content: `Chuyển quỹ đến ${toProjName}`,
-        description: `Chuyển quỹ cho ${toSpender} (${toProjName})${notes ? ` - ${notes}` : ''}`,
+        description: fromNotes || `Chuyển quỹ cho ${toSpender} (${toProjName})${notes ? ` - ${notes}` : ''}`,
         date: date || new Date().toISOString().split('T')[0],
         quantity: 1,
         unit: '',
@@ -1988,7 +2025,7 @@ export const ProjectCostPlanPage: React.FC = () => {
         totalAmount: amount,
         incomeAmount: 0,
         balanceFund: 0,
-        notes: `Chuyển quỹ đến ${toProjectCode}: ${user?.name || user?.username || ''}`
+        notes: fromNotes || `Chuyển quỹ đến ${toProjectCode}: ${user?.name || user?.username || ''}`
       } as any);
 
       // 2. Dòng Nạp/Thu tăng quỹ tại Dự án đích
@@ -1996,7 +2033,7 @@ export const ProjectCostPlanPage: React.FC = () => {
         projectCode: toProjectCode,
         spenderName: toSpender || fromSpender || 'DỰ ÁN',
         content: toSpender === 'DỰ ÁN' ? 'Quỹ Công Trình' : 'Cấp quỹ',
-        description: `Nhận chuyển quỹ từ ${fromProjName} (${fromSpender})${notes ? ` - ${notes}` : ''}`,
+        description: toNotes || `Nhận chuyển quỹ từ ${fromProjName} (${fromSpender})${notes ? ` - ${notes}` : ''}`,
         date: date || new Date().toISOString().split('T')[0],
         quantity: 0,
         unit: '',
@@ -2005,7 +2042,7 @@ export const ProjectCostPlanPage: React.FC = () => {
         totalAmount: 0,
         incomeAmount: amount,
         balanceFund: amount,
-        notes: `Nhận từ ${selectedProject}: ${user?.name || user?.username || ''}`
+        notes: toNotes || `Nhận từ ${sourceProjectCode}: ${user?.name || user?.username || ''}`
       } as any);
 
       logActivity('Chuyển quỹ', `${fromProjName} -> ${toProjName}: ${amount.toLocaleString('vi-VN')} đ`);
@@ -2018,66 +2055,18 @@ export const ProjectCostPlanPage: React.FC = () => {
   const handleExpenseAllocateFund = (name: string, amount?: number, date?: string) => {
     if (name === 'KHÁC') return;
 
-    let targetName = name;
-    let currentTotalFund = 0;
-    let personExpenses: any[] = [];
-    let title = '';
+    const targetName = name === '__PROJECT__' ? 'DỰ ÁN' : (name || 'DỰ ÁN');
+    const personExpenses = currentProjExpenses.filter(e => e.spenderName === targetName);
+    const currentTotalFund = personExpenses.reduce((acc, curr) => acc + (curr.incomeAmount || 0), 0);
 
-    if (name === '__PROJECT__') {
-      personExpenses = currentProjExpenses.filter(e => e.spenderName === 'DỰ ÁN' && e.content === 'Quỹ Công Trình');
-      currentTotalFund = currentProjExpenses.reduce((acc, curr) => acc + (curr.incomeAmount || 0), 0);
-      title = 'Quỹ Tổng Công Trình';
-      targetName = 'DỰ ÁN';
-    } else {
-      if (!targetName) {
-        const inputName = window.prompt('Nhập tên người muốn cấp quỹ:');
-        if (!inputName || !inputName.trim()) return;
-        targetName = inputName.trim();
-      }
-      personExpenses = currentProjExpenses.filter(e => e.spenderName === targetName);
-      currentTotalFund = personExpenses.reduce((acc, curr) => acc + (curr.incomeAmount || 0), 0);
-      title = `Tổng Quỹ cho [${targetName.toUpperCase()}]`;
-    }
-
-    let newTotal = 0;
-
-    if (amount !== undefined) {
-      newTotal = amount;
-    } else {
-      const input = window.prompt(`Cập nhật ${title}:\n(Nhập số tiền, hiện tại là: ${currentTotalFund.toLocaleString('vi-VN')})`, currentTotalFund.toString());
-      if (input === null) return;
-
-      newTotal = parseInt(input.replace(/[,.]/g, ''), 10);
-      if (isNaN(newTotal)) {
-        triggerToast('Số tiền không hợp lệ', 'warning');
-        return;
-      }
-    }
-
-    const diff = newTotal - currentTotalFund;
-    if (diff <= 0) return;
-
-    const adjustmentContent = name === '__PROJECT__' ? 'Quỹ Công Trình' : 'Cấp quỹ';
-    const hasFundRecords = personExpenses.some(e => e.content === adjustmentContent || e.incomeAmount > 0);
-
-    addExpense({
-      projectCode: selectedProject,
-      spenderName: targetName,
-      content: adjustmentContent,
-      description: hasFundRecords 
-        ? (name === '__PROJECT__' ? 'Nạp thêm Quỹ Công Trình' : `Nạp thêm quỹ cho ${targetName}`)
-        : (name === '__PROJECT__' ? 'Khởi tạo Quỹ Công Trình' : `Cấp quỹ cho ${targetName}`),
-      date: date || new Date().toISOString().split('T')[0],
-      quantity: 0,
-      unitPrice: 0,
-      taxAmount: 0,
-      totalAmount: 0,
-      incomeAmount: diff,
-      balanceFund: diff,
-      notes: user?.name || user?.username || 'Cấp quỹ'
-    } as any);
-
-    triggerToast(`Đã nạp thêm ${diff.toLocaleString('vi-VN')} VNĐ vào ${title.toLowerCase()}`, 'success');
+    // Mở Modal giao diện chuẩn React và điền sẵn số tiền đề xuất (nếu có bấm từ nút Bù quỹ)
+    setAllocateModal({
+      isOpen: true,
+      name: targetName,
+      currentFund: currentTotalFund,
+      amountInput: amount && amount > 0 ? Math.round(amount).toLocaleString('vi-VN') : '',
+      notesInput: amount && amount > 0 ? `Cấp bù số tiền âm cho ${targetName}` : `Cấp nạp quỹ cho ${targetName}`
+    });
   };
 
   // ----------------------------------------------------
@@ -2516,7 +2505,8 @@ export const ProjectCostPlanPage: React.FC = () => {
                   <tr>
 
                     <th className="px-2 py-1.5 w-[70px]">Ngày</th>
-                    <th className="px-2 py-1.5 min-w-[90px]">Người PT/Tên</th>
+                    <th className="px-2 py-1.5 min-w-[90px]">Người PT</th>
+                    <th className="px-2 py-1.5 min-w-[80px]">Người lập</th>
                     <th className="px-2 py-1.5 min-w-[180px]">Nội dung / Diễn giải</th>
                     <th className="px-2 py-1.5 w-10 text-left">ĐVT</th>
                     <th className="px-2 py-1.5 w-10 text-right">SL</th>
@@ -2542,6 +2532,9 @@ export const ProjectCostPlanPage: React.FC = () => {
                             <td className="px-2 py-1.5 font-semibold text-slate-900 whitespace-nowrap">{exp.date ? exp.date.substring(2) : '-'}</td>
                             <td className="px-2 py-1.5 font-semibold text-slate-800" title={exp.spenderName}>
                               <div className="line-clamp-2">{exp.spenderName || '-'}</div>
+                            </td>
+                            <td className="px-2 py-1.5 text-slate-600 text-[11px]" title={exp.createdByName || exp.updatedBy || 'Chính chủ'}>
+                              <div className="line-clamp-1">{exp.createdByName || exp.updatedBy || '-'}</div>
                             </td>
                             <td className="px-2 py-1.5">
                               <div className="font-bold text-slate-900 line-clamp-1" title={exp.content}>{exp.content}</div>
@@ -2617,6 +2610,9 @@ export const ProjectCostPlanPage: React.FC = () => {
                             <td className="px-2 py-1.5 font-semibold text-blue-900 whitespace-nowrap">{lab.date ? lab.date.substring(2) : '-'}</td>
                             <td className="px-2 py-1.5 font-bold text-blue-800" title={lab.workerName}>
                               <div className="line-clamp-2">{lab.workerName || '-'}</div>
+                            </td>
+                            <td className="px-2 py-1.5 text-slate-600 text-[11px]" title={lab.updatedBy || 'Chính chủ'}>
+                              <div className="line-clamp-1">{lab.updatedBy || '-'}</div>
                             </td>
                             <td className="px-2 py-1.5">
                               <div className="font-bold text-blue-900 line-clamp-1" title={lab.content}>{lab.content}</div>
@@ -3732,6 +3728,256 @@ export const ProjectCostPlanPage: React.FC = () => {
         )}
       </Modal>
 
+      {/* Modal Cấp / Nạp / Bù Quỹ Giao Diện Chuẩn (Thay thế window.prompt) */}
+      <Modal
+        isOpen={!!allocateModal?.isOpen}
+        onClose={() => setAllocateModal(null)}
+        title={`CẤP / NẠP / BÙ QUỸ CHO ${allocateModal?.name.toUpperCase()}`}
+        size="md"
+        zIndexClass="z-[150]"
+        requireConfirmOnClose={false}
+      >
+        {allocateModal && (
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              const num = parseInt(allocateModal.amountInput.replace(/[,.]/g, ''), 10);
+              if (isNaN(num) || num <= 0) {
+                triggerToast('Vui lòng nhập số tiền hợp lệ (> 0)', 'warning');
+                return;
+              }
+
+              try {
+                const targetName = allocateModal.name;
+                const adjustmentContent = targetName === 'DỰ ÁN' ? 'Quỹ Công Trình' : 'Cấp quỹ';
+                await addExpense({
+                  projectCode: selectedProject,
+                  spenderName: targetName,
+                  content: adjustmentContent,
+                  description: allocateModal.notesInput || `Nạp quỹ cho ${targetName}`,
+                  date: new Date().toISOString().split('T')[0],
+                  quantity: 0,
+                  unitPrice: 0,
+                  taxAmount: 0,
+                  totalAmount: 0,
+                  incomeAmount: num,
+                  balanceFund: num,
+                  notes: user?.name || user?.username || 'Cấp quỹ'
+                } as any);
+
+                triggerToast(`Đã nạp thêm ${num.toLocaleString('vi-VN')} đ cho ${targetName} thành công!`, 'success');
+                setAllocateModal(null);
+              } catch (err: any) {
+                triggerToast(err.message || 'Lỗi khi nạp quỹ!', 'warning');
+              }
+            }}
+            className="space-y-4 text-xs text-slate-700"
+          >
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl flex items-center justify-between">
+              <div>
+                <div className="text-[11px] text-blue-700 font-medium">Người nhận / Quỹ:</div>
+                <div className="text-sm font-extrabold text-blue-900">{allocateModal.name}</div>
+              </div>
+              <div className="text-right">
+                <div className="text-[11px] text-blue-700 font-medium">Tổng quỹ đã nhận hiện tại:</div>
+                <div className="text-sm font-bold text-slate-800">{allocateModal.currentFund.toLocaleString('vi-VN')} đ</div>
+              </div>
+            </div>
+
+            <div>
+              <label className="block font-bold text-slate-800 mb-1">
+                Số tiền nạp thêm (VNĐ) *
+              </label>
+              <input
+                type="text"
+                required
+                autoFocus
+                placeholder="VD: 5.000.000 hoặc 5000000"
+                value={allocateModal.amountInput}
+                onChange={(e) => {
+                  const raw = e.target.value.replace(/\D/g, '');
+                  const formatted = raw ? Number(raw).toLocaleString('vi-VN') : '';
+                  setAllocateModal({ ...allocateModal, amountInput: formatted });
+                }}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm font-bold text-slate-900 focus:ring-2 focus:ring-primary focus:outline-none bg-white"
+              />
+            </div>
+
+            <div>
+              <label className="block font-bold text-slate-800 mb-1">Ghi chú / Diễn giải</label>
+              <input
+                type="text"
+                value={allocateModal.notesInput}
+                onChange={(e) => setAllocateModal({ ...allocateModal, notesInput: e.target.value })}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white focus:ring-2 focus:ring-primary focus:outline-none"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-3 border-t border-slate-200">
+              <button
+                type="button"
+                onClick={() => setAllocateModal(null)}
+                className="px-4 py-1.5 rounded-lg border border-slate-300 font-semibold hover:bg-slate-100 text-slate-600"
+              >
+                Hủy
+              </button>
+              <button
+                type="submit"
+                className="px-5 py-1.5 rounded-lg bg-emerald-600 text-white font-bold hover:bg-emerald-700 transition-colors shadow-xs"
+              >
+                Xác nhận nạp quỹ
+              </button>
+            </div>
+          </form>
+        )}
+      </Modal>
+
+      {/* Modal Xác nhận Rút quỹ hoàn bù từ dự án khác khi âm quỹ */}
+      <Modal
+        isOpen={!!refundPrompt?.isOpen}
+        onClose={() => setRefundPrompt(null)}
+        title="XÁC NHẬN ĐIỀU CHUYỂN HOÀN QUỸ LIÊN DỰ ÁN"
+        zIndexClass="z-[200]"
+        requireConfirmOnClose={false}
+      >
+        {refundPrompt && (
+          <div className="space-y-4 text-xs text-slate-700">
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 flex items-start gap-2.5">
+              <span className="material-symbols-outlined text-amber-600 text-[20px] shrink-0 mt-0.5">warning</span>
+              <div>
+                <div className="font-bold text-sm">Quỹ tại dự án này không đủ (Số dư sẽ bị ÂM)</div>
+                <div className="mt-1 leading-relaxed">
+                  Nhân sự <strong>{refundPrompt.spenderName}</strong> không đủ số dư để chi <strong>{refundPrompt.expenseAmount.toLocaleString('vi-VN')} đ</strong> tại dự án hiện tại (do trước đây đã điều chuyển quỹ đi).
+                </div>
+              </div>
+            </div>
+
+            {refundPrompt.candidateProjects.length > 0 ? (
+              <div className="space-y-2 border border-slate-200 rounded-xl p-3 bg-slate-50/60">
+                <div className="font-bold text-slate-800">
+                  Dự án khác của {refundPrompt.spenderName} đang còn số dư có thể trích hoàn lại:
+                </div>
+                <div className="space-y-1.5">
+                  {refundPrompt.candidateProjects.map((cp) => (
+                    <label
+                      key={cp.projectCode}
+                      className="flex items-center justify-between p-2 rounded-lg bg-white border border-slate-200 cursor-pointer hover:border-blue-300"
+                    >
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="radio"
+                          name="sourceProject"
+                          value={cp.projectCode}
+                          checked={refundPrompt.selectedSourceProject === cp.projectCode}
+                          onChange={(e) =>
+                            setRefundPrompt({ ...refundPrompt, selectedSourceProject: e.target.value })
+                          }
+                          className="text-primary focus:ring-primary"
+                        />
+                        <span className="font-bold text-slate-900">{cp.projectName}</span>
+                        <span className="font-mono text-slate-400 text-[10px]">({cp.projectCode})</span>
+                      </div>
+                      <div className="font-bold text-emerald-700">
+                        Còn tồn: {cp.balance.toLocaleString('vi-VN')} đ
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="text-slate-500 italic p-2 bg-slate-50 rounded-lg">
+                Không tìm thấy dự án nào khác của nhân sự này còn số dư.
+              </div>
+            )}
+
+            {/* BẮT BUỘC LIÊN HỆ XÁC NHẬN TRƯỚC VỚI NGƯỜI ĐÓ */}
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl space-y-2">
+              <div className="font-bold text-blue-900 flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-blue-600 text-[16px]">support_agent</span>
+                <span>Yêu cầu xác nhận từ người phụ trách:</span>
+              </div>
+              <p className="text-[11px] text-blue-800 leading-normal">
+                Quy định hệ thống: Người lập chi phí <strong>bắt buộc phải liên hệ trao đổi trực tiếp</strong> và được sự đồng ý của <strong>{refundPrompt.spenderName}</strong> trước khi trích rút quỹ từ dự án khác.
+              </p>
+              <label className="flex items-center gap-2 pt-1 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={refundPrompt.isConfirmedWithSpender}
+                  onChange={(e) =>
+                    setRefundPrompt({ ...refundPrompt, isConfirmedWithSpender: e.target.checked })
+                  }
+                  className="rounded text-primary focus:ring-primary w-4 h-4"
+                />
+                <span className="font-bold text-slate-900 text-xs">
+                  [✓] Tôi đã liên hệ trao đổi và được {refundPrompt.spenderName} đồng ý trích quỹ
+                </span>
+              </label>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-200">
+              <button
+                type="button"
+                onClick={async () => {
+                  // Vẫn lưu chi phí (chấp nhận ghi âm, không rút quỹ)
+                  const action = refundPrompt.pendingAction;
+                  setRefundPrompt(null);
+                  if (action) await action();
+                }}
+                className="px-3 py-1.5 rounded-lg border border-slate-300 font-semibold text-slate-600 hover:bg-slate-100"
+              >
+                Chỉ ghi chi (chấp nhận số dư âm)
+              </button>
+              <button
+                type="button"
+                disabled={!refundPrompt.isConfirmedWithSpender || !refundPrompt.selectedSourceProject}
+                onClick={async () => {
+                  try {
+                    const srcProj = refundPrompt.selectedSourceProject;
+                    const amount = refundPrompt.expenseAmount;
+                    const spender = refundPrompt.spenderName;
+                    const candidate = refundPrompt.candidateProjects.find(p => p.projectCode === srcProj);
+                    const srcProjName = candidate?.projectName || srcProj;
+                    const balBefore = candidate?.balance || 0;
+                    const balAfter = balBefore - amount;
+
+                    const curProjObj = projects.find(p => p.code === selectedProject);
+                    const curProjName = curProjObj?.name || selectedProject;
+
+                    // 1. Thực hiện chuyển rút hoàn quỹ từ Dự án nguồn về Dự án hiện tại kèm chú thích chi tiết
+                    const noteSrc = `Rút ${amount.toLocaleString('vi-VN')} đ hoàn trả sang ${curProjName} (Số dư lúc rút: ${balBefore.toLocaleString('vi-VN')} đ, còn lại: ${balAfter.toLocaleString('vi-VN')} đ). Người lập: ${user?.name || user?.username || 'Hệ thống'} (Đã xác nhận với ${spender})`;
+                    const noteDest = `Nhận rút quỹ hoàn trả từ ${srcProjName} số tiền ${amount.toLocaleString('vi-VN')} đ (Số dư DA nguồn lúc rút: ${balBefore.toLocaleString('vi-VN')} đ, còn lại: ${balAfter.toLocaleString('vi-VN')} đ). Người lập: ${user?.name || user?.username || 'Hệ thống'}`;
+
+                    await handleExpenseTransferFund({
+                      fromProjectCode: srcProj,
+                      fromSpender: spender,
+                      toProjectCode: selectedProject,
+                      toSpender: spender,
+                      amount: amount,
+                      date: new Date().toISOString().split('T')[0],
+                      fromNotes: noteSrc,
+                      toNotes: noteDest,
+                      notes: noteSrc
+                    });
+
+                    // 2. Thực hiện lưu phiếu chi
+                    const action = refundPrompt.pendingAction;
+                    setRefundPrompt(null);
+                    if (action) await action();
+
+                    triggerToast(`Đã tự động rút ${amount.toLocaleString('vi-VN')} đ hoàn bù quỹ thành công!`, 'success');
+                  } catch (err: any) {
+                    triggerToast(err.message || 'Lỗi khi rút hoàn quỹ!', 'warning');
+                  }
+                }}
+                className="px-4 py-1.5 rounded-lg bg-emerald-600 text-white font-bold hover:bg-emerald-700 disabled:opacity-40 transition-colors shadow-xs"
+              >
+                Rút quỹ hoàn trả &amp; Lưu
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
       {/* 3. Modal Chi Phí Công Trình */}
       <Modal isOpen={isNewExpenseOpen} onClose={() => setIsNewExpenseOpen(false)} title="Tạo Phiếu Chi Công trình mới">
         <form onSubmit={async (e) => {
@@ -3743,58 +3989,112 @@ export const ProjectCostPlanPage: React.FC = () => {
           const vatAmt = vat > 0 ? (vat <= 100 ? (rawTotal * vat / 100) : vat) : 0;
           const total = Math.round(rawTotal + vatAmt);
 
-          try {
-            await addExpense({
-              projectCode: selectedProject,
-              stt: newExpenseData.stt || String(currentProjExpenses.length + 1),
-              date: newExpenseData.date || new Date().toISOString().split('T')[0],
-              content: newExpenseData.content || 'Vật tư/ thiết bị',
-              description: newExpenseData.description || '',
-              spenderName: newExpenseData.spenderName || '',
-              unit: newExpenseData.unit || '',
-              quantity: qty,
-              unitPrice: price,
-              taxAmount: vat,
-              totalAmount: total,
-              incomeAmount: Number((newExpenseData as any).incomeAmount || 0),
-              balanceFund: Number((newExpenseData as any).balanceFund || 0),
-              notes: newExpenseData.notes || '',
-              invoiceUrl: newExpenseData.invoiceUrl || ''
+          const spender = (newExpenseData.spenderName || '').trim();
+          // Kiểm tra xem số dư hiện tại của nhân sự này tại dự án có bị âm không
+          const currentSpenderBal = currentProjExpenses
+            .filter(e => (e.spenderName || '').trim() === spender)
+            .reduce((acc, cur) => acc + Number(cur.incomeAmount || 0) - Number(cur.totalAmount || 0), 0);
+
+          const willBeOver = spender && spender !== 'DỰ ÁN' && (currentSpenderBal - total < 0);
+
+          // Tìm các dự án khác của người này còn tồn quỹ dương
+          const candidateProjects: Array<{ projectCode: string; projectName: string; balance: number }> = [];
+          if (willBeOver) {
+            const byOtherProj: Record<string, number> = {};
+            expenses.forEach(e => {
+              const pCode = (e.projectCode || (e as any).project_code || '').trim();
+              if (pCode && pCode !== selectedProject && (e.spenderName || '').trim() === spender) {
+                const bal = Number(e.incomeAmount || 0) - ( (e.content || '').toLowerCase() === 'quỹ' ? 0 : Number(e.totalAmount || 0) );
+                byOtherProj[pCode] = (byOtherProj[pCode] || 0) + bal;
+              }
             });
-
-            if (additionalItems.length > 0) {
-              await Promise.all(additionalItems.map((item, idx) => {
-                const itemQty = Number(item.quantity || 1);
-                const itemPrice = Number(item.unitPrice || 0);
-                const itemVat = Number(item.taxAmount || 0);
-                const itemRaw = itemQty * itemPrice;
-                const itemVatAmt = itemVat > 0 ? (itemVat <= 100 ? (itemRaw * itemVat / 100) : itemVat) : 0;
-                return addExpense({
-                  projectCode: selectedProject,
-                  stt: String(currentProjExpenses.length + 2 + idx),
-                  date: newExpenseData.date || new Date().toISOString().split('T')[0],
-                  content: newExpenseData.content || 'Vật tư/ thiết bị',
-                  description: item.description || '',
-                  spenderName: newExpenseData.spenderName || '',
-                  unit: item.unit || '',
-                  quantity: itemQty,
-                  unitPrice: itemPrice,
-                  taxAmount: itemVat,
-                  totalAmount: Math.round(itemRaw + itemVatAmt),
-                  incomeAmount: Number(item.incomeAmount || 0),
-                  balanceFund: 0,
-                  notes: newExpenseData.notes || '',
-                  invoiceUrl: newExpenseData.invoiceUrl || ''
+            Object.entries(byOtherProj).forEach(([pCode, bal]) => {
+              if (bal > 0) {
+                const pObj = projects.find(p => p.code === pCode || p.id === pCode);
+                candidateProjects.push({
+                  projectCode: pCode,
+                  projectName: pObj?.name || pCode,
+                  balance: bal
                 });
-              }));
-            }
+              }
+            });
+          }
 
-            setIsNewExpenseOpen(false);
-            setNewExpenseData({stt: '', date: new Date().toISOString().split('T')[0], content: 'Vật tư/ thiết bị', description: '', spenderName: '', unit: '', quantity: 1, unitPrice: 0, notes: '', invoiceUrl: ''});
-            setAdditionalItems([]);
-            triggerToast('Đã thêm Chi phí thành công!', 'success');
-          } catch (err: any) {
-            triggerToast(err.message || 'Lỗi khi thêm chi phí!', 'warning');
+          const executeSaveExpense = async () => {
+            try {
+              await addExpense({
+                projectCode: selectedProject,
+                stt: newExpenseData.stt || String(currentProjExpenses.length + 1),
+                date: newExpenseData.date || new Date().toISOString().split('T')[0],
+                content: newExpenseData.content || 'Vật tư/ thiết bị',
+                description: newExpenseData.description || '',
+                spenderName: newExpenseData.spenderName || '',
+                unit: newExpenseData.unit || '',
+                quantity: qty,
+                unitPrice: price,
+                taxAmount: vat,
+                totalAmount: total,
+                incomeAmount: Number((newExpenseData as any).incomeAmount || 0),
+                balanceFund: Number((newExpenseData as any).balanceFund || 0),
+                notes: newExpenseData.notes || '',
+                invoiceUrl: newExpenseData.invoiceUrl || ''
+              });
+
+              if (additionalItems.length > 0) {
+                await Promise.all(additionalItems.map((item, idx) => {
+                  const itemQty = Number(item.quantity || 1);
+                  const itemPrice = Number(item.unitPrice || 0);
+                  const itemVat = Number(item.taxAmount || 0);
+                  const itemRaw = itemQty * itemPrice;
+                  const itemVatAmt = itemVat > 0 ? (itemVat <= 100 ? (itemRaw * itemVat / 100) : itemVat) : 0;
+                  return addExpense({
+                    projectCode: selectedProject,
+                    stt: String(currentProjExpenses.length + 2 + idx),
+                    date: newExpenseData.date || new Date().toISOString().split('T')[0],
+                    content: newExpenseData.content || 'Vật tư/ thiết bị',
+                    description: item.description || '',
+                    spenderName: newExpenseData.spenderName || '',
+                    unit: item.unit || '',
+                    quantity: itemQty,
+                    unitPrice: itemPrice,
+                    taxAmount: itemVat,
+                    totalAmount: Math.round(itemRaw + itemVatAmt),
+                    incomeAmount: Number(item.incomeAmount || 0),
+                    balanceFund: 0,
+                    notes: newExpenseData.notes || '',
+                    invoiceUrl: newExpenseData.invoiceUrl || ''
+                  });
+                }));
+              }
+
+              setIsNewExpenseOpen(false);
+              setNewExpenseData({stt: '', date: new Date().toISOString().split('T')[0], content: 'Vật tư/ thiết bị', description: '', spenderName: '', unit: '', quantity: 1, unitPrice: 0, notes: '', invoiceUrl: ''});
+              setAdditionalItems([]);
+              triggerToast('Đã thêm Chi phí thành công!', 'success');
+            } catch (err: any) {
+              triggerToast(err.message || 'Lỗi khi thêm chi phí!', 'warning');
+            }
+          };
+
+          // Nếu làm âm quỹ, hiển thị popup xác nhận ngay (dù có hay chưa có DA khác dương)
+          if (willBeOver) {
+            setRefundPrompt({
+              isOpen: true,
+              spenderName: spender,
+              expenseAmount: total,
+              candidateProjects,
+              selectedSourceProject: candidateProjects[0]?.projectCode || '',
+              isConfirmedWithSpender: false,
+              pendingAction: executeSaveExpense
+            });
+            return;
+          }
+
+          try {
+            await executeSaveExpense();
+            return;
+          } catch (err) {
+            return;
           }
         }} className="space-y-3 text-xs">
           <div className="grid grid-cols-2 gap-3">

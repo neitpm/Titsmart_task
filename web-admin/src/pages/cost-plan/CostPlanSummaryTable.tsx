@@ -98,20 +98,30 @@ export const CostPlanSummaryTable: React.FC<CostPlanSummaryTableProps> = ({
   };
 
   const summary = useMemo(() => {
-    const bySpender: Record<string, { chi: number; quy: number; count: number }> = {};
+    const bySpender: Record<string, { chi: number; quy: number; count: number; transferredOut: number; realSpent: number }> = {};
     let totalProjectExpense = 0;
     let totalProjectFund = 0;
 
     expenses.forEach((exp) => {
       const name = (exp.spenderName || '').trim() || 'KHÁC';
       if (!bySpender[name]) {
-        bySpender[name] = { chi: 0, quy: 0, count: 0 };
+        bySpender[name] = { chi: 0, quy: 0, count: 0, transferredOut: 0, realSpent: 0 };
       }
       
       const isFundRow = (exp.content || '').trim().toLowerCase() === 'quỹ';
       const chi = isFundRow ? 0 : Number(exp.totalAmount || 0);
       const quy = Number(exp.incomeAmount || 0);
+      const isTransfer = (exp.content || '').toLowerCase().includes('chuyển quỹ') || (exp.description || '').toLowerCase().includes('chuyển quỹ');
       
+      if (!bySpender[name].transferredOut) bySpender[name].transferredOut = 0;
+      if (!bySpender[name].realSpent) bySpender[name].realSpent = 0;
+
+      if (isTransfer) {
+        bySpender[name].transferredOut += chi;
+      } else {
+        bySpender[name].realSpent += chi;
+      }
+
       bySpender[name].chi += chi;
       bySpender[name].quy += quy;
       if (chi > 0) bySpender[name].count += 1;
@@ -382,15 +392,22 @@ export const CostPlanSummaryTable: React.FC<CostPlanSummaryTableProps> = ({
                           {money(ton)}
                         </td>
                         <td className="py-2 px-3 text-center">
-                          <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                            isOver 
-                              ? 'bg-red-100 text-red-700 border border-red-200' 
-                              : ton === 0 
-                                ? 'bg-slate-100 text-slate-600' 
-                                : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                          }`}>
-                            {isOver ? 'Âm quỹ' : ton === 0 ? 'Hết quỹ' : 'Còn giữ quỹ'}
-                          </span>
+                          <div className="flex flex-col items-center gap-0.5">
+                            <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                              isOver 
+                                ? 'bg-red-100 text-red-700 border border-red-200' 
+                                : ton === 0 
+                                  ? 'bg-slate-100 text-slate-600' 
+                                  : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                            }`}>
+                              {isOver ? 'Âm quỹ' : ton === 0 ? 'Hết quỹ' : 'Còn giữ quỹ'}
+                            </span>
+                            {isOver && data.transferredOut > 0 && (
+                              <span className="text-[9px] text-amber-700 font-bold bg-amber-50 border border-amber-200 px-1.5 py-0.2 rounded" title={`Nhân sự này đã chuyển ${money(data.transferredOut)} đ sang dự án khác`}>
+                                Đã chuyển DA khác {money(data.transferredOut)} đ
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="py-2 px-3 text-center" onClick={(e) => e.stopPropagation()}>
                           <div className="flex items-center justify-center gap-1">
@@ -426,6 +443,7 @@ export const CostPlanSummaryTable: React.FC<CostPlanSummaryTableProps> = ({
                                 <span className="material-symbols-outlined text-[15px]">swap_horiz</span>
                               </button>
                             )}
+
                           </div>
                         </td>
                       </tr>

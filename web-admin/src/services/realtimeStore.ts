@@ -724,6 +724,7 @@ const normalizeExpense = (exp: any): ProjectExpense => ({
   notes: exp.notes || '',
   invoiceUrl: exp.invoiceUrl ?? exp.invoice_url ?? '',
   updatedBy: exp.updatedBy ?? exp.updated_by ?? undefined,
+  createdByName: exp.createdByName ?? exp.created_by_name ?? exp.updatedBy ?? exp.updated_by ?? undefined,
   updatedAt: exp.updatedAt ?? exp.updated_at ?? undefined,
 });
 
