@@ -11,6 +11,7 @@ import { CustomSelect } from '../components/common/CustomSelect';
 import { Toast } from '../components/common/Toast';
 import * as XLSX from 'xlsx';
 import { exportToStyledExcel } from '../utils/excelExportUtils';
+import { exportMonthlyAttendanceTitsmart } from '../utils/exportMonthlyAttendance';
 
 import { LeaveRequest, LeaveType, AttendanceAdjustmentRequest, AttendanceAdjustmentType } from '../types';
 import { PullToRefresh } from '../components/common/PullToRefresh';
@@ -381,6 +382,35 @@ export const AttendancePage: React.FC = () => {
       };
     }
   }, [isHighlightActive, highlightLeaveId, leaves]);
+
+  const handleExportMonthlyTitsmart = async () => {
+    try {
+      // Xác định tháng và năm từ filterDateFrom hoặc ngày hiện tại
+      let targetMonth = new Date().getMonth() + 1;
+      let targetYear = new Date().getFullYear();
+
+      if (filterDateFrom) {
+        const d = new Date(filterDateFrom);
+        if (!isNaN(d.getTime())) {
+          targetMonth = d.getMonth() + 1;
+          targetYear = d.getFullYear();
+        }
+      }
+
+      await exportMonthlyAttendanceTitsmart({
+        month: targetMonth,
+        year: targetYear,
+        logs: logs,
+        leaves: leaves,
+        engineers: engineers
+      });
+
+      setToast({ show: true, message: `Đã xuất Bảng chấm công Tháng ${targetMonth}/${targetYear} theo form chuẩn TITSMART thành công!`, type: 'success' });
+    } catch (err: any) {
+      console.error('Lỗi khi xuất bảng chấm công:', err);
+      setToast({ show: true, message: err.message || 'Lỗi khi xuất file Excel', type: 'error' });
+    }
+  };
 
   const handleExportExcel = async (format: 'xlsx' | 'csv' | 'docx' = 'xlsx') => {
     if (!filteredLogs.length) return;
@@ -1219,9 +1249,9 @@ export const AttendancePage: React.FC = () => {
   return (
     <div className="flex flex-col flex-1 min-h-0 bg-slate-100 overflow-hidden">
       {/* Header */}
-      <header className="sticky top-0 z-30 border-b border-slate-200 bg-white px-2 py-1.5 md:py-0 md:h-12 flex items-center justify-between gap-1.5 shrink-0 pr-20 md:pr-24 lg:pr-28">
+      <header className="sticky top-0 z-30 border-b border-slate-200 bg-white px-2 py-1.5 md:py-0 md:h-12 flex items-center justify-between gap-1.5 shrink-0 pr-12 sm:pr-14 md:pr-16">
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-          <div className="hidden sm:flex items-center border-l-4 border-primary pl-1.5">
+          <div className="hidden xl:flex items-center border-l-4 border-primary pl-1.5">
             <h1 className="page-title text-xs sm:text-sm md:text-base font-extrabold text-slate-900 shrink-0">
               {mainTab === 'attendance' ? 'Chấm công' : mainTab === 'leave' ? 'Nghỉ phép' : 'Chấm công bù'}
             </h1>
@@ -1230,7 +1260,7 @@ export const AttendancePage: React.FC = () => {
             <button
               type="button"
               onClick={() => setMainTab('attendance')}
-              className={`px-2 py-1 sm:px-2.5 sm:py-1 text-xs font-semibold rounded-md transition-all flex items-center gap-1 cursor-pointer select-none shrink-0 ${mainTab === 'attendance' ? 'bg-white text-slate-900 shadow-xs font-bold ring-1 ring-slate-200/80' : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'}`}
+              className={`px-1.5 py-1 sm:px-2 sm:py-1 text-xs font-semibold rounded-md transition-all flex items-center gap-1 cursor-pointer select-none shrink-0 ${mainTab === 'attendance' ? 'bg-white text-slate-900 shadow-xs font-bold ring-1 ring-slate-200/80' : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'}`}
             >
               <span className="material-symbols-outlined text-[15px]">fingerprint</span>
               <span>Chấm công</span>
@@ -1238,7 +1268,7 @@ export const AttendancePage: React.FC = () => {
             <button
               type="button"
               onClick={() => setMainTab('leave')}
-              className={`px-2 py-1 sm:px-2.5 sm:py-1 text-xs font-semibold rounded-md transition-all flex items-center gap-1 cursor-pointer select-none shrink-0 ${mainTab === 'leave' ? 'bg-white text-slate-900 shadow-xs font-bold ring-1 ring-slate-200/80' : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'}`}
+              className={`px-1.5 py-1 sm:px-2 sm:py-1 text-xs font-semibold rounded-md transition-all flex items-center gap-1 cursor-pointer select-none shrink-0 ${mainTab === 'leave' ? 'bg-white text-slate-900 shadow-xs font-bold ring-1 ring-slate-200/80' : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'}`}
             >
               <span className="material-symbols-outlined text-[15px]">event_busy</span>
               <span>Xin nghỉ</span>
@@ -1251,10 +1281,10 @@ export const AttendancePage: React.FC = () => {
             <button
               type="button"
               onClick={() => setMainTab('adjustment')}
-              className={`px-2 py-1 sm:px-2.5 sm:py-1 text-xs font-semibold rounded-md transition-all flex items-center gap-1 cursor-pointer select-none shrink-0 ${mainTab === 'adjustment' ? 'bg-white text-slate-900 shadow-xs font-bold ring-1 ring-slate-200/80' : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'}`}
+              className={`px-1.5 py-1 sm:px-2 sm:py-1 text-xs font-semibold rounded-md transition-all flex items-center gap-1 cursor-pointer select-none shrink-0 ${mainTab === 'adjustment' ? 'bg-white text-slate-900 shadow-xs font-bold ring-1 ring-slate-200/80' : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'}`}
             >
               <span className="material-symbols-outlined text-[15px]">edit_calendar</span>
-              <span>Chấm công bù</span>
+              <span>Bù công</span>
               {adjustments.filter(a => a.status === 'PENDING' || a.status === 'PENDING_STEP1').length > 0 && (
                 <span className="ml-0.5 px-1.5 py-0.2 bg-amber-500 text-white rounded-full text-[10px] font-bold">
                   {adjustments.filter(a => a.status === 'PENDING' || a.status === 'PENDING_STEP1').length}
@@ -1265,7 +1295,7 @@ export const AttendancePage: React.FC = () => {
         </div>
 
         {/* Desktop-only Right controls (My/All switcher + Action Button) pushed to far right */}
-        <div className="hidden md:flex items-center gap-2 lg:gap-3 shrink-0">
+        <div className="hidden md:flex items-center gap-1.5 lg:gap-2 shrink-0">
           {canViewAll && (
             <div className="inline-flex items-center gap-0.5 bg-slate-100 rounded-lg p-0.5 border border-slate-200 text-xs shrink-0">
               <button
@@ -1289,7 +1319,7 @@ export const AttendancePage: React.FC = () => {
                     type="date"
                     value={filterDateFrom}
                     onChange={e => setFilterDateFrom(e.target.value)}
-                    className="bg-transparent border-none outline-none text-xs w-[95px] text-slate-700 cursor-pointer"
+                    className="bg-transparent border-none outline-none text-xs w-[88px] text-slate-700 cursor-pointer"
                   />
                   <span className="text-slate-300">|</span>
                   <span className="text-slate-400 font-medium whitespace-nowrap text-[11px]">Đến</span>
@@ -1297,7 +1327,7 @@ export const AttendancePage: React.FC = () => {
                     type="date"
                     value={filterDateTo}
                     onChange={e => setFilterDateTo(e.target.value)}
-                    className="bg-transparent border-none outline-none text-xs w-[95px] text-slate-700 cursor-pointer"
+                    className="bg-transparent border-none outline-none text-xs w-[88px] text-slate-700 cursor-pointer"
                   />
                   {(filterDateFrom || filterDateTo) && (
                     <button
@@ -1314,7 +1344,7 @@ export const AttendancePage: React.FC = () => {
 
               {/* User filter if viewing all */}
               {canViewAll && tab === 'all' && (
-                <div className="flex items-center gap-1.5">
+                <div className="hidden lg:flex items-center gap-1.5">
                   <span className="material-symbols-outlined text-slate-400 text-[18px]">person</span>
                   <CustomSelect value={filterUser} onChange={e => setFilterUser(e.target.value)}
                     searchable={true}
@@ -1335,7 +1365,7 @@ export const AttendancePage: React.FC = () => {
                   placeholder="Tìm kiếm..."
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
-                  className="pl-7 pr-6 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-primary focus:outline-none h-8 w-36 lg:w-44 transition-colors"
+                  className="pl-7 pr-6 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-primary focus:outline-none h-8 w-24 md:w-28 lg:w-36 transition-colors"
                 />
                 {searchQuery && (
                   <button
@@ -1364,12 +1394,13 @@ export const AttendancePage: React.FC = () => {
                     <div className="fixed inset-0 z-40" onClick={() => setShowExportMenu(false)} />
                   )}
                   {showExportMenu && (
-                    <div className="absolute right-0 top-full mt-1 w-44 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-50 animate-in fade-in zoom-in duration-100">
+                    <div className="absolute right-0 top-full mt-1 w-64 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-50 animate-in fade-in zoom-in duration-100">
                       <button
-                        onClick={() => { setShowExportMenu(false); handleExportExcel('xlsx'); }}
+                        onClick={() => { setShowExportMenu(false); handleExportMonthlyTitsmart(); }}
                         className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
+                        title="Xuất bảng chấm công Excel theo mẫu TITSMART"
                       >
-                        <span className="material-symbols-outlined text-base text-green-600">grid_on</span>
+                        <span className="material-symbols-outlined text-base text-emerald-600">grid_on</span>
                         Excel (.xlsx)
                       </button>
                       <button
@@ -1400,7 +1431,7 @@ export const AttendancePage: React.FC = () => {
 
               <button
                 onClick={() => setShowCheckInModal(true)}
-                className="flex items-center justify-center gap-1.5 px-2.5 sm:px-3.5 py-1 bg-primary hover:bg-blue-800 text-white font-bold text-xs sm:text-sm rounded-lg shadow-sm transition-colors shrink-0 h-8 cursor-pointer active:scale-95"
+                className="flex items-center justify-center gap-1.5 px-2 sm:px-2.5 py-1 bg-primary hover:bg-blue-800 text-white font-bold text-xs rounded-lg shadow-sm transition-colors shrink-0 h-8 cursor-pointer active:scale-95"
                 title="Chấm công"
               >
                 <span className="material-symbols-outlined text-[18px]">fingerprint</span>
@@ -1417,7 +1448,7 @@ export const AttendancePage: React.FC = () => {
                     type="date"
                     value={leaveFilterDateFrom}
                     onChange={e => setLeaveFilterDateFrom(e.target.value)}
-                    className="bg-transparent border-none outline-none text-xs w-[95px] text-slate-700 cursor-pointer"
+                    className="bg-transparent border-none outline-none text-xs w-[88px] text-slate-700 cursor-pointer"
                   />
                   <span className="text-slate-300">|</span>
                   <span className="text-slate-400 font-medium whitespace-nowrap text-[11px]">Đến</span>
@@ -1425,7 +1456,7 @@ export const AttendancePage: React.FC = () => {
                     type="date"
                     value={leaveFilterDateTo}
                     onChange={e => setLeaveFilterDateTo(e.target.value)}
-                    className="bg-transparent border-none outline-none text-xs w-[95px] text-slate-700 cursor-pointer"
+                    className="bg-transparent border-none outline-none text-xs w-[88px] text-slate-700 cursor-pointer"
                   />
                   {(leaveFilterDateFrom || leaveFilterDateTo) && (
                     <button
@@ -1448,7 +1479,7 @@ export const AttendancePage: React.FC = () => {
                   placeholder="Tìm kiếm nghỉ phép..."
                   value={leaveSearchQuery}
                   onChange={e => setLeaveSearchQuery(e.target.value)}
-                  className="pl-7 pr-6 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-primary focus:outline-none h-8 w-36 lg:w-48 transition-colors"
+                  className="pl-7 pr-6 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-primary focus:outline-none h-8 w-24 md:w-28 lg:w-40 transition-colors"
                 />
                 {leaveSearchQuery && (
                   <button
@@ -1539,7 +1570,7 @@ export const AttendancePage: React.FC = () => {
                     type="date"
                     value={adjFilterDateFrom}
                     onChange={e => setAdjFilterDateFrom(e.target.value)}
-                    className="bg-transparent border-none outline-none text-xs w-[95px] text-slate-700 cursor-pointer"
+                    className="bg-transparent border-none outline-none text-xs w-[88px] text-slate-700 cursor-pointer"
                   />
                   <span className="text-slate-300">|</span>
                   <span className="text-slate-400 font-medium whitespace-nowrap text-[11px]">Đến</span>
@@ -1547,7 +1578,7 @@ export const AttendancePage: React.FC = () => {
                     type="date"
                     value={adjFilterDateTo}
                     onChange={e => setAdjFilterDateTo(e.target.value)}
-                    className="bg-transparent border-none outline-none text-xs w-[95px] text-slate-700 cursor-pointer"
+                    className="bg-transparent border-none outline-none text-xs w-[88px] text-slate-700 cursor-pointer"
                   />
                   {(adjFilterDateFrom || adjFilterDateTo) && (
                     <button type="button" onClick={() => { setAdjFilterDateFrom(''); setAdjFilterDateTo(''); }} className="text-slate-400 hover:text-slate-600 px-0.5 text-xs font-bold" title="Xóa lọc ngày">✕</button>
