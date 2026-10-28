@@ -402,6 +402,7 @@ export const AttendancePage: React.FC = () => {
         year: targetYear,
         logs: logs,
         leaves: leaves,
+        adjustments: adjustments,
         engineers: engineers
       });
 
@@ -787,6 +788,7 @@ export const AttendancePage: React.FC = () => {
             userName: updatedAdj.userName,
             projectId: updatedAdj.projectId,
             projectName: updatedAdj.projectName,
+            checkInTime: inIso,
             notes: `[Chấm công bù - Đã duyệt] ${updatedAdj.adjustmentType}: ${updatedAdj.reason}`,
           });
           // Ghi đè thời gian chính xác
@@ -890,6 +892,7 @@ export const AttendancePage: React.FC = () => {
         'STT': index + 1,
         'Nhân viên': adj.userName,
         'Loại bù': adj.adjustmentType,
+        'Ngày tạo đơn': formatDateTime(adj.createdAt),
         'Ngày cần bù': formatDate(adj.adjustmentDate),
         'Giờ vào yêu cầu': adj.checkInTime ? formatTime(adj.checkInTime) : '—',
         'Giờ ra yêu cầu': adj.checkOutTime ? formatTime(adj.checkOutTime) : '—',
@@ -2314,6 +2317,7 @@ export const AttendancePage: React.FC = () => {
                         </div>
 
                         <div className="text-xs text-slate-600 space-y-1 bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                          <p><strong className="text-slate-700">Ngày tạo:</strong> <span className="text-blue-600 font-semibold">{formatDateTime(adj.createdAt)}</span></p>
                           <p><strong className="text-slate-700">Ngày bù:</strong> {formatDate(adj.adjustmentDate)}</p>
                           {adj.checkInTime && <p><strong className="text-slate-700">Giờ vào:</strong> {formatTime(adj.checkInTime)}</p>}
                           {adj.checkOutTime && <p><strong className="text-slate-700">Giờ ra:</strong> {formatTime(adj.checkOutTime)}</p>}
@@ -2359,6 +2363,7 @@ export const AttendancePage: React.FC = () => {
                       <tr className="border-b border-slate-200 bg-slate-100/70 text-slate-600 font-bold uppercase sticky top-0 z-10 text-[10px]">
                         <th className="p-3 w-40 whitespace-nowrap">Nhân viên</th>
                         <th className="p-3 w-28 whitespace-nowrap">Loại bù</th>
+                        <th className="p-3 w-32 whitespace-nowrap">Ngày tạo</th>
                         <th className="p-3 w-28 whitespace-nowrap">Ngày cần bù</th>
                         <th className="p-3 w-32 whitespace-nowrap">Giờ vào/ra</th>
                         <th className="p-3 w-36 whitespace-nowrap">Dự án</th>
@@ -2381,7 +2386,10 @@ export const AttendancePage: React.FC = () => {
                                 {adj.adjustmentType}
                               </span>
                             </td>
-                            <td className="p-3 font-medium text-slate-800 whitespace-nowrap">{formatDate(adj.adjustmentDate)}</td>
+                            <td className="p-3 text-slate-500 whitespace-nowrap font-medium text-[11px]">
+                              {formatDateTime(adj.createdAt)}
+                            </td>
+                            <td className="p-3 font-bold text-slate-800 whitespace-nowrap">{formatDate(adj.adjustmentDate)}</td>
                             <td className="p-3 font-medium text-slate-700 whitespace-nowrap">
                               {adj.checkInTime ? formatTime(adj.checkInTime) : '—'}
                               {' → '}
@@ -2608,7 +2616,8 @@ export const AttendancePage: React.FC = () => {
             <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 text-xs space-y-1.5">
               <p><span className="font-bold text-slate-700">Nhân viên:</span> <strong className="text-slate-900">{reviewAdj.userName}</strong></p>
               <p><span className="font-bold text-slate-700">Loại bù:</span> {reviewAdj.adjustmentType}</p>
-              <p><span className="font-bold text-slate-700">Ngày bù:</span> {formatDate(reviewAdj.adjustmentDate)}</p>
+              <p><span className="font-bold text-slate-700">Ngày tạo đơn:</span> <span className="text-blue-600 font-semibold">{formatDateTime(reviewAdj.createdAt)}</span></p>
+              <p><span className="font-bold text-slate-700">Ngày cần bù:</span> <strong className="text-slate-900">{formatDate(reviewAdj.adjustmentDate)}</strong></p>
               <p><span className="font-bold text-slate-700">Giờ vào/ra:</span> {reviewAdj.checkInTime ? formatTime(reviewAdj.checkInTime) : '—'} → {reviewAdj.checkOutTime ? formatTime(reviewAdj.checkOutTime) : '—'}</p>
               <p><span className="font-bold text-slate-700">Lý do:</span> {reviewAdj.reason}</p>
             </div>

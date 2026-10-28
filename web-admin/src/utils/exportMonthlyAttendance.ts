@@ -1,5 +1,5 @@
 import ExcelJS from 'exceljs';
-import { Engineer, LeaveRequest } from '../types';
+import { Engineer, LeaveRequest, AttendanceAdjustmentRequest } from '../types';
 
 export interface AttendanceMonthlyExportOptions {
   month: number; // 1 - 12
@@ -13,6 +13,7 @@ export interface AttendanceMonthlyExportOptions {
     notes?: string;
   }>;
   leaves?: LeaveRequest[];
+  adjustments?: AttendanceAdjustmentRequest[];
   engineers: Engineer[];
 }
 
@@ -21,6 +22,7 @@ export async function exportMonthlyAttendanceTitsmart({
   year,
   logs,
   leaves = [],
+  adjustments = [],
   engineers,
 }: AttendanceMonthlyExportOptions): Promise<void> {
   const daysInMonth = new Date(year, month, 0).getDate();
@@ -173,6 +175,23 @@ export async function exportMonthlyAttendanceTitsmart({
     }
   });
 
+  // Gom thêm từ adjustments (đề xuất chấm công bù) nếu có nhân viên mới
+  adjustments.forEach(a => {
+    if (!a.userName && !a.userId) return;
+    const name = (a.userName || '').trim() || 'Nhân viên';
+    const key = normalizeName(name);
+    if (employeeMap.has(key)) {
+      if (a.userId) employeeMap.get(key)!.userIds.add(a.userId);
+    } else {
+      employeeMap.set(key, {
+        id: a.userId,
+        code: String(employeeMap.size + 1).padStart(3, '0'),
+        name: name,
+        userIds: new Set(a.userId ? [a.userId] : []),
+      });
+    }
+  });
+
   // Sắp xếp danh sách nhân viên theo tên tiếng Việt và gán lại mã nhân viên liên tục từ 001..
   const employeeList = Array.from(employeeMap.values())
     .sort((a, b) => a.name.localeCompare(b.name, 'vi'))
@@ -200,13 +219,50 @@ export async function exportMonthlyAttendanceTitsmart({
           ot = Math.round((totalH - 8.5) * 10) / 10;
         } else if (totalH >= 4 && totalH < 7.5) {
           hours = 4;
-        } else if (totalH < 4) {
-          hours = 0;
+        } else if (totalH < 4 && totalH > 0.05) {
+          // Đi làm thực tế ít hơn 4 tiếng nhưng trên 3 phút (ví dụ nửa buổi ngắn)
+          hours = 4;
+        } else if (totalH <= 0.05) {
+          // Bấm check-in rồi check-out ngay lập tức trong vài giây do thao tác nhầm: vẫn tính 1 công làm việc (8h)
+          hours = 8;
         } else {
           hours = 8;
         }
       }
-      logByEmpDay[l.userId][day] = { durationHours: hours, otHours: ot };
+      
+      const prev = logByEmpDay[l.userId][day];
+      if (!prev) {
+        logByEmpDay[l.userId][day] = { durationHours: hours, otHours: ot };
+      } else {
+        logByEmpDay[l.userId][day] = {
+          durationHours: Math.max(prev.durationHours, hours),
+          otHours: Math.max(prev.otHours, ot)
+        };
+      }
+    }
+  });
+
+  // Tích hợp trực tiếp các yêu cầu chấm công bù đã được duyệt (APPROVED hoặc APPROVED_STEP1)
+  adjustments.filter(a => a.status === 'APPROVED' || a.status === 'APPROVED_STEP1').forEach(adj => {
+    if (!adj.userId || !adj.adjustmentDate) return;
+    const d = new Date(adj.adjustmentDate);
+    if (d.getFullYear() === year && d.getMonth() + 1 === month) {
+      const day = d.getDate();
+      if (!logByEmpDay[adj.userId]) logByEmpDay[adj.userId] = {};
+
+      let hours = 8;
+      if (adj.adjustmentType === 'Bù vào ca' || adj.adjustmentType === 'Bù ra ca') {
+        hours = 8;
+      } else if (adj.adjustmentType === 'Bù cả ngày') {
+        hours = 8;
+      }
+
+      const prev = logByEmpDay[adj.userId][day];
+      if (!prev) {
+        logByEmpDay[adj.userId][day] = { durationHours: hours, otHours: 0 };
+      } else {
+        logByEmpDay[adj.userId][day].durationHours = Math.max(prev.durationHours, hours);
+      }
     }
   });
 

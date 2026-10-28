@@ -2188,13 +2188,13 @@ export const api = {
         return [];
       }
     },
-    checkIn: async (input: { userId: string; userName: string; projectId?: string; projectName?: string; checkInImage?: string; notes?: string }) => {
+    checkIn: async (input: { userId: string; userName: string; projectId?: string; projectName?: string; checkInImage?: string; notes?: string; checkInTime?: string }) => {
       const payloadData = {
         userId: input.userId,
         userName: input.userName,
         projectId: input.projectId || null,
         projectName: input.projectName || null,
-        checkInTime: new Date().toISOString(),
+        checkInTime: input.checkInTime || new Date().toISOString(),
         checkOutTime: null,
         checkInImage: input.checkInImage || null,
         checkOutImage: null,
