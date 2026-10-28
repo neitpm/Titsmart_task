@@ -407,10 +407,10 @@ export const AttendancePage: React.FC = () => {
         engineers: engineers
       });
 
-      setToast({ show: true, message: `Đã xuất Bảng chấm công Tháng ${targetMonth}/${targetYear} theo form chuẩn TITSMART thành công!`, type: 'success' });
+      showToast(`Đã xuất Bảng chấm công Tháng ${targetMonth}/${targetYear} theo form chuẩn TITSMART thành công!`, 'success');
     } catch (err: any) {
       console.error('Lỗi khi xuất bảng chấm công:', err);
-      setToast({ show: true, message: err.message || 'Lỗi khi xuất file Excel', type: 'error' });
+      showToast(err.message || 'Lỗi khi xuất file Excel', 'error');
     }
   };
 
