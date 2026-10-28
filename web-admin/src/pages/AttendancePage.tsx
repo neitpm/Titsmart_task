@@ -2341,7 +2341,7 @@ export const AttendancePage: React.FC = () => {
                                 onClick={() => { setReviewAdj(adj); setReviewAdjStep(2); setReviewAdjNote(''); }}
                                 className="px-2.5 py-1 bg-primary text-white font-bold rounded text-xs"
                               >
-                                BGD Duyệt
+                                Duyệt
                               </button>
                             )}
                             {(isAdmin || adj.userId === user?.id) && (
@@ -2434,7 +2434,7 @@ export const AttendancePage: React.FC = () => {
                                   <button
                                     onClick={() => { setReviewAdj(adj); setReviewAdjStep(2); setReviewAdjNote(''); }}
                                     className="px-2 py-1 bg-primary text-white hover:bg-blue-800 rounded text-[11px] font-bold cursor-pointer"
-                                  >BGD Duyệt</button>
+                                  >Duyệt</button>
                                 )}
                                 {(isAdmin || adj.userId === user?.id) && (
                                   <button onClick={() => setDeleteAdjId(adj.id)} className="w-7 h-7 rounded-full inline-flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors">
