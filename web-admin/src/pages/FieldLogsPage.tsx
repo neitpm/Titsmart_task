@@ -467,7 +467,7 @@ export const FieldLogsPage: React.FC = () => {
     <div className="flex flex-col flex-1 min-h-0 bg-slate-100 overflow-hidden">
       {/* Header */}
       {!projectId && (
-        <header className="sticky top-0 z-20 border-b border-slate-200 bg-white px-3 py-4 md:py-0 md:h-12 shadow-sm pr-16 md:pr-24">
+        <header className="sticky top-0 z-20 border-b border-slate-200 bg-white px-3 py-4 md:py-0 md:h-12 shadow-sm pr-12 sm:pr-14 md:pr-16">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between h-full">
             <div className="flex items-center gap-4">
               <div>
