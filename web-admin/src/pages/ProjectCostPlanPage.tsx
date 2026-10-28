@@ -404,13 +404,14 @@ export const ProjectCostPlanPage: React.FC = () => {
 
       const norm = (s?: string) => String(s || '').trim().toLowerCase().replace(/\s+/g, ' ');
 
-      // Đồng bộ STT, tên, đơn vị, khối lượng, trạng thái đặt hàng sang Purchasing + Task
+      // Đồng bộ STT, tên, đơn vị, khối lượng, trạng thái đặt hàng, tình trạng kỹ thuật sang Purchasing + Task
       if (
         updates.stt !== undefined ||
         updates.jobContent !== undefined ||
         updates.unit !== undefined ||
         updates.contractVolume !== undefined ||
-        updates.orderedStatus !== undefined
+        updates.orderedStatus !== undefined ||
+        updates.techSpecStatus !== undefined
       ) {
         const matchingPurchasing = purchasingPlans.find(p =>
           p.projectCode === existing.projectCode &&
@@ -451,12 +452,20 @@ export const ProjectCostPlanPage: React.FC = () => {
             nextStatus = matchingTask.assignedEngineerId ? 'Chờ nhận việc' : 'Chưa làm';
           }
 
+          let nextNotes = matchingTask.notes || '';
+          if (updates.techSpecStatus !== undefined) {
+            const clean = nextNotes.replace(/\[tech-status:[^\]]+\]/gi, '').trim();
+            nextNotes = updates.techSpecStatus ? (clean ? `${clean}\n[tech-status:${updates.techSpecStatus}]` : `[tech-status:${updates.techSpecStatus}]`) : clean;
+          }
+
           updateTask(matchingTask.id, {
             stt: updates.stt !== undefined ? updates.stt : matchingTask.stt,
             name: updates.jobContent !== undefined ? updates.jobContent : matchingTask.name,
             unit: updates.unit !== undefined ? updates.unit : matchingTask.unit,
             volume: updates.contractVolume !== undefined ? updates.contractVolume : matchingTask.volume,
             purchaseStatus: nextPurchaseStatus,
+            techSpecStatus: updates.techSpecStatus !== undefined ? updates.techSpecStatus : matchingTask.techSpecStatus,
+            notes: nextNotes,
             progress: nextProgress,
             isDone: nextProgress >= 1,
             status: nextStatus

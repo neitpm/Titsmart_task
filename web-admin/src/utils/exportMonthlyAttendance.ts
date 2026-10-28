@@ -121,33 +121,70 @@ export async function exportMonthlyAttendanceTitsmart({
   });
 
   // 3. TẬP HỢP DỮ LIỆU NHÂN VIÊN & ĐIỂM DANH
-  // Lấy danh sách nhân viên từ danh sách engineers
-  const userMap: Record<string, { code: string; name: string; id: string }> = {};
-  engineers.forEach((eng, i) => {
-    userMap[eng.id] = {
-      id: eng.id,
-      code: eng.code || String(i + 1).padStart(3, '0'),
-      name: eng.name,
-    };
-  });
+  // Chuẩn hóa tên nhân viên để tránh trùng lặp do tài khoản hoặc userId khác nhau
+  const normalizeName = (s: string) =>
+    String(s || '')
+      .trim()
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[\u0111\u0110]/g, 'd')
+      .replace(/\s+/g, ' ');
 
-  // Gom thêm user có log chấm công nhưng chưa nằm trong engineers
-  logs.forEach(l => {
-    if (l.userId && !userMap[l.userId]) {
-      userMap[l.userId] = {
-        id: l.userId,
-        code: String(Object.keys(userMap).length + 1).padStart(3, '0'),
-        name: l.userName || 'Nhân viên',
-      };
+  interface UnifiedEmployee {
+    id: string;
+    code: string;
+    name: string;
+    userIds: Set<string>;
+  }
+
+  const employeeMap = new Map<string, UnifiedEmployee>();
+
+  // 1. Thêm từ danh sách nhân sự chính thức (engineers)
+  engineers.forEach((eng, i) => {
+    if (!eng.name || !eng.name.trim()) return;
+    const key = normalizeName(eng.name);
+    if (employeeMap.has(key)) {
+      employeeMap.get(key)!.userIds.add(eng.id);
+    } else {
+      employeeMap.set(key, {
+        id: eng.id,
+        code: eng.code || String(employeeMap.size + 1).padStart(3, '0'),
+        name: eng.name.trim(),
+        userIds: new Set([eng.id]),
+      });
     }
   });
 
-  const employeeList = Object.values(userMap).sort((a, b) => a.name.localeCompare(b.name, 'vi'));
+  // 2. Gom thêm từ logs chấm công (nếu trùng tên với nhân sự đã có -> gộp userIds; nếu mới hoàn toàn -> thêm mới)
+  logs.forEach(l => {
+    if (!l.userName && !l.userId) return;
+    const name = (l.userName || '').trim() || 'Nhân viên';
+    const key = normalizeName(name);
+    if (employeeMap.has(key)) {
+      if (l.userId) employeeMap.get(key)!.userIds.add(l.userId);
+    } else {
+      employeeMap.set(key, {
+        id: l.userId,
+        code: String(employeeMap.size + 1).padStart(3, '0'),
+        name: name,
+        userIds: new Set(l.userId ? [l.userId] : []),
+      });
+    }
+  });
+
+  // Sắp xếp danh sách nhân viên theo tên tiếng Việt và gán lại mã nhân viên liên tục từ 001..
+  const employeeList = Array.from(employeeMap.values())
+    .sort((a, b) => a.name.localeCompare(b.name, 'vi'))
+    .map((emp, index) => ({
+      ...emp,
+      code: String(index + 1).padStart(3, '0'),
+    }));
 
   // Xây dựng map tra cứu chấm công theo [userId][dayOfMonth]
   const logByEmpDay: Record<string, Record<number, { durationHours: number; otHours: number }>> = {};
   logs.forEach(l => {
-    if (!l.checkInTime) return;
+    if (!l.checkInTime || !l.userId) return;
     const d = new Date(l.checkInTime);
     if (d.getFullYear() === year && d.getMonth() + 1 === month) {
       const day = d.getDate();
@@ -176,6 +213,7 @@ export async function exportMonthlyAttendanceTitsmart({
   // Xây dựng map nghỉ phép đã duyệt [userId][dayOfMonth]
   const leaveByEmpDay: Record<string, Record<number, string>> = {};
   leaves.filter(lv => lv.status === 'APPROVED' || lv.status === 'APPROVED_STEP1').forEach(lv => {
+    if (!lv.userId) return;
     const sDate = new Date(lv.startDate);
     const eDate = new Date(lv.endDate);
     for (let cur = new Date(sDate); cur <= eDate; cur.setDate(cur.getDate() + 1)) {
@@ -237,8 +275,28 @@ export async function exportMonthlyAttendanceTitsmart({
       const dateObj = new Date(year, month - 1, d);
       const isSunday = dateObj.getDay() === 0;
 
-      const logData = logByEmpDay[emp.id]?.[d];
-      const leaveSign = leaveByEmpDay[emp.id]?.[d];
+      // Lấy dữ liệu điểm danh và nghỉ phép từ tất cả các userIds của nhân viên
+      let logData: { durationHours: number; otHours: number } | undefined = undefined;
+      for (const uId of emp.userIds) {
+        const found = logByEmpDay[uId]?.[d];
+        if (found) {
+          if (!logData) {
+            logData = { ...found };
+          } else {
+            logData.durationHours = Math.max(logData.durationHours, found.durationHours);
+            logData.otHours = Math.max(logData.otHours, found.otHours);
+          }
+        }
+      }
+
+      let leaveSign: string | undefined = undefined;
+      for (const uId of emp.userIds) {
+        const found = leaveByEmpDay[uId]?.[d];
+        if (found) {
+          leaveSign = found;
+          break;
+        }
+      }
 
       const cellHC = ws.getCell(rHC, colIdx);
       const cellTC = ws.getCell(rTC, colIdx);

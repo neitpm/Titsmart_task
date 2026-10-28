@@ -495,7 +495,7 @@ interface RealtimeStoreState {
   // New Actions
   addMaterialPlan: (plan: Omit<ProjectMaterialPlan, 'id'> & { id?: string }, skipLog?: boolean) => Promise<string | undefined>;
   addMaterialPlansBatch: (plans: (Omit<ProjectMaterialPlan, 'id'> & { id?: string })[]) => Promise<ProjectMaterialPlan[]>;
-  updateMaterialPlan: (id: string, fields: Partial<ProjectMaterialPlan>) => Promise<void>;
+  updateMaterialPlan: (id: string, fields: Partial<ProjectMaterialPlan>, skipLog?: boolean) => Promise<void>;
   deleteMaterialPlan: (id: string) => Promise<void>;
   addPurchasingPlan: (plan: Omit<ProjectPurchasing, 'id'> & { id?: string }, skipLog?: boolean) => Promise<string | undefined>;
   addPurchasingsBatch: (plans: (Omit<ProjectPurchasing, 'id'> & { id?: string })[]) => Promise<ProjectPurchasing[]>;
@@ -1349,7 +1349,20 @@ export const useRealtimeStore = create<RealtimeStoreState>((set, get) => {
           persistAndNotify({ tasks: nextTasks, projects: nextProjects });
           return { tasks: nextTasks, projects: nextProjects };
         });
-        get().logActivity('Đã chỉnh sửa thông tin công việc', mergedTask.projectName || mergedTask.projectCode);
+        const changes: string[] = [];
+        if (existingTask) {
+          if (updatedFields.name !== undefined && updatedFields.name !== existingTask.name) changes.push(`Tên: "${existingTask.name || ''}" -> "${updatedFields.name || ''}"`);
+          if (updatedFields.stt !== undefined && updatedFields.stt !== existingTask.stt) changes.push(`STT: "${existingTask.stt || ''}" -> "${updatedFields.stt || ''}"`);
+          if (updatedFields.status !== undefined && updatedFields.status !== existingTask.status) changes.push(`Trạng thái: "${existingTask.status || ''}" -> "${updatedFields.status || ''}"`);
+          if (updatedFields.purchaseStatus !== undefined && updatedFields.purchaseStatus !== existingTask.purchaseStatus) changes.push(`Đặt hàng: "${existingTask.purchaseStatus || ''}" -> "${updatedFields.purchaseStatus || ''}"`);
+          if (updatedFields.constrStatus !== undefined && updatedFields.constrStatus !== existingTask.constrStatus) changes.push(`Thi công: "${existingTask.constrStatus || ''}" -> "${updatedFields.constrStatus || ''}"`);
+          if (updatedFields.progress !== undefined && updatedFields.progress !== existingTask.progress) changes.push(`Tiến độ: ${Math.round((existingTask.progress || 0) * 100)}% -> ${Math.round(updatedFields.progress * 100)}%`);
+          if (updatedFields.volume !== undefined && updatedFields.volume !== existingTask.volume) changes.push(`Khối lượng: ${existingTask.volume || 0} -> ${updatedFields.volume}`);
+          if (updatedFields.unit !== undefined && updatedFields.unit !== existingTask.unit) changes.push(`ĐVT: "${existingTask.unit || ''}" -> "${updatedFields.unit || ''}"`);
+          if (updatedFields.assignedEngineerName !== undefined && updatedFields.assignedEngineerName !== existingTask.assignedEngineerName) changes.push(`Phân công: "${existingTask.assignedEngineerName || 'Chưa giao'}" -> "${updatedFields.assignedEngineerName || 'Chưa giao'}"`);
+        }
+        const detailStr = changes.length > 0 ? ` |Detail:Dự án ${mergedTask.projectCode}, Đầu mục ${mergedTask.stt}: ${changes.join(', ')}` : '';
+        get().logActivity(`Đã chỉnh sửa thông tin công việc: "${mergedTask.name}"${detailStr}`, mergedTask.projectName || mergedTask.projectCode);
       } catch (e) {
         console.error('Failed to update task', e);
       }
@@ -2188,7 +2201,7 @@ export const useRealtimeStore = create<RealtimeStoreState>((set, get) => {
       }
     },
 
-    updateMaterialPlan: async (id, fields) => {
+    updateMaterialPlan: async (id, fields, skipLog?: boolean) => {
       get().markMutation();
       const audit = getAuditFields();
       const fieldsWithAudit = { updatedBy: audit.updatedBy, updatedAt: audit.updatedAt, ...fields };
@@ -2217,11 +2230,16 @@ export const useRealtimeStore = create<RealtimeStoreState>((set, get) => {
             if (oldPlan.contractVolume !== merged.contractVolume) changes.push(`Khối lượng: "${oldPlan.contractVolume || ''}" -> "${merged.contractVolume || ''}"`);
             if (oldPlan.unit !== merged.unit) changes.push(`ĐVT: "${oldPlan.unit || ''}" -> "${merged.unit || ''}"`);
             if (oldPlan.supplyScope !== merged.supplyScope) changes.push(`Phạm vi: "${oldPlan.supplyScope || ''}" -> "${merged.supplyScope || ''}"`);
+            if (oldPlan.orderedStatus !== merged.orderedStatus) changes.push(`TT Đặt hàng: "${oldPlan.orderedStatus || 'Chưa đặt hàng'}" -> "${merged.orderedStatus || 'Chưa đặt hàng'}"`);
+            if (oldPlan.techSpecStatus !== merged.techSpecStatus) changes.push(`Tình trạng kỹ thuật: "${oldPlan.techSpecStatus || 'Chưa xác định'}" -> "${merged.techSpecStatus || 'Chưa xác định'}"`);
+            if (oldPlan.progressStatus !== merged.progressStatus) changes.push(`TT Thi công: "${oldPlan.progressStatus || 'Chưa thi công'}" -> "${merged.progressStatus || 'Chưa thi công'}"`);
             if (oldPlan.notes !== merged.notes) changes.push(`Ghi chú: "${oldPlan.notes || ''}" -> "${merged.notes || ''}"`);
           }
           const detailStr = changes.length > 0 ? ` |Detail:Dự án ${merged.projectCode}, Đầu mục ${merged.stt}: ${changes.join(', ')}` : '';
           
-          get().logActivity('Cập nhật Kế hoạch vật tư: ' + (merged.jobContent || id) + detailStr, merged.projectCode || 'COMPANY');
+          if (!skipLog) {
+            get().logActivity('Cập nhật Kế hoạch vật tư: ' + (merged.jobContent || id) + detailStr, merged.projectCode || 'COMPANY');
+          }
           persistAndNotify({ materialPlans: nextPlans });
           return { materialPlans: nextPlans };
         });

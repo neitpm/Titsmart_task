@@ -59,6 +59,27 @@ const getActionBadge = (action: string) => {
   return { icon: 'edit_note', color: 'text-slate-600 bg-slate-100 border-slate-200' };
 };
 
+const cleanDisplayNotes = (val: string) => {
+  return String(val || '')
+    .replace(/\[tech-status:[^\]]+\]/gi, '')
+    .replace(/\[FOLLOWERS:[^\]]+\]/gi, '')
+    .replace(/\[ASSIGNER:[^\]]+\]/gi, '')
+    .replace(/\[order:[\d.]+\]/gi, '')
+    .replace(/\[section\]/gi, '')
+    .replace(/\[contractor\]/gi, '')
+    .replace(/\[owner\]/gi, '')
+    .replace(/\[STATUS:[^\]]+\]/gi, '')
+    .replace(/\[DOC-DATA\]/gi, '')
+    .replace(/\[DOC-NOTE\]/gi, '')
+    .replace(/\[DOC-FILENAME\]/gi, '')
+    .replace(/\[THREAD:[^\]]+\]/gi, '')
+    .replace(/Nhà thầu cung cấp/gi, '')
+    .replace(/Chủ đầu tư cung cấp/gi, '')
+    .replace(/Import từ phụ lục dự án/gi, '')
+    .replace(/Đồng bộ từ phụ lục khi tạo dự án/gi, '')
+    .trim();
+};
+
 const renderActionText = (text: string) => {
   if (!text) return text;
 
@@ -96,6 +117,20 @@ const renderActionText = (text: string) => {
     detailText = text.substring(detailIndex + 9);
   }
 
+  // Format detail text sạch sẽ, loại bỏ code metadata
+  if (detailText) {
+    const parts = detailText.split('->').map(s => s.trim());
+    if (parts.length === 2 && detailText.includes('Ghi chú:')) {
+      const fromVal = cleanDisplayNotes(parts[0].replace(/^.*Ghi chú:\s*"?/i, '').replace(/"?$/, ''));
+      const toVal = cleanDisplayNotes(parts[1].replace(/^"?/, '').replace(/"?$/, ''));
+      if (fromVal || toVal) {
+        detailText = `Ghi chú: "${fromVal}" → "${toVal}"`;
+      } else {
+        detailText = '';
+      }
+    }
+  }
+
   const splitIndex = mainText.indexOf(': ');
   let renderedMain;
   if (splitIndex !== -1) {
@@ -113,7 +148,16 @@ const renderActionText = (text: string) => {
   return (
     <div className="leading-snug">
       <div>{renderedMain}</div>
-      {detailText && <div className="text-[10.5px] text-slate-500 italic mt-0.5">{detailText}</div>}
+      {detailText ? (
+        <div className="text-[11px] text-blue-800 bg-blue-50/70 border border-blue-100 rounded px-2 py-1 mt-1 font-sans">
+          <span className="font-semibold text-blue-900">Chi tiết thay đổi: </span>
+          {detailText}
+        </div>
+      ) : (
+        <div className="text-[10px] text-slate-400 mt-0.5 italic">
+          Cập nhật thông tin và trạng thái hạng mục
+        </div>
+      )}
     </div>
   );
 };

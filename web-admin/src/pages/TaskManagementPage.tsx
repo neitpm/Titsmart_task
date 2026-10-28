@@ -184,9 +184,12 @@ export const TaskManagementPage: React.FC = () => {
   const [isHighlightActive, setIsHighlightActive] = useState(false);
   const [discussionTask, setDiscussionTask] = useState<Task | null>(null);
 
-  // Fetch tasks on initial mount if not loaded (Supabase Realtime handles live updates automatically)
+  // Fetch tasks and material plans on initial mount if not loaded (Supabase Realtime handles live updates automatically)
   useEffect(() => {
     useRealtimeStore.getState().fetchTasks(undefined);
+    if (useRealtimeStore.getState().materialPlans.length === 0) {
+      useRealtimeStore.getState().fetchAccounting();
+    }
   }, []);
 
   // Keep discussionTask synced with updated tasks from realtime store
@@ -518,7 +521,7 @@ const hasSyncedRef = useRef(false);
           matUpdates.notes = (task.notes || '') + (docPart.length > 1 ? ' [DOC-NOTE]' + docPart[1] : '');
         }
         if (Object.keys(matUpdates).length > 0) {
-          updateMaterialPlan(matchingMaterial.id, matUpdates);
+          updateMaterialPlan(matchingMaterial.id, matUpdates, true);
           syncCount++;
         }
       }

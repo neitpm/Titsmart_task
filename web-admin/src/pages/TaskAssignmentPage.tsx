@@ -41,6 +41,12 @@ export const TaskAssignmentPage: React.FC = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [discussionTask, setDiscussionTask] = useState<Task | null>(null);
 
+  useEffect(() => {
+    if (useRealtimeStore.getState().materialPlans.length === 0) {
+      useRealtimeStore.getState().fetchAccounting();
+    }
+  }, []);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
