@@ -305,11 +305,11 @@ export const ProjectManagementPage: React.FC = () => {
   }, [projects, tasks, materialPlans, purchasingPlans, expenses, laborPayrolls, engineers]);
 
   const counts = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
+    const q = normalizeLabel(searchQuery.trim());
     const filteredBySearch = allEnhancedProjects.filter((project) => {
       if (!q) return true;
       return [project.name, project.code, project.location, project.client, project.managerName, project.memberNames.join(' ')]
-        .some((value) => String(value || '').toLowerCase().includes(q));
+        .some((value) => normalizeLabel(String(value || '')).includes(q));
     });
     return {
       all: filteredBySearch.length,
@@ -319,7 +319,7 @@ export const ProjectManagementPage: React.FC = () => {
   }, [allEnhancedProjects, searchQuery]);
 
   const enhancedProjects = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
+    const q = normalizeLabel(searchQuery.trim());
     
     return allEnhancedProjects.filter((project) => {
       const matchStatus = statusFilter === 'all' || project.status === statusFilter;
@@ -327,6 +327,7 @@ export const ProjectManagementPage: React.FC = () => {
 
       if (!q) return true;
       return [project.name, project.code, project.location, project.client, project.managerName, project.memberNames.join(' ')]
+        .some((value) => normalizeLabel(String(value || '')).includes(q));
     }).sort((a, b) => {
       const getTimestamp = (p: any) => {
         const time = new Date(p.createdAt || p.created_at || p.updatedAt || p.updated_at || p.startDate || 0).getTime();
