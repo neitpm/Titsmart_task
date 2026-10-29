@@ -231,12 +231,28 @@ export const ChatWidget: React.FC = () => {
 
     const myIds = [currentUser.id, currentUser.username, currentUser.name].filter(Boolean).map(s => String(s).trim().toLowerCase());
 
-    // Tìm các tin nhắn mới gửi đến mà tôi không phải là người gửi
+    // Chỉ nhận thông báo nếu tin nhắn đó THỰC SỰ GỬI CHO TÔI:
+    // 1. Nhắn riêng 1-1: receiverId phải là ID, username hoặc tên của tôi
+    // 2. Nhóm dự án: người dùng phải là thành viên trong dự án đó
     const incomingNewMessages = directMessages.filter(m => {
       if (knownMsgIdsRef.current.has(m.id)) return false;
       const sId = String(m.senderId || '').trim().toLowerCase();
       const isNotMine = !myIds.includes(sId);
-      return isNotMine;
+      if (!isNotMine) return false;
+
+      // Nếu là tin nhắn gửi riêng 1-1 (có receiverId)
+      if (m.receiverId) {
+        const rId = String(m.receiverId).trim().toLowerCase();
+        return myIds.includes(rId);
+      }
+
+      // Nếu là tin nhắn nhóm dự án (có projectCode)
+      if (m.projectCode) {
+        const pCode = String(m.projectCode).trim().toUpperCase();
+        return assignedProjects.some(p => String(p.code || '').trim().toUpperCase() === pCode);
+      }
+
+      return false;
     });
 
     if (incomingNewMessages.length > 0) {
