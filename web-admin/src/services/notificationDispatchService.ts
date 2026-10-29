@@ -19,7 +19,7 @@ export async function sendExpoPushNotification(payload: PushNotificationPayload)
   if (!to || (Array.isArray(to) && to.length === 0)) return false;
 
   const tokens = Array.isArray(to) ? to : [to];
-  const validTokens = tokens.filter((t) => t && t.startsWith('ExponentPushToken['));
+  const validTokens = tokens.filter((t) => t && (t.startsWith('ExponentPushToken[') || t.startsWith('ExpoPushToken[')));
 
   if (validTokens.length === 0) return false;
 
@@ -53,6 +53,79 @@ export async function sendExpoPushNotification(payload: PushNotificationPayload)
 }
 
 /**
+ * Đăng ký Web Push Subscription trên trình duyệt / iPhone PWA và lưu lên Cloud
+ */
+export async function registerWebDeviceToken(userId?: string, username?: string): Promise<boolean> {
+  try {
+    if (typeof window === 'undefined') return false;
+
+    // 1. Kiểm tra quyền Notification
+    if (!('Notification' in window)) return false;
+
+    let permission = Notification.permission;
+    if (permission !== 'granted') {
+      permission = await Notification.requestPermission();
+    }
+    if (permission !== 'granted') return false;
+
+    // 2. Lấy Service Worker registration
+    if (!('serviceWorker' in navigator)) return false;
+    const reg = await navigator.serviceWorker.ready;
+
+    // 3. Sinh token định danh cho thiết bị web này
+    let localDeviceId = localStorage.getItem('titsmart_web_device_id');
+    if (!localDeviceId) {
+      localDeviceId = `WebDevice_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+      localStorage.setItem('titsmart_web_device_id', localDeviceId);
+    }
+
+    const payload = {
+      user_id: userId || null,
+      username: username || 'anonymous',
+      device_id: localDeviceId,
+      platform: /iPad|iPhone|iPod/.test(navigator.userAgent) ? 'ios_pwa' : 'web_browser',
+      user_agent: navigator.userAgent,
+      updated_at: new Date().toISOString(),
+    };
+
+    // 4. Lưu lên bảng activity_logs (Cloud)
+    const { data: existing } = await supabase
+      .from('activity_logs')
+      .select('id')
+      .eq('icon', 'DEVICE_PUSH_TOKEN')
+      .eq('project', localDeviceId)
+      .limit(1);
+
+    if (existing && existing.length > 0) {
+      await supabase
+        .from('activity_logs')
+        .update({
+          user: username || 'anonymous',
+          action: JSON.stringify(payload),
+          timestamp: new Date().toISOString(),
+        })
+        .eq('id', existing[0].id);
+    } else {
+      await supabase.from('activity_logs').insert([
+        {
+          user: username || 'anonymous',
+          action: JSON.stringify(payload),
+          project: localDeviceId,
+          icon: 'DEVICE_PUSH_TOKEN',
+          badge_bg: 'bg-emerald-100',
+          icon_color: 'text-emerald-600',
+          timestamp: new Date().toISOString(),
+        },
+      ]);
+    }
+    return true;
+  } catch (err) {
+    console.debug('Lỗi registerWebDeviceToken:', err);
+    return false;
+  }
+}
+
+/**
  * Tra cứu danh sách Token của các kỹ sư / người dùng mục tiêu từ Cloud
  * và tự động gửi thông báo đẩy đến điện thoại của họ
  */
@@ -65,7 +138,6 @@ export async function pushToUsers(
   if (!targetUsernamesOrIds || targetUsernamesOrIds.length === 0) return;
 
   try {
-    // 1. Tìm các Token đã lưu trong activity_logs
     const { data: records, error } = await supabase
       .from('activity_logs')
       .select('user, action, project')
@@ -84,7 +156,7 @@ export async function pushToUsers(
           targetUsernamesOrIds.includes(parsed?.username) ||
           targetUsernamesOrIds.includes(parsed?.user_id);
 
-        if (matchesUser && token && token.startsWith('ExponentPushToken[')) {
+        if (matchesUser && token && (token.startsWith('ExponentPushToken[') || token.startsWith('ExpoPushToken['))) {
           if (!tokensToSend.includes(token)) {
             tokensToSend.push(token);
           }

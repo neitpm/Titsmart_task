@@ -20,6 +20,7 @@ import {
 } from '../types';
 import { api } from './apiSupabase';
 import { AuthUser, useAuthStore } from './authStore';
+import { pushToUsers } from './notificationDispatchService';
 
 const getAuthUser = () => {
   try {
@@ -929,6 +930,23 @@ export const useRealtimeStore = create<RealtimeStoreState>((set, get) => {
           directMessages: state.directMessages.map(m => m.id === tempId ? newMsg : m)
         }));
         broadcastRealtimeSync('direct_messages');
+
+        // Bắn Push Notification đến thiết bị di động (kể cả khi đã tắt app)
+        try {
+          const sName = msg.senderName || 'Đồng nghiệp';
+          const pTag = msg.projectCode ? `[${msg.projectCode}] ` : '';
+          const preview = msg.fileUrl
+            ? (msg.fileType === 'image' ? '[Hình ảnh]' : (msg.fileName ? `[Tệp: ${msg.fileName}]` : '[Tệp đính kèm]'))
+            : (msg.content || 'Đã gửi một tin nhắn.');
+          const targetUsers = msg.receiverId ? [msg.receiverId] : [];
+          if (targetUsers.length > 0) {
+            pushToUsers(targetUsers, `Tin nhắn mới: ${pTag}${sName}`, preview, {
+              type: 'direct_message',
+              senderId: msg.senderId,
+              receiverId: msg.receiverId,
+            }).catch(() => {});
+          }
+        } catch {}
       } catch (e) {
         console.error('Failed to send direct message', e);
         // Nếu gửi thất bại, giữ lại tempMsg dưới dạng tin nhắn cục bộ
@@ -1969,6 +1987,23 @@ export const useRealtimeStore = create<RealtimeStoreState>((set, get) => {
           persistAndNotify({ notifications: nextNotifs });
           return { notifications: nextNotifs };
         });
+
+        // Bắn Push Notification đến thiết bị di động của các user nhận
+        try {
+          const targetUsers: string[] = [];
+          if (payloadWithSender.type && payloadWithSender.type.includes(':::')) {
+            const parts = payloadWithSender.type.split(':::');
+            const ids = (parts[1] || '').split(',').map(s => s.trim()).filter(Boolean);
+            const names = (parts[2] || '').split(',').map(s => s.trim()).filter(Boolean);
+            targetUsers.push(...ids, ...names);
+          }
+          if (targetUsers.length > 0) {
+            pushToUsers(targetUsers, payloadWithSender.title || 'Thông báo mới', payloadWithSender.message || '', {
+              type: 'system_notification',
+              notificationId: createdNotif.id,
+            }).catch(() => {});
+          }
+        } catch {}
       } catch (e) {
         console.error('Failed to add notification', e);
       }

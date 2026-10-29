@@ -4,7 +4,7 @@ import { useRealtimeStore } from '../../services/realtimeStore';
 import { useAuthStore } from '../../services/authStore';
 import { useUIStore } from '../../services/uiStore';
 import { sendSystemNotification, requestSystemNotificationPermission } from '../../services/systemNotificationService';
-import { sendExpoPushNotification } from '../../services/notificationDispatchService';
+import { sendExpoPushNotification, registerWebDeviceToken } from '../../services/notificationDispatchService';
 import { isUserTaskAssigner, isUserTaskAssignee, isUserTaskFollower } from '../../utils/taskPermission';
 
 interface NotificationBellProps {
@@ -545,6 +545,28 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ isSidebar = 
     setTimeout(() => {
       hasMovedRef.current = false;
     }, 120);
+  };
+
+  const [isPushRegistered, setIsPushRegistered] = useState(false);
+  const [isRegisteringPush, setIsRegisteringPush] = useState(false);
+
+  const handleEnableDevicePush = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsRegisteringPush(true);
+    try {
+      const ok = await registerWebDeviceToken(user?.id, user?.username);
+      if (ok) {
+        setIsPushRegistered(true);
+        sendSystemNotification({
+          title: 'Đã kích hoạt thông báo đẩy!',
+          body: 'Điện thoại của bạn giờ đây sẽ nhận được chuông và thông báo ngay cả khi tắt ứng dụng.',
+        });
+      } else {
+        alert('Vui lòng bấm [Cho phép / Allow] khi trình duyệt hoặc điện thoại hiển thị yêu cầu thông báo.');
+      }
+    } finally {
+      setIsRegisteringPush(false);
+    }
   };
 
   const handleBellClick = (e: React.MouseEvent) => {
@@ -1308,6 +1330,28 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ isSidebar = 
                 >
                   Tất cả ({displayNotifications.length})
                 </button>
+              </div>              {/* Mobile Push Notification Activation Banner */}
+              <div className="mt-2.5 pt-2 border-t border-slate-200/60">
+                <button
+                  type="button"
+                  onClick={handleEnableDevicePush}
+                  disabled={isRegisteringPush}
+                  className={`w-full py-1.5 px-2.5 rounded-lg text-xs font-semibold flex items-center justify-between transition-all ${
+                    isPushRegistered
+                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/60'
+                      : 'bg-primary/10 hover:bg-primary/15 text-primary active:scale-[0.98]'
+                  }`}
+                >
+                  <span className="flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-[16px]">
+                      {isPushRegistered ? 'check_circle' : 'notifications_active'}
+                    </span>
+                    <span>{isPushRegistered ? 'Đã bật chuông khi tắt app' : 'Bật chuông điện thoại khi tắt app'}</span>
+                  </span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider bg-white/80">
+                    {isRegisteringPush ? 'Đang bật...' : isPushRegistered ? 'Đang chạy' : 'Kích hoạt'}
+                  </span>
+                </button>
               </div>
             </div>
 
@@ -1499,6 +1543,29 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ isSidebar = 
                 }`}
               >
                 Tất cả ({displayNotifications.length})
+              </button>
+            </div>
+              {/* Mobile Push Notification Activation Banner */}
+            <div className="mt-2.5 pt-2 border-t border-slate-200/60">
+              <button
+                type="button"
+                onClick={handleEnableDevicePush}
+                disabled={isRegisteringPush}
+                className={`w-full py-1.5 px-2.5 rounded-lg text-xs font-semibold flex items-center justify-between transition-all ${
+                  isPushRegistered
+                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/60'
+                    : 'bg-primary/10 hover:bg-primary/15 text-primary active:scale-[0.98]'
+                }`}
+              >
+                <span className="flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-[16px]">
+                    {isPushRegistered ? 'check_circle' : 'notifications_active'}
+                  </span>
+                  <span>{isPushRegistered ? 'Đã bật chuông khi tắt app' : 'Bật chuông điện thoại khi tắt app'}</span>
+                </span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider bg-white/80">
+                  {isRegisteringPush ? 'Đang bật...' : isPushRegistered ? 'Đang chạy' : 'Kích hoạt'}
+                </span>
               </button>
             </div>
           </div>
