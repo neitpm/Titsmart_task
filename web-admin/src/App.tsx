@@ -221,6 +221,15 @@ export const App: React.FC = () => {
       });
     }
 
+    // Lắng nghe mở URL từ Windows Notification click
+    if (window.electronAPI?.on) {
+      window.electronAPI.on('navigate:url', (targetUrl: string) => {
+        if (targetUrl) {
+          navigateRef.current(targetUrl);
+        }
+      });
+    }
+
     return () => {
       window.removeEventListener('popstate', onPopState);
       if (capListener && typeof capListener.remove === 'function') {

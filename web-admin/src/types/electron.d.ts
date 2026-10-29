@@ -21,6 +21,8 @@ export interface ElectronAPI {
   loadSessionSync?: () => any;
   onRequestClose?: (callback: () => void) => () => void;
   confirmQuit?: () => void;
+  minimizeToTray?: () => void;
+  showNotification?: (options: { title: string; body: string; url?: string }) => void;
 }
 
 declare global {

@@ -28,14 +28,16 @@
         "CAMERA",
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
-        "READ_EXTERNAL_STORAGE"
+        "READ_EXTERNAL_STORAGE",
+        "POST_NOTIFICATIONS"
       ]
     },
     "plugins": [
       "expo-camera",
       "expo-location",
       "expo-image-picker",
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-notifications"
     ]
   }
 }

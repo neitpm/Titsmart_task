@@ -1,6 +1,7 @@
-import { app, BrowserWindow, ipcMain, shell } from 'electron';
+import { app, BrowserWindow, ipcMain, shell, Tray, Menu, Notification, nativeImage } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import fs from 'fs';
 import updatePkg from 'electron-updater';
 const { autoUpdater } = updatePkg;
 
@@ -8,23 +9,95 @@ const { autoUpdater } = updatePkg;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-let mainWindow: BrowserWindow | null;
+let mainWindow: BrowserWindow | null = null;
+let tray: Tray | null = null;
 let isForceQuitting = false;
 
 const VITE_DEV_SERVER_URL = process.env['VITE_DEV_SERVER_URL'];
 
+function getAppIcon() {
+  const iconPaths = [
+    path.join(__dirname, '../public/favicon.ico'),
+    path.join(__dirname, '../dist/favicon.ico'),
+    path.join(process.resourcesPath || '', 'favicon.ico'),
+    path.join(__dirname, '../public/logo.png'),
+    path.join(__dirname, '../dist/logo.png'),
+  ];
+  for (const p of iconPaths) {
+    if (fs.existsSync(p)) {
+      return nativeImage.createFromPath(p);
+    }
+  }
+  return undefined;
+}
+
+function createTray() {
+  if (tray) return;
+
+  const icon = getAppIcon();
+  tray = new Tray(icon || nativeImage.createEmpty());
+  tray.setToolTip('TITSMART - Quản lý công việc');
+
+  const contextMenu = Menu.buildFromTemplate([
+    {
+      label: 'Mở TITSMART',
+      click: () => {
+        showMainWindow();
+      },
+    },
+    {
+      type: 'separator',
+    },
+    {
+      label: 'Kiểm tra cập nhật...',
+      click: () => {
+        autoUpdater.checkForUpdates().catch(() => {});
+      },
+    },
+    {
+      type: 'separator',
+    },
+    {
+      label: 'Thoát hoàn toàn',
+      click: () => {
+        isForceQuitting = true;
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.destroy();
+        }
+        app.quit();
+      },
+    },
+  ]);
+
+  tray.setContextMenu(contextMenu);
+
+  tray.on('double-click', () => {
+    showMainWindow();
+  });
+}
+
+function showMainWindow() {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    createWindow();
+    return;
+  }
+  if (mainWindow.isMinimized()) {
+    mainWindow.restore();
+  }
+  mainWindow.show();
+  mainWindow.focus();
+}
+
 function createWindow() {
+  const icon = getAppIcon();
+
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
     minWidth: 900,
     minHeight: 600,
+    icon: icon,
     autoHideMenuBar: true,
-    // titleBarStyle: 'hidden', // Lấy cảm hứng từ Notion (giấu thanh tiêu đề mặc định)
-    // titleBarOverlay: {
-    //   color: '#ffffff',
-    //   symbolColor: '#00236f',
-    // },
     webPreferences: {
       preload: path.join(__dirname, 'preload.mjs'),
       nodeIntegration: false,
@@ -46,7 +119,7 @@ function createWindow() {
     return { action: 'deny' };
   });
 
-  // Intercept window close to allow frontend confirmation modal
+  // Khi bấm nút [X], gửi thông điệp cho frontend mở modal xác nhận (hoặc tự động ẩn xuống tray)
   mainWindow.on('close', (e) => {
     if (!isForceQuitting && mainWindow && !mainWindow.isDestroyed()) {
       e.preventDefault();
@@ -69,27 +142,15 @@ function normalizeReleaseNotes(notes?: string | Array<{ version?: string; note?:
 }
 
 function setupAutoUpdater() {
-  // Chỉ chạy ở bản đã đóng gói, không chạy ở môi trường dev/electron script
   if (!app.isPackaged) return;
 
-  autoUpdater.autoDownload = true; // Tự động tải ngầm như Antigravity/VS Code, sẵn sàng để khởi động lại
-  autoUpdater.autoInstallOnAppQuit = true; // Nếu đã tải xong thì cài khi thoát app
-  autoUpdater.disableDifferentialDownload = true; // Tải 1 luồng trực tiếp toàn bộ gói .exe, ngăn GitHub bóp băng thông chia nhỏ file
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+  autoUpdater.disableDifferentialDownload = true;
   autoUpdater.disableWebInstaller = true;
 
   autoUpdater.on('checking-for-update', () => {
     sendToRenderer('update:status', { status: 'checking' });
-  });
-
-  // Listener for manual open external
-  ipcMain.on('open-external', async (event, url) => {
-    if (url && typeof url === 'string') {
-      try {
-        await shell.openExternal(url);
-      } catch (error: any) {
-        require('electron').dialog.showErrorBox('Lỗi mở ảnh', `Không thể mở đường dẫn: ${url}\nLý do: ${error.message}`);
-      }
-    }
   });
 
   autoUpdater.on('update-available', (info) => {
@@ -134,24 +195,58 @@ function setupAutoUpdater() {
     autoUpdater.quitAndInstall();
   });
 
-  // Tự kiểm tra update khi app khởi động (trì hoãn 3s cho app load xong)
   setTimeout(() => {
     autoUpdater.checkForUpdates().catch((err) => {
       sendToRenderer('update:status', { status: 'error', message: err?.message ?? String(err) });
     });
   }, 3000);
 
-  // Định kỳ tự kiểm tra bản cập nhật mới mỗi 60 giây
   setInterval(() => {
     autoUpdater.checkForUpdates().catch(() => {});
   }, 60000);
 }
 
-app.on('before-quit', () => {
-  isForceQuitting = true;
+// ── IPC Handlers ─────────────────────────────────────────────────────────────
+
+ipcMain.on('open-external', async (_, url) => {
+  if (url && typeof url === 'string') {
+    try {
+      await shell.openExternal(url);
+    } catch (error: any) {
+      console.error('Failed to open url:', error);
+    }
+  }
 });
 
-// Renderer xác nhận muốn thoát app
+// Chạy ngầm xuống khay hệ thống (giống Zalo PC)
+ipcMain.on('app:minimize-to-tray', () => {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.hide();
+  }
+});
+
+// Hiển thị thông báo Windows Native (kể cả khi app đang thu nhỏ / ẩn ở Tray)
+ipcMain.on('app:show-notification', (_, { title, body, url }) => {
+  if (Notification.isSupported()) {
+    const icon = getAppIcon();
+    const notif = new Notification({
+      title: title || 'TITSMART',
+      body: body || 'Bạn có thông báo mới.',
+      icon: icon,
+    });
+
+    notif.on('click', () => {
+      showMainWindow();
+      if (url && mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('navigate:url', url);
+      }
+    });
+
+    notif.show();
+  }
+});
+
+// Thoát hoàn toàn
 ipcMain.on('app:confirm-quit', () => {
   isForceQuitting = true;
   if (mainWindow && !mainWindow.isDestroyed()) {
@@ -159,22 +254,6 @@ ipcMain.on('app:confirm-quit', () => {
   }
   app.quit();
 });
-
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit();
-    mainWindow = null;
-  }
-});
-
-app.on('activate', () => {
-  if (BrowserWindow.getAllWindows().length === 0) {
-    createWindow();
-  }
-});
-
-// Fix for ERR_HTTP2_PROTOCOL_ERROR when auto-updating from GitHub Releases
-import fs from 'fs';
 
 // Permanent Session File persistence in App UserData directory
 const sessionFilePath = path.join(app.getPath('userData'), 'auth_session.json');
@@ -206,7 +285,30 @@ ipcMain.on('session:load', (event) => {
   event.returnValue = null;
 });
 
+app.on('before-quit', () => {
+  isForceQuitting = true;
+});
+
+app.on('window-all-closed', () => {
+  // Khi người dùng đóng cửa sổ trên Windows, nếu có tray thì chỉ ẩn cửa sổ để tiếp tục nhận thông báo
+  if (tray) {
+    // Keep app running in background
+  } else if (process.platform !== 'darwin') {
+    app.quit();
+    mainWindow = null;
+  }
+});
+
+app.on('activate', () => {
+  if (BrowserWindow.getAllWindows().length === 0) {
+    createWindow();
+  } else {
+    showMainWindow();
+  }
+});
+
 app.whenReady().then(() => {
   createWindow();
+  createTray();
   setupAutoUpdater();
 });

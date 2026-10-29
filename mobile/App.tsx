@@ -1,17 +1,34 @@
 import React, { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { View, ActivityIndicator, StyleSheet, Text } from 'react-native';
+import * as Notifications from 'expo-notifications';
 import { AppNavigator } from './src/navigation/AppNavigator';
 import { useAuthStore } from './src/services/authStore';
 import { MobileUpdateModal } from './src/components/MobileUpdateModal';
+import { registerForPushNotificationsAsync } from './src/services/notificationService';
 import 'react-native-url-polyfill/auto';
 
 export default function App() {
-  const { initAuth, isLoading } = useAuthStore();
+  const { user, initAuth, isLoading } = useAuthStore();
 
   useEffect(() => {
     initAuth();
   }, [initAuth]);
+
+  // Đăng ký nhận Push Notification (ngay cả khi tắt ứng dụng)
+  useEffect(() => {
+    registerForPushNotificationsAsync(user?.id, user?.username);
+
+    // Lắng nghe khi người dùng bấm vào thông báo trên điện thoại
+    const responseListener = Notifications.addNotificationResponseReceivedListener((response) => {
+      const data = response.notification.request.content.data;
+      console.log('Người dùng đã bấm vào thông báo đẩy:', data);
+    });
+
+    return () => {
+      responseListener.remove();
+    };
+  }, [user?.id, user?.username]);
 
   if (isLoading) {
     return (
@@ -41,5 +58,5 @@ const styles = StyleSheet.create({
     marginTop: 16,
     color: '#475569',
     fontSize: 16,
-  }
+  },
 });

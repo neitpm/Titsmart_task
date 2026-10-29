@@ -35,4 +35,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => ipcRenderer.removeListener('app:request-close', handler);
   },
   confirmQuit: () => ipcRenderer.send('app:confirm-quit'),
+  // Minimize to System Tray & Notifications (như Zalo PC)
+  minimizeToTray: () => ipcRenderer.send('app:minimize-to-tray'),
+  showNotification: (options: { title: string; body: string; url?: string }) => {
+    ipcRenderer.send('app:show-notification', options);
+  },
 });

@@ -68,8 +68,22 @@ export const sendSystemNotification = async (options: SystemNotificationOptions)
     playNotificationSound();
   }
 
+  // 3A. Electron Desktop App: Tận dụng IPC gửi thông báo Windows Native (kể cả khi đang ẩn ở System Tray)
+  if (typeof window !== 'undefined' && window.electronAPI?.showNotification) {
+    try {
+      window.electronAPI.showNotification({
+        title,
+        body,
+        url,
+      });
+      return;
+    } catch (e) {
+      console.debug('Electron showNotification error, falling back to Web Notification:', e);
+    }
+  }
+
   try {
-    // 3A. Mobile (iOS / Android Native Capacitor) -> Push to Lock Screen & Banner
+    // 3B. Mobile (iOS / Android Native Capacitor) -> Push to Lock Screen & Banner
     if (Capacitor.isNativePlatform()) {
       const numericId = typeof id === 'number' 
         ? id 
@@ -90,7 +104,7 @@ export const sendSystemNotification = async (options: SystemNotificationOptions)
       return;
     }
 
-    // 3B. Desktop / Web Browser (Windows Notification Center, macOS Notification, Chrome/Edge Banner)
+    // 3C. Desktop / Web Browser (Windows Notification Center, macOS Notification, Chrome/Edge Banner)
     if (typeof window !== 'undefined' && 'Notification' in window) {
       if (Notification.permission === 'granted') {
         const notifTag = typeof id === 'string' ? id : `titsmart-notif-${Date.now()}`;

@@ -4,6 +4,7 @@ import { useRealtimeStore } from '../../services/realtimeStore';
 import { useAuthStore } from '../../services/authStore';
 import { useUIStore } from '../../services/uiStore';
 import { sendSystemNotification, requestSystemNotificationPermission } from '../../services/systemNotificationService';
+import { sendExpoPushNotification } from '../../services/notificationDispatchService';
 import { isUserTaskAssigner, isUserTaskAssignee, isUserTaskFollower } from '../../utils/taskPermission';
 
 interface NotificationBellProps {
