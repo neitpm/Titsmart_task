@@ -93,7 +93,10 @@ export const App: React.FC = () => {
 
   const handleConfirmExit = () => {
     setIsExitConfirmOpen(false);
-    if (window.electronAPI?.confirmQuit) {
+    // Khi bam Thoat: Tren Desktop mac dinh an chay ngam xuong Khay he thong de tiep tuc nhan thong bao
+    if (window.electronAPI?.minimizeToTray) {
+      window.electronAPI.minimizeToTray();
+    } else if (window.electronAPI?.confirmQuit) {
       window.electronAPI.confirmQuit();
     } else {
       try {

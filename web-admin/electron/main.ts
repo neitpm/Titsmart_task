@@ -119,11 +119,11 @@ function createWindow() {
     return { action: 'deny' };
   });
 
-  // Khi bấm nút [X], mặc định ẩn xuống Tray chạy ngầm (giống Zalo)
+  // Khi bấm nút [X], hiển thị modal xác nhận ở giao diện người dùng
   mainWindow.on('close', (e) => {
     if (!isForceQuitting && mainWindow && !mainWindow.isDestroyed()) {
       e.preventDefault();
-      mainWindow.hide();
+      mainWindow.webContents.send('app:request-close');
     }
   });
 }
