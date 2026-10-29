@@ -75,7 +75,7 @@ function w() {
       contextIsolation: !0
     }
   }), v ? (o.loadURL(v), o.webContents.openDevTools()) : o.loadFile(i.join(process.env.DIST || i.join(l, "../dist"), "index.html")), o.webContents.setWindowOpenHandler(({ url: t }) => ((t.startsWith("http://") || t.startsWith("https://")) && T.openExternal(t), { action: "deny" })), o.on("close", (t) => {
-    !h && o && !o.isDestroyed() && (t.preventDefault(), o.webContents.send("app:request-close"));
+    !h && o && !o.isDestroyed() && (t.preventDefault(), o.hide());
   });
 }
 function r(e, t) {
