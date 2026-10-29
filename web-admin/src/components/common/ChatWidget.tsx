@@ -218,61 +218,7 @@ export const ChatWidget: React.FC = () => {
     fetchDirectMessages();
   }, []);
 
-  // Lắng nghe và bắn thông báo (Push Notification + Âm thanh chuông) khi có tin nhắn mới gửi đến
-  useEffect(() => {
-    if (!directMessages || directMessages.length === 0 || !currentUser) return;
 
-    // Lần tải đầu tiên: chỉ lưu lại các id đã có, không bắn thông báo
-    if (isInitialLoadRef.current) {
-      isInitialLoadRef.current = false;
-      directMessages.forEach(m => knownMsgIdsRef.current.add(m.id));
-      return;
-    }
-
-    const myIds = [currentUser.id, currentUser.username, currentUser.name].filter(Boolean).map(s => String(s).trim().toLowerCase());
-
-    // Chỉ nhận thông báo nếu tin nhắn đó THỰC SỰ GỬI CHO TÔI:
-    // 1. Nhắn riêng 1-1: receiverId phải là ID, username hoặc tên của tôi
-    // 2. Nhóm dự án: người dùng phải là thành viên trong dự án đó
-    const incomingNewMessages = directMessages.filter(m => {
-      if (knownMsgIdsRef.current.has(m.id)) return false;
-      const sId = String(m.senderId || '').trim().toLowerCase();
-      const isNotMine = !myIds.includes(sId);
-      if (!isNotMine) return false;
-
-      // Nếu là tin nhắn gửi riêng 1-1 (có receiverId)
-      if (m.receiverId) {
-        const rId = String(m.receiverId).trim().toLowerCase();
-        return myIds.includes(rId);
-      }
-
-      // Nếu là tin nhắn nhóm dự án (có projectCode)
-      if (m.projectCode) {
-        const pCode = String(m.projectCode).trim().toUpperCase();
-        return assignedProjects.some(p => String(p.code || '').trim().toUpperCase() === pCode);
-      }
-
-      return false;
-    });
-
-    if (incomingNewMessages.length > 0) {
-      incomingNewMessages.forEach(msg => {
-        knownMsgIdsRef.current.add(msg.id);
-
-        const senderName = msg.senderName || msg.senderId || 'Đồng nghiệp';
-        const projectTag = msg.projectCode ? '[' + msg.projectCode + '] ' : '';
-        const previewText = msg.fileUrl 
-          ? (msg.fileType === 'image' ? '[Hình ảnh]' : (msg.fileName ? '[Tệp: ' + msg.fileName + ']' : '[Tệp đính kèm]')) 
-          : (msg.content || 'Đã gửi một tin nhắn.');
-
-        sendSystemNotification({
-          id: 'msg-' + msg.id,
-          title: 'Tin nhắn mới: ' + projectTag + senderName,
-          body: previewText,
-        });
-      });
-    }
-  }, [directMessages, currentUser]);
 
   // Supabase Presence tracking for real-time online status
   useEffect(() => {
@@ -422,6 +368,81 @@ export const ChatWidget: React.FC = () => {
     if (!currentUser) return 0;
     return otherUsers.reduce((sum, u) => sum + getUnreadForTarget('user', u.id, u.username, u.name), 0);
   }, [otherUsers, getUnreadForTarget, currentUser]);
+
+  // Lắng nghe và bắn thông báo (Push Notification + Âm thanh chuông) khi có tin nhắn mới gửi đến
+  useEffect(() => {
+    if (!directMessages || directMessages.length === 0 || !currentUser) return;
+
+    // Lần tải đầu tiên: chỉ lưu lại các id đã có, không bắn thông báo
+    if (isInitialLoadRef.current) {
+      isInitialLoadRef.current = false;
+      directMessages.forEach(m => knownMsgIdsRef.current.add(m.id));
+      return;
+    }
+
+    // Thu thập toàn bộ định danh của currentUser (id, username, name, email)
+    // Và tìm cả record tương ứng trong danh sách engineers để lấy đầy đủ cả ID DB và username
+    const currentEngineer = engineers.find(e => 
+      (currentUser.id && e.id === currentUser.id) ||
+      (currentUser.username && e.username === currentUser.username) ||
+      (currentUser.email && e.email === currentUser.email)
+    );
+
+    const myIdentifierList = [
+      currentUser.id,
+      currentUser.username,
+      currentUser.name,
+      currentUser.email,
+      currentEngineer?.id,
+      currentEngineer?.username,
+      currentEngineer?.name
+    ].filter(Boolean).map(s => String(s).trim().toLowerCase());
+
+    const myIds = Array.from(new Set(myIdentifierList));
+
+    // Chỉ nhận thông báo nếu tin nhắn đó THỰC SỰ GỬI CHO TÔI:
+    // 1. Nhắn riêng 1-1: receiverId phải trùng với một trong các định danh của tôi
+    // 2. Nhóm dự án: người dùng phải là thành viên trong dự án đó
+    const incomingNewMessages = directMessages.filter(m => {
+      if (knownMsgIdsRef.current.has(m.id)) return false;
+
+      const sId = String(m.senderId || '').trim().toLowerCase();
+      const isNotMine = !myIds.includes(sId);
+      if (!isNotMine) return false;
+
+      // TH1: Tin nhắn gửi riêng 1-1 (có receiverId)
+      if (m.receiverId) {
+        const rId = String(m.receiverId).trim().toLowerCase();
+        return myIds.includes(rId);
+      }
+
+      // TH2: Tin nhắn nhóm dự án (có projectCode)
+      if (m.projectCode) {
+        const pCode = String(m.projectCode).trim().toUpperCase();
+        return assignedProjects.some(p => String(p.code || '').trim().toUpperCase() === pCode);
+      }
+
+      return false;
+    });
+
+    if (incomingNewMessages.length > 0) {
+      incomingNewMessages.forEach(msg => {
+        knownMsgIdsRef.current.add(msg.id);
+
+        const senderName = msg.senderName || msg.senderId || 'Đồng nghiệp';
+        const projectTag = msg.projectCode ? '[' + msg.projectCode + '] ' : '';
+        const previewText = msg.fileUrl 
+          ? (msg.fileType === 'image' ? '[Hình ảnh]' : (msg.fileName ? '[Tệp: ' + msg.fileName + ']' : '[Tệp đính kèm]')) 
+          : (msg.content || 'Đã gửi một tin nhắn.');
+
+        sendSystemNotification({
+          id: 'msg-' + msg.id,
+          title: 'Tin nhắn mới: ' + projectTag + senderName,
+          body: previewText,
+        });
+      });
+    }
+  }, [directMessages, currentUser, engineers, assignedProjects]);
 
   // Total unread count strictly matches the sum of unread across openable project groups and colleagues
   const unreadCount = React.useMemo(() => {
