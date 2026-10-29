@@ -6,6 +6,7 @@ import { DirectMessage, Engineer, Project } from '../../types';
 import { supabase } from '../../lib/supabase';
 import { uploadAttachment } from '../../utils/fileUploadHelper';
 import { isUserMemberOfProject } from '../../utils/projectMemberUtils';
+import { sendSystemNotification } from '../../services/systemNotificationService';
 
 const isSameDay = (d1?: string, d2?: string) => {
   if (!d1 || !d2) return false;
@@ -209,9 +210,52 @@ export const ChatWidget: React.FC = () => {
 
   const [onlineUserIds, setOnlineUserIds] = useState<string[]>([]);
 
+  const isInitialLoadRef = useRef(true);
+  const knownMsgIdsRef = useRef<Set<string>>(new Set());
+
   useEffect(() => {
     fetchDirectMessages();
   }, []);
+
+  // Lắng nghe và bắn thông báo (Push Notification + Âm thanh chuông) khi có tin nhắn mới gửi đến
+  useEffect(() => {
+    if (!directMessages || directMessages.length === 0 || !currentUser) return;
+
+    // Lần tải đầu tiên: chỉ lưu lại các id đã có, không bắn thông báo
+    if (isInitialLoadRef.current) {
+      isInitialLoadRef.current = false;
+      directMessages.forEach(m => knownMsgIdsRef.current.add(m.id));
+      return;
+    }
+
+    const myIds = [currentUser.id, currentUser.username, currentUser.name].filter(Boolean).map(s => String(s).trim().toLowerCase());
+
+    // Tìm các tin nhắn mới gửi đến mà tôi không phải là người gửi
+    const incomingNewMessages = directMessages.filter(m => {
+      if (knownMsgIdsRef.current.has(m.id)) return false;
+      const sId = String(m.senderId || '').trim().toLowerCase();
+      const isNotMine = !myIds.includes(sId);
+      return isNotMine;
+    });
+
+    if (incomingNewMessages.length > 0) {
+      incomingNewMessages.forEach(msg => {
+        knownMsgIdsRef.current.add(msg.id);
+
+        const senderName = msg.senderName || msg.senderId || 'Đồng nghiệp';
+        const projectTag = msg.projectCode ? '[' + msg.projectCode + '] ' : '';
+        const previewText = msg.fileUrl 
+          ? (msg.fileType === 'image' ? '[Hình ảnh]' : (msg.fileName ? '[Tệp: ' + msg.fileName + ']' : '[Tệp đính kèm]')) 
+          : (msg.content || 'Đã gửi một tin nhắn.');
+
+        sendSystemNotification({
+          id: 'msg-' + msg.id,
+          title: 'Tin nhắn mới: ' + projectTag + senderName,
+          body: previewText,
+        });
+      });
+    }
+  }, [directMessages, currentUser]);
 
   // Supabase Presence tracking for real-time online status
   useEffect(() => {
