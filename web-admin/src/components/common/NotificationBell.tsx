@@ -552,6 +552,8 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ isSidebar = 
     if (hasMovedRef.current) {
       return;
     }
+    // Kích hoạt xin quyền thông báo khi người dùng bấm vào chuông (Đáp ứng chính sách bắt buộc User Gesture của Apple iOS Safari)
+    requestSystemNotificationPermission();
     setShowPopover(prev => !prev);
   };
 

@@ -1,7 +1,20 @@
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { Capacitor } from '@capacitor/core';
 
-// ── 1. Sound Effect Player ───────────────────────────────────────────────────
+// ── 1. Đăng ký Service Worker cho PWA (Đặc biệt cho iOS Web PWA) ───────────────
+export const registerServiceWorker = async () => {
+  if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+    try {
+      const reg = await navigator.serviceWorker.register('/sw.js');
+      return reg;
+    } catch (err) {
+      console.debug('ServiceWorker registration error:', err);
+    }
+  }
+  return null;
+};
+
+// ── 2. Sound Effect Player ───────────────────────────────────────────────────
 export const playNotificationSound = () => {
   try {
     const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
@@ -26,10 +39,10 @@ export const playNotificationSound = () => {
   }
 };
 
-// ── 2. Request System Permissions (Desktop + Mobile) ──────────────────────────
+// ── 3. Request System Permissions (Desktop + Mobile + iOS PWA) ────────────────
 export const requestSystemNotificationPermission = async (): Promise<boolean> => {
   try {
-    // 2A. Mobile via Capacitor
+    // 3A. Mobile via Capacitor
     if (Capacitor.isNativePlatform()) {
       const status = await LocalNotifications.checkPermissions();
       if (status.display === 'granted') return true;
@@ -37,7 +50,10 @@ export const requestSystemNotificationPermission = async (): Promise<boolean> =>
       return requested.display === 'granted';
     }
 
-    // 2B. Desktop Browser / Electron
+    // Đảm bảo Service Worker đã được đăng ký cho PWA
+    await registerServiceWorker();
+
+    // 3B. Desktop Browser / iOS Safari PWA / Electron
     if (typeof window !== 'undefined' && 'Notification' in window) {
       if (Notification.permission === 'granted') return true;
       if (Notification.permission !== 'denied') {
@@ -51,7 +67,7 @@ export const requestSystemNotificationPermission = async (): Promise<boolean> =>
   return false;
 };
 
-// ── 3. Dispatch System Notification (Lock screen & Desktop banner) ────────────
+// ── 4. Dispatch System Notification (Lock screen & Desktop banner) ────────────
 export interface SystemNotificationOptions {
   id?: string | number;
   title: string;
@@ -68,7 +84,7 @@ export const sendSystemNotification = async (options: SystemNotificationOptions)
     playNotificationSound();
   }
 
-  // 3A. Electron Desktop App: Tận dụng IPC gửi thông báo Windows Native (kể cả khi đang ẩn ở System Tray)
+  // 4A. Electron Desktop App: Tận dụng IPC gửi thông báo Windows Native (kể cả khi đang ẩn ở System Tray)
   if (typeof window !== 'undefined' && window.electronAPI?.showNotification) {
     try {
       window.electronAPI.showNotification({
@@ -83,7 +99,7 @@ export const sendSystemNotification = async (options: SystemNotificationOptions)
   }
 
   try {
-    // 3B. Mobile (iOS / Android Native Capacitor) -> Push to Lock Screen & Banner
+    // 4B. Mobile (iOS / Android Native Capacitor) -> Push to Lock Screen & Banner
     if (Capacitor.isNativePlatform()) {
       const numericId = typeof id === 'number' 
         ? id 
@@ -104,7 +120,25 @@ export const sendSystemNotification = async (options: SystemNotificationOptions)
       return;
     }
 
-    // 3C. Desktop / Web Browser (Windows Notification Center, macOS Notification, Chrome/Edge Banner)
+    // 4C. iOS PWA / Service Worker Notification (Bắt buộc trên iOS để hiện thông báo khi đóng web)
+    if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+      const registration = await navigator.serviceWorker.getRegistration();
+      if (registration && 'showNotification' in registration) {
+        if (Notification.permission === 'granted') {
+          const notifTag = typeof id === 'string' ? id : `titsmart-notif-${Date.now()}`;
+          await registration.showNotification(title, {
+            body: body,
+            icon: '/logo_256.png',
+            badge: '/logo_256.png',
+            tag: notifTag,
+            data: { url: url || '/' },
+          });
+          return;
+        }
+      }
+    }
+
+    // 4D. Desktop / Web Browser thông thường
     if (typeof window !== 'undefined' && 'Notification' in window) {
       if (Notification.permission === 'granted') {
         const notifTag = typeof id === 'string' ? id : `titsmart-notif-${Date.now()}`;
@@ -127,7 +161,6 @@ export const sendSystemNotification = async (options: SystemNotificationOptions)
           notif.close();
         };
       } else if (Notification.permission === 'default') {
-        // Try requesting permission and send
         Notification.requestPermission().then(perm => {
           if (perm === 'granted') {
             new Notification(title, {

@@ -6,7 +6,7 @@ import { DirectMessage, Engineer, Project } from '../../types';
 import { supabase } from '../../lib/supabase';
 import { uploadAttachment } from '../../utils/fileUploadHelper';
 import { isUserMemberOfProject } from '../../utils/projectMemberUtils';
-import { sendSystemNotification } from '../../services/systemNotificationService';
+import { sendSystemNotification, requestSystemNotificationPermission } from '../../services/systemNotificationService';
 
 const isSameDay = (d1?: string, d2?: string) => {
   if (!d1 || !d2) return false;
@@ -113,6 +113,7 @@ export const ChatWidget: React.FC = () => {
       } catch (_) {}
     }
     modalOpenedAtRef.current = Date.now();
+    requestSystemNotificationPermission();
     setIsOpen(true);
     setSelectedTarget(null);
     setMobileView('contacts');

@@ -4,6 +4,10 @@ import { HashRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import App from './App';
 import './index.css';
+import { registerServiceWorker } from './services/systemNotificationService';
+
+// Tự động đăng ký Service Worker cho PWA (Hỗ trợ thông báo nền trên iOS & Web)
+registerServiceWorker();
 
 // Tắt toàn bộ console logs trên môi trường Production để bảo mật và giữ sạch console
 if (!import.meta.env.DEV) {
