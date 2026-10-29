@@ -5,6 +5,14 @@ import fs from 'fs';
 import updatePkg from 'electron-updater';
 const { autoUpdater } = updatePkg;
 
+// ── Single Instance Lock (Tránh mở nhiều cửa sổ trùng lặp gây đơ/treo trắng màn hình) ─
+const gotTheLock = app.requestSingleInstanceLock();
+
+if (!gotTheLock) {
+  // Nếu đã có tiến trình đang chạy ngầm, thoát ngay tiến trình mới mở này
+  app.quit();
+}
+
 // Handle ES module dirname
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -98,11 +106,21 @@ function createWindow() {
     minHeight: 600,
     icon: icon,
     autoHideMenuBar: true,
+    show: false, // Tránh nhấp nháy trắng màn hình, chờ sẵn sàng mới hiển thị
+    backgroundColor: '#ffffff',
     webPreferences: {
       preload: path.join(__dirname, 'preload.mjs'),
       nodeIntegration: false,
       contextIsolation: true,
+      backgroundThrottling: false, // KHÔNG ĐÓNG BĂNG/HẠ CHẾ TIẾN TRÌNH KHI ẨN XUỐNG TRAY
     },
+  });
+
+  mainWindow.once('ready-to-show', () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.show();
+      mainWindow.focus();
+    }
   });
 
   if (VITE_DEV_SERVER_URL) {
@@ -127,6 +145,11 @@ function createWindow() {
     }
   });
 }
+
+// Khi người dùng bấm đúp mở icon app ngoài desktop trong lúc app đang chạy ngầm
+app.on('second-instance', () => {
+  showMainWindow();
+});
 
 function sendToRenderer(channel: string, data?: unknown) {
   if (mainWindow && !mainWindow.isDestroyed()) {
@@ -307,8 +330,10 @@ app.on('activate', () => {
   }
 });
 
-app.whenReady().then(() => {
-  createWindow();
-  createTray();
-  setupAutoUpdater();
-});
+if (gotTheLock) {
+  app.whenReady().then(() => {
+    createWindow();
+    createTray();
+    setupAutoUpdater();
+  });
+}
