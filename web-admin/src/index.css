@@ -78,8 +78,16 @@
 }
 
 .always-visible-scrollbar::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 10px !important;
+  height: 10px !important;
+}
+.always-visible-scrollbar::-webkit-scrollbar:horizontal {
+  height: 10px !important;
+  display: block !important;
+}
+.always-visible-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #64748b #e2e8f0;
 }
 .always-visible-scrollbar::-webkit-scrollbar-track {
   background: #e2e8f0;

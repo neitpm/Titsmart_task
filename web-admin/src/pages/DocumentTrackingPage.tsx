@@ -977,29 +977,29 @@ export const DocumentTrackingPage: React.FC = () => {
           className="flex-1 w-full min-w-0 flex flex-col overflow-hidden"
         >
           <div className="w-full flex-1 overflow-x-auto overflow-y-auto always-visible-scrollbar min-w-0 select-text">
-            <table className="w-full text-left border-collapse text-[10.5px]">
+            <table className="w-full text-left border-collapse text-[10px]">
               
-              <thead className="bg-slate-50 border-b border-slate-200 text-[11px] font-extrabold text-slate-600 uppercase tracking-tight sticky top-0 z-10 leading-tight shadow-xs">
+              <thead className="bg-slate-50 border-b border-slate-200 text-[10px] font-extrabold text-slate-600 uppercase tracking-tight sticky top-0 z-10 leading-tight shadow-xs">
                 <tr>
-                  <th className="px-1.5 py-2 text-center whitespace-nowrap leading-tight bg-slate-50">Bên</th>
-                  {!projectId && <th className="px-1.5 py-2 whitespace-nowrap leading-tight bg-slate-50">Dự án</th>}
-                  <th className="px-1.5 py-2 whitespace-nowrap leading-tight bg-slate-50">Số HĐ</th>
-                  <th className="px-1.5 py-2 whitespace-nowrap leading-tight bg-slate-50">Tên hợp đồng</th>
-                  <th className="px-1.5 py-2 whitespace-nowrap leading-tight bg-slate-50">Công ty / Đối tác</th>
-                  <th className="px-1.5 py-2 whitespace-nowrap leading-tight bg-slate-50">Người nhận</th>
-                  <th className="px-1.5 py-2 text-center whitespace-nowrap leading-tight bg-slate-50">Ngày gửi</th>
-                  <th className="px-1.5 py-2 text-center whitespace-nowrap leading-tight bg-slate-50">Ngày nhận</th>
-                  <th className="px-1.5 py-2 text-center whitespace-nowrap leading-tight bg-slate-50">Hạn nộp</th>
-                  <th className="px-1.5 py-2 text-right whitespace-nowrap leading-tight bg-slate-50">Giá trị HĐ (đ)</th>
-                  <th className="px-1.5 py-2 text-center whitespace-nowrap leading-tight bg-slate-50">Tạm ứng</th>
-                  <th className="px-1.5 py-2 text-center whitespace-nowrap leading-tight bg-slate-50">Thanh toán</th>
-                  <th className="px-2 py-2.5 text-center whitespace-nowrap leading-tight bg-slate-50">File</th>
-                  <th className="px-1.5 py-2 text-center whitespace-nowrap leading-tight bg-slate-50">Hồ sơ</th>
-                  <th className="px-1.5 py-2 text-center whitespace-nowrap leading-tight bg-slate-50">Người cập nhật</th>
-                  <th className="px-2 py-2.5 text-center whitespace-nowrap leading-tight bg-slate-50">TT</th>
+                  <th className="px-1 py-1.5 text-center whitespace-nowrap bg-slate-50">Bên</th>
+                  {!projectId && <th className="px-1.5 py-1.5 whitespace-nowrap bg-slate-50">Dự án</th>}
+                  <th className="px-1.5 py-1.5 whitespace-nowrap bg-slate-50">Số HĐ</th>
+                  <th className="px-1.5 py-1.5 whitespace-nowrap bg-slate-50">Tên hợp đồng</th>
+                  <th className="px-1.5 py-1.5 whitespace-nowrap bg-slate-50">Công ty / Đối tác</th>
+                  <th className="px-1.5 py-1.5 whitespace-nowrap bg-slate-50">Người nhận</th>
+                  <th className="px-1 py-1.5 text-center whitespace-nowrap bg-slate-50">Ngày gửi</th>
+                  <th className="px-1 py-1.5 text-center whitespace-nowrap bg-slate-50">Ngày nhận</th>
+                  <th className="px-1 py-1.5 text-center whitespace-nowrap bg-slate-50">Hạn nộp</th>
+                  <th className="px-1.5 py-1.5 text-right whitespace-nowrap bg-slate-50">Giá trị HĐ (đ)</th>
+                  <th className="px-1 py-1.5 text-center whitespace-nowrap bg-slate-50">Tạm ứng</th>
+                  <th className="px-1 py-1.5 text-center whitespace-nowrap bg-slate-50">Thanh toán</th>
+                  <th className="px-1 py-1.5 text-center whitespace-nowrap bg-slate-50">File</th>
+                  <th className="px-1 py-1.5 text-center whitespace-nowrap bg-slate-50">Hồ sơ</th>
+                  <th className="px-1.5 py-1.5 text-center whitespace-nowrap bg-slate-50">Người cập nhật</th>
+                  <th className="px-1 py-1.5 text-center whitespace-nowrap bg-slate-50">TT</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 text-[11px] text-slate-700 leading-tight">
+              <tbody className="divide-y divide-slate-100 text-[10px] text-slate-700 leading-tight">
                 {filteredTracks.map((track) => {
                   const isMatch = isHighlightActive && Boolean(
                     (highlightId && track.id === highlightId) ||
@@ -1034,7 +1034,7 @@ export const DocumentTrackingPage: React.FC = () => {
                       });
                     }}
                   >
-                    <td className="px-2 py-2 text-center whitespace-nowrap">
+                    <td className="px-1 py-1 text-center whitespace-nowrap">
                       <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold whitespace-nowrap shrink-0 ${
                         track.side === 'Bên nhận' ? 'bg-emerald-50 text-emerald-600 border border-emerald-200/60' :
                         track.side === 'Bên gửi' ? 'bg-indigo-50 text-indigo-600 border border-indigo-200/60' :
@@ -1044,42 +1044,42 @@ export const DocumentTrackingPage: React.FC = () => {
                       </span>
                     </td>
                     {!projectId && (
-                      <td className="px-1.5 py-2 text-[11px] font-bold text-slate-700 leading-tight">
+                      <td className="px-1 py-1 text-[10px] font-bold text-slate-700 leading-tight">
                         <div className="truncate" title={projects.find(p => p.id === (track as any).projectId || p.code === track.projectCode)?.name || track.projectCode}>
                           {projects.find(p => p.id === (track as any).projectId || p.code === track.projectCode)?.name || track.projectCode || '-'}
                         </div>
                       </td>
                     )}
-                    <td className="px-2.5 py-2 font-mono text-[11px] text-slate-800 leading-tight">
+                    <td className="px-1 py-1 font-mono text-[10px] text-slate-800 leading-tight">
                       <div className="truncate" title={track.contractNo}>
                         {track.contractNo || '-'}
                       </div>
                     </td>
-                    <td className="px-2.5 py-2">
+                    <td className="px-1.5 py-1">
                       <div className="font-bold text-slate-900 leading-tight truncate" title={track.contractName}>
                         {track.contractName}
                       </div>
                     </td>
-                    <td className="px-2.5 py-2">
+                    <td className="px-1.5 py-1">
                       <div className="font-medium text-slate-800 leading-tight truncate" title={track.company}>
                         {track.company || '-'}
                       </div>
                     </td>
-                    <td className="px-2.5 py-2">
+                    <td className="px-1.5 py-1">
                       <div className="font-medium text-slate-700 leading-tight truncate" title={track.receiverName}>{track.receiverName || '-'}</div>
                       {track.phone && <div className="text-[10px] text-slate-400 font-mono mt-0.5 truncate">{track.phone}</div>}
                     </td>
-                    <td className="px-2 py-2 text-center">
+                    <td className="px-1 py-1 text-center">
                       <span className={`px-1 py-0.5 rounded text-[10px] font-mono block truncate ${track.sendDate ? 'bg-slate-100 text-slate-700' : 'text-slate-300'}`}>
                         {track.sendDate ? new Date(track.sendDate).toLocaleDateString('vi-VN') : '-'}
                       </span>
                     </td>
-                    <td className="px-2 py-2 text-center">
+                    <td className="px-1 py-1 text-center">
                       <span className={`px-1 py-0.5 rounded text-[10px] font-mono block truncate ${track.receiveDate ? 'bg-blue-50 text-blue-700 font-bold' : 'text-slate-300'}`}>
                         {track.receiveDate ? new Date(track.receiveDate).toLocaleDateString('vi-VN') : '-'}
                       </span>
                     </td>
-                    <td className="px-2 py-2 text-center">
+                    <td className="px-1 py-1 text-center">
                       {(() => {
                         const info = getDueInfo(track);
                         const effDate = track.dueDate || track.receiveDate || track.sendDate;
@@ -1123,21 +1123,21 @@ export const DocumentTrackingPage: React.FC = () => {
                         );
                       })()}
                     </td>
-                    <td className="px-2.5 py-2 text-right font-bold text-slate-900 text-[10.5px]">
+                    <td className="px-1 py-1 text-right font-bold text-slate-900 text-[10px]">
                       <div className="truncate" title={(track.contractValue || 0).toLocaleString('vi-VN')}>
                         {(track.contractValue || 0).toLocaleString('vi-VN')}
                       </div>
                     </td>
-                    <td className="px-2 py-2 text-center">
+                    <td className="px-1 py-1 text-center">
                       <div className="font-bold text-blue-700 text-[10.5px] truncate">{(() => { const p = Number(track.prepayPercent || 0); return p <= 1 && p > 0 ? Math.round(p * 100) : Math.round(p); })()}%</div>
                       <div className="text-[9px] text-slate-500 font-mono mt-0.5 truncate">{(track.prepayAmount || 0).toLocaleString('vi-VN')}đ</div>
                     </td>
-                    <td className="px-2 py-2 text-center">
+                    <td className="px-1 py-1 text-center">
                       <span className={`inline-block px-1 py-0.5 rounded text-[9.5px] font-bold truncate max-w-full ${track.paymentStatus?.includes('Đã') ? 'text-emerald-700 bg-emerald-50' : 'text-rose-700 bg-rose-50'}`}>
                         {track.paymentStatus || 'Chưa TT'}
                       </span>
                     </td>
-                    <td className="px-1 py-2 text-center" onClick={(e) => e.stopPropagation()}>
+                    <td className="px-0.5 py-1 text-center" onClick={(e) => e.stopPropagation()}>
                       {track.fileUrls && track.fileUrls.length > 0 ? (
                         <button type="button" onClick={(e) => { e.stopPropagation(); setFileViewerUrls(track.fileUrls || []); }} title="Xem file đính kèm" className="relative inline-flex items-center justify-center w-6 h-6 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-colors">
                           <span className="material-symbols-outlined text-[15px]">description</span>
@@ -1147,7 +1147,7 @@ export const DocumentTrackingPage: React.FC = () => {
                         <span className="text-slate-300 text-xs">-</span>
                       )}
                     </td>
-                    <td className="px-2 py-2 text-center">
+                    <td className="px-1 py-1 text-center">
                       <span className={`inline-block px-1 py-0.5 rounded text-[9.5px] font-bold truncate max-w-full ${
                         track.docStatus === 'Đã ký' || track.docStatus === 'Đã nhận đủ' 
                           ? 'text-emerald-700 bg-emerald-50' 
@@ -1158,7 +1158,7 @@ export const DocumentTrackingPage: React.FC = () => {
                         {track.docStatus || 'Chưa ký'}
                       </span>
                     </td>
-                    <td className="px-2.5 py-2">
+                    <td className="px-1.5 py-1">
                       <AuditInfoCell 
                         updatedBy={track.updatedBy || track.createdByName} 
                         updatedAt={track.updatedAt} 
@@ -1167,7 +1167,7 @@ export const DocumentTrackingPage: React.FC = () => {
                       />
                     </td>
                     
-                    <td className="px-1 py-2 text-center" onClick={(e) => e.stopPropagation()}>
+                    <td className="px-0.5 py-1 text-center" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-center gap-1">
                         {canManageItem(user, track, 'DELETE_DOCUMENTS') ? (
                           <button onClick={() => {
