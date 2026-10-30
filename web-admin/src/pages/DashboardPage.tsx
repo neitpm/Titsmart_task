@@ -2,6 +2,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useRealtimeStore } from '../services/realtimeStore';
 import { useAuthStore } from '../services/authStore';
+import { api } from '../services/apiSupabase';
 import { isUserMemberOfProject } from '../utils/projectMemberUtils';
 import { PersonnelCostSummaryCard } from '../components/dashboard/PersonnelCostSummaryCard';
 import { 
@@ -53,7 +54,22 @@ export const DashboardPage: React.FC = () => {
   const [selectedProjects, setSelectedProjects] = useState<string[]>([]);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [projectSearchQuery, setProjectSearchQuery] = useState('');
+  const [attendanceTodayLogs, setAttendanceTodayLogs] = useState<any[]>([]);
   const filterRef = React.useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    api.attendance.getAll().then(logs => {
+      if (isMounted && Array.isArray(logs)) {
+        setAttendanceTodayLogs(logs);
+      }
+    }).catch(err => {
+      console.warn('Dashboard fetch attendance logs err:', err);
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -142,6 +158,16 @@ export const DashboardPage: React.FC = () => {
 
     const activeEngineers = engineers.filter(e => !e.isLocked && !(e as any).is_locked).length;
 
+    // Chấm công hôm nay
+    const todayStr = new Date().toISOString().split('T')[0];
+    const todayLogs = attendanceTodayLogs.filter(l => {
+      if (!l || !l.checkInTime) return false;
+      const logDate = String(l.checkInTime).slice(0, 10);
+      return logDate === todayStr;
+    });
+    const uniqueCheckedInUsers = new Set(todayLogs.map(l => l.userId || l.userName).filter(Boolean));
+    const attendanceTodayCount = uniqueCheckedInUsers.size;
+
     return {
       totalProjects,
       activeProjects,
@@ -153,9 +179,10 @@ export const DashboardPage: React.FC = () => {
       taskPercent,
       totalDocs,
       completedDocs,
-      activeEngineers
+      activeEngineers,
+      attendanceTodayCount
     };
-  }, [displayEnhancedProjects, targetCodes, tasks, documentTracks, engineers]);
+  }, [displayEnhancedProjects, targetCodes, tasks, documentTracks, engineers, attendanceTodayLogs]);
 
   // 1. BIỂU ĐỒ TIẾN ĐỘ THI CÔNG (%)
   const progressData = useMemo(() => {
@@ -521,17 +548,21 @@ export const DashboardPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Card 3: Tổng đầu việc */}
-          <div onClick={() => navigate('/tasks')} className="bg-white rounded-xl p-3.5 sm:p-4 border border-slate-200 shadow-xs hover:shadow-md hover:border-sky-300 transition-all cursor-pointer flex flex-col justify-between min-w-0 group">
+          {/* Card 3: Chấm công hôm nay */}
+          <div onClick={() => navigate('/attendance')} className="bg-white rounded-xl p-3.5 sm:p-4 border border-slate-200 shadow-xs hover:shadow-md hover:border-cyan-300 transition-all cursor-pointer flex flex-col justify-between min-w-0 group">
             <div className="flex items-center gap-2.5 mb-2">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-50 text-sky-600 shrink-0 group-hover:scale-105 transition-transform">
-                <span className="material-symbols-outlined text-[20px]">task_alt</span>
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-cyan-50 text-cyan-600 shrink-0 group-hover:scale-105 transition-transform">
+                <span className="material-symbols-outlined text-[20px]">how_to_reg</span>
               </div>
-              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-tight truncate">Tổng đầu việc</h3>
+              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-tight truncate">Chấm công hôm nay</h3>
             </div>
-            <div className="text-xl sm:text-2xl font-black text-slate-900 truncate">{topMetrics.totalTasksCount}</div>
+            <div className="text-xl sm:text-2xl font-black text-slate-900 truncate">
+              {topMetrics.attendanceTodayCount} <span className="text-sm font-semibold text-slate-500">/ {topMetrics.activeEngineers}</span>
+            </div>
             <div className="mt-2 text-[11px] font-semibold text-slate-500 truncate">
-              <span className="text-sky-600 font-bold">{topMetrics.completedTasksCount}</span> đã xong ({topMetrics.taskPercent}%)
+              <span className="text-cyan-600 font-bold">
+                {topMetrics.activeEngineers > 0 ? Math.round((topMetrics.attendanceTodayCount / topMetrics.activeEngineers) * 100) : 0}%
+              </span> nhân sự đã điểm danh
             </div>
           </div>
 
