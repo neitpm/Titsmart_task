@@ -439,12 +439,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
               <span className={`material-symbols-outlined text-lg ${isPushRegistered ? 'text-emerald-600' : 'text-slate-600'}`}>
                 {isPushRegistered ? 'notifications_active' : 'notifications_off'}
               </span>
-              <div className="flex flex-col">
                 <span className="text-xs font-bold text-slate-800">Chuông điện thoại khi tắt app</span>
-                <span className="text-[10px] text-slate-500">
-                  {isPushRegistered ? 'Đang bật (luôn lưu cấu hình)' : 'Nhận thông báo ngoài màn hình khóa (iOS & Android)'}
-                </span>
-              </div>
             </div>
             <div className="flex items-center bg-slate-200/80 p-0.5 rounded-lg border border-slate-200/60 shrink-0">
               <button
