@@ -436,9 +436,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
           {/* Row: Chuông điện thoại khi tắt app (Mobile Push Notification) */}
           <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-slate-50 border border-slate-200/80">
             <div className="flex items-center gap-2.5">
-              <span className={`material-symbols-outlined text-lg ${isPushRegistered ? 'text-emerald-600' : 'text-slate-600'}`}>
-                {isPushRegistered ? 'notifications_active' : 'notifications_off'}
-              </span>
+              <span className="material-symbols-outlined text-lg text-slate-600">notifications</span>
                 <span className="text-xs font-bold text-slate-800">Chuông điện thoại khi tắt app</span>
             </div>
             <div className="flex items-center bg-slate-200/80 p-0.5 rounded-lg border border-slate-200/60 shrink-0">
