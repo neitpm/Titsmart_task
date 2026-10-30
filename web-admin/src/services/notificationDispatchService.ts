@@ -9,6 +9,20 @@ export interface PushNotificationPayload {
   channelId?: string;
 }
 
+// Khóa công khai VAPID chuẩn RFC 8292 cho Web Push W3C
+export const VAPID_PUBLIC_KEY = 'BLFTgigFY3W-mLHbsOsooxEDu4BpUbUz19RKTpLlyzHyAt-gteKH_9S66ZRIoOIEbNLUleilOym8KDOWs5GhZ9g';
+
+function urlBase64ToUint8Array(base64String: string) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
 /**
  * Gửi Push Notification tới máy chủ Expo Push Service
  * Máy chủ Expo sẽ tự động bắn tiếp tới Google FCM (Android) hoặc Apple APNs (iPhone)
@@ -53,7 +67,7 @@ export async function sendExpoPushNotification(payload: PushNotificationPayload)
 }
 
 /**
- * Đăng ký Web Push Subscription trên trình duyệt / iPhone PWA và lưu lên Cloud
+ * Đăng ký Web Push Subscription trên Android Chrome / iPhone PWA và lưu lên Cloud
  */
 export async function registerWebDeviceToken(userId?: string, username?: string): Promise<boolean> {
   try {
@@ -72,7 +86,24 @@ export async function registerWebDeviceToken(userId?: string, username?: string)
     if (!('serviceWorker' in navigator)) return false;
     const reg = await navigator.serviceWorker.ready;
 
-    // 3. Sinh token định danh cho thiết bị web này
+    // 3. Đăng ký Push Subscription nếu trình duyệt hỗ trợ (Android Chrome & iOS Safari Standalone)
+    let pushSubscription = null;
+    if ('pushManager' in reg) {
+      try {
+        pushSubscription = await reg.pushManager.getSubscription();
+        if (!pushSubscription) {
+          const applicationServerKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
+          pushSubscription = await reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey,
+          });
+        }
+      } catch (subErr) {
+        console.debug('Lỗi pushManager subscribe (chưa có FCM/VAPID backend hoặc bị hạn chế):', subErr);
+      }
+    }
+
+    // 4. Sinh token / ID định danh cho thiết bị này
     let localDeviceId = localStorage.getItem('titsmart_web_device_id');
     if (!localDeviceId) {
       localDeviceId = `WebDevice_${Date.now()}_${Math.random().toString(36).substring(7)}`;
@@ -83,12 +114,16 @@ export async function registerWebDeviceToken(userId?: string, username?: string)
       user_id: userId || null,
       username: username || 'anonymous',
       device_id: localDeviceId,
-      platform: /iPad|iPhone|iPod/.test(navigator.userAgent) ? 'ios_pwa' : 'web_browser',
+      token: localDeviceId,
+      push_subscription: pushSubscription ? JSON.stringify(pushSubscription) : null,
+      platform: /Android/i.test(navigator.userAgent)
+        ? 'android_web'
+        : (/iPad|iPhone|iPod/.test(navigator.userAgent) ? 'ios_pwa' : 'web_browser'),
       user_agent: navigator.userAgent,
       updated_at: new Date().toISOString(),
     };
 
-    // 4. Lưu lên bảng activity_logs (Cloud)
+    // 5. Lưu lên bảng activity_logs (Cloud)
     const { data: existing } = await supabase
       .from('activity_logs')
       .select('id')
@@ -145,7 +180,7 @@ export async function pushToUsers(
 
     if (error || !records || records.length === 0) return;
 
-    const tokensToSend: string[] = [];
+    const expoTokensToSend: string[] = [];
 
     for (const rec of records) {
       try {
@@ -156,9 +191,11 @@ export async function pushToUsers(
           targetUsernamesOrIds.includes(parsed?.username) ||
           targetUsernamesOrIds.includes(parsed?.user_id);
 
-        if (matchesUser && token && (token.startsWith('ExponentPushToken[') || token.startsWith('ExpoPushToken['))) {
-          if (!tokensToSend.includes(token)) {
-            tokensToSend.push(token);
+        if (matchesUser) {
+          if (token && (token.startsWith('ExponentPushToken[') || token.startsWith('ExpoPushToken['))) {
+            if (!expoTokensToSend.includes(token)) {
+              expoTokensToSend.push(token);
+            }
           }
         }
       } catch {
@@ -166,9 +203,9 @@ export async function pushToUsers(
       }
     }
 
-    if (tokensToSend.length > 0) {
+    if (expoTokensToSend.length > 0) {
       await sendExpoPushNotification({
-        to: tokensToSend,
+        to: expoTokensToSend,
         title,
         body,
         data: extraData,

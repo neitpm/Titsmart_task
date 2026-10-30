@@ -246,7 +246,12 @@ export const App: React.FC = () => {
 
   useEffect(() => {
     if (!user) return;
-    requestSystemNotificationPermission();
+    requestSystemNotificationPermission().then(() => {
+      // Tự động đăng ký Device Token cho điện thoại (Android / iOS)
+      import('./services/notificationDispatchService').then(m => {
+        m.registerWebDeviceToken(user.id, user.username).catch(() => {});
+      });
+    });
     fetchProjects();
     fetchTasks();
     fetchMaterials();
