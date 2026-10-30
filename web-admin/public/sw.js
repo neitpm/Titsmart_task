@@ -1,5 +1,5 @@
 // TITSMART Service Worker - Xử lý thông báo đẩy (Web Push) trên iOS PWA & Trình duyệt Web
-const CACHE_NAME = 'titsmart-pwa-v1';
+const CACHE_NAME = 'titsmart-pwa-v2';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
@@ -38,6 +38,8 @@ self.addEventListener('push', (event) => {
     data: data,
     tag: String(data.id || (Date.now() + '-' + Math.floor(Math.random() * 1000))),
     renotify: true,
+    requireInteraction: true,
+    silent: false,
   };
 
   event.waitUntil(self.registration.showNotification(title, options));
