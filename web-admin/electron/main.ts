@@ -287,7 +287,15 @@ ipcMain.on('app:send-web-push', async (_, { subscription, payload }) => {
     if (!subscription || !subscription.endpoint) return;
     const subObj = typeof subscription === 'string' ? JSON.parse(subscription) : subscription;
     const bodyStr = typeof payload === 'string' ? payload : JSON.stringify(payload);
-    await webpush.sendNotification(subObj, bodyStr);
+    const pushOptions = {
+      TTL: 86400,
+      urgency: 'high' as const,
+      headers: {
+        'apns-priority': '10',
+        'apns-push-type': 'alert',
+      },
+    };
+    await webpush.sendNotification(subObj, bodyStr, pushOptions);
     console.log('[Electron APNs] Bắn Web Push tới Apple/Google thành công!');
   } catch (err: any) {
     console.debug('[Electron APNs] Lỗi gửi Web Push:', err?.statusCode || err?.message || err);

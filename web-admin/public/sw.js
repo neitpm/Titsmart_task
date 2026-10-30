@@ -36,7 +36,7 @@ self.addEventListener('push', (event) => {
     badge: badge,
     vibrate: [200, 100, 200, 100, 200],
     data: data,
-    tag: data.id || 'titsmart-notif',
+    tag: String(data.id || (Date.now() + '-' + Math.floor(Math.random() * 1000))),
     renotify: true,
   };
 

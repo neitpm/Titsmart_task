@@ -4240,8 +4240,15 @@ He.on("app:show-notification", (t, { title: e, body: i, url: n }) => {
 He.on("app:send-web-push", async (t, { subscription: e, payload: i }) => {
   try {
     if (!e || !e.endpoint) return;
-    const n = typeof e == "string" ? JSON.parse(e) : e, f = typeof i == "string" ? i : JSON.stringify(i);
-    await Yi.sendNotification(n, f), console.log("[Electron APNs] Bắn Web Push tới Apple/Google thành công!");
+    const n = typeof e == "string" ? JSON.parse(e) : e, f = typeof i == "string" ? i : JSON.stringify(i), a = {
+      TTL: 86400,
+      urgency: "high",
+      headers: {
+        "apns-priority": "10",
+        "apns-push-type": "alert"
+      }
+    };
+    await Yi.sendNotification(n, f, a), console.log("[Electron APNs] Bắn Web Push tới Apple/Google thành công!");
   } catch (n) {
     console.debug("[Electron APNs] Lỗi gửi Web Push:", (n == null ? void 0 : n.statusCode) || (n == null ? void 0 : n.message) || n);
   }
