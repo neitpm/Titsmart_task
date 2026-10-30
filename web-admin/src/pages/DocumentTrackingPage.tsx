@@ -977,22 +977,22 @@ export const DocumentTrackingPage: React.FC = () => {
           className="flex-1 w-full min-w-0 flex flex-col overflow-hidden"
         >
           <div className="w-full flex-1 overflow-x-auto overflow-y-auto always-visible-scrollbar min-w-0 select-text">
-            <table className="w-full text-left border-collapse text-[11px] table-fixed min-w-[1500px]">
+            <table className="w-full text-left border-collapse text-[11px] table-fixed min-w-[1950px]">
               <colgroup>
-                <col style={{ width: 65 }} />
-                {!projectId && <col style={{ width: 150 }} />}
-                <col style={{ width: 120 }} />
-                <col style={{ width: 230 }} />
-                <col style={{ width: 200 }} />
+                <col style={{ width: 75 }} />
+                {!projectId && <col style={{ width: 180 }} />}
+                <col style={{ width: 150 }} />
+                <col style={{ width: 250 }} />
+                <col style={{ width: 250 }} />
                 <col style={{ width: 130 }} />
-                <col style={{ width: 85 }} />
-                <col style={{ width: 85 }} />
-                <col style={{ width: 100 }} />
-                <col style={{ width: 110 }} />
-                <col style={{ width: 90 }} />
                 <col style={{ width: 95 }} />
+                <col style={{ width: 95 }} />
+                <col style={{ width: 105 }} />
+                <col style={{ width: 115 }} />
+                <col style={{ width: 90 }} />
+                <col style={{ width: 110 }} />
                 <col style={{ width: 45 }} />
-                <col style={{ width: 80 }} />
+                <col style={{ width: 90 }} />
                 <col style={{ width: 130 }} />
                 <col style={{ width: 45 }} />
               </colgroup>
@@ -1063,37 +1063,37 @@ export const DocumentTrackingPage: React.FC = () => {
                     </td>
                     {!projectId && (
                       <td className="px-1 py-1 text-[10px] font-bold text-slate-700 leading-tight">
-                        <div className="truncate" title={projects.find(p => p.id === (track as any).projectId || p.code === track.projectCode)?.name || track.projectCode}>
+                        <div className="break-words leading-snug" title={projects.find(p => p.id === (track as any).projectId || p.code === track.projectCode)?.name || track.projectCode}>
                           {projects.find(p => p.id === (track as any).projectId || p.code === track.projectCode)?.name || track.projectCode || '-'}
                         </div>
                       </td>
                     )}
                     <td className="px-1 py-1 font-mono text-[10px] text-slate-800 leading-tight">
-                      <div className="truncate" title={track.contractNo}>
+                      <div className="break-words leading-snug" title={track.contractNo}>
                         {track.contractNo || '-'}
                       </div>
                     </td>
                     <td className="px-1.5 py-1">
-                      <div className="font-bold text-slate-900 leading-tight truncate" title={track.contractName}>
+                      <div className="font-bold text-slate-900 leading-snug break-words" title={track.contractName}>
                         {track.contractName}
                       </div>
                     </td>
                     <td className="px-1.5 py-1">
-                      <div className="font-medium text-slate-800 leading-tight truncate" title={track.company}>
+                      <div className="font-medium text-slate-800 leading-snug break-words" title={track.company}>
                         {track.company || '-'}
                       </div>
                     </td>
                     <td className="px-1.5 py-1">
-                      <div className="font-medium text-slate-700 leading-tight truncate" title={track.receiverName}>{track.receiverName || '-'}</div>
-                      {track.phone && <div className="text-[10px] text-slate-400 font-mono mt-0.5 truncate">{track.phone}</div>}
+                      <div className="font-medium text-slate-700 leading-snug break-words" title={track.receiverName}>{track.receiverName || '-'}</div>
+                      {track.phone && <div className="text-[10px] text-slate-400 font-mono mt-0.5 whitespace-nowrap">{track.phone}</div>}
                     </td>
                     <td className="px-1 py-1 text-center">
-                      <span className={`px-1 py-0.5 rounded text-[10px] font-mono block truncate ${track.sendDate ? 'bg-slate-100 text-slate-700' : 'text-slate-300'}`}>
+                      <span className={`px-1 py-0.5 rounded text-[10px] font-mono inline-block whitespace-nowrap ${track.sendDate ? 'bg-slate-100 text-slate-700' : 'text-slate-300'}`}>
                         {track.sendDate ? new Date(track.sendDate).toLocaleDateString('vi-VN') : '-'}
                       </span>
                     </td>
                     <td className="px-1 py-1 text-center">
-                      <span className={`px-1 py-0.5 rounded text-[10px] font-mono block truncate ${track.receiveDate ? 'bg-blue-50 text-blue-700 font-bold' : 'text-slate-300'}`}>
+                      <span className={`px-1 py-0.5 rounded text-[10px] font-mono inline-block whitespace-nowrap ${track.receiveDate ? 'bg-blue-50 text-blue-700 font-bold' : 'text-slate-300'}`}>
                         {track.receiveDate ? new Date(track.receiveDate).toLocaleDateString('vi-VN') : '-'}
                       </span>
                     </td>
@@ -1151,7 +1151,7 @@ export const DocumentTrackingPage: React.FC = () => {
                       <div className="text-[9px] text-slate-500 font-mono mt-0.5 truncate">{(track.prepayAmount || 0).toLocaleString('vi-VN')}đ</div>
                     </td>
                     <td className="px-1 py-1 text-center">
-                      <span className={`inline-block px-1 py-0.5 rounded text-[9.5px] font-bold truncate max-w-full ${track.paymentStatus?.includes('Đã') ? 'text-emerald-700 bg-emerald-50' : 'text-rose-700 bg-rose-50'}`}>
+                      <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold whitespace-nowrap ${track.paymentStatus?.includes('Đã') ? 'text-emerald-700 bg-emerald-50' : 'text-rose-700 bg-rose-50'}`}>
                         {track.paymentStatus || 'Chưa TT'}
                       </span>
                     </td>
@@ -1166,7 +1166,7 @@ export const DocumentTrackingPage: React.FC = () => {
                       )}
                     </td>
                     <td className="px-1 py-1 text-center">
-                      <span className={`inline-block px-1 py-0.5 rounded text-[9.5px] font-bold truncate max-w-full ${
+                      <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold whitespace-nowrap ${
                         track.docStatus === 'Đã ký' || track.docStatus === 'Đã nhận đủ' 
                           ? 'text-emerald-700 bg-emerald-50' 
                           : track.docStatus === 'Chưa ký' || track.docStatus === 'Chưa nhận'
