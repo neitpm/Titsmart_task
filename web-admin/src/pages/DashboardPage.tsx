@@ -498,7 +498,15 @@ export const DashboardPage: React.FC = () => {
           </div>
 
           {/* Card 2: Tổng thực chi */}
-          <div onClick={() => navigate('/cost-plan')} className="bg-white rounded-xl p-3.5 sm:p-4 border border-slate-200 shadow-xs hover:shadow-md hover:border-emerald-300 transition-all cursor-pointer flex flex-col justify-between min-w-0 group">
+          <div 
+            onClick={() => {
+              const el = document.getElementById('personnel-cost-summary');
+              if (el) {
+                el.scrollIntoView({ behavior: 'smooth' });
+              }
+            }} 
+            className="bg-white rounded-xl p-3.5 sm:p-4 border border-slate-200 shadow-xs hover:shadow-md hover:border-emerald-300 transition-all cursor-pointer flex flex-col justify-between min-w-0 group"
+          >
             <div className="flex items-center gap-2.5 mb-2">
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 shrink-0 group-hover:scale-105 transition-transform">
                 <span className="material-symbols-outlined text-[20px]">account_balance_wallet</span>
@@ -514,7 +522,7 @@ export const DashboardPage: React.FC = () => {
           </div>
 
           {/* Card 3: Tổng đầu việc */}
-          <div onClick={() => navigate('/task-management')} className="bg-white rounded-xl p-3.5 sm:p-4 border border-slate-200 shadow-xs hover:shadow-md hover:border-sky-300 transition-all cursor-pointer flex flex-col justify-between min-w-0 group">
+          <div onClick={() => navigate('/tasks')} className="bg-white rounded-xl p-3.5 sm:p-4 border border-slate-200 shadow-xs hover:shadow-md hover:border-sky-300 transition-all cursor-pointer flex flex-col justify-between min-w-0 group">
             <div className="flex items-center gap-2.5 mb-2">
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-50 text-sky-600 shrink-0 group-hover:scale-105 transition-transform">
                 <span className="material-symbols-outlined text-[20px]">task_alt</span>
@@ -528,7 +536,7 @@ export const DashboardPage: React.FC = () => {
           </div>
 
           {/* Card 4: Hồ sơ dự án */}
-          <div onClick={() => navigate('/documents')} className="bg-white rounded-xl p-3.5 sm:p-4 border border-slate-200 shadow-xs hover:shadow-md hover:border-rose-300 transition-all cursor-pointer flex flex-col justify-between min-w-0 group">
+          <div onClick={() => navigate('/document-tracking')} className="bg-white rounded-xl p-3.5 sm:p-4 border border-slate-200 shadow-xs hover:shadow-md hover:border-rose-300 transition-all cursor-pointer flex flex-col justify-between min-w-0 group">
             <div className="flex items-center gap-2.5 mb-2">
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-50 text-rose-600 shrink-0 group-hover:scale-105 transition-transform">
                 <span className="material-symbols-outlined text-[20px]">description</span>
@@ -542,7 +550,7 @@ export const DashboardPage: React.FC = () => {
           </div>
 
           {/* Card 5: Vật tư & Mua sắm */}
-          <div onClick={() => navigate('/material-tracking')} className="bg-white rounded-xl p-3.5 sm:p-4 border border-slate-200 shadow-xs hover:shadow-md hover:border-amber-300 transition-all cursor-pointer flex flex-col justify-between min-w-0 group">
+          <div onClick={() => navigate('/materials')} className="bg-white rounded-xl p-3.5 sm:p-4 border border-slate-200 shadow-xs hover:shadow-md hover:border-amber-300 transition-all cursor-pointer flex flex-col justify-between min-w-0 group">
             <div className="flex items-center gap-2.5 mb-2">
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-50 text-amber-600 shrink-0 group-hover:scale-105 transition-transform">
                 <span className="material-symbols-outlined text-[20px]">inventory_2</span>
@@ -572,11 +580,13 @@ export const DashboardPage: React.FC = () => {
         </div>
 
         {/* BẢNG DASHBOARD THEO DÕI TỒN QUỸ & CHI PHÍ THEO NHÂN SỰ */}
-        <PersonnelCostSummaryCard
-          expenses={expenses}
-          projects={projects}
-          selectedProjectCodes={selectedProjects.length > 0 ? selectedProjects : undefined}
-        />
+        <div id="personnel-cost-summary">
+          <PersonnelCostSummaryCard
+            expenses={expenses}
+            projects={projects}
+            selectedProjectCodes={selectedProjects.length > 0 ? selectedProjects : undefined}
+          />
+        </div>
 
 
         {displayEnhancedProjects.length === 0 ? (
