@@ -872,7 +872,7 @@ export const DocumentTrackingPage: React.FC = () => {
                   <CustomSelect
                     value={filterProjectCode}
                     onChange={e => setFilterProjectCode(e.target.value)}
-                    className="min-w-[85px] max-w-[130px] border border-slate-200 rounded px-1.5 py-0.5 bg-white text-xs truncate"
+                    className="min-w-[85px] max-w-[95px] border border-slate-200 rounded px-1.5 py-0.5 bg-white text-xs truncate"
                   >
                     <option value="all">Tất cả</option>
                     {docProjectOptions.map(opt => (
@@ -915,7 +915,7 @@ export const DocumentTrackingPage: React.FC = () => {
                 <CustomSelect
                   value={filterDueStatus}
                   onChange={e => setFilterDueStatus(e.target.value)}
-                  className="min-w-[95px] border border-slate-200 rounded px-1.5 py-0.5 bg-white text-xs truncate font-semibold"
+                  className="min-w-[80px] border border-slate-200 rounded px-1.5 py-0.5 bg-white text-xs truncate font-semibold"
                 >
                   <option value="all">Tất cả</option>
                   <option value="warning">🔔 Sắp đến hạn</option>
@@ -964,7 +964,7 @@ export const DocumentTrackingPage: React.FC = () => {
                   placeholder="Tìm số HĐ, công ty..."
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
-                  className="pl-7 pr-2 py-1 border border-slate-200 rounded-md text-xs w-[180px] lg:w-[220px] focus:outline-none focus:ring-1 focus:ring-primary"
+                  className="pl-7 pr-2 py-1 border border-slate-200 rounded-md text-xs w-[150px] lg:w-[180px] focus:outline-none focus:ring-1 focus:ring-primary"
                 />
               </div>
             </div>
@@ -976,44 +976,44 @@ export const DocumentTrackingPage: React.FC = () => {
           }}
           className="flex-1 w-full min-w-0 flex flex-col overflow-hidden"
         >
-          <div className="w-full flex-1 overflow-x-auto overflow-y-auto custom-scrollbar min-w-0">
-            <table className="w-full text-left border-collapse table-fixed min-w-[1680px]">
+          <div className="w-full flex-1 overflow-x-auto overflow-y-auto always-visible-scrollbar min-w-0 select-text">
+            <table className="w-full text-left border-collapse table-fixed min-w-[1400px]">
               <colgroup>
-                <col style={{ width: 75 }} />
-                {!projectId && <col style={{ width: 120 }} />}
-                <col style={{ width: 110 }} />
-                <col style={{ width: 220 }} />
+                <col style={{ width: 65 }} />
+                {!projectId && <col style={{ width: 110 }} />}
+                <col style={{ width: 95 }} />
                 <col style={{ width: 180 }} />
-                <col style={{ width: 140 }} />
+                <col style={{ width: 150 }} />
+                <col style={{ width: 120 }} />
+                <col style={{ width: 80 }} />
+                <col style={{ width: 80 }} />
+                <col style={{ width: 95 }} />
+                <col style={{ width: 110 }} />
                 <col style={{ width: 95 }} />
                 <col style={{ width: 95 }} />
-                <col style={{ width: 115 }} />
+                <col style={{ width: 45 }} />
+                <col style={{ width: 80 }} />
                 <col style={{ width: 130 }} />
-                <col style={{ width: 110 }} />
-                <col style={{ width: 110 }} />
-                <col style={{ width: 55 }} />
-                <col style={{ width: 90 }} />
-                <col style={{ width: 145 }} />
-                <col style={{ width: 60 }} />
+                <col style={{ width: 45 }} />
               </colgroup>
               <thead className="bg-slate-50 border-b border-slate-200 text-[11px] font-extrabold text-slate-600 uppercase tracking-tight sticky top-0 z-10 leading-tight shadow-xs">
                 <tr>
-                  <th className="px-2.5 py-2.5 text-center whitespace-nowrap leading-tight w-[75px] bg-slate-50">Bên</th>
-                  {!projectId && <th className="px-3 py-2.5 whitespace-nowrap leading-tight w-[120px] bg-slate-50">Dự án</th>}
-                  <th className="px-3 py-2.5 whitespace-nowrap leading-tight w-[110px] bg-slate-50">Số HĐ</th>
-                  <th className="px-3 py-2.5 whitespace-nowrap leading-tight w-[220px] bg-slate-50">Tên hợp đồng</th>
-                  <th className="px-3 py-2.5 whitespace-nowrap leading-tight w-[180px] bg-slate-50">Công ty / Đối tác</th>
-                  <th className="px-3 py-2.5 whitespace-nowrap leading-tight w-[140px] bg-slate-50">Người nhận</th>
-                  <th className="px-2.5 py-2.5 text-center whitespace-nowrap leading-tight w-[95px] bg-slate-50">Ngày gửi</th>
-                  <th className="px-2.5 py-2.5 text-center whitespace-nowrap leading-tight w-[95px] bg-slate-50">Ngày nhận</th>
-                  <th className="px-2.5 py-2.5 text-center whitespace-nowrap leading-tight w-[115px] bg-slate-50">Hạn nộp</th>
-                  <th className="px-3 py-2.5 text-right whitespace-nowrap leading-tight w-[130px] bg-slate-50">Giá trị HĐ (đ)</th>
-                  <th className="px-2.5 py-2.5 text-center whitespace-nowrap leading-tight w-[110px] bg-slate-50">Tạm ứng</th>
-                  <th className="px-2.5 py-2.5 text-center whitespace-nowrap leading-tight w-[110px] bg-slate-50">Thanh toán</th>
-                  <th className="px-2 py-2.5 text-center whitespace-nowrap leading-tight w-[55px] bg-slate-50">File</th>
-                  <th className="px-2.5 py-2.5 text-center whitespace-nowrap leading-tight w-[90px] bg-slate-50">Hồ sơ</th>
-                  <th className="px-3 py-2.5 text-center whitespace-nowrap leading-tight w-[145px] bg-slate-50">Người cập nhật</th>
-                  <th className="px-2 py-2.5 text-center whitespace-nowrap leading-tight w-[60px] bg-slate-50">TT</th>
+                  <th className="px-2.5 py-2.5 text-center whitespace-nowrap leading-tight w-[65px] bg-slate-50">Bên</th>
+                  {!projectId && <th className="px-3 py-2.5 whitespace-nowrap leading-tight w-[110px] bg-slate-50">Dự án</th>}
+                  <th className="px-3 py-2.5 whitespace-nowrap leading-tight w-[95px] bg-slate-50">Số HĐ</th>
+                  <th className="px-3 py-2.5 whitespace-nowrap leading-tight w-[180px] bg-slate-50">Tên hợp đồng</th>
+                  <th className="px-3 py-2.5 whitespace-nowrap leading-tight w-[150px] bg-slate-50">Công ty / Đối tác</th>
+                  <th className="px-3 py-2.5 whitespace-nowrap leading-tight w-[120px] bg-slate-50">Người nhận</th>
+                  <th className="px-2.5 py-2.5 text-center whitespace-nowrap leading-tight w-[80px] bg-slate-50">Ngày gửi</th>
+                  <th className="px-2.5 py-2.5 text-center whitespace-nowrap leading-tight w-[80px] bg-slate-50">Ngày nhận</th>
+                  <th className="px-2.5 py-2.5 text-center whitespace-nowrap leading-tight w-[95px] bg-slate-50">Hạn nộp</th>
+                  <th className="px-3 py-2.5 text-right whitespace-nowrap leading-tight w-[110px] bg-slate-50">Giá trị HĐ (đ)</th>
+                  <th className="px-2.5 py-2.5 text-center whitespace-nowrap leading-tight w-[95px] bg-slate-50">Tạm ứng</th>
+                  <th className="px-2.5 py-2.5 text-center whitespace-nowrap leading-tight w-[95px] bg-slate-50">Thanh toán</th>
+                  <th className="px-2 py-2.5 text-center whitespace-nowrap leading-tight w-[45px] bg-slate-50">File</th>
+                  <th className="px-2.5 py-2.5 text-center whitespace-nowrap leading-tight w-[80px] bg-slate-50">Hồ sơ</th>
+                  <th className="px-3 py-2.5 text-center whitespace-nowrap leading-tight w-[130px] bg-slate-50">Người cập nhật</th>
+                  <th className="px-2 py-2.5 text-center whitespace-nowrap leading-tight w-[45px] bg-slate-50">TT</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-[11px] text-slate-700 leading-tight">
