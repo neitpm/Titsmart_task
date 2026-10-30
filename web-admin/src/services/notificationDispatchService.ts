@@ -181,6 +181,7 @@ export async function pushToUsers(
     if (error || !records || records.length === 0) return;
 
     const expoTokensToSend: string[] = [];
+    const webPushSubsToSend: any[] = [];
 
     for (const rec of records) {
       try {
@@ -192,10 +193,22 @@ export async function pushToUsers(
           targetUsernamesOrIds.includes(parsed?.user_id);
 
         if (matchesUser) {
+          // 1. Mobile App Native (Expo Push)
           if (token && (token.startsWith('ExponentPushToken[') || token.startsWith('ExpoPushToken['))) {
             if (!expoTokensToSend.includes(token)) {
               expoTokensToSend.push(token);
             }
+          }
+          // 2. iOS PWA / Android Web (Web Push qua Apple APNs hoặc Google FCM)
+          if (parsed?.push_subscription) {
+            try {
+              const subObj = typeof parsed.push_subscription === 'string'
+                ? JSON.parse(parsed.push_subscription)
+                : parsed.push_subscription;
+              if (subObj && subObj.endpoint) {
+                webPushSubsToSend.push(subObj);
+              }
+            } catch {}
           }
         }
       } catch {
@@ -203,6 +216,7 @@ export async function pushToUsers(
       }
     }
 
+    // Gửi qua Expo Push (Mobile APK / iOS IPA)
     if (expoTokensToSend.length > 0) {
       await sendExpoPushNotification({
         to: expoTokensToSend,
@@ -210,6 +224,27 @@ export async function pushToUsers(
         body,
         data: extraData,
       });
+    }
+
+    // Gửi trực tiếp qua Apple APNs / Web Push (iPhone PWA ngoài màn hình khóa)
+    if (webPushSubsToSend.length > 0) {
+      const payloadObj = {
+        title,
+        body,
+        icon: '/logo_256.png',
+        badge: '/logo_256.png',
+        data: extraData || {},
+      };
+
+      for (const sub of webPushSubsToSend) {
+        // Nếu đang chạy trên Electron Desktop App: Bắn thẳng qua Node IPC tới Apple APNs
+        if (typeof window !== 'undefined' && window.electronAPI?.sendWebPush) {
+          window.electronAPI.sendWebPush({
+            subscription: sub,
+            payload: payloadObj,
+          });
+        }
+      }
     }
   } catch (err) {
     console.debug('Lỗi pushToUsers:', err);

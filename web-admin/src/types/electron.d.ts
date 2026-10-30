@@ -23,6 +23,7 @@ export interface ElectronAPI {
   confirmQuit?: () => void;
   minimizeToTray?: () => void;
   showNotification?: (options: { title: string; body: string; url?: string }) => void;
+  sendWebPush?: (options: { subscription: any; payload: any }) => void;
 }
 
 declare global {

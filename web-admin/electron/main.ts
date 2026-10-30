@@ -3,6 +3,18 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
 import updatePkg from 'electron-updater';
+import webpush from 'web-push';
+
+// Cấu hình VAPID cho Web Push tới Apple APNs và Google FCM
+try {
+  webpush.setVapidDetails(
+    'mailto:admin@titsmart.vn',
+    'BPAuS3BAVsbHBUEJLS_d0lvmxZqLOj71iPBE7oZSIX-r_mbbosFY4JMBmPs_fDOfhQtWT1mpf-_A9c1cSNPip0c',
+    '2eQfYJLlDO7jQpnpSMBiENSXTgvHhC4NAQoQzrsr8O0'
+  );
+} catch (e) {
+  console.debug('Lỗi setVapidDetails trong Electron:', e);
+}
 const { autoUpdater } = updatePkg;
 
 // ── Single Instance Lock (Tránh mở nhiều cửa sổ trùng lặp gây đơ/treo trắng màn hình) ─
@@ -266,6 +278,19 @@ ipcMain.on('app:show-notification', (_, { title, body, url }) => {
     });
 
     notif.show();
+  }
+});
+
+// Bắn Web Push Notification trực tiếp từ Electron tới Apple APNs / Google FCM
+ipcMain.on('app:send-web-push', async (_, { subscription, payload }) => {
+  try {
+    if (!subscription || !subscription.endpoint) return;
+    const subObj = typeof subscription === 'string' ? JSON.parse(subscription) : subscription;
+    const bodyStr = typeof payload === 'string' ? payload : JSON.stringify(payload);
+    await webpush.sendNotification(subObj, bodyStr);
+    console.log('[Electron APNs] Bắn Web Push tới Apple/Google thành công!');
+  } catch (err: any) {
+    console.debug('[Electron APNs] Lỗi gửi Web Push:', err?.statusCode || err?.message || err);
   }
 });
 

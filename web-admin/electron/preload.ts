@@ -40,4 +40,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   showNotification: (options: { title: string; body: string; url?: string }) => {
     ipcRenderer.send('app:show-notification', options);
   },
+  sendWebPush: (options: { subscription: any; payload: any }) => {
+    ipcRenderer.send('app:send-web-push', options);
+  },
 });
