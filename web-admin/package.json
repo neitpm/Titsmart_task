@@ -1,7 +1,7 @@
 {
   "name": "buildcore-pro-web-admin",
   "private": true,
-  "version": "3.8.297",
+  "version": "3.8.298",
   "description": "TITSMART Project Manager",
   "type": "module",
   "main": "dist-electron/main.js",
@@ -43,6 +43,7 @@
     "tailwind-merge": "^2.2.2",
     "tesseract.js": "^7.0.0",
     "uuid": "^14.0.1",
+    "web-push": "^3.6.7",
     "xlsx": "^0.18.5",
     "zustand": "^4.5.2"
   },
@@ -50,6 +51,7 @@
     "@types/node": "^20.11.30",
     "@types/react": "^18.2.66",
     "@types/react-dom": "^18.2.22",
+    "@types/web-push": "^3.6.4",
     "@vitejs/plugin-react": "^4.2.1",
     "autoprefixer": "^10.4.19",
     "cross-env": "^10.1.0",

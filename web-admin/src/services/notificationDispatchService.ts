@@ -10,7 +10,7 @@ export interface PushNotificationPayload {
 }
 
 // Khóa công khai VAPID chuẩn RFC 8292 cho Web Push W3C
-export const VAPID_PUBLIC_KEY = 'BLFTgigFY3W-mLHbsOsooxEDu4BpUbUz19RKTpLlyzHyAt-gteKH_9S66ZRIoOIEbNLUleilOym8KDOWs5GhZ9g';
+export const VAPID_PUBLIC_KEY = 'BPAuS3BAVsbHBUEJLS_d0lvmxZqLOj71iPBE7oZSIX-r_mbbosFY4JMBmPs_fDOfhQtWT1mpf-_A9c1cSNPip0c';
 
 function urlBase64ToUint8Array(base64String: string) {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);

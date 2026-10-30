@@ -25,12 +25,14 @@
     "multer": "^2.2.0",
     "pg": "^8.22.0",
     "prisma": "^7.9.0",
+    "web-push": "^3.6.7",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/node": "^26.1.1",
+    "@types/web-push": "^3.6.4",
     "ts-node": "^10.9.2",
     "tsx": "^4.23.1",
     "typescript": "^7.0.2"
