@@ -977,7 +977,25 @@ export const DocumentTrackingPage: React.FC = () => {
           className="flex-1 w-full min-w-0 flex flex-col overflow-hidden"
         >
           <div className="w-full flex-1 overflow-x-auto overflow-y-auto always-visible-scrollbar min-w-0 select-text">
-            <table className="w-full text-left border-collapse text-[10px]">
+            <table className="w-full text-left border-collapse text-[10px] table-fixed min-w-[1100px]">
+              <colgroup>
+                <col style={{ width: 55 }} />
+                {!projectId && <col style={{ width: 110 }} />}
+                <col style={{ width: 90 }} />
+                <col style={{ width: 140 }} />
+                <col style={{ width: 130 }} />
+                <col style={{ width: 95 }} />
+                <col style={{ width: 70 }} />
+                <col style={{ width: 70 }} />
+                <col style={{ width: 85 }} />
+                <col style={{ width: 85 }} />
+                <col style={{ width: 70 }} />
+                <col style={{ width: 75 }} />
+                <col style={{ width: 35 }} />
+                <col style={{ width: 65 }} />
+                <col style={{ width: 100 }} />
+                <col style={{ width: 35 }} />
+              </colgroup>
               
               <thead className="bg-slate-50 border-b border-slate-200 text-[10px] font-extrabold text-slate-600 uppercase tracking-tight sticky top-0 z-10 leading-tight shadow-xs">
                 <tr>
