@@ -977,43 +977,26 @@ export const DocumentTrackingPage: React.FC = () => {
           className="flex-1 w-full min-w-0 flex flex-col overflow-hidden"
         >
           <div className="w-full flex-1 overflow-x-auto overflow-y-auto always-visible-scrollbar min-w-0 select-text">
-            <table className="w-full text-left border-collapse table-fixed min-w-[1400px]">
-              <colgroup>
-                <col style={{ width: 65 }} />
-                {!projectId && <col style={{ width: 110 }} />}
-                <col style={{ width: 95 }} />
-                <col style={{ width: 180 }} />
-                <col style={{ width: 150 }} />
-                <col style={{ width: 120 }} />
-                <col style={{ width: 80 }} />
-                <col style={{ width: 80 }} />
-                <col style={{ width: 95 }} />
-                <col style={{ width: 110 }} />
-                <col style={{ width: 95 }} />
-                <col style={{ width: 95 }} />
-                <col style={{ width: 45 }} />
-                <col style={{ width: 80 }} />
-                <col style={{ width: 130 }} />
-                <col style={{ width: 45 }} />
-              </colgroup>
+            <table className="w-full text-left border-collapse text-[10.5px]">
+              
               <thead className="bg-slate-50 border-b border-slate-200 text-[11px] font-extrabold text-slate-600 uppercase tracking-tight sticky top-0 z-10 leading-tight shadow-xs">
                 <tr>
-                  <th className="px-2.5 py-2.5 text-center whitespace-nowrap leading-tight w-[65px] bg-slate-50">Bên</th>
-                  {!projectId && <th className="px-3 py-2.5 whitespace-nowrap leading-tight w-[110px] bg-slate-50">Dự án</th>}
-                  <th className="px-3 py-2.5 whitespace-nowrap leading-tight w-[95px] bg-slate-50">Số HĐ</th>
-                  <th className="px-3 py-2.5 whitespace-nowrap leading-tight w-[180px] bg-slate-50">Tên hợp đồng</th>
-                  <th className="px-3 py-2.5 whitespace-nowrap leading-tight w-[150px] bg-slate-50">Công ty / Đối tác</th>
-                  <th className="px-3 py-2.5 whitespace-nowrap leading-tight w-[120px] bg-slate-50">Người nhận</th>
-                  <th className="px-2.5 py-2.5 text-center whitespace-nowrap leading-tight w-[80px] bg-slate-50">Ngày gửi</th>
-                  <th className="px-2.5 py-2.5 text-center whitespace-nowrap leading-tight w-[80px] bg-slate-50">Ngày nhận</th>
-                  <th className="px-2.5 py-2.5 text-center whitespace-nowrap leading-tight w-[95px] bg-slate-50">Hạn nộp</th>
-                  <th className="px-3 py-2.5 text-right whitespace-nowrap leading-tight w-[110px] bg-slate-50">Giá trị HĐ (đ)</th>
-                  <th className="px-2.5 py-2.5 text-center whitespace-nowrap leading-tight w-[95px] bg-slate-50">Tạm ứng</th>
-                  <th className="px-2.5 py-2.5 text-center whitespace-nowrap leading-tight w-[95px] bg-slate-50">Thanh toán</th>
-                  <th className="px-2 py-2.5 text-center whitespace-nowrap leading-tight w-[45px] bg-slate-50">File</th>
-                  <th className="px-2.5 py-2.5 text-center whitespace-nowrap leading-tight w-[80px] bg-slate-50">Hồ sơ</th>
-                  <th className="px-3 py-2.5 text-center whitespace-nowrap leading-tight w-[130px] bg-slate-50">Người cập nhật</th>
-                  <th className="px-2 py-2.5 text-center whitespace-nowrap leading-tight w-[45px] bg-slate-50">TT</th>
+                  <th className="px-1.5 py-2 text-center whitespace-nowrap leading-tight bg-slate-50">Bên</th>
+                  {!projectId && <th className="px-1.5 py-2 whitespace-nowrap leading-tight bg-slate-50">Dự án</th>}
+                  <th className="px-1.5 py-2 whitespace-nowrap leading-tight bg-slate-50">Số HĐ</th>
+                  <th className="px-1.5 py-2 whitespace-nowrap leading-tight bg-slate-50">Tên hợp đồng</th>
+                  <th className="px-1.5 py-2 whitespace-nowrap leading-tight bg-slate-50">Công ty / Đối tác</th>
+                  <th className="px-1.5 py-2 whitespace-nowrap leading-tight bg-slate-50">Người nhận</th>
+                  <th className="px-1.5 py-2 text-center whitespace-nowrap leading-tight bg-slate-50">Ngày gửi</th>
+                  <th className="px-1.5 py-2 text-center whitespace-nowrap leading-tight bg-slate-50">Ngày nhận</th>
+                  <th className="px-1.5 py-2 text-center whitespace-nowrap leading-tight bg-slate-50">Hạn nộp</th>
+                  <th className="px-1.5 py-2 text-right whitespace-nowrap leading-tight bg-slate-50">Giá trị HĐ (đ)</th>
+                  <th className="px-1.5 py-2 text-center whitespace-nowrap leading-tight bg-slate-50">Tạm ứng</th>
+                  <th className="px-1.5 py-2 text-center whitespace-nowrap leading-tight bg-slate-50">Thanh toán</th>
+                  <th className="px-2 py-2.5 text-center whitespace-nowrap leading-tight bg-slate-50">File</th>
+                  <th className="px-1.5 py-2 text-center whitespace-nowrap leading-tight bg-slate-50">Hồ sơ</th>
+                  <th className="px-1.5 py-2 text-center whitespace-nowrap leading-tight bg-slate-50">Người cập nhật</th>
+                  <th className="px-2 py-2.5 text-center whitespace-nowrap leading-tight bg-slate-50">TT</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-[11px] text-slate-700 leading-tight">
