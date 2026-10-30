@@ -7,6 +7,8 @@ import { uploadAttachment } from '../../utils/fileUploadHelper';
 import { Modal } from './Modal';
 import { ChangePasswordModal } from './ChangePasswordModal';
 import { Toast } from './Toast';
+import { registerWebDeviceToken } from '../../services/notificationDispatchService';
+import { requestSystemNotificationPermission, sendSystemNotification } from '../../services/systemNotificationService';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -50,6 +52,45 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
   const [inputCompanyName, setInputCompanyName] = useState(companyName || 'TITSMART');
   const [inputCompanySlogan, setInputCompanySlogan] = useState(companySlogan || 'Project Manager');
   const [inputCompanyLogo, setInputCompanyLogo] = useState<string | null>(companyLogo || null);
+  const [isPushRegistered, setIsPushRegistered] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('titsmart_push_enabled') === 'true' || (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted');
+    } catch {
+      return false;
+    }
+  });
+  const [isRegisteringPush, setIsRegisteringPush] = useState(false);
+
+  const handleTogglePushNotifications = async (enable: boolean) => {
+    if (!enable) {
+      setIsPushRegistered(false);
+      localStorage.setItem('titsmart_push_enabled', 'false');
+      triggerToast('Đã tắt nhận chuông điện thoại khi tắt app trên thiết bị này.', 'info');
+      return;
+    }
+
+    setIsRegisteringPush(true);
+    try {
+      await requestSystemNotificationPermission();
+      const ok = await registerWebDeviceToken(user?.id, user?.username);
+      if (ok) {
+        setIsPushRegistered(true);
+        localStorage.setItem('titsmart_push_enabled', 'true');
+        sendSystemNotification({
+          title: 'Đã kích hoạt thông báo đẩy!',
+          body: 'Điện thoại của bạn giờ đây sẽ nhận được chuông và thông báo ngay cả khi tắt ứng dụng.',
+        });
+        triggerToast('Đã lưu cấu hình! Điện thoại sẽ đổ chuông khi tắt app.', 'success');
+      } else {
+        triggerToast('Vui lòng cấp quyền thông báo trong Cài đặt của máy!', 'warning');
+      }
+    } catch (err) {
+      console.error(err);
+      triggerToast('Lỗi khi kích hoạt thông báo đẩy!', 'error');
+    } finally {
+      setIsRegisteringPush(false);
+    }
+  };
   const [isSaving, setIsSaving] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
 
@@ -388,6 +429,43 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                 }`}
               >
                 Rê chuột
+              </button>
+            </div>
+          </div>
+
+          {/* Row: Chuông điện thoại khi tắt app (Mobile Push Notification) */}
+          <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-slate-50 border border-slate-200/80">
+            <div className="flex items-center gap-2.5">
+              <span className={`material-symbols-outlined text-lg ${isPushRegistered ? 'text-emerald-600' : 'text-slate-600'}`}>
+                {isPushRegistered ? 'notifications_active' : 'notifications_off'}
+              </span>
+              <div className="flex flex-col">
+                <span className="text-xs font-bold text-slate-800">Chuông điện thoại khi tắt app</span>
+                <span className="text-[10px] text-slate-500">
+                  {isPushRegistered ? 'Đang bật (luôn lưu cấu hình)' : 'Nhận thông báo ngoài màn hình khóa (iOS & Android)'}
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center bg-slate-200/80 p-0.5 rounded-lg border border-slate-200/60 shrink-0">
+              <button
+                type="button"
+                onClick={() => handleTogglePushNotifications(true)}
+                disabled={isRegisteringPush}
+                className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${
+                  isPushRegistered ? 'bg-white text-emerald-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                {isRegisteringPush ? '...' : 'Bật'}
+              </button>
+              <button
+                type="button"
+                onClick={() => handleTogglePushNotifications(false)}
+                disabled={isRegisteringPush}
+                className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${
+                  !isPushRegistered ? 'bg-white text-rose-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Tắt
               </button>
             </div>
           </div>
