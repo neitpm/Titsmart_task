@@ -656,6 +656,27 @@ export const ProjectManagementPage: React.FC = () => {
   const [editProjClient, setEditProjClient] = useState('');
   const [editProjCategory, setEditProjCategory] = useState('');
   const [editSelectedEngineerIds, setEditSelectedEngineerIds] = useState<string[]>([]);
+  const [editPendingProjectTasks, setEditPendingProjectTasks] = useState<NonNullable<WebOcrExtractedData['tableTasks']>>([]);
+
+  const applyImportedProjectToEdit = (data: WebOcrExtractedData) => {
+    const projectName = data.projectName || getImportedFieldValue(data, ['cong trinh', 'ten cong trinh', 'du an', 'goi thau']);
+    if (projectName) {
+      setEditProjName(projectName);
+    }
+    const location = data.location || getImportedFieldValue(data, ['dia diem cong trinh', 'dia diem xay dung', 'dia diem', 'vi tri', 'dia chi']);
+    if (location) setEditProjLocation(location);
+    const client = getImportedFieldValue(data, ['chu dau tu', 'khach hang', 'ben giao thau']);
+    if (client) setEditProjClient(client);
+    const category = getImportedFieldValue(data, ['hang muc', 'hạng mục', 'loai cong trinh', 'phan loai']);
+    if (category) setEditProjCategory(category);
+
+    if (data.tableTasks && data.tableTasks.length > 0) {
+      setEditPendingProjectTasks(data.tableTasks);
+      triggerToast(`Đã nhận ${data.tableTasks.length} đầu mục công việc từ phụ lục. Nhấn "Lưu thay đổi" để đồng bộ vào dự án!`, 'info');
+    } else {
+      triggerToast('Đã trích xuất thông tin từ file vào form dự án.', 'info');
+    }
+  };
 
   const toggleEditEngineerId = (id: string) => {
     setEditSelectedEngineerIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
@@ -663,6 +684,7 @@ export const ProjectManagementPage: React.FC = () => {
 
   const openEditModal = (project: Project) => {
     setProjectToEdit(project);
+    setEditPendingProjectTasks([]);
     setEditProjName(project.name);
     setEditProjLocation(project.location || '');
     setEditProjClient(project.client || '');
@@ -754,11 +776,202 @@ export const ProjectManagementPage: React.FC = () => {
         await Promise.all(engUpdates);
       }
 
+      // Đồng bộ các đầu mục công việc, vật tư, mua sắm từ phụ lục vào dự án nếu có
+      if (editPendingProjectTasks.length > 0) {
+        const code = projectToEdit.code || projectToEdit.id;
+        const projName = editProjName.trim() || projectToEdit.name;
+        let orderCounter = 0;
+        let currentMainSectionId: string | undefined = undefined;
+        let currentSubSectionId: string | undefined = undefined;
+        const sttIdMap = new Map<string, string>();
+
+        const tasksWithIds = editPendingProjectTasks.map((item) => {
+          const taskId = crypto.randomUUID();
+          return {
+            ...item,
+            id: taskId,
+          };
+        });
+
+        tasksWithIds.forEach(item => {
+          if (item.stt) sttIdMap.set(item.stt.trim(), item.id);
+        });
+
+        const existingTaskKeys = new Set(tasks.filter((task) => task.projectCode === code).map((task) => `${task.parentId || 'root'}|${task.stt.trim()}|${task.name.trim().toLowerCase()}`));
+        const importedTasks: Task[] = [];
+
+        tasksWithIds.forEach((item) => {
+          const sttVal = (item.stt || '').trim();
+          const isSection = item.isSectionHeader;
+
+          let parentId = undefined;
+          if (isSection) {
+            const isMainLevelHeader = /^[A-Z]{1,2}$/i.test(sttVal) || /^(I|II|III|IV|V|VI|VII|VIII|IX|X|XI|XII|XIII|XIV|XV|XVI|XVII|XVIII|XIX|XX)$/i.test(sttVal) || sttVal.startsWith('PHẦN') || item.name.toUpperCase().startsWith('PHẦN ');
+            if (isMainLevelHeader) {
+              currentMainSectionId = item.id;
+              currentSubSectionId = undefined;
+              parentId = undefined;
+            } else {
+              let foundDottedParent = false;
+              if (sttVal.includes('.')) {
+                const parts = sttVal.split('.');
+                parts.pop();
+                const parentStt = parts.join('.');
+                if (sttIdMap.has(parentStt)) {
+                  parentId = sttIdMap.get(parentStt);
+                  foundDottedParent = true;
+                }
+              }
+              if (!foundDottedParent) {
+                parentId = currentMainSectionId;
+              }
+              currentSubSectionId = item.id;
+            }
+          } else {
+            let foundDottedParent = false;
+            if (sttVal.includes('.')) {
+              const parts = sttVal.split('.');
+              parts.pop();
+              const parentStt = parts.join('.');
+              if (sttIdMap.has(parentStt)) {
+                parentId = sttIdMap.get(parentStt);
+                foundDottedParent = true;
+              }
+            }
+            if (!foundDottedParent) {
+              parentId = currentSubSectionId || currentMainSectionId;
+            }
+          }
+
+          const key = `${parentId || 'root'}|${item.stt.trim()}|${item.name.trim().toLowerCase()}`;
+          if (existingTaskKeys.has(key)) return;
+          existingTaskKeys.add(key);
+
+          importedTasks.push({
+            id: item.id,
+            parentId: parentId,
+            stt: item.stt || '',
+            code: item.id,
+            name: item.name,
+            projectCode: code,
+            projectName: projName,
+            volume: item.volume || 0,
+            unit: item.unit || '',
+            progress: 0,
+            status: TEXT.taskStatus as Task['status'],
+            purchaseStatus: isSection ? '' : TEXT.purchaseStatus,
+            constrStatus: isSection ? '' : TEXT.constructionStatus,
+            issue: '',
+            issueStatus: '',
+            isDone: false,
+            isSectionHeader: isSection,
+            sectionName: isSection ? item.name : (importedTasks.slice().reverse().find((t) => t.isSectionHeader)?.name || ''),
+            notes: item.notes || '',
+            assignedEngineerId: '',
+            assignedEngineerName: '',
+          });
+        });
+
+        if (importedTasks.length > 0) {
+          await addTasksBatch(importedTasks);
+        }
+
+        const existingMaterialPlanKeys = new Set(
+          materialPlans
+            .filter((plan) => plan.projectCode === code)
+            .map((plan) => `${String(plan.stt || '').trim()}|${String(plan.jobContent || '').trim().toLowerCase()}`)
+        );
+        const newMaterialPlans = [];
+        for (const item of tasksWithIds.filter((item) => item.name?.trim())) {
+          const key = `${String(item.stt || '').trim()}|${String(item.name || '').trim().toLowerCase()}`;
+          if (existingMaterialPlanKeys.has(key)) continue;
+          existingMaterialPlanKeys.add(key);
+
+          const matchingTask = importedTasks.find(t => t.id === item.id);
+          const rowId = item.id;
+          const parentId = matchingTask ? matchingTask.parentId : undefined;
+          const isSection = matchingTask ? matchingTask.isSectionHeader : false;
+
+          const supplyScope: 'contractor' | 'owner' | 'unknown' = item.supplyScope === 'owner' ? 'owner' : item.supplyScope === 'contractor' ? 'contractor' : 'unknown';
+          const orderTag = `[order:${String(++orderCounter).padStart(5, '0')}]`;
+          newMaterialPlans.push({
+            id: rowId,
+            parentId: parentId,
+            projectCode: code,
+            stt: item.stt || '',
+            jobContent: item.name,
+            unit: item.unit || '',
+            contractVolume: item.volume || 0,
+            techSpecModel: item.techSpecModel || '',
+            techSpecOrigin: item.techSpecOrigin || '',
+            progressStatus: '',
+            orderedVolume: 0,
+            orderedStatus: '',
+            expectedDate: '',
+            issueContent: '',
+            issueStatus: '',
+            docCo: false,
+            docCq: false,
+            docFireInspection: false,
+            dispatchToSite: false,
+            supplyScope,
+            notes: [orderTag, isSection ? '[section]' : '', supplyScope !== 'unknown' ? `[${supplyScope}]` : '', item.notes].filter(Boolean).join(' | '),
+          });
+        }
+        if (newMaterialPlans.length > 0) {
+          await addMaterialPlansBatch(newMaterialPlans);
+        }
+
+        const existingPurchasingKeys = new Set(
+          purchasingPlans
+            .filter((plan) => plan.projectCode === code)
+            .map((plan) => `${String(plan.stt || '').trim()}|${String(plan.content || '').trim().toLowerCase()}`)
+        );
+        const newPurchasingPlans = [];
+        for (const item of tasksWithIds.filter((item) => item.name?.trim())) {
+          const key = `${String(item.stt || '').trim()}|${String(item.name || '').trim().toLowerCase()}`;
+          if (existingPurchasingKeys.has(key)) continue;
+          existingPurchasingKeys.add(key);
+
+          const matchingTask = importedTasks.find(t => t.id === item.id);
+          const rowId = item.id;
+          const parentId = matchingTask ? matchingTask.parentId : undefined;
+          const isSection = matchingTask ? matchingTask.isSectionHeader : false;
+
+          const orderTag = `[order:${String(++orderCounter).padStart(5, '0')}]`;
+          newPurchasingPlans.push({
+            id: rowId,
+            parentId: parentId,
+            projectCode: code,
+            stt: item.stt || '',
+            content: item.name,
+            unit: item.unit || '',
+            volumeContract: item.volume || 0,
+            volumeOrder: item.volume || 0,
+            unitPrice: item.unitPrice || 0,
+            vatRate: item.vatRate !== undefined ? item.vatRate : 10,
+            vatAmount: item.vatAmount || 0,
+            totalAmount: item.totalAmount || 0,
+            prepayPercent: 0,
+            prepayAmount: 0,
+            remainingAmount: item.totalAmount || 0,
+            orderStatus: TEXT.purchaseStatus,
+            contractStatus: 'Đã có phụ lục',
+            invoiceStatus: 'Chưa xuất',
+            notes: [orderTag, isSection ? '[section]' : '', item.notes].filter(Boolean).join(' | '),
+          });
+        }
+        if (newPurchasingPlans.length > 0) {
+          await addPurchasingsBatch(newPurchasingPlans);
+        }
+      }
+
       await Promise.all([fetchProjects(), fetchEngineers()]).catch(() => {});
 
       logActivity(`Cập nhật thông tin dự án: ${editProjName.trim()}`, editProjName.trim());
-      triggerToast(`Đã cập nhật dự án \"${projectToEdit.name}\" thành công!`, 'success');
+      triggerToast(`Đã cập nhật dự án \"${projectToEdit.name}\"${editPendingProjectTasks.length ? ` và đồng bộ ${editPendingProjectTasks.length} đầu mục phụ lục` : ''} thành công!`, 'success');
       setProjectToEdit(null);
+      setEditPendingProjectTasks([]);
     } catch (error) {
       console.error(error);
       triggerToast('Lỗi khi cập nhật dự án', 'warning');
@@ -1048,8 +1261,26 @@ export const ProjectManagementPage: React.FC = () => {
         </div>
       </Modal>
 
-      <Modal isOpen={Boolean(projectToEdit)} onClose={() => setProjectToEdit(null)} title="Cập nhật dự án">
+      <Modal isOpen={Boolean(projectToEdit)} onClose={() => { setProjectToEdit(null); setEditPendingProjectTasks([]); }} title="Cập nhật dự án">
         <form onSubmit={async (e) => { e.preventDefault(); if (loading || isSubmittingRef.current) return; isSubmittingRef.current = true; setLoading(true); try { await handleEditProject(e); } finally { isSubmittingRef.current = false; setLoading(false); } }} className="space-y-4">
+          <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3">
+            <OcrUploadPanel onExtracted={applyImportedProjectToEdit} />
+            <p className="mt-2 text-xs text-slate-500">
+              Có thể nhập file phụ lục (Excel, PDF, DOCX, Ảnh) để cập nhật thông tin dự án và đồng bộ các đầu mục công việc, vật tư, mua sắm vào dự án.
+            </p>
+            {editPendingProjectTasks.length > 0 && (
+              <div className="mt-2 flex items-center justify-between rounded-lg bg-blue-50 px-3 py-2 text-xs text-primary border border-blue-200 font-semibold">
+                <span>✓ Đã trích xuất {editPendingProjectTasks.length} đầu mục từ phụ lục. Nhấn "Lưu thay đổi" để đồng bộ ngay.</span>
+                <button
+                  type="button"
+                  onClick={() => setEditPendingProjectTasks([])}
+                  className="text-xs font-bold text-rose-600 hover:underline ml-2"
+                >
+                  Hủy bỏ
+                </button>
+              </div>
+            )}
+          </div>
           <div>
             <label className="block font-bold text-slate-700 mb-1">Tên Dự án / Công trình mới *</label>
             <input required value={editProjName} onChange={(e) => setEditProjName(e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none" />
