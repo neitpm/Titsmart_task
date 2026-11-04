@@ -133,6 +133,8 @@ export const AttendancePage: React.FC = () => {
   const [leaveSearchQuery, setLeaveSearchQuery] = useState('');
   const [leaveFilterDateFrom, setLeaveFilterDateFrom] = useState('');
   const [leaveFilterDateTo, setLeaveFilterDateTo] = useState('');
+  const [leaveSelectedYear, setLeaveSelectedYear] = useState<number>(new Date().getFullYear());
+  const [leaveSelectedUser, setLeaveSelectedUser] = useState<string>('me');
   const [leavesLoading, setLeavesLoading] = useState(!hasFetchedAttendanceData && cachedLeaves.length === 0);
   const [showLeaveModal, setShowLeaveModal] = useState(false);
   const [leaveType, setLeaveType] = useState<LeaveType>('Nghỉ phép năm');
@@ -535,13 +537,27 @@ export const AttendancePage: React.FC = () => {
     return list;
   }, [leaves, tab, user, leaveSearchQuery, leaveFilterDateFrom, leaveFilterDateTo, canViewAll]);
 
-  // Tính toán hạn mức phép năm và bù trừ linh hoạt theo tháng cho nhân viên hiện tại
+  // Tính toán hạn mức phép năm và bù trừ linh hoạt theo tháng cho nhân viên được chọn hoặc cá nhân
+  const targetLeaveUserId = React.useMemo(() => {
+    if (tab === 'my' || !canViewAll || leaveSelectedUser === 'me') {
+      return user?.id || '';
+    }
+    return leaveSelectedUser;
+  }, [tab, canViewAll, leaveSelectedUser, user]);
+
+  const targetLeaveUserName = React.useMemo(() => {
+    if (tab === 'my' || !canViewAll || leaveSelectedUser === 'me') {
+      return user?.name || 'Cá nhân';
+    }
+    const found = engineers.find(e => e.id === leaveSelectedUser);
+    return found ? found.name : 'Nhân sự';
+  }, [tab, canViewAll, leaveSelectedUser, user, engineers]);
+
   const myLeaveBalance: YearLeaveBalanceSummary | null = React.useMemo(() => {
-    if (!user || !user.id) return null;
-    const currentYear = new Date().getFullYear();
-    const currentMonth = new Date().getMonth() + 1;
-    return calculateYearLeaveAccrual(user.id, currentYear, leaves, currentMonth);
-  }, [user, leaves]);
+    if (!targetLeaveUserId) return null;
+    const currentMonth = leaveSelectedYear === new Date().getFullYear() ? (new Date().getMonth() + 1) : 12;
+    return calculateYearLeaveAccrual(targetLeaveUserId, leaveSelectedYear, leaves, currentMonth);
+  }, [targetLeaveUserId, leaveSelectedYear, leaves]);
 
   // Lọc danh sách chấm công bù ngay trong bộ nhớ (0ms latency)
   const displayedAdjustments = React.useMemo(() => {
@@ -1264,7 +1280,7 @@ export const AttendancePage: React.FC = () => {
   return (
     <div className="flex flex-col flex-1 min-h-0 bg-slate-100 overflow-hidden">
       {/* Header */}
-      <header className="sticky top-0 z-30 border-b border-slate-200 bg-white px-2 py-1.5 md:py-0 md:h-12 flex items-center justify-between gap-1.5 shrink-0 pr-12 sm:pr-14 md:pr-16">
+      <header className="sticky top-0 z-30 border-b border-slate-200 bg-white px-2 py-1.5 md:py-0 md:h-12 flex items-center justify-between gap-1.5 shrink-0 pr-14 sm:pr-16">
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           <div className="hidden xl:flex items-center border-l-4 border-primary pl-1.5">
             <h1 className="page-title text-xs sm:text-sm md:text-base font-extrabold text-slate-900 shrink-0">
@@ -1565,13 +1581,13 @@ export const AttendancePage: React.FC = () => {
               </button>
             </div>
           ) : (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 lg:gap-2">
               {/* Desktop Filter Bar for Adjustment Tab */}
-              <div className="flex items-center gap-2 flex-1">
+              <div className="flex items-center gap-1.5 lg:gap-2">
                 <CustomSelect
                   value={adjTypeFilter}
                   onChange={e => setAdjTypeFilter(e.target.value)}
-                  className="px-2 py-1 border border-slate-200 rounded-lg text-xs bg-slate-50 outline-none w-32 h-8"
+                  className="px-2 py-1 border border-slate-200 rounded-lg text-xs bg-slate-50 outline-none w-24 md:w-28 lg:w-32 h-8"
                 >
                   <option value="">Tất cả loại bù</option>
                   <option value="Bù vào ca">Bù vào ca</option>
@@ -1579,13 +1595,13 @@ export const AttendancePage: React.FC = () => {
                   <option value="Bù cả ngày">Bù cả ngày</option>
                 </CustomSelect>
 
-                <div className="flex items-center gap-1.5 border border-slate-200 rounded-lg px-1.5 py-0.5 bg-slate-50 shadow-xs h-8">
+                <div className="hidden lg:flex items-center gap-1 border border-slate-200 rounded-lg px-1.5 py-0.5 bg-slate-50 shadow-xs h-8">
                   <span className="text-slate-400 font-medium whitespace-nowrap text-[11px] ml-0.5">Từ</span>
                   <input
                     type="date"
                     value={adjFilterDateFrom}
                     onChange={e => setAdjFilterDateFrom(e.target.value)}
-                    className="bg-transparent border-none outline-none text-xs w-[88px] text-slate-700 cursor-pointer"
+                    className="bg-transparent border-none outline-none text-xs w-[78px] xl:w-[88px] text-slate-700 cursor-pointer"
                   />
                   <span className="text-slate-300">|</span>
                   <span className="text-slate-400 font-medium whitespace-nowrap text-[11px]">Đến</span>
@@ -1593,7 +1609,7 @@ export const AttendancePage: React.FC = () => {
                     type="date"
                     value={adjFilterDateTo}
                     onChange={e => setAdjFilterDateTo(e.target.value)}
-                    className="bg-transparent border-none outline-none text-xs w-[88px] text-slate-700 cursor-pointer"
+                    className="bg-transparent border-none outline-none text-xs w-[78px] xl:w-[88px] text-slate-700 cursor-pointer"
                   />
                   {(adjFilterDateFrom || adjFilterDateTo) && (
                     <button type="button" onClick={() => { setAdjFilterDateFrom(''); setAdjFilterDateTo(''); }} className="text-slate-400 hover:text-slate-600 px-0.5 text-xs font-bold" title="Xóa lọc ngày">✕</button>
@@ -1604,10 +1620,10 @@ export const AttendancePage: React.FC = () => {
                   <span className="material-symbols-outlined absolute left-2 text-slate-400 text-sm pointer-events-none">search</span>
                   <input
                     type="text"
-                    placeholder="Tìm kiếm bù công..."
+                    placeholder="Tìm kiếm..."
                     value={adjSearchQuery}
                     onChange={e => setAdjSearchQuery(e.target.value)}
-                    className="pl-7 pr-6 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-primary focus:outline-none h-8 w-36 lg:w-44 transition-colors"
+                    className="pl-7 pr-6 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-primary focus:outline-none h-8 w-20 md:w-24 lg:w-32 transition-colors"
                   />
                   {adjSearchQuery && (
                     <button type="button" onClick={() => setAdjSearchQuery('')} className="absolute right-2 text-slate-400 hover:text-slate-600 cursor-pointer">
@@ -1621,11 +1637,11 @@ export const AttendancePage: React.FC = () => {
                 <div className="relative shrink-0">
                   <button
                     onClick={() => setShowAdjExportMenu(!showAdjExportMenu)}
-                    className="flex items-center justify-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-bold text-xs rounded-lg border border-emerald-200 transition-colors shadow-xs cursor-pointer h-8"
+                    className="flex items-center justify-center gap-1 px-2 py-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-bold text-xs rounded-lg border border-emerald-200 transition-colors shadow-xs cursor-pointer h-8"
                     title="Xuất file"
                   >
                     <span className="material-symbols-outlined text-[15px]">file_download</span>
-                    <span>Xuất file</span>
+                    <span className="hidden xl:inline">Xuất file</span>
                     <span className="material-symbols-outlined text-xs">expand_more</span>
                   </button>
                   {showAdjExportMenu && (
@@ -1668,7 +1684,7 @@ export const AttendancePage: React.FC = () => {
 
               <button
                 onClick={() => setShowAdjModal(true)}
-                className="flex items-center justify-center gap-1.5 px-3.5 py-1 bg-primary hover:bg-blue-800 text-white font-bold text-xs sm:text-sm rounded-lg shadow-sm transition-colors shrink-0 cursor-pointer active:scale-95 h-8"
+                className="flex items-center justify-center gap-1.5 px-3 py-1 bg-primary hover:bg-blue-800 text-white font-bold text-xs rounded-lg shadow-sm transition-colors shrink-0 cursor-pointer active:scale-95 h-8 whitespace-nowrap"
                 title="Tạo yêu cầu chấm công bù"
               >
                 <span className="material-symbols-outlined text-[18px]">add</span>
@@ -1902,54 +1918,69 @@ export const AttendancePage: React.FC = () => {
             }}
             className="flex-1 bg-slate-50 md:bg-white flex flex-col"
           >
-            {/* Widget Thống kê Quỹ Phép Năm & Tình hình Bù trừ Lũy kế */}
+            {/* Widget Thống kê Quỹ Phép Năm & Tình hình Bù trừ Lũy kế - Dạng Toolbar phẳng đồng bộ TITSmart */}
             {myLeaveBalance && (
-              <div className="mx-3 sm:mx-6 mt-3 sm:mt-4 mb-2 p-3.5 sm:p-4 bg-linear-to-r from-blue-50/90 via-indigo-50/70 to-slate-50 rounded-xl border border-blue-200/80 shadow-2xs">
-                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-xl bg-primary text-white flex items-center justify-center shrink-0 shadow-xs">
-                      <span className="material-symbols-outlined text-lg">event_available</span>
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="text-xs sm:text-sm font-bold text-slate-800">
-                          Quỹ nghỉ phép năm {myLeaveBalance.year}
-                        </h3>
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-700">
-                          1 ngày/tháng
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-slate-500 font-medium">
-                        Tích lũy cộng dồn linh hoạt • Tối đa 12 ngày/năm • Quá hạn tính Vắng (V)
-                      </p>
-                    </div>
+              <div className="mx-3 sm:mx-6 py-2 border-b border-slate-200/80 flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="flex items-center gap-1.5 text-xs font-black text-slate-800">
+                    <span className="material-symbols-outlined text-primary text-base">event_note</span>
+                    Quỹ phép năm:
+                  </span>
+
+                  {/* Chọn Năm */}
+                  <div className="w-24">
+                    <CustomSelect
+                      value={leaveSelectedYear}
+                      onChange={e => setLeaveSelectedYear(Number(e.target.value))}
+                      className="px-2 py-0.5 border border-slate-200 rounded-lg text-xs font-black bg-slate-50 outline-none h-7"
+                    >
+                      {[2024, 2025, 2026, 2027].map(y => (
+                        <option key={y} value={y}>{y}</option>
+                      ))}
+                    </CustomSelect>
                   </div>
 
-                  <div className="grid grid-cols-4 gap-2 sm:gap-3 shrink-0 text-center">
-                    <div className="bg-white/90 rounded-lg p-2 border border-blue-100 shadow-2xs">
-                      <span className="block text-[10px] text-slate-500 font-bold uppercase">Lũy kế</span>
-                      <span className="text-xs sm:text-sm font-extrabold text-blue-700">
-                        {myLeaveBalance.totalAccruedToDate} <span className="text-[10px] font-medium text-slate-400">/ 12</span>
-                      </span>
+                  {/* Chọn Nhân viên nếu ở tab Tất cả */}
+                  {canViewAll && tab === 'all' && (
+                    <div className="w-36">
+                      <CustomSelect
+                        value={leaveSelectedUser}
+                        onChange={e => setLeaveSelectedUser(e.target.value)}
+                        className="px-2 py-0.5 border border-slate-200 rounded-lg text-xs font-bold bg-slate-50 outline-none h-7"
+                      >
+                        <option value="me">👤 {user?.name}</option>
+                        {engineers.map(e => (
+                          <option key={e.id} value={e.id}>{e.name}</option>
+                        ))}
+                      </CustomSelect>
                     </div>
-                    <div className="bg-white/90 rounded-lg p-2 border border-blue-100 shadow-2xs">
-                      <span className="block text-[10px] text-slate-500 font-bold uppercase">Đã hưởng</span>
-                      <span className="text-xs sm:text-sm font-extrabold text-emerald-600">
-                        {myLeaveBalance.totalPaidLeaveUsed} <span className="text-[10px] font-medium text-slate-400">ngày</span>
-                      </span>
-                    </div>
-                    <div className="bg-white/90 rounded-lg p-2 border border-blue-100 shadow-2xs">
-                      <span className="block text-[10px] text-slate-500 font-bold uppercase">Còn lại</span>
-                      <span className="text-xs sm:text-sm font-extrabold text-indigo-700">
-                        {myLeaveBalance.currentRemainingLeave} <span className="text-[10px] font-medium text-slate-400">ngày</span>
-                      </span>
-                    </div>
-                    <div className="bg-white/90 rounded-lg p-2 border border-rose-100 shadow-2xs">
-                      <span className="block text-[10px] text-rose-500 font-bold uppercase">Vắng (V)</span>
-                      <span className="text-xs sm:text-sm font-extrabold text-rose-600">
-                        {myLeaveBalance.totalUnpaidLeave} <span className="text-[10px] font-medium text-slate-400">ngày</span>
-                      </span>
-                    </div>
+                  )}
+                </div>
+
+                {/* Dải Badges số liệu nằm ngang cực kỳ gọn gàng */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 text-xs font-bold border border-slate-200/80">
+                    <span className="text-[10px] text-slate-500 font-semibold uppercase">Lũy kế:</span>
+                    <span>{myLeaveBalance.totalAccruedToDate} / 12</span>
+                  </div>
+
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 text-xs font-bold border border-emerald-200">
+                    <span className="text-[10px] text-emerald-600 font-semibold uppercase">Đã dùng:</span>
+                    <span>{myLeaveBalance.totalPaidLeaveUsed} ngày</span>
+                  </div>
+
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50 text-blue-800 text-xs font-bold border border-blue-200">
+                    <span className="text-[10px] text-blue-600 font-semibold uppercase">Khả dụng:</span>
+                    <span>{myLeaveBalance.currentRemainingLeave} ngày</span>
+                  </div>
+
+                  <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold border ${
+                    myLeaveBalance.totalUnpaidLeave > 0
+                      ? 'bg-rose-50 text-rose-800 border-rose-300'
+                      : 'bg-slate-50 text-slate-500 border-slate-200'
+                  }`}>
+                    <span className="text-[10px] opacity-75 font-semibold uppercase">Vắng (V):</span>
+                    <span>{myLeaveBalance.totalUnpaidLeave} ngày</span>
                   </div>
                 </div>
               </div>

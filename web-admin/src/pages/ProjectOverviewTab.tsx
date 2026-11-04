@@ -353,158 +353,183 @@ export const ProjectOverviewTab: React.FC = () => {
   }
 
   return (
-    <div className="p-6 space-y-6 overflow-y-auto bg-slate-50 flex-1">
-      
-      {/* 7 SUMMARY CARDS */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-4">
-        
-        {/* 1. Tiến độ */}
-        <div 
-          onClick={() => {
-            if (canViewTasks) {
-              navigate(`/projects/${project.id}/tasks`);
-            }
-          }} 
-          className={`bg-white rounded-xl p-5 border border-slate-200 shadow-sm flex flex-col justify-between h-[130px] transition-shadow group ${canViewTasks ? 'cursor-pointer hover:shadow-md' : 'cursor-default'}`}
-        >
-          <div className="flex justify-between items-start">
-            <p className={`text-[11px] font-bold text-slate-500 uppercase tracking-wider transition-colors ${canViewTasks ? 'group-hover:text-blue-600' : ''}`}>Tiến độ công việc</p>
-            <div className={`w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-500 shrink-0 transition-colors ${canViewTasks ? 'group-hover:bg-blue-100' : ''}`}>
-              <span className="material-symbols-outlined text-lg">fact_check</span>
+    <div className="p-4 sm:p-6 space-y-5 overflow-y-auto bg-slate-50 flex-1">
+      {/* OPTION B: THANH METRIC RIBBON LIỀN MẠCH (DASHBOARD RIBBON) */}
+      <div className="bg-white rounded-xl border border-slate-200/90 shadow-2xs overflow-hidden">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-7 divide-y sm:divide-y-0 divide-slate-100 xl:divide-x divide-slate-100">
+          
+          {/* 1. Tiến độ công việc */}
+          <div
+            onClick={() => canViewTasks && navigate(`/projects/${project.id}/tasks`)}
+            className={`p-3.5 sm:p-4 flex flex-col justify-between transition-colors ${canViewTasks ? 'cursor-pointer hover:bg-slate-50/80 group' : 'cursor-default'}`}
+          >
+            <div className="flex items-center justify-between gap-1 mb-1.5">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-tight group-hover:text-blue-600 transition-colors truncate">
+                Tiến độ
+              </span>
+              <span className="w-6 h-6 rounded-md bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-[15px]">fact_check</span>
+              </span>
+            </div>
+            <div className="my-1">
+              <div className="text-2xl font-black text-slate-900 leading-none">{progressPercent}%</div>
+            </div>
+            <div className="mt-1">
+              <div className="w-full bg-slate-100 rounded-full h-1.5 mb-1 overflow-hidden">
+                <div className="bg-blue-500 h-1.5 rounded-full transition-all duration-500" style={{ width: `${progressPercent}%` }} />
+              </div>
+              <p className="text-[10px] text-slate-400 font-semibold truncate">{completedTasks}/{totalTasks} công việc</p>
             </div>
           </div>
-          <div>
-            <h3 className="text-[26px] leading-tight font-black text-slate-800">{progressPercent}%</h3>
-          </div>
-          <div className="mt-2">
-            <div className="w-full bg-slate-100 rounded-full h-1.5 mb-1.5 overflow-hidden">
-              <div className="bg-blue-500 h-1.5 rounded-full" style={{ width: `${progressPercent}%` }}></div>
-            </div>
-            <p className="text-[11px] text-slate-400 font-medium">{completedTasks} / {totalTasks} công việc</p>
-          </div>
-        </div>
 
-        {/* 2. Công việc nhân viên */}
-        <div 
-          onClick={() => {
-            if (canAssignTasks) {
-              navigate(`/task-assignment?highlight=${encodeURIComponent(project.name || project.code)}`);
-            } else if (canViewTasks) {
-              navigate(`/projects/${project.id}/tasks`);
-            }
-          }} 
-          className={`bg-white rounded-xl p-5 border border-slate-200 shadow-sm flex flex-col justify-between h-[130px] transition-shadow group ${(canAssignTasks || canViewTasks) ? 'cursor-pointer hover:shadow-md' : 'cursor-default'}`}
-        >
-          <div className="flex justify-between items-start">
-            <p className={`text-[11px] font-bold text-slate-500 uppercase tracking-wider transition-colors ${(canAssignTasks || canViewTasks) ? 'group-hover:text-primary' : ''}`}>Công việc nhân viên</p>
-            <div className={`w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-primary shrink-0 transition-colors ${(canAssignTasks || canViewTasks) ? 'group-hover:bg-blue-100' : ''}`}>
-              <span className="material-symbols-outlined text-lg">assignment_ind</span>
+          {/* 2. Công việc nhân viên */}
+          <div
+            onClick={() => {
+              if (canAssignTasks) navigate(`/task-assignment?highlight=${encodeURIComponent(project.name || project.code)}`);
+              else if (canViewTasks) navigate(`/projects/${project.id}/tasks`);
+            }}
+            className={`p-3.5 sm:p-4 flex flex-col justify-between transition-colors ${(canAssignTasks || canViewTasks) ? 'cursor-pointer hover:bg-slate-50/80 group' : 'cursor-default'}`}
+          >
+            <div className="flex items-center justify-between gap-1 mb-1.5">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-tight group-hover:text-primary transition-colors truncate">
+                Giao việc
+              </span>
+              <span className="w-6 h-6 rounded-md bg-sky-50 text-sky-600 flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-[15px]">assignment_ind</span>
+              </span>
+            </div>
+            <div className="my-1">
+              <div className="text-2xl font-black text-slate-900 leading-none">{assignedTaskPercent}%</div>
+            </div>
+            <div className="mt-1">
+              <div className="w-full bg-slate-100 rounded-full h-1.5 mb-1 overflow-hidden">
+                <div className="bg-primary h-1.5 rounded-full transition-all duration-500" style={{ width: `${assignedTaskPercent}%` }} />
+              </div>
+              <p className="text-[10px] text-slate-400 font-semibold truncate">{completedAssignedTasks}/{totalAssignedTasks} đã giao</p>
             </div>
           </div>
-          <div>
-            <h3 className="text-[26px] leading-tight font-black text-slate-800">{assignedTaskPercent}%</h3>
-          </div>
-          <div className="mt-2">
-            <div className="w-full bg-slate-100 rounded-full h-1.5 mb-1.5 overflow-hidden">
-              <div className="bg-primary h-1.5 rounded-full" style={{ width: `${assignedTaskPercent}%` }}></div>
-            </div>
-            <p className="text-[11px] text-slate-400 font-medium">{completedAssignedTasks} / {totalAssignedTasks} đã giao</p>
-          </div>
-        </div>
 
-        {/* 3. Vật tư & Chi phí */}
-        <div onClick={() => navigate(`/projects/${project.id}/cost-plan`)} className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm flex flex-col justify-between h-[130px] cursor-pointer hover:shadow-md transition-shadow group">
-          <div className="flex justify-between items-start">
-            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider group-hover:text-emerald-600 transition-colors">Vật tư & Chi phí</p>
-            <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-500 shrink-0 group-hover:bg-emerald-100 transition-colors">
-              <span className="material-symbols-outlined text-lg">account_balance_wallet</span>
+          {/* 3. Vật tư & Chi phí */}
+          <div
+            onClick={() => navigate(`/projects/${project.id}/cost-plan`)}
+            className="p-3.5 sm:p-4 flex flex-col justify-between cursor-pointer hover:bg-slate-50/80 group transition-colors"
+          >
+            <div className="flex items-center justify-between gap-1 mb-1.5">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-tight group-hover:text-emerald-600 transition-colors truncate">
+                Vật tư & Chi phí
+              </span>
+              <span className="w-6 h-6 rounded-md bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-[15px]">account_balance_wallet</span>
+              </span>
+            </div>
+            <div className="my-1">
+              <div className="text-lg sm:text-xl font-black text-slate-900 leading-none truncate" title={formatCurrency(totalExpense)}>
+                {formatCurrency(totalExpense)}
+              </div>
+            </div>
+            <div className="mt-1">
+              <div className="w-full bg-slate-100 rounded-full h-1.5 mb-1 overflow-hidden">
+                <div className="bg-emerald-500 h-1.5 rounded-full transition-all duration-500" style={{ width: `${budgetPercent}%` }} />
+              </div>
+              <p className="text-[10px] text-slate-400 font-semibold truncate">{budgetPercent}% hợp đồng</p>
             </div>
           </div>
-          <div>
-            <h3 className="text-[20px] leading-tight font-black text-slate-800 truncate" title={formatCurrency(totalExpense)}>{formatCurrency(totalExpense)}</h3>
-          </div>
-          <div className="mt-2">
-            <div className="w-full bg-slate-100 rounded-full h-1.5 mb-1.5 overflow-hidden">
-              <div className="bg-emerald-500 h-1.5 rounded-full" style={{ width: `${budgetPercent}%` }}></div>
-            </div>
-            <p className="text-[11px] text-slate-400 font-medium">{budgetPercent}% hợp đồng</p>
-          </div>
-        </div>
 
-        {/* 4. Hồ sơ */}
-        <div onClick={() => navigate(`/projects/${project.id}/documents`)} className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm flex flex-col justify-between h-[130px] cursor-pointer hover:shadow-md transition-shadow group">
-          <div className="flex justify-between items-start">
-            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider group-hover:text-rose-600 transition-colors">Hồ sơ</p>
-            <div className="w-8 h-8 rounded-lg bg-rose-50 flex items-center justify-center text-rose-500 shrink-0 group-hover:bg-rose-100 transition-colors">
-              <span className="material-symbols-outlined text-lg">file_present</span>
+          {/* 4. Hồ sơ */}
+          <div
+            onClick={() => navigate(`/projects/${project.id}/documents`)}
+            className="p-3.5 sm:p-4 flex flex-col justify-between cursor-pointer hover:bg-slate-50/80 group transition-colors"
+          >
+            <div className="flex items-center justify-between gap-1 mb-1.5">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-tight group-hover:text-rose-600 transition-colors truncate">
+                Hồ sơ
+              </span>
+              <span className="w-6 h-6 rounded-md bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-[15px]">file_present</span>
+              </span>
+            </div>
+            <div className="my-1">
+              <div className="text-2xl font-black text-slate-900 leading-none">{totalDocs}</div>
+            </div>
+            <div className="mt-1">
+              <div className="w-full bg-slate-100 rounded-full h-1.5 mb-1 overflow-hidden">
+                <div className="bg-rose-500 h-1.5 rounded-full transition-all duration-500" style={{ width: `${docPercent}%` }} />
+              </div>
+              <p className="text-[10px] text-slate-400 font-semibold truncate">{completedDocs}/{totalDocs} hoàn thành</p>
             </div>
           </div>
-          <div>
-            <h3 className="text-[26px] leading-tight font-black text-slate-800">{totalDocs}</h3>
-          </div>
-          <div className="mt-2">
-            <div className="w-full bg-slate-100 rounded-full h-1.5 mb-1.5 overflow-hidden">
-              <div className="bg-rose-500 h-1.5 rounded-full" style={{ width: `${docPercent}%` }}></div>
-            </div>
-            <p className="text-[11px] text-slate-400 font-medium">{completedDocs} / {totalDocs} hoàn thành</p>
-          </div>
-        </div>
 
-        {/* 5. Kho Dự Án */}
-        <div onClick={() => navigate(`/projects/${project.id}/inventory`)} className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm flex flex-col justify-between h-[130px] cursor-pointer hover:shadow-md transition-shadow group">
-          <div className="flex justify-between items-start">
-            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider group-hover:text-amber-600 transition-colors">Kho dự án</p>
-            <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center text-amber-500 shrink-0 group-hover:bg-amber-100 transition-colors">
-              <span className="material-symbols-outlined text-lg">inventory_2</span>
+          {/* 5. Kho Dự Án */}
+          <div
+            onClick={() => navigate(`/projects/${project.id}/inventory`)}
+            className="p-3.5 sm:p-4 flex flex-col justify-between cursor-pointer hover:bg-slate-50/80 group transition-colors"
+          >
+            <div className="flex items-center justify-between gap-1 mb-1.5">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-tight group-hover:text-amber-600 transition-colors truncate">
+                Kho dự án
+              </span>
+              <span className="w-6 h-6 rounded-md bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-[15px]">inventory_2</span>
+              </span>
+            </div>
+            <div className="my-1">
+              <div className="text-2xl font-black text-slate-900 leading-none truncate" title={totalMatActual.toLocaleString('vi-VN')}>
+                {totalMatActual.toLocaleString('vi-VN')}
+              </div>
+            </div>
+            <div className="mt-1">
+              <div className="w-full bg-slate-100 rounded-full h-1.5 mb-1 overflow-hidden">
+                <div className="bg-amber-500 h-1.5 rounded-full transition-all duration-500" style={{ width: `${matPercent}%` }} />
+              </div>
+              <p className="text-[10px] text-slate-400 font-semibold truncate">Dự toán: {totalMatEstimate.toLocaleString('vi-VN')}</p>
             </div>
           </div>
-          <div>
-            <h3 className="text-[20px] leading-tight font-black text-slate-800 truncate" title={totalMatActual.toLocaleString('vi-VN')}>{totalMatActual.toLocaleString('vi-VN')}</h3>
-          </div>
-          <div className="mt-2">
-            <div className="w-full bg-slate-100 rounded-full h-1.5 mb-1.5 overflow-hidden">
-              <div className="bg-amber-500 h-1.5 rounded-full" style={{ width: `${matPercent}%` }}></div>
-            </div>
-            <p className="text-[11px] text-slate-400 font-medium">Dự toán: {totalMatEstimate.toLocaleString('vi-VN')}</p>
-          </div>
-        </div>
 
-        {/* 6. Nhật ký hiện trường */}
-        <div onClick={() => navigate(`/projects/${project.id}/field-logs`)} className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm flex flex-col justify-between h-[130px] cursor-pointer hover:shadow-md transition-shadow group">
-          <div className="flex justify-between items-start">
-            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider overflow-hidden text-ellipsis whitespace-nowrap group-hover:text-purple-600 transition-colors">Nhật ký hiện trường</p>
-            <div className="w-8 h-8 rounded-lg bg-purple-50 flex items-center justify-center text-purple-500 shrink-0 group-hover:bg-purple-100 transition-colors">
-              <span className="material-symbols-outlined text-lg">add_a_photo</span>
+          {/* 6. Nhật ký hiện trường */}
+          <div
+            onClick={() => navigate(`/projects/${project.id}/field-logs`)}
+            className="p-3.5 sm:p-4 flex flex-col justify-between cursor-pointer hover:bg-slate-50/80 group transition-colors"
+          >
+            <div className="flex items-center justify-between gap-1 mb-1.5">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-tight group-hover:text-purple-600 transition-colors truncate">
+                Nhật ký
+              </span>
+              <span className="w-6 h-6 rounded-md bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-[15px]">add_a_photo</span>
+              </span>
+            </div>
+            <div className="my-1">
+              <div className="text-2xl font-black text-slate-900 leading-none">{totalLogs}</div>
+            </div>
+            <div className="mt-1">
+              <div className="w-full bg-slate-100 rounded-full h-1.5 mb-1 overflow-hidden">
+                <div className="bg-purple-500 h-1.5 rounded-full transition-all duration-500" style={{ width: `${Math.min(100, totalLogs * 10)}%` }} />
+              </div>
+              <p className="text-[10px] text-slate-400 font-semibold truncate">bản ghi nhật ký</p>
             </div>
           </div>
-          <div>
-            <h3 className="text-[26px] leading-tight font-black text-slate-800">{totalLogs}</h3>
-          </div>
-          <div className="mt-2">
-            <div className="w-full bg-slate-100 rounded-full h-1.5 mb-1.5 overflow-hidden">
-              <div className="bg-purple-500 h-1.5 rounded-full w-full opacity-30"></div>
-            </div>
-            <p className="text-[11px] text-slate-400 font-medium">nhật ký</p>
-          </div>
-        </div>
 
-        {/* 7. Nhân sự tham gia */}
-        <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm flex flex-col justify-between h-[130px] cursor-default hover:shadow-md transition-shadow group">
-          <div className="flex justify-between items-start">
-            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider group-hover:text-indigo-600 transition-colors">Nhân sự tham gia</p>
-            <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-500 shrink-0 group-hover:bg-indigo-100 transition-colors">
-              <span className="material-symbols-outlined text-lg">groups</span>
+          {/* 7. Nhân sự tham gia */}
+          <div className="p-3.5 sm:p-4 flex flex-col justify-between transition-colors group cursor-default">
+            <div className="flex items-center justify-between gap-1 mb-1.5">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-tight group-hover:text-indigo-600 transition-colors truncate">
+                Nhân sự
+              </span>
+              <span className="w-6 h-6 rounded-md bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-[15px]">groups</span>
+              </span>
+            </div>
+            <div className="my-1">
+              <div className="text-2xl font-black text-slate-900 leading-none">{assignedEngineers.length}</div>
+            </div>
+            <div className="mt-1">
+              <div className="w-full bg-slate-100 rounded-full h-1.5 mb-1 overflow-hidden">
+                <div className="bg-indigo-500 h-1.5 rounded-full transition-all duration-500" style={{ width: `${Math.min(100, assignedEngineers.length * 15)}%` }} />
+              </div>
+              <p className="text-[10px] text-slate-400 font-semibold truncate">kỹ sư / cán bộ</p>
             </div>
           </div>
-          <div>
-            <h3 className="text-[26px] leading-tight font-black text-slate-800">{assignedEngineers.length}</h3>
-          </div>
-          <div className="mt-2">
-            <div className="w-full bg-slate-100 rounded-full h-1.5 mb-1.5 overflow-hidden">
-              <div className="bg-indigo-500 h-1.5 rounded-full w-full opacity-30"></div>
-            </div>
-            <p className="text-[11px] text-slate-400 font-medium">người</p>
-          </div>
+
         </div>
       </div>
 

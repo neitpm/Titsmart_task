@@ -308,7 +308,7 @@ export const ProjectManagementPage: React.FC = () => {
     const q = normalizeLabel(searchQuery.trim());
     const filteredBySearch = allEnhancedProjects.filter((project) => {
       if (!q) return true;
-      return [project.name, project.code, project.location, project.client, project.managerName, project.memberNames.join(' ')]
+      return [project.name, project.code, project.location, project.client, project.notes, project.managerName, project.memberNames.join(' ')]
         .some((value) => normalizeLabel(String(value || '')).includes(q));
     });
     return {
@@ -326,7 +326,7 @@ export const ProjectManagementPage: React.FC = () => {
       if (!matchStatus) return false;
 
       if (!q) return true;
-      return [project.name, project.code, project.location, project.client, project.managerName, project.memberNames.join(' ')]
+      return [project.name, project.code, project.location, project.client, project.notes, project.managerName, project.memberNames.join(' ')]
         .some((value) => normalizeLabel(String(value || '')).includes(q));
     }).sort((a, b) => {
       const getTimestamp = (p: any) => {
