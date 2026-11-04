@@ -12,6 +12,7 @@ import { Toast } from '../components/common/Toast';
 import * as XLSX from 'xlsx';
 import { exportToStyledExcel } from '../utils/excelExportUtils';
 import { exportMonthlyAttendanceTitsmart } from '../utils/exportMonthlyAttendance';
+import { calculateYearLeaveAccrual, YearLeaveBalanceSummary } from '../utils/leaveAccrualRules';
 
 import { LeaveRequest, LeaveType, AttendanceAdjustmentRequest, AttendanceAdjustmentType } from '../types';
 import { PullToRefresh } from '../components/common/PullToRefresh';
@@ -533,6 +534,14 @@ export const AttendancePage: React.FC = () => {
     }
     return list;
   }, [leaves, tab, user, leaveSearchQuery, leaveFilterDateFrom, leaveFilterDateTo, canViewAll]);
+
+  // Tính toán hạn mức phép năm và bù trừ linh hoạt theo tháng cho nhân viên hiện tại
+  const myLeaveBalance: YearLeaveBalanceSummary | null = React.useMemo(() => {
+    if (!user || !user.id) return null;
+    const currentYear = new Date().getFullYear();
+    const currentMonth = new Date().getMonth() + 1;
+    return calculateYearLeaveAccrual(user.id, currentYear, leaves, currentMonth);
+  }, [user, leaves]);
 
   // Lọc danh sách chấm công bù ngay trong bộ nhớ (0ms latency)
   const displayedAdjustments = React.useMemo(() => {
@@ -1891,8 +1900,60 @@ export const AttendancePage: React.FC = () => {
             onRefresh={async () => {
               await Promise.all([fetchLeaves(true), fetchLogs(true)]);
             }}
-            className="flex-1 bg-slate-50 md:bg-white"
+            className="flex-1 bg-slate-50 md:bg-white flex flex-col"
           >
+            {/* Widget Thống kê Quỹ Phép Năm & Tình hình Bù trừ Lũy kế */}
+            {myLeaveBalance && (
+              <div className="mx-3 sm:mx-6 mt-3 sm:mt-4 mb-2 p-3.5 sm:p-4 bg-linear-to-r from-blue-50/90 via-indigo-50/70 to-slate-50 rounded-xl border border-blue-200/80 shadow-2xs">
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-xl bg-primary text-white flex items-center justify-center shrink-0 shadow-xs">
+                      <span className="material-symbols-outlined text-lg">event_available</span>
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-xs sm:text-sm font-bold text-slate-800">
+                          Quỹ nghỉ phép năm {myLeaveBalance.year}
+                        </h3>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-700">
+                          1 ngày/tháng
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 font-medium">
+                        Tích lũy cộng dồn linh hoạt • Tối đa 12 ngày/năm • Quá hạn tính Vắng (V)
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-4 gap-2 sm:gap-3 shrink-0 text-center">
+                    <div className="bg-white/90 rounded-lg p-2 border border-blue-100 shadow-2xs">
+                      <span className="block text-[10px] text-slate-500 font-bold uppercase">Lũy kế</span>
+                      <span className="text-xs sm:text-sm font-extrabold text-blue-700">
+                        {myLeaveBalance.totalAccruedToDate} <span className="text-[10px] font-medium text-slate-400">/ 12</span>
+                      </span>
+                    </div>
+                    <div className="bg-white/90 rounded-lg p-2 border border-blue-100 shadow-2xs">
+                      <span className="block text-[10px] text-slate-500 font-bold uppercase">Đã hưởng</span>
+                      <span className="text-xs sm:text-sm font-extrabold text-emerald-600">
+                        {myLeaveBalance.totalPaidLeaveUsed} <span className="text-[10px] font-medium text-slate-400">ngày</span>
+                      </span>
+                    </div>
+                    <div className="bg-white/90 rounded-lg p-2 border border-blue-100 shadow-2xs">
+                      <span className="block text-[10px] text-slate-500 font-bold uppercase">Còn lại</span>
+                      <span className="text-xs sm:text-sm font-extrabold text-indigo-700">
+                        {myLeaveBalance.currentRemainingLeave} <span className="text-[10px] font-medium text-slate-400">ngày</span>
+                      </span>
+                    </div>
+                    <div className="bg-white/90 rounded-lg p-2 border border-rose-100 shadow-2xs">
+                      <span className="block text-[10px] text-rose-500 font-bold uppercase">Vắng (V)</span>
+                      <span className="text-xs sm:text-sm font-extrabold text-rose-600">
+                        {myLeaveBalance.totalUnpaidLeave} <span className="text-[10px] font-medium text-slate-400">ngày</span>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
             {leavesLoading ? (
               <div className="p-12 flex flex-col items-center justify-center gap-3 text-slate-400">
                 <div className="w-8 h-8 border-3 border-primary/20 border-t-primary rounded-full animate-spin" />

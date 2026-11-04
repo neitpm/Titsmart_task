@@ -1,5 +1,6 @@
 import ExcelJS from 'exceljs';
 import { Engineer, LeaveRequest, AttendanceAdjustmentRequest } from '../types';
+import { calculateYearLeaveAccrual } from './leaveAccrualRules';
 
 export interface AttendanceMonthlyExportOptions {
   month: number; // 1 - 12
@@ -267,21 +268,68 @@ export async function exportMonthlyAttendanceTitsmart({
   });
 
   // Xây dựng map nghỉ phép đã duyệt [userId][dayOfMonth]
+  // Áp dụng quy tắc tính phép: 1 tháng có 1 ngày nghỉ có lương (cộng dồn), tối đa 12 ngày/năm.
+  // Quá số phép khả dụng sẽ tự động chuyển sang ghi Vắng không lương ('V').
   const leaveByEmpDay: Record<string, Record<number, string>> = {};
+
+  // Gom leave theo từng nhân viên để tính toán quota lũy kế theo năm
+  const empLeavesMap: Record<string, LeaveRequest[]> = {};
   leaves.filter(lv => lv.status === 'APPROVED' || lv.status === 'APPROVED_STEP1').forEach(lv => {
     if (!lv.userId) return;
-    const sDate = new Date(lv.startDate);
-    const eDate = new Date(lv.endDate);
-    for (let cur = new Date(sDate); cur <= eDate; cur.setDate(cur.getDate() + 1)) {
-      if (cur.getFullYear() === year && cur.getMonth() + 1 === month) {
-        const d = cur.getDate();
-        if (!leaveByEmpDay[lv.userId]) leaveByEmpDay[lv.userId] = {};
-        if (lv.leaveType === 'Nghỉ phép năm') leaveByEmpDay[lv.userId][d] = 'PN';
-        else if (lv.leaveType === 'Nghỉ bệnh') leaveByEmpDay[lv.userId][d] = 'FB';
-        else if (lv.leaveType === 'Nghỉ không lương') leaveByEmpDay[lv.userId][d] = 'KP';
-        else leaveByEmpDay[lv.userId][d] = 'P';
+    if (!empLeavesMap[lv.userId]) empLeavesMap[lv.userId] = [];
+    empLeavesMap[lv.userId].push(lv);
+  });
+
+  Object.entries(empLeavesMap).forEach(([uId, uLeaves]) => {
+    if (!leaveByEmpDay[uId]) leaveByEmpDay[uId] = {};
+
+    // 1. Tính toán quota phép có lương được phép dùng trong tháng hiện tại
+    const yearSummary = calculateYearLeaveAccrual(uId, year, uLeaves, month);
+    // Số ngày phép có lương còn khả dụng bước vào đầu tháng này = số dư cuối tháng trước + 1 ngày của tháng này
+    const prevMonthRemaining = month === 1 ? 0 : (yearSummary.monthlyDetails[month - 1]?.remainingLeaveEndOfMonth || 0);
+    const accruedThisMonth = (month <= 12 && (month === 1 ? 1 : (yearSummary.monthlyDetails[month]?.cumulativeAccrued || 0) <= 12)) ? 1 : 0;
+    let availablePaidQuota = prevMonthRemaining + accruedThisMonth;
+
+    // 2. Duyệt qua các đơn nghỉ trong tháng theo thứ tự ngày tăng dần
+    const monthLeaves = uLeaves
+      .filter(lv => {
+        const s = new Date(lv.startDate);
+        const e = new Date(lv.endDate);
+        return (s.getFullYear() === year && s.getMonth() + 1 === month) || (e.getFullYear() === year && e.getMonth() + 1 === month);
+      })
+      .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
+
+    monthLeaves.forEach(lv => {
+      const sDate = new Date(lv.startDate);
+      const eDate = new Date(lv.endDate);
+
+      for (let cur = new Date(sDate); cur <= eDate; cur.setDate(cur.getDate() + 1)) {
+        if (cur.getFullYear() === year && cur.getMonth() + 1 === month) {
+          const d = cur.getDate();
+          const dayOfWeek = cur.getDay();
+
+          if (dayOfWeek === 0) continue; // Bỏ qua Chủ nhật
+
+          if (lv.leaveType === 'Nghỉ bệnh') {
+            leaveByEmpDay[uId][d] = 'FB';
+          } else if (lv.leaveType === 'Nghỉ không lương') {
+            leaveByEmpDay[uId][d] = 'V';
+          } else {
+            // Đơn nghỉ phép năm / việc riêng / nghỉ có lương
+            if (availablePaidQuota >= 1) {
+              leaveByEmpDay[uId][d] = 'PN';
+              availablePaidQuota -= 1;
+            } else if (availablePaidQuota >= 0.5 && (lv.session === 'MORNING' || lv.session === 'AFTERNOON')) {
+              leaveByEmpDay[uId][d] = 'PN';
+              availablePaidQuota -= 0.5;
+            } else {
+              // Quá số ngày nghỉ có lương khả dụng -> Tự động tính Vắng không lương (Ghi V)
+              leaveByEmpDay[uId][d] = 'V';
+            }
+          }
+        }
       }
-    }
+    });
   });
 
   // 4. RENDER CÁC HÀNG NHÂN VIÊN (Mỗi người 2 dòng: HC và TC)
@@ -367,7 +415,7 @@ export async function exportMonthlyAttendanceTitsmart({
         cellHC.value = leaveSign;
         if (leaveSign === 'PN') countPN++;
         else if (leaveSign === 'P') countP++;
-        else if (leaveSign === 'KP') countKP++;
+        else if (leaveSign === 'KP' || leaveSign === 'V') countKP++;
         else if (leaveSign === 'FB') countFB++;
       } else if (logData && logData.durationHours > 0) {
         cellHC.value = logData.durationHours;
