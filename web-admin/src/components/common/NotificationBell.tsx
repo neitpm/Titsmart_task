@@ -22,7 +22,7 @@ const normalizeStr = (s: any): string => {
     .replace(/\s+/g, ' ');
 };
 
-const isNotificationForUser = (notification: any, user: any, engineers: any[] = [], allTasks: any[] = []) => {
+export const isNotificationForUser = (notification: any, user: any, engineers: any[] = [], allTasks: any[] = []) => {
   if (!user) return true;
   const role = String(user.role || '').toLowerCase();
   const username = String(user.username || '').trim().toLowerCase();

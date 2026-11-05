@@ -10,6 +10,7 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import { WebOcrExtractedData } from '../services/webOcrService';
 import { AuditInfoCell } from '../components/common/AuditInfoCell';
 import { isUserMemberOfProject } from '../utils/projectMemberUtils';
+import { isNotificationForUser } from '../components/common/NotificationBell';
 import { PullToRefresh } from '../components/common/PullToRefresh';
 import { CustomSelect } from '../components/common/CustomSelect';
 
@@ -113,6 +114,7 @@ export const ProjectManagementPage: React.FC = () => {
   const projects = useRealtimeStore((state) => state.projects);
   const tasks = useRealtimeStore((state) => state.tasks);
   const engineers = useRealtimeStore((state) => state.engineers);
+  const notifications = useRealtimeStore((state) => state.notifications);
   const addProject = useRealtimeStore((state) => state.addProject);
   const addNotification = useRealtimeStore((state) => state.addNotification);
   const addTasksBatch = useRealtimeStore((state) => state.addTasksBatch);
@@ -291,6 +293,28 @@ export const ProjectManagementPage: React.FC = () => {
       const effectiveUpdatedBy = latestAudit?.updatedBy || (project.updatedBy && project.updatedBy !== 'Hệ thống' ? project.updatedBy : '');
       const effectiveUpdatedAt = latestAudit?.updatedAt || project.updatedAt;
 
+      // Đếm số thông báo chưa đọc thuộc riêng dự án này theo quyền của user
+      const projectUnreadNotifCount = notifications.filter((notif) => {
+        if (notif.read) return false;
+        if (!isNotificationForUser(notif, currentUser, engineers, tasks)) return false;
+
+        const notifProj = String((notif as any).projectCode || (notif as any).projectId || '').trim().toUpperCase();
+        if (notifProj && (notifProj === pCodeUpper || notifProj === pIdUpper)) return true;
+
+        const notifLink = String(notif.link || '').toLowerCase();
+        const pCodeLower = (project.code || '').trim().toLowerCase();
+        const pIdLower = (project.id || '').trim().toLowerCase();
+        if (pCodeLower && notifLink.includes(pCodeLower)) return true;
+        if (pIdLower && notifLink.includes(pIdLower)) return true;
+
+        const notifText = `${notif.title || ''} ${notif.message || ''}`.toLowerCase();
+        const pNameLower = (project.name || '').trim().toLowerCase();
+        if (pNameLower && pNameLower.length >= 4 && notifText.includes(pNameLower)) return true;
+        if (pCodeLower && pCodeLower.length >= 3 && notifText.includes(pCodeLower)) return true;
+
+        return false;
+      }).length;
+
       return {
         ...project,
         updatedBy: effectiveUpdatedBy,
@@ -304,10 +328,11 @@ export const ProjectManagementPage: React.FC = () => {
         completedMaterials,
         materialProgress,
         totalCost,
-        missingDocsCount
+        missingDocsCount,
+        unreadNotifCount: projectUnreadNotifCount
       };
     });
-  }, [projects, tasks, materialPlans, purchasingPlans, expenses, laborPayrolls, engineers]);
+  }, [projects, tasks, materialPlans, purchasingPlans, expenses, laborPayrolls, engineers, notifications, currentUser]);
 
 
   const isProjectInDateRange = (project: any, fromDate: string, toDate: string) => {
@@ -1187,6 +1212,17 @@ export const ProjectManagementPage: React.FC = () => {
                   {/* Top accent bar */}
                   <div className={`h-1 w-full ${barColor}`} />
 
+                  {/* Badge số thông báo chưa đọc của dự án */}
+                  {Boolean((project as any).unreadNotifCount && (project as any).unreadNotifCount > 0) && (
+                    <div 
+                      className="absolute top-2.5 right-2.5 z-10 flex items-center gap-1 bg-rose-500 text-white font-extrabold text-[11px] px-2 py-0.5 rounded-full shadow-sm animate-pulse"
+                      title={`Có ${(project as any).unreadNotifCount} cập nhật mới trong dự án`}
+                    >
+                      <span className="material-symbols-outlined text-[13px]">notifications_active</span>
+                      <span>{(project as any).unreadNotifCount}</span>
+                    </div>
+                  )}
+
                   <div className="flex flex-col gap-2.5 sm:gap-3 p-3.5 sm:p-4 flex-1">
                     {/* Header: số + tên */}
                     <div className="flex items-start gap-2.5 sm:gap-3">
@@ -1260,7 +1296,12 @@ export const ProjectManagementPage: React.FC = () => {
                         <div className="mb-2 pt-1 border-t border-slate-100/50 flex items-center justify-between gap-2">
                           <span className="text-[10px] font-semibold text-slate-400 shrink-0 whitespace-nowrap">Cập nhật:</span>
                           <div className="min-w-0 max-w-[70%]">
-                            <AuditInfoCell updatedBy={project.updatedBy} updatedAt={project.updatedAt} className="items-end text-right" />
+                            <AuditInfoCell 
+                              updatedBy={project.updatedBy} 
+                              updatedAt={project.updatedAt} 
+                              projectCode={project.code}
+                              className="items-end text-right" 
+                            />
                           </div>
                         </div>
                       )}
@@ -1281,7 +1322,7 @@ export const ProjectManagementPage: React.FC = () => {
 
                   {/* Nút sửa/xóa — hiện khi hover */}
                   { (canManageItem(user, project, "EDIT_PROJECTS") || canManageItem(user, project, "DELETE_PROJECTS")) && (
-                    <div className="absolute top-2 right-2 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                    <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-20 bg-white/95 backdrop-blur-xs px-1 py-0.5 rounded-lg border border-slate-200 shadow-xs">
                       {canManageItem(user, project, "EDIT_PROJECTS") && (<button
                         type="button"
                         onClick={(e) => { e.stopPropagation(); openEditModal(project); }}
