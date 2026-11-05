@@ -7,7 +7,7 @@ import { useRealtimeStore, calculateTaskProgressFromStatuses } from '../services
 import { useAuthStore, hasPermission } from '../services/authStore';
 import { AuditInfoCell } from '../components/common/AuditInfoCell';
 import { ConfirmModal } from '../components/common/ConfirmModal';
-import { Task } from '../types';
+import { Task, isTaskActuallyDone, isTaskSectionHeaderItem } from '../types';
 import { TaskDiscussionModal } from '../components/tasks/TaskDiscussionModal';
 import { appendTaskDiscussion, parseTaskDiscussions, getLatestDiscussion, stripDiscussionThread } from '../utils/taskDiscussion';
 import { getEngineersForProject } from '../utils/projectMemberUtils';
@@ -293,6 +293,13 @@ export const TaskAssignmentPage: React.FC = () => {
   // Project Task Filter State
   const [projectFilterStatus, setProjectFilterStatus] = useState<'all' | 'unassigned' | 'pending' | 'in_progress' | 'review' | 'completed' | 'overdue'>(() => {
     if (urlTab === 'completed') return 'completed';
+    // Đọc status từ URL params ngay lúc khởi tạo
+    const initStatus = searchParams.get('status') as 'all' | 'unassigned' | 'pending' | 'in_progress' | 'review' | 'completed' | 'overdue' | null;
+    if (initStatus && ['all', 'unassigned', 'pending', 'in_progress', 'review', 'completed', 'overdue'].includes(initStatus)) {
+      return initStatus;
+    }
+    // Nếu có highlight (từ overview project), mặc định xem tất cả thay vì unassigned
+    if (searchParams.get('highlight') && !urlTab) return 'all';
     return 'unassigned';
   });
   const [projectSearch, setProjectSearch] = useState('');
@@ -544,8 +551,22 @@ export const TaskAssignmentPage: React.FC = () => {
 
   useEffect(() => {
     const qTab = searchParams.get('tab') as 'project_tasks' | 'unassigned' | 'assigned' | 'completed' | 'direct' | 'my-tasks' | null;
+    const qStatus = searchParams.get('status') as 'all' | 'unassigned' | 'pending' | 'in_progress' | 'review' | 'completed' | 'overdue' | null;
+    const qProject = searchParams.get('project');
+    const qPeriod = searchParams.get('period') as TimePeriodType | null;
+
+    if (qProject) {
+      setFilterProjectCode(qProject);
+    }
+    if (qPeriod) {
+      setFilterPeriodType(qPeriod);
+    }
+
     if (qTab === 'direct') {
       setActiveTab('direct');
+      if (qStatus && ['all', 'pending', 'in_progress', 'review', 'completed', 'overdue'].includes(qStatus)) {
+        setDirectFilterStatus(qStatus as any);
+      }
     } else if (qTab === 'unassigned' || qTab === 'assigned') {
       setActiveTab('project_tasks');
       setProjectFilterStatus('unassigned');
@@ -554,13 +575,22 @@ export const TaskAssignmentPage: React.FC = () => {
       setProjectFilterStatus('completed');
     } else if (qTab === 'project_tasks') {
       setActiveTab('project_tasks');
+      if (qStatus && ['all', 'unassigned', 'pending', 'in_progress', 'review', 'completed', 'overdue'].includes(qStatus)) {
+        setProjectFilterStatus(qStatus);
+      }
+    } else if (qStatus && ['all', 'unassigned', 'pending', 'in_progress', 'review', 'completed', 'overdue'].includes(qStatus)) {
+      setActiveTab('project_tasks');
+      setProjectFilterStatus(qStatus);
     } else if ((location.state as any)?.tab) {
       const stTab = (location.state as any).tab;
       if (stTab === 'direct') {
         setActiveTab('direct');
       } else {
         setActiveTab('project_tasks');
-        setProjectFilterStatus('unassigned');
+        // Chỉ reset về unassigned nếu không có qStatus và highlight trong URL
+        if (!qStatus && !searchParams.get('highlight')) {
+          setProjectFilterStatus('unassigned');
+        }
       }
     }
     if (highlightedTaskId || highlightKeyword) {
@@ -575,7 +605,7 @@ export const TaskAssignmentPage: React.FC = () => {
 
   // Danh sách công việc dự án (không bao gồm việc nội bộ / trực tiếp)
   const projectAllTasks = useMemo(() => {
-    return tasks.filter(t => !t.isSectionHeader && !(
+    return tasks.filter(t => !isTaskSectionHeaderItem(t) && !t.isSectionHeader && !(
       t.sectionName === 'Giao việc trực tiếp' ||
       t.projectCode === 'COMPANY' ||
       (t.code && t.code.startsWith('TASK-DIRECT'))
@@ -605,12 +635,12 @@ export const TaskAssignmentPage: React.FC = () => {
 
     const total = list.length;
     const unassigned = list.filter(t => (!t.assignedEngineerId && !t.assignedEngineerName) || (t.status === 'Chưa làm' && !t.assignedEngineerId)).length;
-    const pending = list.filter(t => t.status === 'Chờ nhận việc' || t.status === 'Có thắc mắc').length;
-    const inProgress = list.filter(t => t.status === 'Đang làm').length;
-    const review = list.filter(t => t.status === 'Chờ nghiệm thu').length;
-    const completed = list.filter(t => t.status === 'Hoàn thành' || t.isDone).length;
+    const pending = list.filter(t => !isTaskActuallyDone(t) && (t.status === 'Chờ nhận việc' || t.status === 'Có thắc mắc')).length;
+    const inProgress = list.filter(t => !isTaskActuallyDone(t) && t.status === 'Đang làm').length;
+    const review = list.filter(t => !isTaskActuallyDone(t) && t.status === 'Chờ nghiệm thu').length;
+    const completed = list.filter(t => isTaskActuallyDone(t)).length;
     const overdue = list.filter(t => {
-      if (t.status === 'Hoàn thành' || t.isDone) return false;
+      if (isTaskActuallyDone(t)) return false;
       if (!t.dueDate) return false;
       return String(t.dueDate).split('T')[0] < todayStr;
     }).length;
@@ -645,16 +675,16 @@ export const TaskAssignmentPage: React.FC = () => {
     if (projectFilterStatus === 'unassigned') {
       list = list.filter(t => (!t.assignedEngineerId && !t.assignedEngineerName) || (t.status === 'Chưa làm' && !t.assignedEngineerId));
     } else if (projectFilterStatus === 'pending') {
-      list = list.filter(t => t.status === 'Chờ nhận việc' || t.status === 'Có thắc mắc');
+      list = list.filter(t => !isTaskActuallyDone(t) && (t.status === 'Chờ nhận việc' || t.status === 'Có thắc mắc'));
     } else if (projectFilterStatus === 'in_progress') {
-      list = list.filter(t => t.status === 'Đang làm');
+      list = list.filter(t => !isTaskActuallyDone(t) && t.status === 'Đang làm');
     } else if (projectFilterStatus === 'review') {
-      list = list.filter(t => t.status === 'Chờ nghiệm thu');
+      list = list.filter(t => !isTaskActuallyDone(t) && t.status === 'Chờ nghiệm thu');
     } else if (projectFilterStatus === 'completed') {
-      list = list.filter(t => t.status === 'Hoàn thành' || t.isDone);
+      list = list.filter(t => isTaskActuallyDone(t));
     } else if (projectFilterStatus === 'overdue') {
       list = list.filter(t => {
-        if (t.status === 'Hoàn thành' || t.isDone) return false;
+        if (isTaskActuallyDone(t)) return false;
         if (!t.dueDate) return false;
         return String(t.dueDate).split('T')[0] < todayStr;
       });
@@ -736,12 +766,12 @@ export const TaskAssignmentPage: React.FC = () => {
     }
 
     const total = list.length;
-    const completed = list.filter(t => t.status === 'Hoàn thành' || t.isDone).length;
-    const inProgress = list.filter(t => t.status === 'Đang làm').length;
-    const pending = list.filter(t => t.status === 'Chờ nhận việc' || t.status === 'Có thắc mắc').length;
-    const review = list.filter(t => t.status === 'Chờ nghiệm thu').length;
+    const completed = list.filter(t => isTaskActuallyDone(t)).length;
+    const inProgress = list.filter(t => !isTaskActuallyDone(t) && t.status === 'Đang làm').length;
+    const pending = list.filter(t => !isTaskActuallyDone(t) && (t.status === 'Chờ nhận việc' || t.status === 'Có thắc mắc')).length;
+    const review = list.filter(t => !isTaskActuallyDone(t) && t.status === 'Chờ nghiệm thu').length;
     const overdue = list.filter(t => {
-      if (t.status === 'Hoàn thành' || t.isDone) return false;
+      if (isTaskActuallyDone(t)) return false;
       if (!t.dueDate) return false;
       const due = String(t.dueDate).split('T')[0];
       return due < todayStr;
@@ -771,16 +801,16 @@ export const TaskAssignmentPage: React.FC = () => {
     }
 
     if (directFilterStatus === 'pending') {
-      list = list.filter(t => t.status === 'Chờ nhận việc' || t.status === 'Có thắc mắc');
+      list = list.filter(t => !isTaskActuallyDone(t) && (t.status === 'Chờ nhận việc' || t.status === 'Có thắc mắc'));
     } else if (directFilterStatus === 'in_progress') {
-      list = list.filter(t => t.status === 'Đang làm');
+      list = list.filter(t => !isTaskActuallyDone(t) && t.status === 'Đang làm');
     } else if (directFilterStatus === 'review') {
-      list = list.filter(t => t.status === 'Chờ nghiệm thu');
+      list = list.filter(t => !isTaskActuallyDone(t) && t.status === 'Chờ nghiệm thu');
     } else if (directFilterStatus === 'completed') {
-      list = list.filter(t => t.status === 'Hoàn thành' || t.isDone);
+      list = list.filter(t => isTaskActuallyDone(t));
     } else if (directFilterStatus === 'overdue') {
       list = list.filter(t => {
-        if (t.status === 'Hoàn thành' || t.isDone) return false;
+        if (isTaskActuallyDone(t)) return false;
         if (!t.dueDate) return false;
         return String(t.dueDate).split('T')[0] < todayStr;
       });
@@ -1163,7 +1193,7 @@ export const TaskAssignmentPage: React.FC = () => {
                 ) : (
                   directDisplayedTasks.map((t) => {
                     const todayStr = new Date().toISOString().split('T')[0];
-                    const isOverdue = t.dueDate && String(t.dueDate).split('T')[0] < todayStr && t.status !== 'Hoàn thành' && !t.isDone;
+                    const isOverdue = t.dueDate && String(t.dueDate).split('T')[0] < todayStr && !isTaskActuallyDone(t);
 
                     return (
                       <tr key={t.id} className="hover:bg-blue-50/40 transition-colors">
@@ -1248,7 +1278,7 @@ export const TaskAssignmentPage: React.FC = () => {
                         <td className="py-2 px-3 text-center border-r border-slate-200">
                           {(() => {
                             const bounds = getTaskTimeBounds(t);
-                            const isDone = t.isDone || t.status === 'Hoàn thành';
+                            const isDone = isTaskActuallyDone(t);
                             const formatDateStr = (d?: string) => {
                               if (!d) return '-';
                               const parts = d.split('-');
@@ -1500,7 +1530,7 @@ export const TaskAssignmentPage: React.FC = () => {
                 ) : (
                   groupedProjectTasks.map((group) => {
                     const isCollapsed = Boolean(collapsedProjects[group.project.code]);
-                    const completedCount = group.tasks.filter(t => t.isDone || t.status === 'Hoàn thành').length;
+                    const completedCount = group.tasks.filter(t => isTaskActuallyDone(t)).length;
                     const inProgressCount = group.tasks.filter(t => t.status === 'Đang làm').length;
 
                     return (

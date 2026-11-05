@@ -1,4 +1,4 @@
-import { Task } from '../types';
+import { Task, isTaskActuallyDone } from '../types';
 import { parseTaskDiscussions } from './taskDiscussion';
 
 export type TimePeriodType = 'all' | 'today' | 'this_month' | 'this_quarter' | 'custom';
@@ -105,7 +105,7 @@ export function getTaskTimeBounds(task: Task): TaskTimeBounds {
     result.updatedDate = String(task.updatedAt).slice(0, 10);
   }
 
-  const isDone = task.isDone || task.status === 'Hoàn thành' || (task.progress !== undefined && task.progress >= 1);
+  const isDone = isTaskActuallyDone(task);
 
   // 1. Phân tích lịch sử thảo luận / thread nếu có
   try {
@@ -167,7 +167,7 @@ export function isTaskInPeriod(task: Task, range: DateRange | null): boolean {
 
   const { startDate, endDate } = range;
   const timeBounds = getTaskTimeBounds(task);
-  const isDone = task.isDone || task.status === 'Hoàn thành' || (task.progress !== undefined && task.progress >= 1);
+  const isDone = isTaskActuallyDone(task);
 
   if (isDone) {
     // Với công việc hoàn thành: xét theo ngày hoàn thành

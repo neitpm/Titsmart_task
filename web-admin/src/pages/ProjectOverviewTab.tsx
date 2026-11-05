@@ -389,8 +389,8 @@ export const ProjectOverviewTab: React.FC = () => {
           {/* 2. Công việc nhân viên */}
           <div
             onClick={() => {
-              if (canAssignTasks) navigate(`/task-assignment?highlight=${encodeURIComponent(project.name || project.code)}`);
-              else if (canViewTasks) navigate(`/projects/${project.id}/tasks`);
+              if (canAssignTasks) navigate(`/task-assignment?tab=project_tasks&status=in_progress&project=${encodeURIComponent(project.code)}`);
+              else if (canViewTasks) navigate(`/projects/${project.id}/tasks?status=in_progress`);
             }}
             className={`p-3.5 sm:p-4 flex flex-col justify-between transition-colors ${(canAssignTasks || canViewTasks) ? 'cursor-pointer hover:bg-slate-50/80 group' : 'cursor-default'}`}
           >
@@ -549,7 +549,31 @@ export const ProjectOverviewTab: React.FC = () => {
             {taskStatusData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={taskStatusData} cx="50%" cy="50%" innerRadius="50%" outerRadius="80%" dataKey="value" stroke="none">
+                  <Pie
+                    data={taskStatusData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius="50%"
+                    outerRadius="80%"
+                    dataKey="value"
+                    stroke="none"
+                    cursor="pointer"
+                    onClick={(entry: any) => {
+                      if (!canAssignTasks && !canViewTasks) return;
+                      const statusMap: Record<string, string> = {
+                        'Đang làm': 'in_progress',
+                        'Chưa làm': 'pending',
+                        'Chờ nghiệm thu': 'review',
+                        'Hoàn thành': 'completed',
+                      };
+                      const status = statusMap[entry?.name] || 'all';
+                      if (canAssignTasks) {
+                        navigate(`/task-assignment?tab=project_tasks&status=${status}&project=${encodeURIComponent(project.code)}`);
+                      } else {
+                        navigate(`/projects/${project.id}/tasks?status=${status}`);
+                      }
+                    }}
+                  >
                     {taskStatusData.map((e, i) => <Cell key={i} fill={e.color} />)}
                   </Pie>
                   <Tooltip wrapperStyle={{ fontSize: '11px' }} />
@@ -679,7 +703,7 @@ export const ProjectOverviewTab: React.FC = () => {
           <div className="flex items-center gap-4">
             {canAssignTasks && (
               <button
-                onClick={() => navigate(`/task-assignment?highlight=${encodeURIComponent(project.name || project.code)}`)}
+                onClick={() => navigate(`/task-assignment?tab=project_tasks&status=in_progress&project=${encodeURIComponent(project.code)}`)}
                 className="text-xs font-semibold text-primary hover:underline flex items-center gap-1"
               >
                 <span className="material-symbols-outlined text-sm">tune</span>
@@ -705,7 +729,7 @@ export const ProjectOverviewTab: React.FC = () => {
                 key={eng.id || idx}
                 onClick={() => {
                   if (canAssignTasks) {
-                    navigate(`/task-assignment?highlight=${encodeURIComponent(eng.name)}`);
+                    navigate(`/task-assignment?tab=project_tasks&status=in_progress&project=${encodeURIComponent(project.code)}&highlight=${encodeURIComponent(eng.name)}`);
                   } else if (canViewTasks) {
                     navigate(`/projects/${project.id}/tasks`);
                   }
