@@ -276,22 +276,9 @@ export const ProjectManagementPage: React.FC = () => {
       const totalCost = totalPurchasing + totalExp + totalLab;
       const missingDocsCount = projMaterialPlans.filter((plan) => !plan.docCo).length + projMaterialPlans.filter((plan) => !plan.docCq).length;
 
-      // Gom tất cả các thay đổi gần nhất từ Công việc, Vật tư, Mua sắm, Chi phí và Lương
-      const allAudits: { updatedBy: string; updatedAt: string }[] = [];
-      if (project.updatedBy && project.updatedBy !== 'Hệ thống' && project.updatedAt) {
-        allAudits.push({ updatedBy: project.updatedBy, updatedAt: project.updatedAt });
-      }
-      [...tasks.filter(isProjectItem), ...projMaterialPlans, ...projPurchasings, ...projExpenses, ...projLabors].forEach((item: any) => {
-        if (item.updatedBy && item.updatedBy !== 'Hệ thống' && item.updatedAt) {
-          allAudits.push({ updatedBy: item.updatedBy, updatedAt: item.updatedAt });
-        }
-      });
-
-      allAudits.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-      const latestAudit = allAudits[0];
-
-      const effectiveUpdatedBy = latestAudit?.updatedBy || (project.updatedBy && project.updatedBy !== 'Hệ thống' ? project.updatedBy : '');
-      const effectiveUpdatedAt = latestAudit?.updatedAt || project.updatedAt;
+      // Chỉ ghi nhận người và thời gian khi thực sự chỉnh sửa thông tin Dự án
+      const effectiveUpdatedBy = (project.updatedBy && project.updatedBy !== 'Hệ thống') ? project.updatedBy : '';
+      const effectiveUpdatedAt = project.updatedAt || '';
 
       // Đếm số thông báo chưa đọc thuộc riêng dự án này theo quyền của user
       const projectUnreadNotifCount = notifications.filter((notif) => {
