@@ -9,6 +9,9 @@ import { Toast } from '../components/common/Toast';
 import { Modal } from '../components/common/Modal';
 import { CustomSelect } from '@/components/common/CustomSelect';
 import { PullToRefresh } from '../components/common/PullToRefresh';
+import { EmployeePeriodToolbar } from '../components/tasks/EmployeePeriodToolbar';
+import { TimePeriodType, getDateRangeForPeriod, isTaskInPeriod } from '../utils/taskPeriodFilter';
+import { cleanNotes } from '../utils/cleanNotesUtils';
 
 const filters = [
   { key: 'all', label: 'Tất cả' },
@@ -42,6 +45,20 @@ export const formatPhoneNumber = (phoneStr?: string): string => {
   return clean;
 };
 
+const formatDate = (iso?: string): string => {
+  if (!iso) return '-';
+  try {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return iso;
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
+  } catch {
+    return iso;
+  }
+};
+
 const getPersonTasks = (person: any, allTasks: any[]) => {
   if (!person || !Array.isArray(allTasks)) return [];
   const personId = String(person.id || '').trim().toLowerCase();
@@ -64,14 +81,20 @@ const getPersonTasks = (person: any, allTasks: any[]) => {
   });
 };
 
-const computePersonKpi = (person: any, allTasks: any[]) => {
-  const pTasks = getPersonTasks(person, allTasks);
+const computePersonKpi = (person: any, allTasks: any[], periodRange?: { startDate: string; endDate: string } | null) => {
+  let pTasks = getPersonTasks(person, allTasks);
+  if (periodRange) {
+    pTasks = pTasks.filter(t => isTaskInPeriod(t, periodRange));
+  }
   const totalCount = pTasks.length;
   
   const todayStr = new Date().toISOString().split('T')[0];
 
   const completedTasks = pTasks.filter(t => t.isDone || t.status === 'Hoàn thành' || (t.progress !== undefined && t.progress >= 1));
   const completedCount = completedTasks.length;
+
+  const inProgressTasks = pTasks.filter(t => !t.isDone && t.status !== 'Hoàn thành' && (t.status === 'Đang làm' || (t.progress !== undefined && t.progress > 0 && t.progress < 1)));
+  const inProgressCount = inProgressTasks.length;
 
   const pendingTasks = pTasks.filter(t => !t.isDone && t.status !== 'Hoàn thành' && (t.progress === undefined || t.progress < 1));
   const pendingCount = pendingTasks.length;
@@ -93,6 +116,7 @@ const computePersonKpi = (person: any, allTasks: any[]) => {
     tasks: pTasks,
     totalCount,
     completedCount,
+    inProgressCount,
     pendingCount,
     overdueCount,
     percent,
@@ -137,8 +161,11 @@ export const PersonnelPage: React.FC = () => {
   
   // KPI Modal state
   const [viewingKpiPerson, setViewingKpiPerson] = useState<any | null>(null);
-  const [kpiFilterTab, setKpiFilterTab] = useState<'all' | 'pending' | 'completed' | 'overdue'>('all');
+  const [kpiFilterTab, setKpiFilterTab] = useState<'all' | 'in_progress' | 'pending' | 'completed' | 'overdue'>('all');
   const [kpiSearch, setKpiSearch] = useState('');
+  const [kpiPeriodType, setKpiPeriodType] = useState<TimePeriodType>('all');
+  const [kpiCustomStart, setKpiCustomStart] = useState<string>('');
+  const [kpiCustomEnd, setKpiCustomEnd] = useState<string>('');
 
   // Quick Task Assign State
   const [isQuickAssignModalOpen, setIsQuickAssignModalOpen] = useState(false);
@@ -1247,14 +1274,20 @@ export const PersonnelPage: React.FC = () => {
         title={`Đánh giá KPI & Chi tiết công việc — ${viewingKpiPerson?.name || ''}`}
       >
         {viewingKpiPerson && (() => {
-          const kpi = computePersonKpi(viewingKpiPerson, tasks);
+          const dateRange = getDateRangeForPeriod(kpiPeriodType, {
+            startDate: kpiCustomStart,
+            endDate: kpiCustomEnd
+          });
+          const kpi = computePersonKpi(viewingKpiPerson, tasks, dateRange);
           const filteredTasks = kpi.tasks.filter((t: any) => {
             const todayStr = new Date().toISOString().split('T')[0];
             const isCompleted = t.isDone || t.status === 'Hoàn thành' || (t.progress !== undefined && t.progress >= 1);
+            const isInProgress = !isCompleted && (t.status === 'Đang làm' || (t.progress !== undefined && t.progress > 0 && t.progress < 1));
             const isPending = !isCompleted;
             const isOverdue = isPending && t.dueDate && String(t.dueDate).split('T')[0] < todayStr;
 
             if (kpiFilterTab === 'completed' && !isCompleted) return false;
+            if (kpiFilterTab === 'in_progress' && !isInProgress) return false;
             if (kpiFilterTab === 'pending' && !isPending) return false;
             if (kpiFilterTab === 'overdue' && !isOverdue) return false;
 
@@ -1296,24 +1329,6 @@ export const PersonnelPage: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => {
-                      setAssigningToPerson(viewingKpiPerson);
-                      setQuickTaskName('');
-                      setQuickTaskProject(viewingKpiPerson.assignedProjects?.[0]?.code || (projects[0]?.code || 'COMPANY'));
-                      setQuickTaskDueDate(new Date(Date.now() + 86400000 * 3).toISOString().split('T')[0]);
-                      setQuickTaskPriority('Medium');
-                      setQuickTaskNotes('');
-                      setIsQuickAssignModalOpen(true);
-                    }}
-                    className="px-3 py-1.5 rounded-lg bg-primary hover:bg-primary-dark text-white text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95 shadow-xs cursor-pointer"
-                    title="Giao việc nhanh trực tiếp cho nhân sự này"
-                  >
-                    <span className="material-symbols-outlined text-[16px]">add_task</span>
-                    <span>Giao việc nhanh</span>
-                  </button>
-
-                  <button
-                    type="button"
                     onClick={() => handleExportIndividualKpi(viewingKpiPerson, kpi)}
                     className="px-3 py-1.5 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95 shadow-2xs cursor-pointer"
                     title="Xuất file Excel báo cáo KPI"
@@ -1324,129 +1339,75 @@ export const PersonnelPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* KPI Stat Cards */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                <div 
-                  onClick={() => setKpiFilterTab('all')}
-                  className={`p-3 rounded-xl border transition-all cursor-pointer ${
-                    kpiFilterTab === 'all' ? 'border-primary bg-primary/5 ring-2 ring-primary/20' : 'border-slate-200 bg-white hover:border-slate-300'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-slate-500 uppercase">Tổng số việc</span>
-                    <span className="material-symbols-outlined text-primary text-[18px]">assignment</span>
-                  </div>
-                  <div className="text-xl font-black text-slate-900 mt-1">{kpi.totalCount}</div>
-                  <div className="text-[10px] text-slate-500 font-medium mt-0.5">Tiến độ TB: <span className="font-bold text-primary">{kpi.avgProgress}%</span></div>
-                </div>
-
-                <div 
-                  onClick={() => setKpiFilterTab('completed')}
-                  className={`p-3 rounded-xl border transition-all cursor-pointer ${
-                    kpiFilterTab === 'completed' ? 'border-emerald-500 bg-emerald-50/50 ring-2 ring-emerald-500/20' : 'border-slate-200 bg-white hover:border-slate-300'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-emerald-600 uppercase">Đã hoàn thành</span>
-                    <span className="material-symbols-outlined text-emerald-600 text-[18px]">task_alt</span>
-                  </div>
-                  <div className="text-xl font-black text-emerald-600 mt-1">{kpi.completedCount}</div>
-                  <div className="text-[10px] text-emerald-700 font-medium mt-0.5">Tỷ lệ: <span className="font-bold">{kpi.percent}%</span></div>
-                </div>
-
-                <div 
-                  onClick={() => setKpiFilterTab('pending')}
-                  className={`p-3 rounded-xl border transition-all cursor-pointer ${
-                    kpiFilterTab === 'pending' ? 'border-amber-500 bg-amber-50/50 ring-2 ring-amber-500/20' : 'border-slate-200 bg-white hover:border-slate-300'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-amber-600 uppercase">Chưa hoàn thành</span>
-                    <span className="material-symbols-outlined text-amber-600 text-[18px]">pending_actions</span>
-                  </div>
-                  <div className="text-xl font-black text-amber-600 mt-1">{kpi.pendingCount}</div>
-                  <div className="text-[10px] text-amber-700 font-medium mt-0.5">Đang thực hiện</div>
-                </div>
-
-                <div 
-                  onClick={() => setKpiFilterTab('overdue')}
-                  className={`p-3 rounded-xl border transition-all cursor-pointer ${
-                    kpiFilterTab === 'overdue' ? 'border-rose-500 bg-rose-50/50 ring-2 ring-rose-500/20' : 'border-slate-200 bg-white hover:border-slate-300'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-rose-600 uppercase">Quá hạn</span>
-                    <span className="material-symbols-outlined text-rose-600 text-[18px]">warning</span>
-                  </div>
-                  <div className="text-xl font-black text-rose-600 mt-1">{kpi.overdueCount}</div>
-                  <div className="text-[10px] text-rose-700 font-medium mt-0.5">Cần đôn đốc xử lý</div>
-                </div>
-              </div>
-
-              {/* Progress Bar Display */}
-              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
-                <div className="flex items-center justify-between text-xs font-bold mb-1.5">
-                  <span className="text-slate-700">Mức độ hoàn thành công việc (KPI)</span>
-                  <span className="text-primary font-extrabold">{kpi.completedCount} / {kpi.totalCount} ({kpi.percent}%)</span>
-                </div>
-                <div className="w-full h-3 bg-slate-200 rounded-full overflow-hidden flex">
-                  <div 
-                    style={{ width: `${kpi.percent}%` }} 
-                    className="bg-emerald-500 h-full transition-all duration-500" 
-                    title={`Đã hoàn thành: ${kpi.percent}%`}
-                  />
-                </div>
-              </div>
-
-              {/* Search & Tabs Toolbar */}
+              {/* Search & Period Toolbar */}
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 pt-1">
+                {/* Bộ lọc Thời gian nhanh: Tất cả | Hôm nay | Tháng này | Quý này | Tùy chọn */}
                 <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg border border-slate-200 overflow-x-auto custom-scrollbar">
                   {[
-                    { id: 'all', label: `Tất cả (${kpi.totalCount})` },
-                    { id: 'pending', label: `Chưa xong (${kpi.pendingCount})` },
-                    { id: 'completed', label: `Đã xong (${kpi.completedCount})` },
-                    { id: 'overdue', label: `Quá hạn (${kpi.overdueCount})` },
-                  ].map(tab => (
+                    { id: 'all', label: 'Tất cả' },
+                    { id: 'today', label: 'Hôm nay' },
+                    { id: 'this_month', label: 'Tháng này' },
+                    { id: 'this_quarter', label: 'Quý này' },
+                    { id: 'custom', label: 'Tùy chọn' },
+                  ].map(p => (
                     <button
-                      key={tab.id}
+                      key={p.id}
                       type="button"
-                      onClick={() => setKpiFilterTab(tab.id as any)}
-                      className={`px-3 py-1 rounded-md text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
-                        kpiFilterTab === tab.id
-                          ? 'bg-white text-primary shadow-xs'
+                      onClick={() => setKpiPeriodType(p.id as any)}
+                      className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-all whitespace-nowrap cursor-pointer ${
+                        kpiPeriodType === p.id
+                          ? 'bg-white text-primary shadow-xs ring-1 ring-slate-200/80'
                           : 'text-slate-600 hover:text-slate-900'
                       }`}
                     >
-                      {tab.label}
+                      {p.label}
                     </button>
                   ))}
+                  {kpiPeriodType === 'custom' && (
+                    <div className="flex items-center gap-1 bg-white border border-slate-200 rounded px-1.5 py-0.5 text-[10px] ml-1">
+                      <input
+                        type="date"
+                        value={kpiCustomStart}
+                        onChange={(e) => setKpiCustomStart(e.target.value)}
+                        className="border-0 p-0 text-[10px] outline-none bg-transparent cursor-pointer"
+                      />
+                      <span className="text-slate-400">→</span>
+                      <input
+                        type="date"
+                        value={kpiCustomEnd}
+                        onChange={(e) => setKpiCustomEnd(e.target.value)}
+                        className="border-0 p-0 text-[10px] outline-none bg-transparent cursor-pointer"
+                      />
+                    </div>
+                  )}
                 </div>
 
-                <div className="relative flex-1 sm:max-w-xs">
+                {/* Ô tìm kiếm công việc & dự án */}
+                <div className="relative w-full sm:w-64">
                   <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs">search</span>
                   <input
                     type="text"
                     value={kpiSearch}
                     onChange={(e) => setKpiSearch(e.target.value)}
-                    placeholder="Tìm tên CV, dự án, ghi chú..."
+                    placeholder="Tìm việc, dự án..."
                     className="w-full pl-8 pr-2.5 py-1.5 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-primary focus:bg-white bg-slate-50 transition-all focus:outline-none"
                   />
                 </div>
               </div>
 
               {/* Task Table */}
-              <div className="border border-slate-200 rounded-xl overflow-hidden shadow-2xs max-h-[42vh] overflow-y-auto custom-scrollbar">
-                <table className="w-full text-left text-xs border-collapse">
+              <div className="border border-slate-200 rounded-xl overflow-hidden shadow-2xs max-h-[42vh] overflow-y-auto overflow-x-auto custom-scrollbar">
+                <table className="w-full text-left text-xs border-collapse min-w-[820px]">
                   <thead className="bg-slate-50 text-slate-500 font-bold uppercase text-[10px] sticky top-0 border-b border-slate-200 shadow-xs z-10">
                     <tr>
-                      <th className="p-2.5 text-center w-10">STT</th>
-                      <th className="p-2.5">Dự án</th>
-                      <th className="p-2.5 min-w-[180px]">Tên công việc</th>
-                      <th className="p-2.5 text-center w-28">Tiến độ</th>
-                      <th className="p-2.5 whitespace-nowrap">Trạng thái</th>
-                      <th className="p-2.5 whitespace-nowrap">Hạn hoàn thành</th>
-                      <th className="p-2.5 whitespace-nowrap">Người giao việc</th>
-                      <th className="p-2.5 text-center w-20">Thao tác</th>
+                      <th className="p-2 text-center w-10">STT</th>
+                      <th className="p-2 w-28">Dự án</th>
+                      <th className="p-2 min-w-[160px]">Tên công việc</th>
+                      <th className="p-2 text-center w-24">Tiến độ</th>
+                      <th className="p-2 whitespace-nowrap w-24">Trạng thái</th>
+                      <th className="p-2 whitespace-nowrap w-36">Thời gian</th>
+                      <th className="p-2 whitespace-nowrap w-28">Người giao</th>
+                      <th className="p-2 text-center w-16 sticky right-0 bg-slate-50 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.05)] z-20">Thao tác</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -1462,28 +1423,29 @@ export const PersonnelPage: React.FC = () => {
                         const todayStr = new Date().toISOString().split('T')[0];
                         const isOverdue = !isDone && t.dueDate && String(t.dueDate).split('T')[0] < todayStr;
                         const progVal = isDone ? 100 : Math.round((t.progress || 0) * 100);
+                        const displayNote = cleanNotes(t.notes);
 
                         return (
                           <tr key={t.id} className="hover:bg-slate-50 transition-colors">
-                            <td className="p-2.5 text-center text-slate-400 font-mono font-bold">{idx + 1}</td>
-                            <td className="p-2.5">
-                              <span className="px-2 py-0.5 rounded font-bold text-[10px] bg-slate-100 text-slate-700 inline-block max-w-[140px] truncate" title={t.projectName || t.projectCode}>
+                            <td className="p-2 text-center text-slate-400 font-mono font-bold">{idx + 1}</td>
+                            <td className="p-2">
+                              <span className="px-2 py-0.5 rounded font-bold text-[10px] bg-slate-100 text-slate-700 inline-block max-w-[120px] truncate" title={t.projectName || t.projectCode}>
                                 {t.projectCode || t.projectName || '-'}
                               </span>
                             </td>
-                            <td className="p-2.5">
+                            <td className="p-2">
                               <div className="font-bold text-slate-900 leading-snug">{t.name}</div>
-                              {t.notes && <div className="text-[10px] text-slate-400 truncate max-w-xs">{t.notes}</div>}
+                              {displayNote && <div className="text-[10px] text-slate-400 truncate max-w-xs">{displayNote}</div>}
                             </td>
-                            <td className="p-2.5 text-center">
+                            <td className="p-2 text-center">
                               <div className="flex items-center gap-1.5 justify-center">
-                                <div className="w-14 h-2 bg-slate-200 rounded-full overflow-hidden">
+                                <div className="w-12 h-2 bg-slate-200 rounded-full overflow-hidden">
                                   <div style={{ width: `${progVal}%` }} className={`h-full ${isDone ? 'bg-emerald-500' : progVal > 0 ? 'bg-blue-500' : 'bg-slate-300'}`} />
                                 </div>
                                 <span className="font-bold text-[11px] text-slate-700">{progVal}%</span>
                               </div>
                             </td>
-                            <td className="p-2.5 whitespace-nowrap">
+                            <td className="p-2 whitespace-nowrap">
                               <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                                 isDone ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
                                 progVal > 0 ? 'bg-blue-50 text-blue-700 border border-blue-200' :
@@ -1492,20 +1454,27 @@ export const PersonnelPage: React.FC = () => {
                                 {t.status || (isDone ? 'Hoàn thành' : 'Chưa làm')}
                               </span>
                             </td>
-                            <td className="p-2.5 whitespace-nowrap">
-                              {t.dueDate ? (
-                                <span className={`text-[11px] font-bold flex items-center gap-1 ${isOverdue ? 'text-rose-600' : 'text-slate-600'}`}>
-                                  {isOverdue && <span className="material-symbols-outlined text-[13px]">warning</span>}
-                                  {t.dueDate}
-                                </span>
-                              ) : (
-                                <span className="text-slate-400 text-[11px]">-</span>
-                              )}
+                            <td className="p-2 whitespace-nowrap">
+                              <div className="flex flex-col gap-0.5 text-[11px]">
+                                {t.dueDate ? (
+                                  <span className={`font-bold flex items-center gap-1 ${isOverdue ? 'text-rose-600' : 'text-slate-700'}`}>
+                                    {isOverdue && <span className="material-symbols-outlined text-[13px]">warning</span>}
+                                    Hạn: {formatDate(t.dueDate)}
+                                  </span>
+                                ) : (
+                                  <span className="text-slate-400">Hạn: Chưa đặt</span>
+                                )}
+                                {(t.updatedAt || t.createdAt) && (
+                                  <span className="text-[10px] text-slate-400">
+                                    Cập nhật: {formatDate(t.updatedAt || t.createdAt)}
+                                  </span>
+                                )}
+                              </div>
                             </td>
-                            <td className="p-2.5 whitespace-nowrap text-slate-600 text-xs font-medium">
+                            <td className="p-2 whitespace-nowrap text-slate-600 text-xs font-medium">
                               {t.assignerName || '-'}
                             </td>
-                            <td className="p-2.5 text-center">
+                            <td className="p-2 text-center sticky right-0 bg-white group-hover:bg-slate-50 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.05)] z-10">
                               <button
                                 type="button"
                                 onClick={() => {

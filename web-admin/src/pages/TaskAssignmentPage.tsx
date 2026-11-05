@@ -14,6 +14,8 @@ import { getEngineersForProject } from '../utils/projectMemberUtils';
 import { uploadAttachment } from '../utils/fileUploadHelper';
 import { Toast } from '../components/common/Toast';
 import { isUserTaskAssignee, isUserTaskAssigner, isUserTaskFollower, getTaskFollowerNames, isTaskReadyForAssignment } from '../utils/taskPermission';
+import { EmployeePeriodToolbar } from '../components/tasks/EmployeePeriodToolbar';
+import { TimePeriodType, getDateRangeForPeriod, isTaskInPeriod, isTaskAssignedToPerson } from '../utils/taskPeriodFilter';
 
 export const TaskAssignmentPage: React.FC = () => {
   const navigate = useNavigate();
@@ -294,6 +296,12 @@ export const TaskAssignmentPage: React.FC = () => {
     return 'unassigned';
   });
   const [projectSearch, setProjectSearch] = useState('');
+
+  // Bộ lọc Nhân sự & Thời gian (Ngày / Tháng / Quý)
+  const [filterEmployeeId, setFilterEmployeeId] = useState<string>('all');
+  const [filterPeriodType, setFilterPeriodType] = useState<TimePeriodType>('all');
+  const [filterCustomStart, setFilterCustomStart] = useState<string>('');
+  const [filterCustomEnd, setFilterCustomEnd] = useState<string>('');
 
   // Direct Task Assignment State
   const [directTaskName, setDirectTaskName] = useState('');
@@ -576,10 +584,25 @@ export const TaskAssignmentPage: React.FC = () => {
 
   const projectKpiStats = useMemo(() => {
     const todayStr = new Date().toISOString().split('T')[0];
+    const dateRange = getDateRangeForPeriod(filterPeriodType, {
+      startDate: filterCustomStart,
+      endDate: filterCustomEnd
+    });
+    const selectedEng = filterEmployeeId !== 'all' ? engineers.find(e => e.id === filterEmployeeId) : null;
+
     let list = projectAllTasks;
     if (filterProjectCode !== 'all') {
       list = list.filter(t => t.projectCode === filterProjectCode);
     }
+    // Lọc theo Nhân viên
+    if (selectedEng) {
+      list = list.filter(t => isTaskAssignedToPerson(t, selectedEng));
+    }
+    // Lọc theo Thời gian (Ngày / Tháng / Quý)
+    if (dateRange) {
+      list = list.filter(t => isTaskInPeriod(t, dateRange));
+    }
+
     const total = list.length;
     const unassigned = list.filter(t => (!t.assignedEngineerId && !t.assignedEngineerName) || (t.status === 'Chưa làm' && !t.assignedEngineerId)).length;
     const pending = list.filter(t => t.status === 'Chờ nhận việc' || t.status === 'Có thắc mắc').length;
@@ -593,14 +616,30 @@ export const TaskAssignmentPage: React.FC = () => {
     }).length;
 
     return { total, unassigned, pending, inProgress, review, completed, overdue };
-  }, [projectAllTasks, filterProjectCode]);
+  }, [projectAllTasks, filterProjectCode, filterEmployeeId, filterPeriodType, filterCustomStart, filterCustomEnd, engineers]);
 
   const projectDisplayedTasks = useMemo(() => {
     const todayStr = new Date().toISOString().split('T')[0];
+    const dateRange = getDateRangeForPeriod(filterPeriodType, {
+      startDate: filterCustomStart,
+      endDate: filterCustomEnd
+    });
+    const selectedEng = filterEmployeeId !== 'all' ? engineers.find(e => e.id === filterEmployeeId) : null;
+
     let list = projectAllTasks;
 
     if (filterProjectCode !== 'all') {
       list = list.filter(t => t.projectCode === filterProjectCode);
+    }
+
+    // Lọc theo Nhân viên
+    if (selectedEng) {
+      list = list.filter(t => isTaskAssignedToPerson(t, selectedEng));
+    }
+
+    // Lọc theo Thời gian (Ngày / Tháng / Quý)
+    if (dateRange) {
+      list = list.filter(t => isTaskInPeriod(t, dateRange));
     }
 
     if (projectFilterStatus === 'unassigned') {
@@ -641,7 +680,7 @@ export const TaskAssignmentPage: React.FC = () => {
       const timeB = b.updatedAt || b.createdAt ? new Date(b.updatedAt || b.createdAt!).getTime() : 0;
       return timeB - timeA;
     });
-  }, [projectAllTasks, filterProjectCode, projectFilterStatus, projectSearch, highlightedTaskId]);
+  }, [projectAllTasks, filterProjectCode, filterEmployeeId, filterPeriodType, filterCustomStart, filterCustomEnd, engineers, projectFilterStatus, projectSearch, highlightedTaskId]);
 
   // Trạng thái thu gọn / mở rộng nhóm dự án
   const [collapsedProjects, setCollapsedProjects] = useState<Record<string, boolean>>({});
@@ -680,12 +719,28 @@ export const TaskAssignmentPage: React.FC = () => {
 
   const directKpiStats = useMemo(() => {
     const todayStr = new Date().toISOString().split('T')[0];
-    const total = directAllTasks.length;
-    const completed = directAllTasks.filter(t => t.status === 'Hoàn thành' || t.isDone).length;
-    const inProgress = directAllTasks.filter(t => t.status === 'Đang làm').length;
-    const pending = directAllTasks.filter(t => t.status === 'Chờ nhận việc' || t.status === 'Có thắc mắc').length;
-    const review = directAllTasks.filter(t => t.status === 'Chờ nghiệm thu').length;
-    const overdue = directAllTasks.filter(t => {
+    const dateRange = getDateRangeForPeriod(filterPeriodType, {
+      startDate: filterCustomStart,
+      endDate: filterCustomEnd
+    });
+    const selectedEng = filterEmployeeId !== 'all' ? engineers.find(e => e.id === filterEmployeeId) : null;
+
+    let list = directAllTasks;
+    // Lọc theo Nhân viên
+    if (selectedEng) {
+      list = list.filter(t => isTaskAssignedToPerson(t, selectedEng));
+    }
+    // Lọc theo Thời gian (Ngày / Tháng / Quý)
+    if (dateRange) {
+      list = list.filter(t => isTaskInPeriod(t, dateRange));
+    }
+
+    const total = list.length;
+    const completed = list.filter(t => t.status === 'Hoàn thành' || t.isDone).length;
+    const inProgress = list.filter(t => t.status === 'Đang làm').length;
+    const pending = list.filter(t => t.status === 'Chờ nhận việc' || t.status === 'Có thắc mắc').length;
+    const review = list.filter(t => t.status === 'Chờ nghiệm thu').length;
+    const overdue = list.filter(t => {
       if (t.status === 'Hoàn thành' || t.isDone) return false;
       if (!t.dueDate) return false;
       const due = String(t.dueDate).split('T')[0];
@@ -693,14 +748,26 @@ export const TaskAssignmentPage: React.FC = () => {
     }).length;
 
     return { total, completed, inProgress, pending, review, overdue };
-  }, [directAllTasks]);
+  }, [directAllTasks, filterEmployeeId, filterPeriodType, filterCustomStart, filterCustomEnd, engineers]);
 
   const directDisplayedTasks = useMemo(() => {
     const todayStr = new Date().toISOString().split('T')[0];
+    const dateRange = getDateRangeForPeriod(filterPeriodType, {
+      startDate: filterCustomStart,
+      endDate: filterCustomEnd
+    });
+    const selectedEng = filterEmployeeId !== 'all' ? engineers.find(e => e.id === filterEmployeeId) : null;
+
     let list = directAllTasks;
 
-    if (directPersonFilter !== 'all') {
-      list = list.filter(t => t.assignedEngineerId === directPersonFilter || t.assignedEngineerName?.includes(directPersonFilter));
+    // Lọc theo Nhân viên
+    if (selectedEng) {
+      list = list.filter(t => isTaskAssignedToPerson(t, selectedEng));
+    }
+
+    // Lọc theo Thời gian (Ngày / Tháng / Quý)
+    if (dateRange) {
+      list = list.filter(t => isTaskInPeriod(t, dateRange));
     }
 
     if (directFilterStatus === 'pending') {
@@ -734,7 +801,7 @@ export const TaskAssignmentPage: React.FC = () => {
       const timeB = b.updatedAt || b.createdAt ? new Date(b.updatedAt || b.createdAt!).getTime() : 0;
       return timeB - timeA;
     });
-  }, [directAllTasks, directPersonFilter, directFilterStatus, directSearch]);
+  }, [directAllTasks, filterEmployeeId, filterPeriodType, filterCustomStart, filterCustomEnd, engineers, directFilterStatus, directSearch]);
 
   // Lọc danh sách kỹ sư / nhân viên thuộc các dự án của những task đang được chọn giao việc
   const assignableEngineers = useMemo(() => {
@@ -958,6 +1025,23 @@ export const TaskAssignmentPage: React.FC = () => {
         /* GIAO DIỆN GIAO VIỆC TRỰC TIẾP / VIỆC PHÁT SINH (EDGE-TO-EDGE & TỐI ƯU MOBILE) */
         <div className="flex-1 overflow-hidden flex flex-col bg-white">
           
+          {/* Thanh Filter Nhân sự & Thời gian (Ngày / Tháng / Quý) */}
+          <div className="border-b border-slate-200/80 bg-slate-50/70 px-3 sm:px-4 py-1.5 flex flex-wrap items-center justify-between gap-2 shrink-0">
+            <EmployeePeriodToolbar
+              engineers={engineers}
+              selectedEmployeeId={filterEmployeeId}
+              onEmployeeChange={setFilterEmployeeId}
+              periodType={filterPeriodType}
+              onPeriodChange={setFilterPeriodType}
+              customStartDate={filterCustomStart}
+              customEndDate={filterCustomEnd}
+              onCustomRangeChange={(start, end) => {
+                setFilterCustomStart(start);
+                setFilterCustomEnd(end);
+              }}
+            />
+          </div>
+
           {/* Thanh Filter & Search & Nút Giao việc */}
           <div className="border-b border-slate-200 bg-white px-3 sm:px-4 py-2 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 shrink-0">
             {/* Filter Status Chips */}
@@ -1227,6 +1311,23 @@ export const TaskAssignmentPage: React.FC = () => {
         /* GIAO DIỆN BẢNG CÔNG VIỆC DỰ ÁN (SUB-TABS & EDGE-TO-EDGE) */
         <div className="flex-1 overflow-hidden flex flex-col bg-white">
           
+          {/* Thanh Filter Nhân sự & Thời gian (Ngày / Tháng / Quý) */}
+          <div className="border-b border-slate-200/80 bg-slate-50/70 px-3 sm:px-4 py-1.5 flex flex-wrap items-center justify-between gap-2 shrink-0">
+            <EmployeePeriodToolbar
+              engineers={engineers}
+              selectedEmployeeId={filterEmployeeId}
+              onEmployeeChange={setFilterEmployeeId}
+              periodType={filterPeriodType}
+              onPeriodChange={setFilterPeriodType}
+              customStartDate={filterCustomStart}
+              customEndDate={filterCustomEnd}
+              onCustomRangeChange={(start, end) => {
+                setFilterCustomStart(start);
+                setFilterCustomEnd(end);
+              }}
+            />
+          </div>
+
           {/* Thanh Filter & Search & Action đồng bộ */}
           <div className="border-b border-slate-200 bg-white px-3 sm:px-4 py-2 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 shrink-0">
             {/* Filter Status Chips */}
