@@ -1199,27 +1199,25 @@ export const ProjectManagementPage: React.FC = () => {
                   {/* Top accent bar */}
                   <div className={`h-1 w-full ${barColor}`} />
 
-                  {/* Badge số thông báo chưa đọc của dự án */}
-                  {Boolean((project as any).unreadNotifCount && (project as any).unreadNotifCount > 0) && (
-                    <div 
-                      className="absolute top-2.5 right-2.5 z-10 flex items-center gap-1 bg-rose-500 text-white font-extrabold text-[11px] px-2 py-0.5 rounded-full shadow-sm animate-pulse"
-                      title={`Có ${(project as any).unreadNotifCount} cập nhật mới trong dự án`}
-                    >
-                      <span className="material-symbols-outlined text-[13px]">notifications_active</span>
-                      <span>{(project as any).unreadNotifCount}</span>
-                    </div>
-                  )}
-
                   <div className="flex flex-col gap-2.5 sm:gap-3 p-3.5 sm:p-4 flex-1">
                     {/* Header: số + tên */}
                     <div className="flex items-start gap-2.5 sm:gap-3">
                       <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0 text-slate-500 font-extrabold text-xs mt-0.5">
                         {String(idx + 1).padStart(2, '0')}
                       </div>
-                      <div className="flex-1 bg-blue-50 rounded-lg px-2.5 py-1.5 sm:px-3 sm:py-2">
+                      <div className="flex-1 bg-blue-50 rounded-lg px-2.5 py-1.5 sm:px-3 sm:py-2 flex items-center justify-between gap-2 min-w-0">
                         <p className="font-bold text-primary text-sm leading-snug line-clamp-2" title={project.name}>
                           {project.name}
                         </p>
+                        {Boolean((project as any).unreadNotifCount && (project as any).unreadNotifCount > 0) && (
+                          <div 
+                            className="inline-flex items-center gap-1 bg-rose-50 text-rose-600 border border-rose-200/80 font-extrabold text-[11px] px-2 py-0.5 rounded-full shadow-2xs shrink-0 self-start mt-0.5"
+                            title={`Có ${(project as any).unreadNotifCount} cập nhật mới trong dự án`}
+                          >
+                            <span className="material-symbols-outlined text-[13px] text-rose-500">notifications</span>
+                            <span>{(project as any).unreadNotifCount}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
 
