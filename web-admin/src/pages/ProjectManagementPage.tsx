@@ -136,6 +136,8 @@ export const ProjectManagementPage: React.FC = () => {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'completed' | 'on_hold'>('active');
+  const [filterDateFrom, setFilterDateFrom] = useState('');
+  const [filterDateTo, setFilterDateTo] = useState('');
 
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
   const [projectToEdit, setProjectToEdit] = useState<Project | null>(null);
@@ -304,9 +306,39 @@ export const ProjectManagementPage: React.FC = () => {
     });
   }, [projects, tasks, materialPlans, purchasingPlans, expenses, laborPayrolls, engineers]);
 
+
+  const isProjectInDateRange = (project: any, fromDate: string, toDate: string) => {
+    if (!fromDate && !toDate) return true;
+    
+    // Lấy mốc thời gian của dự án (startDate, endDate, createdAt, updatedAt)
+    const pStart = project.startDate ? String(project.startDate).slice(0, 10) : '';
+    const pEnd = project.endDate ? String(project.endDate).slice(0, 10) : '';
+    const pCreated = (project.createdAt || project.created_at) ? String(project.createdAt || project.created_at).slice(0, 10) : '';
+    const pUpdated = (project.updatedAt || project.updated_at) ? String(project.updatedAt || project.updated_at).slice(0, 10) : '';
+
+    const effectiveStart = pStart || pCreated || pUpdated;
+    const effectiveEnd = pEnd || (project.status === 'completed' ? (pUpdated || pCreated) : '');
+
+    // Nếu có fromDate
+    if (fromDate) {
+      // Dự án phải kết thúc sau hoặc bằng fromDate (hoặc nếu chưa kết thúc thì tính là đang diễn ra)
+      if (effectiveEnd && effectiveEnd < fromDate) return false;
+      if (!effectiveEnd && effectiveStart && effectiveStart < fromDate && project.status === 'completed') return false;
+    }
+
+    // Nếu có toDate
+    if (toDate) {
+      // Dự án phải bắt đầu trước hoặc bằng toDate
+      if (effectiveStart && effectiveStart > toDate) return false;
+    }
+
+    return true;
+  };
+
   const counts = useMemo(() => {
     const q = normalizeLabel(searchQuery.trim());
     const filteredBySearch = allEnhancedProjects.filter((project) => {
+      if (!isProjectInDateRange(project, filterDateFrom, filterDateTo)) return false;
       if (!q) return true;
       return [project.name, project.code, project.location, project.client, project.notes, project.managerName, project.memberNames.join(' ')]
         .some((value) => normalizeLabel(String(value || '')).includes(q));
@@ -316,7 +348,7 @@ export const ProjectManagementPage: React.FC = () => {
       active: filteredBySearch.filter(p => p.status === 'active').length,
       completed: filteredBySearch.filter(p => p.status === 'completed').length,
     };
-  }, [allEnhancedProjects, searchQuery]);
+  }, [allEnhancedProjects, searchQuery, filterDateFrom, filterDateTo]);
 
   const enhancedProjects = useMemo(() => {
     const q = normalizeLabel(searchQuery.trim());
@@ -324,6 +356,7 @@ export const ProjectManagementPage: React.FC = () => {
     return allEnhancedProjects.filter((project) => {
       const matchStatus = statusFilter === 'all' || project.status === statusFilter;
       if (!matchStatus) return false;
+      if (!isProjectInDateRange(project, filterDateFrom, filterDateTo)) return false;
 
       if (!q) return true;
       return [project.name, project.code, project.location, project.client, project.notes, project.managerName, project.memberNames.join(' ')]
@@ -342,7 +375,7 @@ export const ProjectManagementPage: React.FC = () => {
       }
       return (a.name || '').localeCompare(b.name || '', 'vi', { numeric: true });
     });
-  }, [allEnhancedProjects, searchQuery, statusFilter]);
+  }, [allEnhancedProjects, searchQuery, statusFilter, filterDateFrom, filterDateTo]);
 
   const openProjectTasks = (project: Project) => navigate(`/projects/${project.id}`);
 
@@ -1043,6 +1076,38 @@ export const ProjectManagementPage: React.FC = () => {
               <span>Hoàn thành</span> 
               <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold leading-none bg-slate-200 text-slate-700">{counts.completed}</span>
             </button>
+          </div>
+
+          {/* Bộ lọc dải ngày (Từ ngày ... Đến ngày ...) */}
+          <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-lg px-2 py-0.5 h-[34px] shadow-2xs text-xs shrink-0">
+            <span className="text-slate-400 font-medium whitespace-nowrap text-[11px] ml-0.5">Từ</span>
+            <input
+              type="date"
+              value={filterDateFrom}
+              onChange={e => setFilterDateFrom(e.target.value)}
+              className="bg-transparent border-none outline-none text-xs w-[100px] text-slate-700 cursor-pointer font-medium"
+            />
+            <span className="text-slate-300">|</span>
+            <span className="text-slate-400 font-medium whitespace-nowrap text-[11px]">Đến</span>
+            <input
+              type="date"
+              value={filterDateTo}
+              onChange={e => setFilterDateTo(e.target.value)}
+              className="bg-transparent border-none outline-none text-xs w-[100px] text-slate-700 cursor-pointer font-medium"
+            />
+            {(filterDateFrom || filterDateTo) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setFilterDateFrom('');
+                  setFilterDateTo('');
+                }}
+                className="text-slate-400 hover:text-slate-600 p-0.5 ml-0.5 rounded cursor-pointer"
+                title="Xóa bộ lọc ngày"
+              >
+                <span className="material-symbols-outlined text-[13px]">close</span>
+              </button>
+            )}
           </div>
         </div>
 

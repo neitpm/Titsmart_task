@@ -41,23 +41,20 @@ export const EmployeePeriodToolbar: React.FC<EmployeePeriodToolbarProps> = ({
   return (
     <div className={`flex flex-wrap items-center gap-2 ${compact ? 'text-xs' : 'text-xs sm:text-sm'}`}>
       {/* 1. Dropdown Chọn Nhân viên */}
-      <div className="flex items-center gap-1.5 shrink-0 w-44 sm:w-52">
-        <span className="material-symbols-outlined text-slate-400 text-[18px]">person</span>
-        <div className="flex-1 min-w-0">
-          <CustomSelect
-            value={selectedEmployeeId}
-            onChange={(e: any) => onEmployeeChange(e.target.value)}
-            searchable={true}
-            className="w-full h-[32px] text-xs font-semibold bg-white border-slate-200"
-          >
-            <option value="all">Tất cả Nhân viên</option>
-            {engineers.map((eng) => (
-              <option key={eng.id} value={eng.id}>
-                {eng.name} {eng.code ? `(${eng.code})` : ''}
-              </option>
-            ))}
-          </CustomSelect>
-        </div>
+      <div className="shrink-0 w-48 sm:w-56 min-w-0">
+        <CustomSelect
+          value={selectedEmployeeId}
+          onChange={(e: any) => onEmployeeChange(e.target.value)}
+          searchable={true}
+          className="w-full h-[32px] text-xs font-semibold bg-white border-slate-200"
+        >
+          <option value="all">Tất cả Nhân viên</option>
+          {engineers.map((eng) => (
+            <option key={eng.id} value={eng.id}>
+              {eng.name} {eng.code ? `(${eng.code})` : ''}
+            </option>
+          ))}
+        </CustomSelect>
       </div>
 
       {/* 2. Tabs chuyển nhanh Thời gian: Hôm nay | Tháng này | Quý này | Tất cả */}

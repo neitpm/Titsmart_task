@@ -15,7 +15,7 @@ import { uploadAttachment } from '../utils/fileUploadHelper';
 import { Toast } from '../components/common/Toast';
 import { isUserTaskAssignee, isUserTaskAssigner, isUserTaskFollower, getTaskFollowerNames, isTaskReadyForAssignment } from '../utils/taskPermission';
 import { EmployeePeriodToolbar } from '../components/tasks/EmployeePeriodToolbar';
-import { TimePeriodType, getDateRangeForPeriod, isTaskInPeriod, isTaskAssignedToPerson } from '../utils/taskPeriodFilter';
+import { TimePeriodType, getDateRangeForPeriod, isTaskInPeriod, isTaskAssignedToPerson, getTaskTimeBounds } from '../utils/taskPeriodFilter';
 
 export const TaskAssignmentPage: React.FC = () => {
   const navigate = useNavigate();
@@ -1147,7 +1147,7 @@ export const TaskAssignmentPage: React.FC = () => {
                   <th className="py-2.5 px-4 border-r border-slate-200">Nội dung công việc</th>
                   <th className="py-2.5 px-3 w-36 border-r border-slate-200">Người nhận việc</th>
                   <th className="py-2.5 px-3 w-36 border-r border-slate-200">Người theo dõi</th>
-                  <th className="py-2.5 px-3 w-24 text-center border-r border-slate-200">Hạn chót</th>
+                  <th className="py-2.5 px-3 w-36 text-center border-r border-slate-200">Thời gian</th>
                   <th className="py-2.5 px-3 w-20 text-center border-r border-slate-200">Ưu tiên</th>
                   <th className="py-2.5 px-3 w-28 text-center border-r border-slate-200">Trạng thái</th>
                   <th className="py-2.5 px-3 w-24 text-center">Thao tác</th>
@@ -1245,16 +1245,41 @@ export const TaskAssignmentPage: React.FC = () => {
                             );
                           })()}
                         </td>
-                        <td className="py-2.5 px-3 text-center border-r border-slate-200">
-                          {t.dueDate ? (
-                            <span className={`inline-block px-1.5 py-0.5 rounded text-[11px] font-bold ${
-                              isOverdue ? 'bg-red-100 text-red-700' : 'text-slate-700'
-                            }`}>
-                              {t.dueDate}
-                            </span>
-                          ) : (
-                            <span className="text-slate-400">-</span>
-                          )}
+                        <td className="py-2 px-3 text-center border-r border-slate-200">
+                          {(() => {
+                            const bounds = getTaskTimeBounds(t);
+                            const isDone = t.isDone || t.status === 'Hoàn thành';
+                            const formatDateStr = (d?: string) => {
+                              if (!d) return '-';
+                              const parts = d.split('-');
+                              return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : d;
+                            };
+                            return (
+                              <div className="flex flex-col items-center gap-0.5 text-[10.5px]">
+                                {isDone ? (
+                                  <span className="font-bold text-emerald-700 flex items-center gap-1">
+                                    <span className="material-symbols-outlined text-[13px]">check_circle</span>
+                                    Xong: {formatDateStr(bounds.completedDate || bounds.updatedDate || t.dueDate)}
+                                  </span>
+                                ) : (
+                                  bounds.acceptedDate && (
+                                    <span className="font-semibold text-blue-700 flex items-center gap-1">
+                                      <span className="material-symbols-outlined text-[13px]">play_circle</span>
+                                      Nhận: {formatDateStr(bounds.acceptedDate)}
+                                    </span>
+                                  )
+                                )}
+                                {t.dueDate ? (
+                                  <span className={`flex items-center gap-1 ${isOverdue ? 'font-bold text-rose-600' : 'text-slate-500'}`}>
+                                    {isOverdue && <span className="material-symbols-outlined text-[12px]">warning</span>}
+                                    Hạn: {formatDateStr(t.dueDate)}
+                                  </span>
+                                ) : (
+                                  <span className="text-slate-400 text-[10px]">Hạn: Chưa đặt</span>
+                                )}
+                              </div>
+                            );
+                          })()}
                         </td>
                         <td className="py-2.5 px-3 text-center border-r border-slate-200">
                           <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">

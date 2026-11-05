@@ -1,10 +1,19 @@
 import { Task } from '../types';
+import { parseTaskDiscussions } from './taskDiscussion';
 
 export type TimePeriodType = 'all' | 'today' | 'this_month' | 'this_quarter' | 'custom';
 
 export interface DateRange {
   startDate: string; // 'YYYY-MM-DD'
   endDate: string;   // 'YYYY-MM-DD'
+}
+
+export interface TaskTimeBounds {
+  acceptedDate?: string;  // YYYY-MM-DD (ngày nhận việc / bắt đầu làm)
+  completedDate?: string; // YYYY-MM-DD (ngày hoàn thành)
+  dueDate?: string;       // YYYY-MM-DD (hạn hoàn thành)
+  createdDate?: string;   // YYYY-MM-DD (ngày tạo)
+  updatedDate?: string;   // YYYY-MM-DD (ngày cập nhật gần nhất)
 }
 
 /**
@@ -79,47 +88,113 @@ export function getDateRangeForPeriod(
 }
 
 /**
- * Kiểm tra xem công việc t có phát sinh hoặc diễn ra trong khoảng thời gian range không.
- * Tiêu chí xem xét:
- * 1. dueDate (Hạn hoàn thành) nằm trong khoảng
- * 2. createdAt / updatedAt nằm trong khoảng
- * 3. Nếu là công việc đang làm (chưa hoàn thành), nếu dueDate >= startDate thì vẫn tính là đang làm trong kỳ.
+ * Trích xuất các mốc thời gian nhận việc và hoàn thành của một công việc:
+ * - Thời điểm nhận việc (acceptedDate): Ngày đầu tiên task chuyển sang 'Đang làm', hoặc ngày tạo/cập nhật lúc giao/nhận việc
+ * - Thời điểm hoàn thành (completedDate): Ngày task được đánh dấu 'Hoàn thành' hoặc isDone = true (từ updatedAt hoặc lịch sử thảo luận/nghiệm thu)
+ */
+export function getTaskTimeBounds(task: Task): TaskTimeBounds {
+  const result: TaskTimeBounds = {};
+
+  if (task.dueDate) {
+    result.dueDate = String(task.dueDate).slice(0, 10);
+  }
+  if (task.createdAt) {
+    result.createdDate = String(task.createdAt).slice(0, 10);
+  }
+  if (task.updatedAt) {
+    result.updatedDate = String(task.updatedAt).slice(0, 10);
+  }
+
+  const isDone = task.isDone || task.status === 'Hoàn thành' || (task.progress !== undefined && task.progress >= 1);
+
+  // 1. Phân tích lịch sử thảo luận / thread nếu có
+  try {
+    const discussions = parseTaskDiscussions(task.notes, task.issue);
+    if (Array.isArray(discussions) && discussions.length > 0) {
+      // Tìm thời điểm nhận việc từ tin nhắn hệ thống hoặc trao đổi nhận việc
+      for (const d of discussions) {
+        const text = String(d.content || '').toLowerCase();
+        const dateStr = d.createdAt ? String(d.createdAt).slice(0, 10) : '';
+        if (dateStr && (text.includes('nhận việc') || text.includes('bắt đầu') || text.includes('tiến hành thi công'))) {
+          if (!result.acceptedDate || dateStr < result.acceptedDate) {
+            result.acceptedDate = dateStr;
+          }
+        }
+        if (dateStr && isDone && (text.includes('hoàn thành') || text.includes('nghiệm thu đạt') || text.includes('đã xong'))) {
+          if (!result.completedDate || dateStr > result.completedDate) {
+            result.completedDate = dateStr;
+          }
+        }
+      }
+    }
+  } catch {
+    // fallback an toàn nếu notes không theo format JSON thread
+  }
+
+  // 2. Nếu task đã hoàn thành mà chưa có completedDate -> lấy updatedAt hoặc createdAt
+  if (isDone) {
+    if (!result.completedDate) {
+      result.completedDate = result.updatedDate || result.createdDate;
+    }
+  }
+
+  // 3. Nếu chưa có acceptedDate:
+  // Nếu task đang làm hoặc đã hoàn thành, mốc nhận việc mặc định là createdAt (ngày được giao/nhận) hoặc updatedAt nếu tạo trước đó
+  if (!result.acceptedDate) {
+    result.acceptedDate = result.createdDate || result.updatedDate;
+  }
+
+  return result;
+}
+
+/**
+ * Kiểm tra xem công việc có rơi vào khoảng thời gian range theo tiêu chí:
+ * "thời gian này thì lọc theo lúc người đó nhận việc và hoàn thành"
+ * 
+ * Logic lọc:
+ * 1. Với công việc ĐÃ HOÀN THÀNH:
+ *    - Xem xét theo ngày hoàn thành (completedDate): nếu completedDate nằm trong [startDate, endDate] -> TRUE.
+ *    - Nếu completedDate không có sẵn (công việc cũ) -> fallback kiểm tra updatedDate hoặc dueDate trong kỳ.
+ * 
+ * 2. Với công việc ĐANG LÀM / CHƯA XONG:
+ *    - Xem xét theo thời điểm nhận việc / bắt đầu (acceptedDate):
+ *      Nếu ngày nhận việc <= endDate (đã nhận trước hoặc trong kỳ) VÀ
+ *      chưa hoàn thành trước khi kỳ bắt đầu (tức công việc đang được triển khai trong kỳ này) -> TRUE.
+ *    - Đặc biệt nếu ngày nhận việc rơi trúng khoảng [startDate, endDate] -> chắc chắn TRUE.
  */
 export function isTaskInPeriod(task: Task, range: DateRange | null): boolean {
   if (!range) return true; // 'all'
 
   const { startDate, endDate } = range;
-
-  // Lấy các mốc ngày của công việc (YYYY-MM-DD)
-  const dueStr = task.dueDate ? String(task.dueDate).slice(0, 10) : '';
-  const createdStr = task.createdAt ? String(task.createdAt).slice(0, 10) : '';
-  const updatedStr = task.updatedAt ? String(task.updatedAt).slice(0, 10) : '';
-
-  // 1. Nếu hạn hoàn thành rơi vào khoảng thời gian
-  if (dueStr && dueStr >= startDate && dueStr <= endDate) {
-    return true;
-  }
-
-  // 2. Nếu ngày cập nhật hoặc ngày tạo rơi vào khoảng thời gian
-  if (updatedStr && updatedStr >= startDate && updatedStr <= endDate) {
-    return true;
-  }
-  if (createdStr && createdStr >= startDate && createdStr <= endDate) {
-    return true;
-  }
-
-  // 3. Nếu là công việc đang làm (chưa hoàn thành) và được tạo trước khi kết thúc khoảng thời gian,
-  // đồng thời hạn hoàn thành (nếu có) chưa hết trước khi khoảng thời gian bắt đầu
+  const timeBounds = getTaskTimeBounds(task);
   const isDone = task.isDone || task.status === 'Hoàn thành' || (task.progress !== undefined && task.progress >= 1);
-  if (!isDone) {
-    // Nếu tạo trước khi hết kỳ và chưa hoàn thành
-    if (createdStr && createdStr <= endDate) {
-      if (!dueStr || dueStr >= startDate) {
-        return true;
-      }
+
+  if (isDone) {
+    // Với công việc hoàn thành: xét theo ngày hoàn thành
+    const finishDate = timeBounds.completedDate || timeBounds.updatedDate || timeBounds.dueDate;
+    if (finishDate) {
+      return finishDate >= startDate && finishDate <= endDate;
+    }
+    // Fallback: nếu không có mốc ngày nào rõ ràng, kiểm tra createdDate
+    return Boolean(timeBounds.createdDate && timeBounds.createdDate >= startDate && timeBounds.createdDate <= endDate);
+  }
+
+  // Với công việc Đang làm / Chưa xong:
+  const startWorkDate = timeBounds.acceptedDate || timeBounds.createdDate || timeBounds.updatedDate;
+  if (!startWorkDate) return true;
+
+  // Nếu ngày nhận việc rơi trực tiếp vào khoảng thời gian đang lọc
+  if (startWorkDate >= startDate && startWorkDate <= endDate) {
+    return true;
+  }
+
+  // Nếu ngày nhận việc diễn ra trước kỳ này và vẫn đang triển khai:
+  // (Công việc chưa xong và hạn hoàn thành nếu có >= startDate)
+  if (startWorkDate <= endDate) {
+    if (!timeBounds.dueDate || timeBounds.dueDate >= startDate) {
+      return true;
     }
   }
 
   return false;
 }
-

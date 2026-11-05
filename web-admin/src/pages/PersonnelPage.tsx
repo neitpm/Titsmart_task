@@ -10,7 +10,7 @@ import { Modal } from '../components/common/Modal';
 import { CustomSelect } from '@/components/common/CustomSelect';
 import { PullToRefresh } from '../components/common/PullToRefresh';
 import { EmployeePeriodToolbar } from '../components/tasks/EmployeePeriodToolbar';
-import { TimePeriodType, getDateRangeForPeriod, isTaskInPeriod } from '../utils/taskPeriodFilter';
+import { TimePeriodType, getDateRangeForPeriod, isTaskInPeriod, getTaskTimeBounds } from '../utils/taskPeriodFilter';
 import { cleanNotes } from '../utils/cleanNotesUtils';
 
 const filters = [
@@ -1341,49 +1341,76 @@ export const PersonnelPage: React.FC = () => {
 
               {/* Search & Period Toolbar */}
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 pt-1">
-                {/* Bộ lọc Thời gian nhanh: Tất cả | Hôm nay | Tháng này | Quý này | Tùy chọn */}
-                <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg border border-slate-200 overflow-x-auto custom-scrollbar">
-                  {[
-                    { id: 'all', label: 'Tất cả' },
-                    { id: 'today', label: 'Hôm nay' },
-                    { id: 'this_month', label: 'Tháng này' },
-                    { id: 'this_quarter', label: 'Quý này' },
-                    { id: 'custom', label: 'Tùy chọn' },
-                  ].map(p => (
-                    <button
-                      key={p.id}
-                      type="button"
-                      onClick={() => setKpiPeriodType(p.id as any)}
-                      className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-all whitespace-nowrap cursor-pointer ${
-                        kpiPeriodType === p.id
-                          ? 'bg-white text-primary shadow-xs ring-1 ring-slate-200/80'
-                          : 'text-slate-600 hover:text-slate-900'
-                      }`}
-                    >
-                      {p.label}
-                    </button>
-                  ))}
-                  {kpiPeriodType === 'custom' && (
-                    <div className="flex items-center gap-1 bg-white border border-slate-200 rounded px-1.5 py-0.5 text-[10px] ml-1">
-                      <input
-                        type="date"
-                        value={kpiCustomStart}
-                        onChange={(e) => setKpiCustomStart(e.target.value)}
-                        className="border-0 p-0 text-[10px] outline-none bg-transparent cursor-pointer"
-                      />
-                      <span className="text-slate-400">→</span>
-                      <input
-                        type="date"
-                        value={kpiCustomEnd}
-                        onChange={(e) => setKpiCustomEnd(e.target.value)}
-                        className="border-0 p-0 text-[10px] outline-none bg-transparent cursor-pointer"
-                      />
-                    </div>
-                  )}
+                {/* Tabs trạng thái + Bộ lọc thời gian */}
+                <div className="flex flex-wrap items-center gap-2 overflow-x-auto custom-scrollbar">
+                  {/* Bộ lọc Thời gian nhanh: Tất cả | Hôm nay | Tháng này | Quý này | Tùy chọn */}
+                  <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg border border-slate-200 shrink-0">
+                    {[
+                      { id: 'all', label: 'Tất cả' },
+                      { id: 'today', label: 'Hôm nay' },
+                      { id: 'this_month', label: 'Tháng này' },
+                      { id: 'this_quarter', label: 'Quý này' },
+                      { id: 'custom', label: 'Tùy chọn' },
+                    ].map(p => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => setKpiPeriodType(p.id as any)}
+                        className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-all whitespace-nowrap cursor-pointer ${
+                          kpiPeriodType === p.id
+                            ? 'bg-white text-primary shadow-xs ring-1 ring-slate-200/80'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        {p.label}
+                      </button>
+                    ))}
+                    {kpiPeriodType === 'custom' && (
+                      <div className="flex items-center gap-1 bg-white border border-slate-200 rounded px-1.5 py-0.5 text-[10px] ml-1">
+                        <input
+                          type="date"
+                          value={kpiCustomStart}
+                          onChange={(e) => setKpiCustomStart(e.target.value)}
+                          className="border-0 p-0 text-[10px] outline-none bg-transparent cursor-pointer"
+                        />
+                        <span className="text-slate-400">→</span>
+                        <input
+                          type="date"
+                          value={kpiCustomEnd}
+                          onChange={(e) => setKpiCustomEnd(e.target.value)}
+                          className="border-0 p-0 text-[10px] outline-none bg-transparent cursor-pointer"
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Tabs phân loại trạng thái: Tất cả (n) | Đang làm (n) | Đã xong (n) | Chưa xong (n) | Quá hạn (n) */}
+                  <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg border border-slate-200 shrink-0">
+                    {[
+                      { id: 'all', label: `Tất cả (${kpi.totalCount})` },
+                      { id: 'in_progress', label: `Đang làm (${kpi.inProgressCount})` },
+                      { id: 'completed', label: `Đã xong (${kpi.completedCount})` },
+                      { id: 'pending', label: `Chưa xong (${kpi.pendingCount})` },
+                      { id: 'overdue', label: `Quá hạn (${kpi.overdueCount})` },
+                    ].map(tab => (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        onClick={() => setKpiFilterTab(tab.id as any)}
+                        className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-all whitespace-nowrap cursor-pointer ${
+                          kpiFilterTab === tab.id
+                            ? 'bg-white text-primary shadow-xs ring-1 ring-slate-200/80'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        {tab.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 {/* Ô tìm kiếm công việc & dự án */}
-                <div className="relative w-full sm:w-64">
+                <div className="relative w-full sm:w-64 shrink-0">
                   <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs">search</span>
                   <input
                     type="text"
@@ -1455,21 +1482,34 @@ export const PersonnelPage: React.FC = () => {
                               </span>
                             </td>
                             <td className="p-2 whitespace-nowrap">
-                              <div className="flex flex-col gap-0.5 text-[11px]">
-                                {t.dueDate ? (
-                                  <span className={`font-bold flex items-center gap-1 ${isOverdue ? 'text-rose-600' : 'text-slate-700'}`}>
-                                    {isOverdue && <span className="material-symbols-outlined text-[13px]">warning</span>}
-                                    Hạn: {formatDate(t.dueDate)}
-                                  </span>
-                                ) : (
-                                  <span className="text-slate-400">Hạn: Chưa đặt</span>
-                                )}
-                                {(t.updatedAt || t.createdAt) && (
-                                  <span className="text-[10px] text-slate-400">
-                                    Cập nhật: {formatDate(t.updatedAt || t.createdAt)}
-                                  </span>
-                                )}
-                              </div>
+                              {(() => {
+                                const bounds = getTaskTimeBounds(t);
+                                return (
+                                  <div className="flex flex-col gap-0.5 text-[11px]">
+                                    {isDone ? (
+                                      <span className="font-bold text-emerald-700 flex items-center gap-1">
+                                        <span className="material-symbols-outlined text-[13px]">check_circle</span>
+                                        Xong: {formatDate(bounds.completedDate || bounds.updatedDate || t.dueDate)}
+                                      </span>
+                                    ) : (
+                                      bounds.acceptedDate && (
+                                        <span className="font-semibold text-blue-700 flex items-center gap-1">
+                                          <span className="material-symbols-outlined text-[13px]">play_circle</span>
+                                          Nhận việc: {formatDate(bounds.acceptedDate)}
+                                        </span>
+                                      )
+                                    )}
+                                    {t.dueDate ? (
+                                      <span className={`text-[10.5px] flex items-center gap-1 ${isOverdue ? 'font-bold text-rose-600' : 'text-slate-500'}`}>
+                                        {isOverdue && <span className="material-symbols-outlined text-[12px]">warning</span>}
+                                        Hạn: {formatDate(t.dueDate)}
+                                      </span>
+                                    ) : (
+                                      <span className="text-slate-400 text-[10px]">Hạn: Chưa đặt</span>
+                                    )}
+                                  </div>
+                                );
+                              })()}
                             </td>
                             <td className="p-2 whitespace-nowrap text-slate-600 text-xs font-medium">
                               {t.assignerName || '-'}

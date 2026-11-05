@@ -177,6 +177,7 @@ export const AttendancePage: React.FC = () => {
 
   const [reviewLeave, setReviewLeave] = useState<LeaveRequest | null>(null);
   const [reviewStep, setReviewStep] = useState<1 | 2>(1);
+  const [reviewAction, setReviewAction] = useState<'APPROVE' | 'REJECT'>('APPROVE');
   const [reviewNote, setReviewNote] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -2120,22 +2121,40 @@ export const AttendancePage: React.FC = () => {
                         {/* Thao tác trên Mobile */}
                         <div className="flex items-center justify-end gap-2 pt-1">
                           {canReviewStep1 && (
-                            <button
-                              onClick={() => { setReviewLeave(l); setReviewStep(1); setReviewNote(''); }}
-                              className="px-3 py-1.5 bg-blue-50 text-primary hover:bg-blue-100 rounded-lg text-xs font-bold border border-blue-200 active:scale-95 transition-all shadow-2xs cursor-pointer"
-                              title="Quản lý duyệt"
-                            >
-                              Duyệt
-                            </button>
+                            <>
+                              <button
+                                onClick={() => { setReviewLeave(l); setReviewStep(1); setReviewAction('APPROVE'); setReviewNote(''); }}
+                                className="px-3 py-1.5 bg-blue-50 text-primary hover:bg-blue-100 rounded-lg text-xs font-bold border border-blue-200 active:scale-95 transition-all shadow-2xs cursor-pointer"
+                                title="Quản lý duyệt"
+                              >
+                                Duyệt
+                              </button>
+                              <button
+                                onClick={() => { setReviewLeave(l); setReviewStep(1); setReviewAction('REJECT'); setReviewNote(''); }}
+                                className="px-3 py-1.5 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded-lg text-xs font-bold border border-rose-200 active:scale-95 transition-all shadow-2xs cursor-pointer"
+                                title="Quản lý không duyệt"
+                              >
+                                Không duyệt
+                              </button>
+                            </>
                           )}
                           {canReviewStep2 && (
-                            <button
-                              onClick={() => { setReviewLeave(l); setReviewStep(2); setReviewNote(''); }}
-                              className="px-3 py-1.5 bg-primary text-white hover:bg-blue-800 rounded-lg text-xs font-bold shadow-2xs active:scale-95 transition-all cursor-pointer"
-                              title="Quản trị duyệt"
-                            >
-                              Duyệt
-                            </button>
+                            <>
+                              <button
+                                onClick={() => { setReviewLeave(l); setReviewStep(2); setReviewAction('APPROVE'); setReviewNote(''); }}
+                                className="px-3 py-1.5 bg-primary text-white hover:bg-blue-800 rounded-lg text-xs font-bold shadow-2xs active:scale-95 transition-all cursor-pointer"
+                                title="Quản trị duyệt"
+                              >
+                                Duyệt
+                              </button>
+                              <button
+                                onClick={() => { setReviewLeave(l); setReviewStep(2); setReviewAction('REJECT'); setReviewNote(''); }}
+                                className="px-3 py-1.5 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded-lg text-xs font-bold border border-rose-200 active:scale-95 transition-all shadow-2xs cursor-pointer"
+                                title="Quản trị không duyệt"
+                              >
+                                Không duyệt
+                              </button>
+                            </>
                           )}
                           {(isAdmin || l.userId === user?.id || (user?.username && l.userName === user.name)) && (
                             <button
@@ -2161,7 +2180,7 @@ export const AttendancePage: React.FC = () => {
                         <th className="p-3">Loại nghỉ</th>
                         <th className="p-3">Thời gian nghỉ</th>
                         <th className="p-3 text-center">Số ngày</th>
-                        <th className="p-3">Lý do</th>
+                        <th className="p-3 min-w-[200px] max-w-[320px]">Lý do</th>
                         <th className="p-3">Người theo dõi</th>
                         <th className="p-3 text-center">Trạng thái</th>
                         <th className="p-3">Quản lý duyệt</th>
@@ -2198,7 +2217,7 @@ export const AttendancePage: React.FC = () => {
                               <span className="block text-[10px] font-bold text-blue-700 bg-blue-50 rounded px-1 mt-0.5 border border-blue-200">Chiều</span>
                             )}
                           </td>
-                          <td className="p-3 text-slate-600 max-w-[180px] truncate" title={l.reason}>
+                          <td className="p-3 text-slate-700 min-w-[200px] max-w-[320px] whitespace-normal break-words leading-relaxed">
                             {l.reason}
                           </td>
                           {/* Cột Người theo dõi */}
@@ -2295,22 +2314,40 @@ export const AttendancePage: React.FC = () => {
                           <td className="p-3 text-center whitespace-nowrap">
                             <div className="flex items-center justify-center gap-1.5">
                               {canReviewStep1 && (
-                                <button
-                                  onClick={() => { setReviewLeave(l); setReviewStep(1); setReviewNote(''); }}
-                                  className="px-2.5 py-1 bg-blue-50 text-primary hover:bg-blue-100 rounded text-[11px] font-bold border border-blue-200 active:scale-95 transition-all shadow-2xs cursor-pointer"
-                                  title="Quản lý duyệt"
-                                >
-                                  Duyệt
-                                </button>
+                                <>
+                                  <button
+                                    onClick={() => { setReviewLeave(l); setReviewStep(1); setReviewAction('APPROVE'); setReviewNote(''); }}
+                                    className="px-2.5 py-1 bg-blue-50 text-primary hover:bg-blue-100 rounded text-[11px] font-bold border border-blue-200 active:scale-95 transition-all shadow-2xs cursor-pointer"
+                                    title="Quản lý duyệt đơn"
+                                  >
+                                    Duyệt
+                                  </button>
+                                  <button
+                                    onClick={() => { setReviewLeave(l); setReviewStep(1); setReviewAction('REJECT'); setReviewNote(''); }}
+                                    className="px-2.5 py-1 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded text-[11px] font-bold border border-rose-200 active:scale-95 transition-all shadow-2xs cursor-pointer"
+                                    title="Quản lý không duyệt / từ chối"
+                                  >
+                                    Không duyệt
+                                  </button>
+                                </>
                               )}
                               {canReviewStep2 && (
-                                <button
-                                  onClick={() => { setReviewLeave(l); setReviewStep(2); setReviewNote(''); }}
-                                  className="px-2.5 py-1 bg-primary text-white hover:bg-blue-800 rounded text-[11px] font-bold shadow-2xs active:scale-95 transition-all cursor-pointer"
-                                  title="Quản trị duyệt"
-                                >
-                                  Duyệt
-                                </button>
+                                <>
+                                  <button
+                                    onClick={() => { setReviewLeave(l); setReviewStep(2); setReviewAction('APPROVE'); setReviewNote(''); }}
+                                    className="px-2.5 py-1 bg-primary text-white hover:bg-blue-800 rounded text-[11px] font-bold shadow-2xs active:scale-95 transition-all cursor-pointer"
+                                    title="Quản trị phê duyệt đơn"
+                                  >
+                                    Duyệt
+                                  </button>
+                                  <button
+                                    onClick={() => { setReviewLeave(l); setReviewStep(2); setReviewAction('REJECT'); setReviewNote(''); }}
+                                    className="px-2.5 py-1 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded text-[11px] font-bold border border-rose-200 active:scale-95 transition-all shadow-2xs cursor-pointer"
+                                    title="Quản trị không duyệt / từ chối"
+                                  >
+                                    Không duyệt
+                                  </button>
+                                </>
                               )}
                               {(isAdmin || l.userId === user?.id || (user?.username && l.userName === user.name)) && (
                                 <button
@@ -3006,8 +3043,12 @@ export const AttendancePage: React.FC = () => {
       <Modal
         isOpen={!!reviewLeave}
         onClose={() => setReviewLeave(null)}
-        title={reviewStep === 1 ? 'Xét duyệt đơn xin nghỉ (Quản lý)' : 'Phê duyệt đơn xin nghỉ (Quản trị)'}
-        icon="rate_review"
+        title={
+          reviewAction === 'REJECT'
+            ? `Không duyệt đơn xin nghỉ (${reviewStep === 1 ? 'Quản lý' : 'Quản trị'})`
+            : `Phê duyệt đơn xin nghỉ (${reviewStep === 1 ? 'Quản lý' : 'Quản trị'})`
+        }
+        icon={reviewAction === 'REJECT' ? 'cancel' : 'rate_review'}
         size="md"
       >
         {reviewLeave && (
@@ -3016,7 +3057,9 @@ export const AttendancePage: React.FC = () => {
               <p><span className="font-bold text-slate-700">Nhân viên làm đơn:</span> <strong className="text-slate-900">{reviewLeave.userName}</strong></p>
               <p><span className="font-bold text-slate-700">Loại nghỉ:</span> {reviewLeave.leaveType}</p>
               <p><span className="font-bold text-slate-700">Thời gian nghỉ:</span> {formatDate(reviewLeave.startDate)} → {formatDate(reviewLeave.endDate)} ({reviewLeave.totalDays} ngày{reviewLeave.session === 'MORNING' ? ' - Buổi sáng' : reviewLeave.session === 'AFTERNOON' ? ' - Buổi chiều' : ''})</p>
-              <p><span className="font-bold text-slate-700">Lý do:</span> {reviewLeave.reason}</p>
+              <div className="text-slate-800 leading-relaxed">
+                <span className="font-bold text-slate-700">Lý do xin nghỉ:</span> {reviewLeave.reason}
+              </div>
               {reviewStep === 2 && reviewLeave.step1ReviewerName && (
                 <div className="pt-2 border-t border-slate-200/80 text-slate-800">
                   <p><span className="font-bold text-primary">Quản lý đã duyệt:</span> {reviewLeave.step1ReviewerName} {reviewLeave.step1ReviewedAt && `(${formatDate(reviewLeave.step1ReviewedAt)})`}</p>
@@ -3024,35 +3067,98 @@ export const AttendancePage: React.FC = () => {
                 </div>
               )}
             </div>
+
+            {/* Chuyển đổi trạng thái xử lý Duyệt / Không duyệt trong Modal */}
+            <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-lg border border-slate-200">
+              <button
+                type="button"
+                onClick={() => setReviewAction('APPROVE')}
+                className={`flex-1 py-1.5 text-xs font-bold rounded-md flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                  reviewAction === 'APPROVE'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <span className="material-symbols-outlined text-[15px]">check_circle</span>
+                <span>Phê duyệt đơn</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setReviewAction('REJECT')}
+                className={`flex-1 py-1.5 text-xs font-bold rounded-md flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                  reviewAction === 'REJECT'
+                    ? 'bg-rose-600 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <span className="material-symbols-outlined text-[15px]">cancel</span>
+                <span>Không duyệt đơn</span>
+              </button>
+            </div>
+
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
-                Ý kiến / Ghi chú duyệt (tùy chọn)
+                {reviewAction === 'REJECT' ? (
+                  <span>
+                    Lý do / Bình luận không duyệt <span className="text-rose-500">*</span>
+                  </span>
+                ) : (
+                  <span>Ý kiến / Ghi chú phê duyệt (tùy chọn)</span>
+                )}
               </label>
               <textarea
-                rows={2}
+                rows={3}
                 value={reviewNote}
                 onChange={e => setReviewNote(e.target.value)}
-                placeholder={reviewStep === 1 ? "Ghi chú ý kiến của quản lý trực tiếp..." : "Ghi chú phê duyệt của Quản trị..."}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-primary outline-none resize-none"
+                placeholder={
+                  reviewAction === 'REJECT'
+                    ? 'Nhập lý do không duyệt (bình luận sẽ được gửi thông báo trực tiếp đến nhân viên)...'
+                    : (reviewStep === 1 ? 'Ghi chú ý kiến của quản lý trực tiếp...' : 'Ghi chú phê duyệt của Quản trị...')
+                }
+                className={`w-full px-3 py-2 border rounded-lg text-sm outline-none resize-none transition-all ${
+                  reviewAction === 'REJECT'
+                    ? 'border-rose-300 focus:ring-2 focus:ring-rose-400 bg-rose-50/20'
+                    : 'border-slate-200 focus:ring-2 focus:ring-primary'
+                }`}
               />
             </div>
+
             <div className="flex justify-end gap-2.5 pt-3 border-t border-slate-200">
               <button
                 type="button"
-                onClick={() => handleReviewLeave('REJECTED')}
+                onClick={() => setReviewLeave(null)}
                 disabled={isSubmitting}
                 className="px-4 py-2 bg-slate-100 text-slate-700 hover:bg-slate-200 font-bold rounded-lg text-sm transition-all disabled:opacity-50 cursor-pointer"
               >
-                Từ chối
+                Hủy
               </button>
-              <button
-                type="button"
-                onClick={() => handleReviewLeave('APPROVED')}
-                disabled={isSubmitting}
-                className="px-5 py-2 bg-primary hover:bg-blue-800 text-white font-bold rounded-lg text-sm shadow-sm transition-all disabled:opacity-50 cursor-pointer"
-              >
-                Duyệt
-              </button>
+              {reviewAction === 'REJECT' ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!reviewNote.trim()) {
+                      showToast('Vui lòng nhập lý do/bình luận không duyệt!', 'warning');
+                      return;
+                    }
+                    handleReviewLeave('REJECTED');
+                  }}
+                  disabled={isSubmitting}
+                  className="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-lg text-sm shadow-sm transition-all disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
+                >
+                  <span className="material-symbols-outlined text-[16px]">cancel</span>
+                  <span>Xác nhận không duyệt</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => handleReviewLeave('APPROVED')}
+                  disabled={isSubmitting}
+                  className="px-5 py-2 bg-primary hover:bg-blue-800 text-white font-bold rounded-lg text-sm shadow-sm transition-all disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
+                >
+                  <span className="material-symbols-outlined text-[16px]">check_circle</span>
+                  <span>Xác nhận duyệt</span>
+                </button>
+              )}
             </div>
           </div>
         )}
