@@ -310,27 +310,16 @@ export const ProjectManagementPage: React.FC = () => {
   const isProjectInDateRange = (project: any, fromDate: string, toDate: string) => {
     if (!fromDate && !toDate) return true;
     
-    // Lấy mốc thời gian của dự án (startDate, endDate, createdAt, updatedAt)
-    const pStart = project.startDate ? String(project.startDate).slice(0, 10) : '';
-    const pEnd = project.endDate ? String(project.endDate).slice(0, 10) : '';
-    const pCreated = (project.createdAt || project.created_at) ? String(project.createdAt || project.created_at).slice(0, 10) : '';
-    const pUpdated = (project.updatedAt || project.updated_at) ? String(project.updatedAt || project.updated_at).slice(0, 10) : '';
+    // Lọc chính xác theo ngày tạo dự án (createdAt / created_at / startDate làm fallback)
+    const pCreated = (project.createdAt || project.created_at || project.startDate)
+      ? String(project.createdAt || project.created_at || project.startDate).slice(0, 10)
+      : '';
 
-    const effectiveStart = pStart || pCreated || pUpdated;
-    const effectiveEnd = pEnd || (project.status === 'completed' ? (pUpdated || pCreated) : '');
+    if (!pCreated) return true;
 
-    // Nếu có fromDate
-    if (fromDate) {
-      // Dự án phải kết thúc sau hoặc bằng fromDate (hoặc nếu chưa kết thúc thì tính là đang diễn ra)
-      if (effectiveEnd && effectiveEnd < fromDate) return false;
-      if (!effectiveEnd && effectiveStart && effectiveStart < fromDate && project.status === 'completed') return false;
-    }
-
-    // Nếu có toDate
-    if (toDate) {
-      // Dự án phải bắt đầu trước hoặc bằng toDate
-      if (effectiveStart && effectiveStart > toDate) return false;
-    }
+    // Khoảng lọc ngày tạo: từ fromDate đến toDate
+    if (fromDate && pCreated < fromDate) return false;
+    if (toDate && pCreated > toDate) return false;
 
     return true;
   };
