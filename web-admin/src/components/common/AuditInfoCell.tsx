@@ -184,6 +184,8 @@ export const AuditInfoCell: React.FC<{
   itemTitle?: string;
   taskDiscussions?: Array<{ senderName: string; senderRole?: string; type: string; content: string; createdAt: string }>;
   className?: string;
+  forceOpen?: boolean;
+  onForceOpenHandled?: () => void;
 }> = ({
   updatedBy,
   updatedAt,
@@ -191,8 +193,18 @@ export const AuditInfoCell: React.FC<{
   itemTitle,
   taskDiscussions,
   className = '',
+  forceOpen,
+  onForceOpenHandled,
 }) => {
   const [showModal, setShowModal] = useState(false);
+
+  // Mở modal khi forceOpen thay đổi sang true (từ nút chuông bên ngoài)
+  React.useEffect(() => {
+    if (forceOpen) {
+      setShowModal(true);
+      onForceOpenHandled?.();
+    }
+  }, [forceOpen]);
   const [expandedUser, setExpandedUser] = useState<Record<string, boolean>>({});
   const activityLogs = useRealtimeStore(s => s.activityLogs);
   const engineers = useRealtimeStore(s => s.engineers);

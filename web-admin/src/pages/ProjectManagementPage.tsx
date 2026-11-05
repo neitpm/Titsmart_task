@@ -144,6 +144,7 @@ export const ProjectManagementPage: React.FC = () => {
 
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
   const [projectToEdit, setProjectToEdit] = useState<Project | null>(null);
+  const [notifOpenProjectId, setNotifOpenProjectId] = useState<string | null>(null);
   const [isNewProjectModalOpen, setIsNewProjectModalOpen] = useState(false);
   const [toastState, setToastState] = useState({ show: false, message: '', type: 'success' as 'success' | 'info' | 'warning' });
   const [newProjName, setNewProjName] = useState('');
@@ -1305,9 +1306,23 @@ export const ProjectManagementPage: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Nút sửa/xóa — hiện khi hover */}
+                  {/* Nút sửa/xóa/thông báo — hiện khi hover */}
                   { (canManageItem(user, project, "EDIT_PROJECTS") || canManageItem(user, project, "DELETE_PROJECTS")) && (
                     <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-20 bg-white/95 backdrop-blur-xs px-1 py-0.5 rounded-lg border border-slate-200 shadow-xs">
+                      {/* Nút chuông thông báo */}
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); setNotifOpenProjectId(project.id); }}
+                        title="Xem nhật ký cập nhật dự án"
+                        className="relative rounded p-1 text-slate-400 hover:text-amber-500 hover:bg-amber-50 transition"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">notifications</span>
+                        {Boolean((project as any).unreadNotifCount && (project as any).unreadNotifCount > 0) && (
+                          <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-rose-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center leading-none">
+                            {(project as any).unreadNotifCount > 9 ? '9+' : (project as any).unreadNotifCount}
+                          </span>
+                        )}
+                      </button>
                       {canManageItem(user, project, "EDIT_PROJECTS") && (<button
                         type="button"
                         onClick={(e) => { e.stopPropagation(); openEditModal(project); }}
@@ -1327,6 +1342,16 @@ export const ProjectManagementPage: React.FC = () => {
                       </button>)}
                     </div>
                   )}
+                  {/* AuditInfoCell ẩn — chỉ để render modal khi notifOpenProjectId === project.id */}
+                  <div className="hidden">
+                    <AuditInfoCell
+                      updatedBy={project.updatedBy}
+                      updatedAt={project.updatedAt}
+                      projectCode={project.code}
+                      forceOpen={notifOpenProjectId === project.id}
+                      onForceOpenHandled={() => setNotifOpenProjectId(null)}
+                    />
+                  </div>
                 </div>
               );
             })}
