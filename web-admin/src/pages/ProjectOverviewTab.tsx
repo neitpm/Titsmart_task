@@ -79,7 +79,13 @@ export const ProjectOverviewTab: React.FC = () => {
 
   // --- 2. VẬT TƯ & CHI PHÍ ---
   const projExpenses = useMemo(() => expenses.filter(e => isProjectMatch(e.projectCode)), [expenses, isProjectMatch]);
-  const totalExpense = useMemo(() => projExpenses.reduce((sum, e) => sum + (e.totalAmount || 0), 0), [projExpenses]);
+  // Loại trừ dòng "Chuyển quỹ đến..." (không phải chi tiêu thực - chỉ là chuyển nội bộ)
+  const isTransferOut = (e: { content?: string }) =>
+    String(e.content || '').trim().toLowerCase().startsWith('chuyển quỹ đến') ||
+    String(e.content || '').trim().toLowerCase().startsWith('chuyen quy den');
+  const totalExpense = useMemo(() =>
+    projExpenses.filter(e => !isTransferOut(e)).reduce((sum, e) => sum + (e.totalAmount || 0), 0),
+  [projExpenses]);
   const contractValue = project?.contractValue || 0;
   const budgetPercent = contractValue > 0 ? Math.min(Math.round((totalExpense / contractValue) * 100), 100) : 0;
 

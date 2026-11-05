@@ -1961,7 +1961,11 @@ export const ProjectCostPlanPage: React.FC = () => {
     const totalPurchasing = purchasingRows.reduce((sum, p) => sum + calcPurchasingTotal(p), 0);
     const paidPurchasing = purchasingRows.reduce((sum, p) => sum + Number(p.prepayAmount || 0), 0);
     const orderedCount = materialRows.filter((p) => normalizeStatusText(p.orderedStatus).includes('da co hang') || normalizeStatusText(p.orderedStatus).includes('da nhan')).length;
-    const totalExp = currentProjExpenses.reduce((sum, e) => sum + Number(e.totalAmount || 0), 0);
+    // Loại trừ dòng "Chuyển quỹ đến..." khỏi tổng chi thực tế (không phải chi tiêu, chỉ chuyển nội bộ)
+    const isExpTransferOut = (e: { content?: string }) =>
+      String(e.content || '').trim().toLowerCase().startsWith('chuyển quỹ đến') ||
+      String(e.content || '').trim().toLowerCase().startsWith('chuyen quy den');
+    const totalExp = currentProjExpenses.filter(e => !isExpTransferOut(e)).reduce((sum, e) => sum + Number(e.totalAmount || 0), 0);
     const totalLab = currentProjLabor.reduce((sum, l) => sum + Number(l.totalAmount || 0), 0);
     const totalSpent = totalExp + totalLab;
     const fund = currentProjExpenses.reduce((sum, e) => sum + Number(e.incomeAmount || 0), 0);
