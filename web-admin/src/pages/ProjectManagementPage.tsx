@@ -115,6 +115,7 @@ export const ProjectManagementPage: React.FC = () => {
   const tasks = useRealtimeStore((state) => state.tasks);
   const engineers = useRealtimeStore((state) => state.engineers);
   const notifications = useRealtimeStore((state) => state.notifications);
+  const markNotificationRead = useRealtimeStore((state) => state.markNotificationRead);
   const addProject = useRealtimeStore((state) => state.addProject);
   const addNotification = useRealtimeStore((state) => state.addNotification);
   const addTasksBatch = useRealtimeStore((state) => state.addTasksBatch);
@@ -1330,12 +1331,13 @@ export const ProjectManagementPage: React.FC = () => {
                               );
                             })
                             .sort((a, b) => new Date(String(b.timestamp || 0)).getTime() - new Date(String(a.timestamp || 0)).getTime());
-                          const latestLink = projectNotifs.find((notif) => {
+                          const latestNotification = projectNotifs.find((notif) => {
                             const link = String(notif.link || '').trim();
                             return link && link !== '__RESTART_UPDATE__' && link.startsWith('/');
-                          })?.link;
-                          if (latestLink) {
-                            navigate(latestLink);
+                          });
+                          if (latestNotification) {
+                            markNotificationRead(latestNotification.id);
+                            navigate(latestNotification.link!);
                           } else {
                             setNotifOpenProjectId(project.id);
                           }
