@@ -154,9 +154,9 @@ export const DashboardPage: React.FC = () => {
     const totalActualCost = displayEnhancedProjects.reduce((sum, p) => sum + (p.totalCost || 0), 0);
     const costPercent = totalContractValue > 0 ? Math.round((totalActualCost / totalContractValue) * 100) : 0;
 
-    const allTasks = tasks.filter(t => !t.isSectionHeader && targetCodes.includes(t.projectCode));
+    const allTasks = tasks.filter(t => !isTaskSectionHeaderItem(t) && targetCodes.includes(t.projectCode));
     const totalTasksCount = allTasks.length;
-    const completedTasksCount = allTasks.filter(t => t.isDone || t.status === 'Hoàn thành' || (t.progress !== undefined && t.progress >= 1)).length;
+    const completedTasksCount = allTasks.filter(t => isTaskActuallyDone(t)).length;
     const taskPercent = totalTasksCount > 0 ? Math.round((completedTasksCount / totalTasksCount) * 100) : 0;
 
     const allDocs = documentTracks ? documentTracks.filter(d => targetCodes.includes(d.projectCode || (d as any).projectId)) : [];
@@ -249,7 +249,7 @@ export const DashboardPage: React.FC = () => {
   // 5. BIỂU ĐỒ TRẠNG THÁI CÔNG VIỆC HỆ THỐNG
   const globalTaskStatusData = useMemo(() => {
     const todayStr = new Date().toISOString().split('T')[0];
-    const relevantTasks = tasks.filter(t => !t.isSectionHeader && targetCodes.includes(t.projectCode));
+    const relevantTasks = tasks.filter(t => !isTaskSectionHeaderItem(t) && targetCodes.includes(t.projectCode));
 
     let completed = 0;
     let inProgress = 0;
@@ -257,14 +257,14 @@ export const DashboardPage: React.FC = () => {
     let pending = 0;
 
     relevantTasks.forEach(t => {
-      const isDone = t.isDone || t.status === 'Hoàn thành' || (t.progress !== undefined && t.progress >= 1);
+      const isDone = isTaskActuallyDone(t);
       if (isDone) {
         completed += 1;
       } else {
         const isOver = t.dueDate && String(t.dueDate).split('T')[0] < todayStr;
         if (isOver) {
           overdue += 1;
-        } else if (t.status === 'Đang làm' || (t.progress && t.progress > 0)) {
+        } else if (t.status === 'Đang làm' || (t.progress && t.progress > 0) || t.constrStatus || t.purchaseStatus) {
           inProgress += 1;
         } else {
           pending += 1;

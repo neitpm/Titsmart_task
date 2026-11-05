@@ -185,12 +185,25 @@ export const ProjectOverviewTab: React.FC = () => {
   };
 
   // --- CHART DATA ---
-  const taskStatusData = useMemo(() => [
-    { name: 'Chưa làm', value: projTasks.filter(t => t.status === 'Chưa làm').length, color: '#94a3b8' },
-    { name: 'Đang làm', value: projTasks.filter(t => t.status === 'Đang làm').length, color: '#3b82f6' },
-    { name: 'Chờ nghiệm thu', value: projTasks.filter(t => t.status === 'Chờ nghiệm thu').length, color: '#f59e0b' },
-    { name: 'Hoàn thành', value: completedTasks, color: '#10b981' },
-  ].filter(d => d.value > 0), [projTasks, completedTasks]);
+  const taskStatusData = useMemo(() => {
+    const uncompleted = projTasks.filter(t => !isTaskCompleted(t));
+    const pendingCount = uncompleted.filter(t => {
+      const st = String(t.status || '').trim();
+      return st === 'Chưa làm' || (!t.progress && !t.constrStatus && !t.purchaseStatus);
+    }).length;
+    const inProgressCount = uncompleted.filter(t => {
+      const st = String(t.status || '').trim();
+      return st === 'Đang làm' || (t.progress && t.progress > 0 && t.progress < 1) || (st !== 'Chờ nghiệm thu' && st !== 'Chưa làm');
+    }).length;
+    const waitingReviewCount = uncompleted.filter(t => String(t.status || '').trim() === 'Chờ nghiệm thu').length;
+
+    return [
+      { name: 'Chưa làm', value: pendingCount, color: '#94a3b8' },
+      { name: 'Đang làm', value: inProgressCount, color: '#3b82f6' },
+      { name: 'Chờ nghiệm thu', value: waitingReviewCount, color: '#f59e0b' },
+      { name: 'Hoàn thành', value: completedTasks, color: '#10b981' },
+    ].filter(d => d.value > 0);
+  }, [projTasks, completedTasks, isTaskCompleted]);
 
   const costChartData = useMemo(() => [
     { name: 'Ngân sách', value: contractValue, color: '#94a3b8' },
