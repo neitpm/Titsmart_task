@@ -1206,13 +1206,13 @@ export const ProjectManagementPage: React.FC = () => {
                       <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0 text-slate-500 font-extrabold text-xs mt-0.5">
                         {String(idx + 1).padStart(2, '0')}
                       </div>
-                      <div className="flex-1 bg-blue-50 rounded-lg px-2.5 py-1.5 sm:px-3 sm:py-2 flex items-center justify-between gap-2 min-w-0">
+                      <div className="flex-1 bg-blue-50 rounded-lg px-2.5 py-1.5 sm:px-3 sm:py-2 flex items-center justify-between gap-2 min-w-0 transition-[padding] group-hover:pr-24">
                         <p className="font-bold text-primary text-sm leading-snug line-clamp-2" title={project.name}>
                           {project.name}
                         </p>
                         {Boolean((project as any).unreadNotifCount && (project as any).unreadNotifCount > 0) && (
                           <div 
-                            className="inline-flex items-center gap-1 bg-rose-50 text-rose-600 border border-rose-200/80 font-extrabold text-[11px] px-2 py-0.5 rounded-full shadow-2xs shrink-0 self-start mt-0.5"
+                            className="inline-flex items-center gap-1 bg-rose-50 text-rose-600 border border-rose-200/80 font-extrabold text-[11px] px-2 py-0.5 rounded-full shadow-2xs shrink-0 self-start mt-0.5 group-hover:hidden"
                             title={`Có ${(project as any).unreadNotifCount} cập nhật mới trong dự án`}
                           >
                             <span className="material-symbols-outlined text-[13px] text-rose-500">notifications</span>
@@ -1308,7 +1308,7 @@ export const ProjectManagementPage: React.FC = () => {
 
                   {/* Nút sửa/xóa/thông báo — hiện khi hover */}
                   { (canManageItem(user, project, "EDIT_PROJECTS") || canManageItem(user, project, "DELETE_PROJECTS")) && (
-                    <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-20 bg-white/95 backdrop-blur-xs px-1 py-0.5 rounded-lg border border-slate-200 shadow-xs">
+                    <div className="absolute top-[18px] right-3 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-20 bg-white/95 backdrop-blur-xs px-1 py-0.5 rounded-lg border border-slate-200 shadow-xs">
                       {/* Nút chuông thông báo */}
                       <button
                         type="button"
@@ -1345,7 +1345,7 @@ export const ProjectManagementPage: React.FC = () => {
                       >
                         <span className="material-symbols-outlined text-[16px]">notifications</span>
                         {Boolean((project as any).unreadNotifCount && (project as any).unreadNotifCount > 0) && (
-                          <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-rose-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center leading-none">
+                          <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-rose-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center leading-none group-hover:hidden">
                             {(project as any).unreadNotifCount > 9 ? '9+' : (project as any).unreadNotifCount}
                           </span>
                         )}
