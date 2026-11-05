@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useRealtimeStore } from '../../services/realtimeStore';
 import { Modal } from './Modal';
+import { useNavigate } from 'react-router-dom';
 
 export const formatAuditDateTime = (isoString?: string): string => {
   if (!isoString || typeof isoString !== 'string') return '';
@@ -57,6 +58,65 @@ const getActionBadge = (action: string) => {
     return { icon: 'cancel', color: 'text-rose-700 bg-rose-50 border-rose-200' };
   }
   return { icon: 'edit_note', color: 'text-slate-600 bg-slate-100 border-slate-200' };
+};
+
+/**
+ * Từ action text + projectCode → tạo URL navigate tới nguồn gốc thông báo.
+ * Trả về null nếu không xác định được.
+ */
+const getLogNavigatePath = (action: string, projectCode?: string): string | null => {
+  if (!action) return null;
+  const a = action.toLowerCase();
+
+  // Helper: trích tên task trong ngoặc kép
+  const extractQuoted = (str: string): string => {
+    const m = str.match(/["""](.*?)["""]/);
+    return m ? m[1] : '';
+  };
+  const taskName = extractQuoted(action);
+
+  // Link tới task cụ thể
+  const isTaskAction =
+    a.includes('công việc') || a.includes('hạng mục') ||
+    a.includes('nghiệm thu') || a.includes('giao việc') ||
+    a.includes('nhận việc') || a.includes('phân công') ||
+    a.includes('thắc mắc') || a.includes('trao đổi') || a.includes('phản hồi');
+
+  if (isTaskAction && projectCode && taskName) {
+    return `/projects/${encodeURIComponent(projectCode)}/tasks?highlight=${encodeURIComponent(taskName)}`;
+  }
+  if (isTaskAction && projectCode) {
+    return `/projects/${encodeURIComponent(projectCode)}/tasks`;
+  }
+
+  // Link tới chi phí / mua sắm / vật tư
+  if (a.includes('mua hàng') || a.includes('mua sắm') || a.includes('vật tư') || a.includes('chi phí') || a.includes('kế hoạch vật tư')) {
+    if (projectCode) return `/projects/${encodeURIComponent(projectCode)}/cost-plan`;
+  }
+
+  // Link tới hồ sơ
+  if (a.includes('hồ sơ') || a.includes('tài liệu') || a.includes('văn bản')) {
+    if (projectCode) return `/projects/${encodeURIComponent(projectCode)}/documents`;
+  }
+
+  // Link tới nhật ký hiện trường
+  if (a.includes('hiện trường') || a.includes('nhật ký') || a.includes('field log')) {
+    if (projectCode) return `/projects/${encodeURIComponent(projectCode)}/field-logs`;
+  }
+
+  // Link tới kho dự án
+  if (a.includes('kho') || a.includes('tồn kho') || a.includes('inventory')) {
+    if (projectCode) return `/projects/${encodeURIComponent(projectCode)}/inventory`;
+  }
+
+  // Link tới tổng quan dự án (cập nhật thông tin dự án)
+  if (projectCode && (a.includes('dự án') || a.includes('tổng quan') || a.includes('thông tin dự án'))) {
+    return `/projects/${encodeURIComponent(projectCode)}/overview`;
+  }
+
+  // Fallback: overview
+  if (projectCode) return `/projects/${encodeURIComponent(projectCode)}/overview`;
+  return null;
 };
 
 const cleanDisplayNotes = (val: string) => {
@@ -186,6 +246,7 @@ export const AuditInfoCell: React.FC<{
   className?: string;
   forceOpen?: boolean;
   onForceOpenHandled?: () => void;
+  hideTrigger?: boolean;
 }> = ({
   updatedBy,
   updatedAt,
@@ -195,8 +256,10 @@ export const AuditInfoCell: React.FC<{
   className = '',
   forceOpen,
   onForceOpenHandled,
+  hideTrigger = false,
 }) => {
   const [showModal, setShowModal] = useState(false);
+  const navigate = useNavigate();
 
   // Mở modal khi forceOpen thay đổi sang true (từ nút chuông bên ngoài)
   React.useEffect(() => {
@@ -381,7 +444,7 @@ export const AuditInfoCell: React.FC<{
 
   return (
     <>
-      <div 
+      {!hideTrigger && <div 
         onClick={(e) => {
           e.stopPropagation();
           setShowModal(true);
@@ -397,7 +460,7 @@ export const AuditInfoCell: React.FC<{
             {formattedTime}
           </span>
         )}
-      </div>
+      </div>}
 
       <Modal
         isOpen={showModal}
@@ -476,7 +539,18 @@ export const AuditInfoCell: React.FC<{
                             {displayedLogs.map((log, lIdx) => {
                               const badge = getActionBadge(log.action);
                               return (
-                                <tr key={lIdx} className="hover:bg-slate-50/80 transition-colors">
+                                <tr
+                                  key={lIdx}
+                                  className="hover:bg-slate-50/80 transition-colors cursor-pointer"
+                                  title="Mở nội dung đã phát sinh thông báo"
+                                  onClick={() => {
+                                    const target = getLogNavigatePath(log.action, projectCode);
+                                    if (target) {
+                                      setShowModal(false);
+                                      navigate(target);
+                                    }
+                                  }}
+                                >
                                   <td className="py-2.5 px-3 text-slate-800 text-[11px] align-top">
                                     <div className="flex items-start gap-2">
                                       <span className={`material-symbols-outlined text-[15px] shrink-0 mt-0.5 p-0.5 rounded border ${badge.color}`}>

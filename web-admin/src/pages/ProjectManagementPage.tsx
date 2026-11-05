@@ -1342,16 +1342,15 @@ export const ProjectManagementPage: React.FC = () => {
                       </button>)}
                     </div>
                   )}
-                  {/* AuditInfoCell ẩn — chỉ để render modal khi notifOpenProjectId === project.id */}
-                  <div className="hidden">
-                    <AuditInfoCell
+                  {/* Bộ điều khiển modal cho nút chuông; không ẩn bằng display:none vì modal cần được render */}
+                  <AuditInfoCell
                       updatedBy={project.updatedBy}
                       updatedAt={project.updatedAt}
                       projectCode={project.code}
                       forceOpen={notifOpenProjectId === project.id}
                       onForceOpenHandled={() => setNotifOpenProjectId(null)}
-                    />
-                  </div>
+                      hideTrigger
+                  />
                 </div>
               );
             })}
