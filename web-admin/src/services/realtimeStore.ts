@@ -1909,13 +1909,15 @@ export const useRealtimeStore = create<RealtimeStoreState>((set, get) => {
     },
 
     markNotificationRead: async (id) => {
+      // Cập nhật optimistic để badge trên thẻ dự án giảm ngay lập tức,
+      // không phụ thuộc thời gian phản hồi của Supabase/API.
+      set((state) => {
+        const nextNotifs = state.notifications.map((n) => (n.id === id ? { ...n, read: true } : n));
+        persistAndNotify({ notifications: nextNotifs });
+        return { notifications: nextNotifs };
+      });
       try {
         await api.notifications.markRead(id);
-        set((state) => {
-          const nextNotifs = state.notifications.map((n) => (n.id === id ? { ...n, read: true } : n));
-          persistAndNotify({ notifications: nextNotifs });
-          return { notifications: nextNotifs };
-        });
       } catch (e) {
         console.error('Failed to mark read', e);
       }
