@@ -1,4 +1,4 @@
-import { LeaveRequest } from '../types';
+import { LeaveRequest, AttendanceAdjustmentRequest } from '../types';
 
 export interface LeaveAccrualMonthResult {
   month: number;
@@ -31,13 +31,37 @@ export interface YearLeaveBalanceSummary {
  *      * Nếu số ngày xin nghỉ <= Quota khả dụng: Toàn bộ là Nghỉ có lương.
  *      * Nếu vượt quá Quota khả dụng: Phần vượt quá sẽ tính là Vắng không lương (V).
  *      * Số phép còn dư tiếp tục chuyển sang tích lũy cho các tháng tiếp theo.
+ * 5. Tự động HOÀN TRẢ NGÀY PHÉP khi có Chấm công bù (AttendanceAdjustmentRequest):
+ *    - Nếu ngày nghỉ phép đó sau đó đã có Đơn chấm công bù được DUYỆT (APPROVED hoặc APPROVED_STEP1),
+ *      chứng tỏ nhân sự thực tế vẫn đi làm/chấm công bổ sung ngày hôm đó -> Ngày nghỉ phép đó được hoàn trả lại
+ *      (không bị trừ vào quỹ phép năm nữa).
  */
 export function calculateYearLeaveAccrual(
   userId: string,
   year: number,
   allLeaves: LeaveRequest[],
-  upToMonth: number = 12
+  upToMonth: number = 12,
+  adjustments: AttendanceAdjustmentRequest[] = []
 ): YearLeaveBalanceSummary {
+  // Tập hợp các ngày đã được duyệt chấm công bù của nhân viên này trong năm đang xét (YYYY-MM-DD)
+  const approvedAdjDates = new Set<string>();
+  const approvedHalfAdjDates = new Map<string, number>(); // date -> portion (0.5 hoặc 1)
+
+  (adjustments || []).forEach(adj => {
+    if (!adj.userId || adj.userId !== userId) return;
+    if (adj.status !== 'APPROVED' && adj.status !== 'APPROVED_STEP1') return;
+    if (!adj.adjustmentDate) return;
+
+    const dateStr = String(adj.adjustmentDate).slice(0, 10);
+    const dYear = parseInt(dateStr.slice(0, 4), 10);
+    if (dYear !== year) return;
+
+    approvedAdjDates.add(dateStr);
+    const portion = (adj.adjustmentType === 'Bù vào ca' || adj.adjustmentType === 'Bù ra ca') ? 0.5 : 1;
+    const currentPortion = approvedHalfAdjDates.get(dateStr) || 0;
+    approvedHalfAdjDates.set(dateStr, Math.min(1, currentPortion + portion));
+  });
+
   // Lọc tất cả đơn nghỉ phép đã được duyệt của nhân viên này trong năm đang xét
   const approvedLeaves = allLeaves.filter(lv => {
     if (!lv.userId || lv.userId !== userId) return false;
@@ -65,8 +89,21 @@ export function calculateYearLeaveAccrual(
         const dayOfWeek = cur.getDay(); // 0 là CN
         if (dayOfWeek !== 0) { // Không tính CN
           const m = cur.getMonth() + 1;
-          const portion = lv.session === 'MORNING' || lv.session === 'AFTERNOON' ? 0.5 : 1;
-          leaveDaysByMonth[m] = (leaveDaysByMonth[m] || 0) + portion;
+          const monthPad = m < 10 ? `0${m}` : `${m}`;
+          const dayPad = cur.getDate() < 10 ? `0${cur.getDate()}` : `${cur.getDate()}`;
+          const curYMD = `${cur.getFullYear()}-${monthPad}-${dayPad}`;
+
+          let portion = lv.session === 'MORNING' || lv.session === 'AFTERNOON' ? 0.5 : 1;
+
+          // HOÀN TRẢ PHÉP: Nếu ngày này đã có Đơn chấm công bù được duyệt -> Hoàn trả lại ngày phép (giảm trừ số ngày nghỉ)
+          if (approvedAdjDates.has(curYMD)) {
+            const adjCoveredPortion = approvedHalfAdjDates.get(curYMD) || 1;
+            portion = Math.max(0, portion - adjCoveredPortion);
+          }
+
+          if (portion > 0) {
+            leaveDaysByMonth[m] = (leaveDaysByMonth[m] || 0) + portion;
+          }
         }
       }
     }

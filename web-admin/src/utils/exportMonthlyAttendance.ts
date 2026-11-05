@@ -283,8 +283,8 @@ export async function exportMonthlyAttendanceTitsmart({
   Object.entries(empLeavesMap).forEach(([uId, uLeaves]) => {
     if (!leaveByEmpDay[uId]) leaveByEmpDay[uId] = {};
 
-    // 1. Tính toán quota phép có lương được phép dùng trong tháng hiện tại
-    const yearSummary = calculateYearLeaveAccrual(uId, year, uLeaves, month);
+    // 1. Tính toán quota phép có lương được phép dùng trong tháng hiện tại (có tính hoàn trả khi có bù công)
+    const yearSummary = calculateYearLeaveAccrual(uId, year, uLeaves, month, adjustments);
     // Số ngày phép có lương còn khả dụng bước vào đầu tháng này = số dư cuối tháng trước + 1 ngày của tháng này
     const prevMonthRemaining = month === 1 ? 0 : (yearSummary.monthlyDetails[month - 1]?.remainingLeaveEndOfMonth || 0);
     const accruedThisMonth = (month <= 12 && (month === 1 ? 1 : (yearSummary.monthlyDetails[month]?.cumulativeAccrued || 0) <= 12)) ? 1 : 0;
@@ -410,20 +410,20 @@ export async function exportMonthlyAttendanceTitsmart({
       cellHC.font = { name: 'Times New Roman', size: 9 };
       cellTC.font = { name: 'Times New Roman', size: 9 };
 
-      // Xác định ký hiệu HC
-      if (leaveSign) {
-        cellHC.value = leaveSign;
-        if (leaveSign === 'PN') countPN++;
-        else if (leaveSign === 'P') countP++;
-        else if (leaveSign === 'KP' || leaveSign === 'V') countKP++;
-        else if (leaveSign === 'FB') countFB++;
-      } else if (logData && logData.durationHours > 0) {
+      // Xác định ký hiệu HC: Nếu ngày đó có chấm công (logData) hoặc bù công hợp lệ thì ưu tiên ghi nhận công làm việc và hoàn trả phép
+      if (logData && logData.durationHours > 0) {
         cellHC.value = logData.durationHours;
         if (isSunday) {
           totalSundayDays += logData.durationHours === 8 ? 1 : 0.5;
         } else {
           totalNormalDays += logData.durationHours === 8 ? 1 : 0.5;
         }
+      } else if (leaveSign) {
+        cellHC.value = leaveSign;
+        if (leaveSign === 'PN') countPN++;
+        else if (leaveSign === 'P') countP++;
+        else if (leaveSign === 'KP' || leaveSign === 'V') countKP++;
+        else if (leaveSign === 'FB') countFB++;
       } else if (!isSunday && !logData) {
         // Ngày thường không check-in
         cellHC.value = '';

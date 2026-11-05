@@ -557,8 +557,8 @@ export const AttendancePage: React.FC = () => {
   const myLeaveBalance: YearLeaveBalanceSummary | null = React.useMemo(() => {
     if (!targetLeaveUserId) return null;
     const currentMonth = leaveSelectedYear === new Date().getFullYear() ? (new Date().getMonth() + 1) : 12;
-    return calculateYearLeaveAccrual(targetLeaveUserId, leaveSelectedYear, leaves, currentMonth);
-  }, [targetLeaveUserId, leaveSelectedYear, leaves]);
+    return calculateYearLeaveAccrual(targetLeaveUserId, leaveSelectedYear, leaves, currentMonth, adjustments);
+  }, [targetLeaveUserId, leaveSelectedYear, leaves, adjustments]);
 
   // Lọc danh sách chấm công bù ngay trong bộ nhớ (0ms latency)
   const displayedAdjustments = React.useMemo(() => {
@@ -2757,6 +2757,27 @@ export const AttendancePage: React.FC = () => {
               <p><span className="font-bold text-slate-700">Ngày cần bù:</span> <strong className="text-slate-900">{formatDate(reviewAdj.adjustmentDate)}</strong></p>
               <p><span className="font-bold text-slate-700">Giờ vào/ra:</span> {reviewAdj.checkInTime ? formatTime(reviewAdj.checkInTime) : '—'} → {reviewAdj.checkOutTime ? formatTime(reviewAdj.checkOutTime) : '—'}</p>
               <p><span className="font-bold text-slate-700">Lý do:</span> {reviewAdj.reason}</p>
+              {(() => {
+                const adjDayStr = String(reviewAdj.adjustmentDate || '').slice(0, 10);
+                const matchingLeave = leaves.find(l => {
+                  if (l.userId !== reviewAdj.userId) return false;
+                  if (l.status !== 'APPROVED' && l.status !== 'APPROVED_STEP1') return false;
+                  const s = String(l.startDate || '').slice(0, 10);
+                  const e = String(l.endDate || '').slice(0, 10);
+                  return adjDayStr >= s && adjDayStr <= e;
+                });
+                if (matchingLeave) {
+                  return (
+                    <div className="mt-2 p-2 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-start gap-1.5 font-medium">
+                      <span className="material-symbols-outlined text-[15px] text-emerald-600 mt-0.5 shrink-0">check_circle</span>
+                      <span>
+                        Ngày này nhân sự từng xin <strong>{matchingLeave.leaveType}</strong>. Sau khi duyệt hoàn tất, hệ thống sẽ <strong>tự động hoàn trả lại ngày nghỉ phép</strong> vào Quỹ phép năm.
+                      </span>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">Ý kiến / Ghi chú duyệt</label>
