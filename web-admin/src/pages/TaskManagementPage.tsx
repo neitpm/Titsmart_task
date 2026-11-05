@@ -546,6 +546,7 @@ const hasSyncedRef = useRef(false);
   }, [tasks, materialPlans, purchasingPlans]);
 
   const [selectedProjectCode, setSelectedProjectCode] = useState<string>('all');
+  const [selectedTaskId, setSelectedTaskId] = useState<string>('all');
   const [selectedRomanSection, setSelectedRomanSection] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || '');
   const [loading, setLoading] = useState(false);
@@ -1965,6 +1966,9 @@ const hasSyncedRef = useRef(false);
   }, []);
 
   const tasksForColumnFilters = tasks.filter((t) => isMatchingProject(t.projectCode || t.projectName, effectiveProjectCode));
+  const taskOptionsForProject = tasksForColumnFilters
+    .filter((t) => !t.isSectionHeader)
+    .sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'vi'));
   const columnSections = Array.from(new Set(tasksForColumnFilters.map((t) => t.sectionName).filter((value): value is string => !!value && value.trim().length > 0))).sort((a, b) => a.localeCompare(b, 'vi'));
   const columnUnits = Array.from(new Set(tasksForColumnFilters.map((t) => t.unit).filter((value): value is string => !!value && value.trim().length > 0))).sort((a, b) => a.localeCompare(b, 'vi'));
   const columnPurchaseStatuses = Array.from(new Set(tasksForColumnFilters.map((t) => t.purchaseStatus).filter((value): value is string => !!value && value.trim().length > 0))).sort((a, b) => a.localeCompare(b, 'vi'));
@@ -1973,6 +1977,7 @@ const hasSyncedRef = useRef(false);
   // Filter Tasks by Project and visible table columns
   const displayTasks = React.useMemo(() => tasks.filter((t) => {
     const matchesProj = isMatchingProject(t.projectCode || t.projectName, effectiveProjectCode);
+    const matchesTask = selectedTaskId === 'all' || t.id === selectedTaskId;
 
     // Column Filters
     const pct = Math.round((t.progress || 0) * 100);
@@ -1990,6 +1995,7 @@ const hasSyncedRef = useRef(false);
       (t.sectionName && t.sectionName.toLowerCase().includes(searchTerm.toLowerCase()));
     return (
       matchesProj &&
+      matchesTask &&
       matchesSection &&
       matchesUnit &&
       matchesPurchase &&
@@ -1997,7 +2003,7 @@ const hasSyncedRef = useRef(false);
       matchesAssign &&
       matchesSearch
     );
-  }), [tasks, engineers, effectiveProjectCode, filterSection, filterUnit, filterPurchase, filterConstr, assignFilter, searchTerm]);
+  }), [tasks, engineers, effectiveProjectCode, selectedTaskId, filterSection, filterUnit, filterPurchase, filterConstr, assignFilter, searchTerm]);
 
   const toRoman = (num: number): string => {
     const roman: Record<string, number> = {
@@ -2414,7 +2420,10 @@ const hasSyncedRef = useRef(false);
                 <span className="text-slate-500 font-medium whitespace-nowrap text-[11px]">Dự án:</span>
                 <CustomSelect
                   value={selectedProjectCode}
-                  onChange={(e) => setSelectedProjectCode(e.target.value)}
+                  onChange={(e) => {
+                    setSelectedProjectCode(e.target.value);
+                    setSelectedTaskId('all');
+                  }}
                   className="h-7 min-w-[120px] max-w-[180px] rounded border border-slate-200 bg-white px-1.5 text-[11px] font-bold text-slate-700 shadow-xs outline-none transition-colors hover:border-blue-200 hover:bg-slate-50 focus:border-primary"
                 >
                   <option value="all">Tất cả dự án</option>
@@ -2426,6 +2435,25 @@ const hasSyncedRef = useRef(false);
                 </CustomSelect>
               </div>
             )}
+
+            <div className="flex items-center gap-1.5">
+              <span className="text-slate-500 font-medium whitespace-nowrap text-[11px]">Công việc:</span>
+              <CustomSelect
+                value={selectedTaskId}
+                onChange={(e) => setSelectedTaskId(e.target.value)}
+                disabled={taskOptionsForProject.length === 0}
+                className="h-7 min-w-[150px] max-w-[230px] rounded border border-slate-200 bg-white px-1.5 text-[11px] font-bold text-slate-700 shadow-xs outline-none transition-colors hover:border-blue-200 hover:bg-slate-50 focus:border-primary disabled:bg-slate-100 disabled:text-slate-400"
+              >
+                <option value="all">
+                  {effectiveProjectCode === 'all' ? 'Tất cả công việc' : 'Tất cả công việc trong dự án'}
+                </option>
+                {taskOptionsForProject.map((task) => (
+                  <option key={task.id} value={task.id}>
+                    {task.stt ? `${task.stt} - ` : ''}{task.name}
+                  </option>
+                ))}
+              </CustomSelect>
+            </div>
 
             <div className="flex items-center gap-1.5">
               <span className="text-slate-500 font-medium whitespace-nowrap text-[11px]">Đầu mục:</span>
