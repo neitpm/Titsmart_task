@@ -744,7 +744,11 @@ const hasSyncedRef = useRef(false);
     setProjectCode(selectedProjectFromUrl);
   }, [selectedProjectFromUrl]);
 
-  const effectiveProjectCode = (projectCode && projectCode !== 'all') ? projectCode : selectedProjectCode;
+  // Khi đang ở /projects/:projectId/tasks, mã dự án trên URL luôn là nguồn lọc chính.
+  // Không để giá trị mặc định của form tạo công việc làm lẫn công việc dự án khác.
+  const effectiveProjectCode = selectedProjectFromUrl || (
+    (projectCode && projectCode !== 'all') ? projectCode : selectedProjectCode
+  );
   const activeTasksForProj = tasks.filter((t) => 
     effectiveProjectCode === 'all' || 
     t.projectCode?.toLowerCase() === effectiveProjectCode.toLowerCase()
@@ -756,7 +760,9 @@ const hasSyncedRef = useRef(false);
     .filter((secName): secName is string => !!secName && secName.trim().length > 0);
 
   const uniqueSectionsForProj = Array.from(new Set(rawSectionsList));
-  const currentProject = projects.find((project) => project.code === projectCode || project.id === projectCode);
+  const currentProject = projects.find((project) =>
+    project.code === effectiveProjectCode || project.id === effectiveProjectCode
+  );
   
   // Danh sách nhân viên / kỹ sư thuộc dự án hiện tại (chỉ cho phép giao việc cho thành viên dự án)
   const projectEngineers = React.useMemo(() => {
@@ -1958,7 +1964,7 @@ const hasSyncedRef = useRef(false);
     return tNorm === targetNorm || tNorm.includes(targetNorm) || targetNorm.includes(tNorm);
   }, []);
 
-  const tasksForColumnFilters = tasks.filter((t) => isMatchingProject(t.projectCode || t.projectName, selectedProjectCode));
+  const tasksForColumnFilters = tasks.filter((t) => isMatchingProject(t.projectCode || t.projectName, effectiveProjectCode));
   const columnSections = Array.from(new Set(tasksForColumnFilters.map((t) => t.sectionName).filter((value): value is string => !!value && value.trim().length > 0))).sort((a, b) => a.localeCompare(b, 'vi'));
   const columnUnits = Array.from(new Set(tasksForColumnFilters.map((t) => t.unit).filter((value): value is string => !!value && value.trim().length > 0))).sort((a, b) => a.localeCompare(b, 'vi'));
   const columnPurchaseStatuses = Array.from(new Set(tasksForColumnFilters.map((t) => t.purchaseStatus).filter((value): value is string => !!value && value.trim().length > 0))).sort((a, b) => a.localeCompare(b, 'vi'));
@@ -1966,7 +1972,7 @@ const hasSyncedRef = useRef(false);
 
   // Filter Tasks by Project and visible table columns
   const displayTasks = React.useMemo(() => tasks.filter((t) => {
-    const matchesProj = isMatchingProject(t.projectCode || t.projectName, selectedProjectCode);
+    const matchesProj = isMatchingProject(t.projectCode || t.projectName, effectiveProjectCode);
 
     // Column Filters
     const pct = Math.round((t.progress || 0) * 100);
@@ -1991,7 +1997,7 @@ const hasSyncedRef = useRef(false);
       matchesAssign &&
       matchesSearch
     );
-  }), [tasks, engineers, selectedProjectCode, filterSection, filterUnit, filterPurchase, filterConstr, assignFilter, searchTerm]);
+  }), [tasks, engineers, effectiveProjectCode, filterSection, filterUnit, filterPurchase, filterConstr, assignFilter, searchTerm]);
 
   const toRoman = (num: number): string => {
     const roman: Record<string, number> = {
