@@ -1345,7 +1345,7 @@ export const ProjectManagementPage: React.FC = () => {
                       >
                         <span className="material-symbols-outlined text-[16px]">notifications</span>
                         {Boolean((project as any).unreadNotifCount && (project as any).unreadNotifCount > 0) && (
-                          <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-rose-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center leading-none group-hover:hidden">
+                          <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-rose-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center leading-none">
                             {(project as any).unreadNotifCount > 9 ? '9+' : (project as any).unreadNotifCount}
                           </span>
                         )}
