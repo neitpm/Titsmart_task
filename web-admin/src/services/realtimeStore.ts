@@ -16,7 +16,10 @@ import {
   LaborPayroll,
   DocumentTrack,
   FieldLog,
-  DirectMessage
+  DirectMessage,
+  isTaskSectionHeaderItem,
+  isTaskActuallyDone,
+  getTaskEffectiveProgress
 } from '../types';
 import { api } from './apiSupabase';
 import { AuthUser, useAuthStore } from './authStore';
@@ -229,19 +232,30 @@ const recalculateProjectsFromTasks = (projects: Project[], tasks: Task[], projec
   return projects.map((project) => {
     if (targetCodes && !targetCodes.has(project.code)) return project;
 
-    const projectTasks = tasks.filter((task) => task.projectCode === project.code && !task.isSectionHeader);
+    const pCodeUpper = (project.code || '').trim().toUpperCase();
+    const pIdUpper = (project.id || '').trim().toUpperCase();
+    const pNameUpper = (project.name || '').trim().toUpperCase();
+    const isProjectTask = (task: Task) => {
+      const u = (task.projectCode || (task as any).projectId || '').trim().toUpperCase();
+      const n = (task.projectName || '').trim().toUpperCase();
+      return (u && (u === pCodeUpper || u === pIdUpper)) || (n && pNameUpper && n === pNameUpper);
+    };
+
+    const projectTasks = tasks.filter((task) => isProjectTask(task) && !isTaskSectionHeaderItem(task));
     if (projectTasks.length === 0) {
       return { ...project, totalTasks: 0, completedTasks: 0, progressPercent: 0 };
     }
 
-    const totalProgress = projectTasks.reduce((sum, task) => sum + (task.isDone ? 1 : task.progress || 0), 0);
-    const completedTasks = projectTasks.filter((task) => task.isDone || task.progress >= 1).length;
+    const totalProgress = projectTasks.reduce((sum, task) => sum + getTaskEffectiveProgress(task), 0);
+    const completedTasks = projectTasks.filter((task) => isTaskActuallyDone(task)).length;
+    const progressPercent = Math.round((totalProgress / projectTasks.length) * 100);
 
     return {
       ...project,
       totalTasks: projectTasks.length,
       completedTasks,
-      progressPercent: Math.round((totalProgress / projectTasks.length) * 100),
+      progressPercent,
+      status: progressPercent >= 100 ? ('completed' as const) : project.status,
     };
   });
 };

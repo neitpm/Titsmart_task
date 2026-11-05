@@ -4,6 +4,7 @@ import { useRealtimeStore } from '../services/realtimeStore';
 import { useAuthStore } from '../services/authStore';
 import { api } from '../services/apiSupabase';
 import { isUserMemberOfProject } from '../utils/projectMemberUtils';
+import { isTaskSectionHeaderItem, isTaskActuallyDone, getTaskEffectiveProgress } from '../types';
 import { PersonnelCostSummaryCard } from '../components/dashboard/PersonnelCostSummaryCard';
 import { 
   ResponsiveContainer, 
@@ -98,11 +99,20 @@ export const DashboardPage: React.FC = () => {
       .filter(p => (p.code || '').trim().toUpperCase() !== 'COMPANY')
       .filter(p => isUserMemberOfProject(currentUser, p, engineers));
     return visibleProjects.map((project) => {
-      const projectTasks = tasks.filter((task) => task.projectCode === project.code && !task.isSectionHeader);
+      const pCodeUpper = (project.code || '').trim().toUpperCase();
+      const pIdUpper = (project.id || '').trim().toUpperCase();
+      const pNameUpper = (project.name || '').trim().toUpperCase();
+      const isProjectTask = (task: any) => {
+        const u = (task.projectCode || task.projectId || '').trim().toUpperCase();
+        const n = (task.projectName || '').trim().toUpperCase();
+        return (u && (u === pCodeUpper || u === pIdUpper)) || (n && pNameUpper && n === pNameUpper);
+      };
+
+      const projectTasks = tasks.filter((task) => isProjectTask(task) && !isTaskSectionHeaderItem(task));
       
       let progress = project.progressPercent || 0;
       if (projectTasks.length > 0) {
-        const totalProgress = projectTasks.reduce((sum, task) => sum + (task.isDone ? 1 : (task.progress || 0)), 0);
+        const totalProgress = projectTasks.reduce((sum, task) => sum + getTaskEffectiveProgress(task), 0);
         progress = Math.round((totalProgress / projectTasks.length) * 100);
       }
 

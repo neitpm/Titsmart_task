@@ -524,3 +524,49 @@ export const getIssueStatusColorStyle = (status?: string) => {
   if (s === "không có") return "border-slate-200 bg-slate-50 text-slate-600";
   return "border-slate-200 bg-slate-50 text-slate-600";
 };
+
+export const isTaskSectionHeaderItem = (node: any): boolean => {
+  if (!node) return false;
+  if (node.isSectionHeader) return true;
+  if (String(node.notes || '').toLowerCase().includes('[section]')) return true;
+  const vol = Number(node.volume || 0);
+  const unitVal = String(node.unit || '').trim();
+  const name = String(node.name || '').trim();
+  const stt = String(node.stt || '').trim();
+  const romanRegex = /^(I|II|III|IV|V|VI|VII|VIII|IX|X|XI|XII|XIII|XIV|XV|XVI|XVII|XVIII|XIX|XX)$/i;
+
+  if (romanRegex.test(stt) || /^[A-Z]{1,2}$/i.test(stt)) return true;
+  if (name.endsWith(':') && (vol === 0 || !vol) && (unitVal === '' || unitVal === '-')) return true;
+
+  const hasNoVolumeAndUnit = (vol === 0 || !vol) && (unitVal === '' || unitVal === '-');
+  if (hasNoVolumeAndUnit) {
+    if (!stt.includes('.')) return true;
+    if (/^\d+\.\d+$/.test(stt)) return true;
+    if (name === name.toUpperCase() && /[A-ZÀ-Ỹ]/.test(name)) return true;
+  }
+  return false;
+};
+
+export const isTaskActuallyDone = (task: any): boolean => {
+  if (!task) return false;
+  if (task.isDone) return true;
+  if (typeof task.progress === 'number' && task.progress >= 1) return true;
+  const statusClean = normalizeStatusText(task.status);
+  if (statusClean === 'da hoan thanh' || statusClean === 'hoan thanh' || statusClean === 'done' || statusClean === 'completed') return true;
+  const constrClean = normalizeStatusText(task.constrStatus);
+  const purchClean = normalizeStatusText(task.purchaseStatus);
+  if ((constrClean === 'da thi cong' || constrClean === 'da hoan thanh') &&
+      (!purchClean || purchClean === 'da co hang' || purchClean === 'da nhan du' || purchClean === 'hang gia cong' || purchClean === 'khong co hang')) {
+    return true;
+  }
+  return false;
+};
+
+export const getTaskEffectiveProgress = (task: any): number => {
+  if (!task) return 0;
+  if (isTaskActuallyDone(task)) return 1;
+  if (typeof task.progress === 'number') {
+    return task.progress > 1 ? task.progress / 100 : task.progress;
+  }
+  return calculateAutoProgressRatio(task.purchaseStatus, task.constrStatus);
+};

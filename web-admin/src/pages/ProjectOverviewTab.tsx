@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useRealtimeStore } from '../services/realtimeStore';
 import { useAuthStore, hasPermission } from '../services/authStore';
+import { isTaskSectionHeaderItem, isTaskActuallyDone, getTaskEffectiveProgress } from '../types';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend, BarChart, Bar, CartesianGrid, XAxis, YAxis } from 'recharts';
 
 export const ProjectOverviewTab: React.FC = () => {
@@ -52,17 +53,11 @@ export const ProjectOverviewTab: React.FC = () => {
 
   // --- 1. TIẾN ĐỘ ---
   const projTasks = useMemo(() => {
-    return tasks.filter(t => isProjectMatch(t.projectCode) && !t.isSectionHeader);
+    return tasks.filter(t => isProjectMatch(t.projectCode) && !isTaskSectionHeaderItem(t));
   }, [tasks, isProjectMatch]);
   
   const isTaskCompleted = React.useCallback((t: typeof tasks[number]) => {
-    if (t.isDone) return true;
-    const st = String(t.status || '').trim().toLowerCase();
-    if (st === 'hoàn thành' || st === 'đã hoàn thành' || st === 'done' || st === 'completed') return true;
-    if (t.progress !== undefined && t.progress >= 1) return true;
-    const volDone = (t as any).volumeDone;
-    if (t.volume && volDone && Number(volDone) >= Number(t.volume) && Number(t.volume) > 0) return true;
-    return false;
+    return isTaskActuallyDone(t);
   }, []);
 
   const actualTotalTasks = projTasks.length > 0 ? projTasks.length : (project?.totalTasks || 0);
@@ -73,14 +68,10 @@ export const ProjectOverviewTab: React.FC = () => {
   const calculatedPercent = useMemo(() => {
     if (projTasks.length === 0) return project?.progressPercent || 0;
     const totalProgressSum = projTasks.reduce((sum, t) => {
-      if (isTaskCompleted(t)) return sum + 100;
-      const prog = t.progress !== undefined ? (t.progress <= 1 ? t.progress * 100 : t.progress) : 0;
-      const volDone = (t as any).volumeDone;
-      const volProg = (t.volume && volDone && Number(t.volume) > 0) ? Math.min(100, (Number(volDone) / Number(t.volume)) * 100) : 0;
-      return sum + Math.max(prog, volProg);
+      return sum + Math.round(getTaskEffectiveProgress(t) * 100);
     }, 0);
     return Math.round(totalProgressSum / projTasks.length);
-  }, [projTasks, isTaskCompleted, project?.progressPercent]);
+  }, [projTasks, project?.progressPercent]);
 
   const totalTasks = actualTotalTasks;
   const completedTasks = actualCompletedTasks;

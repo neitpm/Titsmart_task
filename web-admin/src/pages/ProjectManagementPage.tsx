@@ -2,7 +2,7 @@ import React, { useMemo, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useRealtimeStore } from '../services/realtimeStore';
 import { useAuthStore, hasPermission, canManageItem } from '../services/authStore';
-import { Project, Task } from '../types';
+import { Project, Task, isTaskSectionHeaderItem, isTaskActuallyDone, getTaskEffectiveProgress } from '../types';
 import { Modal } from '../components/common/Modal';
 import { Toast } from '../components/common/Toast';
 import { OcrUploadPanel } from '../components/common/OcrUploadPanel';
@@ -73,9 +73,10 @@ const deriveProjectsFromTasks = (tasks: Task[]): Project[] => {
 
   tasks.forEach((task) => {
     if (!task.projectCode) return;
+    const isSec = isTaskSectionHeaderItem(task);
+    const isDone = isTaskActuallyDone(task);
+    const taskProg = getTaskEffectiveProgress(task);
     const current = projectMap.get(task.projectCode);
-    const isDone = task.isDone || task.progress >= 1;
-    const taskProg = isDone ? 1 : (task.progress || 0);
 
     if (!current) {
       projectMap.set(task.projectCode, {
@@ -85,16 +86,16 @@ const deriveProjectsFromTasks = (tasks: Task[]): Project[] => {
         location: '',
         progressPercent: 0,
         status: 'active',
-        totalTasks: task.isSectionHeader ? 0 : 1,
-        completedTasks: !task.isSectionHeader && isDone ? 1 : 0,
+        totalTasks: isSec ? 0 : 1,
+        completedTasks: !isSec && isDone ? 1 : 0,
         issueTasksCount: task.issue ? 1 : 0,
         managerName: TEXT.unassigned,
         activeTeams: 0,
       });
-      progressMap.set(task.projectCode, task.isSectionHeader ? 0 : taskProg);
+      progressMap.set(task.projectCode, isSec ? 0 : taskProg);
       return;
     }
-    if (task.isSectionHeader) return;
+    if (isSec) return;
     current.totalTasks += 1;
     current.completedTasks += isDone ? 1 : 0;
     current.issueTasksCount += task.issue ? 1 : 0;
@@ -236,19 +237,21 @@ export const ProjectManagementPage: React.FC = () => {
     return finalMerged.map((project) => {
       const pCodeUpper = (project.code || '').trim().toUpperCase();
       const pIdUpper = (project.id || '').trim().toUpperCase();
+      const pNameUpper = (project.name || '').trim().toUpperCase();
       const isProjectItem = (item: any) => {
         const u = (item.projectCode || item.projectId || '').trim().toUpperCase();
-        return u && (u === pCodeUpper || u === pIdUpper);
+        const n = (item.projectName || '').trim().toUpperCase();
+        return (u && (u === pCodeUpper || u === pIdUpper)) || (n && pNameUpper && n === pNameUpper);
       };
 
-      const projectTasks = tasks.filter((task) => isProjectItem(task) && !task.isSectionHeader);
+      const projectTasks = tasks.filter((task) => isProjectItem(task) && !isTaskSectionHeaderItem(task));
       const totalTasks = projectTasks.length || project.totalTasks;
-      const completedTasks = projectTasks.filter((task) => task.isDone || task.progress >= 1).length || project.completedTasks;
+      const completedTasks = projectTasks.filter((task) => isTaskActuallyDone(task)).length || project.completedTasks;
       const memberNames = resolveProjectMemberNames(project);
 
       let progress = project.progressPercent;
       if (projectTasks.length > 0) {
-        const totalProgress = projectTasks.reduce((sum, task) => sum + (task.isDone ? 1 : (task.progress || 0)), 0);
+        const totalProgress = projectTasks.reduce((sum, task) => sum + getTaskEffectiveProgress(task), 0);
         progress = Math.round((totalProgress / projectTasks.length) * 100);
       }
 
