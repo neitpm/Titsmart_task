@@ -280,7 +280,7 @@ export const TaskAssignmentPage: React.FC = () => {
     }
   };
   
-  const [filterProjectCode, setFilterProjectCode] = useState('all');
+  const [filterProjectCode, setFilterProjectCode] = useState(() => searchParams.get('project') || 'all');
   const urlTab = searchParams.get('tab') as 'project_tasks' | 'unassigned' | 'assigned' | 'completed' | 'direct' | 'my-tasks' | null;
   const highlightedTaskId = searchParams.get('taskId');
   const highlightKeyword = searchParams.get('highlight')?.toLowerCase().trim() || null;
@@ -622,7 +622,8 @@ export const TaskAssignmentPage: React.FC = () => {
 
     let list = projectAllTasks;
     if (filterProjectCode !== 'all') {
-      list = list.filter(t => t.projectCode === filterProjectCode);
+      const fCode = filterProjectCode.trim().toUpperCase();
+      list = list.filter(t => (t.projectCode || '').trim().toUpperCase() === fCode);
     }
     // Lọc theo Nhân viên
     if (selectedEng) {
@@ -659,7 +660,8 @@ export const TaskAssignmentPage: React.FC = () => {
     let list = projectAllTasks;
 
     if (filterProjectCode !== 'all') {
-      list = list.filter(t => t.projectCode === filterProjectCode);
+      const fCode = filterProjectCode.trim().toUpperCase();
+      list = list.filter(t => (t.projectCode || '').trim().toUpperCase() === fCode);
     }
 
     // Lọc theo Nhân viên
