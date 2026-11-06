@@ -2712,6 +2712,22 @@ const hasSyncedRef = useRef(false);
                     ))
                   );
 
+                  // Tên người được giao có thể không được lưu ở tasks (đây là
+                  // trường hiển thị), còn ID vẫn được lưu. Luôn suy ra tên từ
+                  // danh sách nhân sự để cột GIAO VIỆC không bị trống sau khi
+                  // tải lại dữ liệu.
+                  const assignmentParts = String(t.assignedEngineerName || '').split('|');
+                  const assignedIds = (assignmentParts.length > 1
+                    ? assignmentParts[1]
+                    : (t.assignedEngineerId || '')
+                  ).split(',').map((id: string) => id.trim()).filter(Boolean);
+                  const assignedNames = (assignmentParts[0] || '')
+                    .split(',').map((name: string) => name.trim()).filter(Boolean);
+                  const resolvedAssignedNames = assignedNames.length > 0
+                    ? assignedNames
+                    : assignedIds.map((id: string) => engineers.find((engineer) => engineer.id === id)?.name || id);
+                  const hasAssignment = assignedIds.length > 0 || resolvedAssignedNames.length > 0;
+
                   const rowClass = `group hover:bg-slate-100 transition-colors border-b border-slate-50 ${isHighlighted ? 'highlighted-task-row system-row-highlighted' : rowBg}`;
 
                   return (
@@ -2814,8 +2830,8 @@ const hasSyncedRef = useRef(false);
                           }}
                         >
                           <div className="flex flex-col gap-1 items-center justify-center pointer-events-none">
-                            {t.assignedEngineerId ? (
-                              (t.assignedEngineerName?.split('|')[0] || '').split(',').filter((n: string) => n.trim()).map((name: string, i: number) => (
+                            {hasAssignment ? (
+                              resolvedAssignedNames.map((name: string, i: number) => (
                                 <span key={i} className="text-[10px] font-bold text-blue-700 bg-blue-50 px-1 rounded truncate w-full max-w-[100px]" title={name.trim()}>{name.trim()}</span>
                               ))
                             ) : (() => {
