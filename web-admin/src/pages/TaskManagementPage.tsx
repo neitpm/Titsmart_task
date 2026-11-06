@@ -747,9 +747,9 @@ const hasSyncedRef = useRef(false);
 
   // Khi đang ở /projects/:projectId/tasks, mã dự án trên URL luôn là nguồn lọc chính.
   // Không để giá trị mặc định của form tạo công việc làm lẫn công việc dự án khác.
-  const effectiveProjectCode = selectedProjectFromUrl || (
-    (projectCode && projectCode !== 'all') ? projectCode : selectedProjectCode
-  );
+  // Mã dự án dùng để lọc phải lấy từ URL hoặc dropdown. Không dùng `projectCode`
+  // của form tạo công việc vì nó có giá trị mặc định và làm bộ lọc bị khóa sai dự án.
+  const effectiveProjectCode = selectedProjectFromUrl || selectedProjectCode;
   const activeTasksForProj = tasks.filter((t) => 
     effectiveProjectCode === 'all' || 
     t.projectCode?.toLowerCase() === effectiveProjectCode.toLowerCase()
@@ -2352,7 +2352,7 @@ const hasSyncedRef = useRef(false);
             </span>
             <input
               type="text"
-              placeholder="Tìm nhanh công việc..."
+              placeholder="Lọc theo tên công việc..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-7 pr-2 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-primary focus:bg-white focus:outline-none h-8"
@@ -2517,7 +2517,7 @@ const hasSyncedRef = useRef(false);
               </span>
               <input
                 type="text"
-                placeholder="Tìm nhanh công việc..."
+                placeholder="Lọc theo tên công việc..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-7 pr-2 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-primary focus:bg-white focus:outline-none h-7"
