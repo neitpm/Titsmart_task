@@ -79,6 +79,19 @@ const isTechnicalSystemLog = (action?: string): boolean => {
   );
 };
 
+type ActivityModule = 'all' | 'tasks' | 'attendance' | 'expenses' | 'field_logs' | 'library' | 'inventory' | 'documents';
+
+const getActivityModule = (action?: string): Exclude<ActivityModule, 'all'> => {
+  const text = String(action || '').toLowerCase();
+  if (text.includes('chấm công') || text.includes('nghỉ phép') || text.includes('vào ca') || text.includes('ra ca')) return 'attendance';
+  if (text.includes('chi phí') || text.includes('cấp quỹ') || text.includes('phiếu chi') || text.includes('thanh toán') || text.includes('bảng lương')) return 'expenses';
+  if (text.includes('nhật ký hiện trường')) return 'field_logs';
+  if (text.includes('thư viện') || text.includes('bản vẽ') || text.includes('hình ảnh thư viện')) return 'library';
+  if (text.includes('kho') || text.includes('tồn kho') || text.includes('vật tư')) return 'inventory';
+  if (text.includes('hồ sơ') || text.includes('chứng từ') || text.includes('tài liệu')) return 'documents';
+  return 'tasks';
+};
+
 const renderActionText = (text: string, fullDetail: boolean = false) => {
     if (!text) return text;
     
@@ -141,6 +154,7 @@ export const ActivityLogPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLog, setSelectedLog] = useState<any>(null);
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [moduleFilter, setModuleFilter] = useState<ActivityModule>('all');
 
   if (!isAdmin) {
     return (
@@ -155,6 +169,7 @@ export const ActivityLogPage: React.FC = () => {
   const filteredLogs = useMemo(() => {
     return activityLogs.filter((log) => {
       if (isTechnicalSystemLog(log.action)) return false;
+      if (moduleFilter !== 'all' && getActivityModule(log.action) !== moduleFilter) return false;
       let matchDate = true;
       const logDate = parseDateKey(log.timestamp || '');
       if (dateFrom && logDate !== 'unknown') matchDate = matchDate && logDate >= dateFrom;
@@ -171,7 +186,7 @@ export const ActivityLogPage: React.FC = () => {
 
       return matchDate && matchSearch;
     });
-  }, [activityLogs, dateFrom, dateTo, searchQuery]);
+  }, [activityLogs, dateFrom, dateTo, searchQuery, moduleFilter]);
 
   const handleExportExcel = async () => {
     const data = filteredLogs.map((log, index) => ({
@@ -212,12 +227,13 @@ export const ActivityLogPage: React.FC = () => {
     }, {});
   }, [filteredLogs]);
 
-  const hasFilters = dateFrom !== '' || dateTo !== '' || searchQuery !== '';
+  const hasFilters = dateFrom !== '' || dateTo !== '' || searchQuery !== '' || moduleFilter !== 'all';
 
   const clearFilters = () => {
     setDateFrom('');
     setDateTo('');
     setSearchQuery('');
+    setModuleFilter('all');
   };
 
   let globalIndex = 0;
@@ -248,6 +264,22 @@ export const ActivityLogPage: React.FC = () => {
               className="w-full pl-8 pr-2 h-8 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-primary focus:bg-white focus:outline-none transition-all"
             />
           </div>
+
+          <select
+            value={moduleFilter}
+            onChange={(e) => setModuleFilter(e.target.value as ActivityModule)}
+            className="h-8 rounded-lg border border-slate-200 bg-white px-2 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-1 focus:ring-primary"
+            title="Lọc theo phân hệ"
+          >
+            <option value="all">Tất cả phân hệ</option>
+            <option value="tasks">Công việc</option>
+            <option value="attendance">Chấm công</option>
+            <option value="expenses">Chi phí</option>
+            <option value="field_logs">Nhật ký hiện trường</option>
+            <option value="library">Thư viện</option>
+            <option value="inventory">Kho</option>
+            <option value="documents">Hồ sơ</option>
+          </select>
 
           <div className="flex items-center justify-between sm:justify-start gap-2 w-full sm:w-auto">
             <div className="flex-1 sm:flex-none flex items-center justify-between bg-white border border-slate-200 rounded-lg px-2 h-8 focus-within:ring-1 focus-within:ring-primary transition-all">

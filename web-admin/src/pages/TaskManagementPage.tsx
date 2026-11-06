@@ -229,7 +229,9 @@ export const TaskManagementPage: React.FC = () => {
   useEffect(() => {
     if (highlightTaskId || highlightKeyword) {
       setIsHighlightActive(true);
-      const timer = setTimeout(() => setIsHighlightActive(false), 8000);
+      // Giữ highlight đủ lâu để dữ liệu công việc tải xong và người dùng
+      // kịp nhìn thấy dòng vừa được mở từ lịch sử/thông báo.
+      const timer = setTimeout(() => setIsHighlightActive(false), 30000);
       return () => clearTimeout(timer);
     }
   }, [highlightTaskId, highlightKeyword]);
@@ -2703,7 +2705,8 @@ const hasSyncedRef = useRef(false);
                   const isHighlighted = isHighlightActive && (
                     (highlightTaskId && t.id === highlightTaskId) ||
                     (highlightKeyword && (
-                      t.name?.toLowerCase().includes(highlightKeyword.toLowerCase()) ||
+                      t.name?.toLowerCase().includes(highlightKeyword.toLowerCase().trim()) ||
+                      highlightKeyword.toLowerCase().trim().includes(t.name?.toLowerCase().trim() || '__no_task_name__') ||
                       t.stt?.toLowerCase() === highlightKeyword.toLowerCase() ||
                       (t as any).computedStt?.toString().toLowerCase() === highlightKeyword.toLowerCase()
                     ))

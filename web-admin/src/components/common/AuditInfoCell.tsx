@@ -160,7 +160,36 @@ const cleanDisplayNotes = (val: string) => {
     .trim();
 };
 
-const renderActionText = (text: string) => {
+const formatAuditDetail = (value: string): string => {
+  return String(value || '')
+    .replace(/,?\s*Ghi chú\s*:\s*(?:"[^"]*"\s*[-=]+>\s*)?\[tech-status:[^\]]+\]/gi, '')
+    .replace(/\[tech-status:[^\]]+\]/gi, '')
+    .replace(/\s*,\s*(?=(?:Đầu mục|TT Đặt hàng|Tình trạng kỹ thuật|Ghi chú)\s*:)/gi, '\n')
+    .replace(/\s+-\s+(?=(?:Đầu mục|TT Đặt hàng|Tình trạng kỹ thuật|Ghi chú)\s*:)/gi, '\n')
+    .replace(/\s*\|\s*/g, '\n')
+    .trim();
+};
+
+const parseAuditChangeRows = (value: string): Array<{ field: string; before: string; after: string }> => {
+  const normalized = String(value || '').replace(/\s+/g, ' ').trim();
+  const rows: Array<{ field: string; before: string; after: string }> = [];
+  const pattern = /(TT Đặt hàng|Tình trạng kỹ thuật|Ghi chú)\s*:\s*["“]?(.+?)["”]?\s*[-=]+>\s*["“]?(.+?)["”]?(?=,\s*(?:TT Đặt hàng|Tình trạng kỹ thuật|Ghi chú)\s*:|$)/gi;
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(normalized)) !== null) {
+    rows.push({
+      field: match[1].trim(),
+      before: match[2].replace(/^"|"$/g, '').trim(),
+      after: match[3].replace(/^"|"$/g, '').trim(),
+    });
+  }
+  return rows.filter(row => {
+    if (row.field.toLowerCase() !== 'ghi chú') return true;
+    const combined = `${row.before} ${row.after}`.toLowerCase();
+    return Boolean(combined.trim()) && !combined.includes('tech-status') && !combined.includes('[tech-status:');
+  });
+};
+
+const renderActionText = (text: string, timestamp?: string) => {
   if (!text) return text;
 
   // Handle JSON action payload (e.g. attendance records or system logs)
@@ -229,10 +258,47 @@ const renderActionText = (text: string) => {
     <div className="leading-snug">
       <div>{renderedMain}</div>
       {detailText ? (
-        <div className="text-[11px] text-blue-800 bg-blue-50/70 border border-blue-100 rounded px-2 py-1 mt-1 font-sans">
-          <span className="font-semibold text-blue-900">Chi tiết thay đổi: </span>
-          {detailText}
-        </div>
+        <details
+          className="mt-1 overflow-hidden rounded-lg border border-slate-200 bg-white text-[11px] font-sans shadow-2xs"
+          onClick={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          <summary className="flex cursor-pointer select-none items-center justify-between gap-2 px-2.5 py-1.5 font-semibold text-slate-700 hover:bg-slate-50">
+            <span className="flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-[14px] text-slate-500">difference</span>
+              Xem chi tiết thay đổi
+            </span>
+            <span className="material-symbols-outlined text-[15px] text-slate-400">expand_more</span>
+          </summary>
+          <div className="border-t border-slate-200 bg-slate-50 px-2.5 py-2 text-slate-600">
+            {parseAuditChangeRows(detailText).length > 0 ? (
+              <div className="overflow-x-auto rounded border border-slate-200 bg-white">
+                <table className="w-full min-w-[520px] border-collapse text-[10.5px]">
+                  <thead className="bg-slate-100 text-left text-[10px] font-bold uppercase text-slate-500">
+                    <tr>
+                      <th className="border-b border-slate-200 px-2 py-1.5">Nội dung</th>
+                      <th className="border-b border-slate-200 px-2 py-1.5">Trước đây</th>
+                      <th className="border-b border-slate-200 px-2 py-1.5">Sau khi cập nhật</th>
+                      <th className="border-b border-slate-200 px-2 py-1.5 whitespace-nowrap">Thời gian</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {parseAuditChangeRows(detailText).map((row, index) => (
+                      <tr key={`${row.field}-${index}`} className="border-b border-slate-100 last:border-b-0">
+                        <td className="px-2 py-1.5 font-semibold text-slate-700">{row.field}</td>
+                        <td className="px-2 py-1.5 text-rose-700">{row.before || '—'}</td>
+                        <td className="px-2 py-1.5 font-semibold text-emerald-700">{row.after || '—'}</td>
+                        <td className="px-2 py-1.5 whitespace-nowrap text-slate-500">{formatAuditDateTime(timestamp)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="whitespace-pre-line leading-relaxed">{formatAuditDetail(detailText)}</div>
+            )}
+          </div>
+        </details>
       ) : (
         <div className="text-[10px] text-slate-400 mt-0.5 italic">
           Cập nhật thông tin và trạng thái hạng mục
@@ -400,6 +466,12 @@ export const AuditInfoCell: React.FC<{
       const logTimeMs = parseAuditTime(log.timestamp);
       const displayTime = formatAuditDateTime(log.timestamp);
       const actionText = String(log.action || '').trim() || 'Cập nhật thông tin trên hệ thống';
+      const actionMain = actionText.split(' |Detail:')[0].trim();
+      const itemPart = actionMain.includes(':')
+        ? actionMain.substring(actionMain.indexOf(':') + 1).trim().toLowerCase()
+        : actionMain.toLowerCase();
+      const timeBucket = logTimeMs ? Math.floor(logTimeMs / 60000) : actionText;
+      const mergeKey = `${timeBucket}:::${itemPart}`;
 
       if (!map.has(u)) {
         const eng = (engineers || []).find(e => e?.name?.toLowerCase() === u.toLowerCase());
@@ -410,7 +482,7 @@ export const AuditInfoCell: React.FC<{
           lastTime: displayTime,
           rawTimeMs: logTimeMs,
           title,
-          logs: [{ action: actionText, timestamp: log.timestamp, rawTimeMs: logTimeMs }]
+          logs: [{ action: actionText, timestamp: log.timestamp, rawTimeMs: logTimeMs, mergeKey } as any]
         });
       } else {
         const existing = map.get(u)!;
@@ -419,8 +491,17 @@ export const AuditInfoCell: React.FC<{
           existing.rawTimeMs = logTimeMs;
           existing.lastTime = displayTime;
         }
-        if (!existing.logs.some(l => l.action === actionText && l.timestamp === log.timestamp)) {
-          existing.logs.push({ action: actionText, timestamp: log.timestamp, rawTimeMs: logTimeMs });
+        const sameHistory = (existing.logs as any[]).find(l =>
+          l.mergeKey === mergeKey || (l.action === actionText && l.timestamp === log.timestamp)
+        );
+        if (sameHistory) {
+          const incomingDetail = actionText.split(' |Detail:')[1]?.trim();
+          const currentDetail = String(sameHistory.action).split(' |Detail:')[1]?.trim();
+          if (incomingDetail && incomingDetail !== currentDetail && !String(currentDetail || '').includes(incomingDetail)) {
+            sameHistory.action = `${String(sameHistory.action).split(' |Detail:')[0]} |Detail:${currentDetail ? `${currentDetail}; ${incomingDetail}` : incomingDetail}`;
+          }
+        } else {
+          existing.logs.push({ action: actionText, timestamp: log.timestamp, rawTimeMs: logTimeMs, mergeKey } as any);
         }
       }
     });
@@ -456,6 +537,7 @@ export const AuditInfoCell: React.FC<{
     const currentNorm = normalizeUser(updatedBy);
     return Array.from(map.values()).map(u => ({
       ...u,
+      count: u.logs.length,
       logs: u.logs.sort((a, b) => b.rawTimeMs - a.rawTimeMs)
     })).sort((a, b) => {
       if (currentNorm && a.name.toLowerCase() === currentNorm.toLowerCase()) return -1;
@@ -589,7 +671,7 @@ export const AuditInfoCell: React.FC<{
                                         {badge.icon}
                                       </span>
                                       <div className="min-w-0 flex-1 break-words">
-                                        {renderActionText(log.action)}
+                                        {renderActionText(log.action, log.timestamp)}
                                       </div>
                                     </div>
                                   </td>
