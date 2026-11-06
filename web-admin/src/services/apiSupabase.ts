@@ -641,10 +641,18 @@ export const api = {
         }
       }
 
-      delete payload.source_row;
-      delete payload.follower_ids;
-      delete payload.follower_names;
-      delete payload.category;
+      // Whitelist — chỉ giữ lại các cột thực sự có trong DB (tránh 400 Bad Request)
+      const TASK_DB_COLUMNS = new Set([
+        'id','stt','code','name','project_code','volume','unit','progress','status',
+        'purchase_status','constr_status','tech_spec_status','issue','issue_status',
+        'is_done','parent_id','notes','assigner_id','assigned_engineer_id',
+        'reviewer_id','due_date','priority','created_at','updated_by','updated_at',
+      ]);
+      for (const key of Object.keys(payload)) {
+        if (!TASK_DB_COLUMNS.has(key)) {
+          delete payload[key];
+        }
+      }
 
       let lastError: any = null;
       for (let attempt = 0; attempt < 7; attempt++) {

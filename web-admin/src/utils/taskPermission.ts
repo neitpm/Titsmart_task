@@ -305,8 +305,8 @@ export const getTaskTechSpecStatus = (task: Task | null | undefined, materialPla
  */
 export const getTaskPurchaseStatus = (task: Task | null | undefined, materialPlans?: ProjectMaterialPlan[]): string => {
   if (!task) return '';
-  if (task.purchaseStatus) return task.purchaseStatus;
 
+  // Luôn kiểm tra materialPlan trước — đây là nguồn chính xác nhất cho TT Đặt hàng
   if (materialPlans && materialPlans.length > 0 && task.projectCode) {
     const norm = (s?: string) => String(s || '').trim().toLowerCase().replace(/\s+/g, ' ');
     const matched = materialPlans.find(mp => 
@@ -322,6 +322,9 @@ export const getTaskPurchaseStatus = (task: Task | null | undefined, materialPla
     );
     if (matched && matched.orderedStatus) return matched.orderedStatus;
   }
+
+  // Fallback: giá trị lưu trên task
+  if (task.purchaseStatus) return task.purchaseStatus;
 
   return '';
 };
