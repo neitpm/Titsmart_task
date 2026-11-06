@@ -65,6 +65,20 @@ const getActionTypeInfo = (action: string) => {
   return { color: 'text-slate-700', bg: 'bg-slate-100' };
 };
 
+// Không hiển thị các bản ghi kỹ thuật của trình duyệt/push notification trong
+// nhật ký nghiệp vụ. Những bản ghi này chứa device_id, token, user_agent...
+// và không phải là thao tác người dùng cần theo dõi.
+const isTechnicalSystemLog = (action?: string): boolean => {
+  const text = String(action || '').trim().toLowerCase();
+  if (!text.startsWith('{')) return false;
+  return (
+    text.includes('device_id') ||
+    text.includes('push_subscription') ||
+    text.includes('user_agent') ||
+    text.includes('webdevice_')
+  );
+};
+
 const renderActionText = (text: string, fullDetail: boolean = false) => {
     if (!text) return text;
     
@@ -140,6 +154,7 @@ export const ActivityLogPage: React.FC = () => {
 
   const filteredLogs = useMemo(() => {
     return activityLogs.filter((log) => {
+      if (isTechnicalSystemLog(log.action)) return false;
       let matchDate = true;
       const logDate = parseDateKey(log.timestamp || '');
       if (dateFrom && logDate !== 'unknown') matchDate = matchDate && logDate >= dateFrom;

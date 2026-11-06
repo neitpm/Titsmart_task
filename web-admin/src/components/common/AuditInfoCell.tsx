@@ -624,7 +624,9 @@ export const AuditInfoCell: React.FC<{
 
         <div className="mt-3 pt-2 border-t border-slate-100 flex justify-end">
           <button
-            onClick={() => setShowModal(false)}
+            type="button"
+            onClick={(e) => { e.stopPropagation(); setShowModal(false); }}
+            onMouseDown={(e) => e.stopPropagation()}
             className="px-4 py-1.5 text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors cursor-pointer"
           >
             Đóng

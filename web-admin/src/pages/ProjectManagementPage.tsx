@@ -146,6 +146,7 @@ export const ProjectManagementPage: React.FC = () => {
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
   const [projectToEdit, setProjectToEdit] = useState<Project | null>(null);
   const [notifOpenProjectId, setNotifOpenProjectId] = useState<string | null>(null);
+  const suppressProjectCardNavigationRef = useRef(false);
   const [isNewProjectModalOpen, setIsNewProjectModalOpen] = useState(false);
   const [toastState, setToastState] = useState({ show: false, message: '', type: 'success' as 'success' | 'info' | 'warning' });
   const [newProjName, setNewProjName] = useState('');
@@ -1172,7 +1173,18 @@ export const ProjectManagementPage: React.FC = () => {
               return (
                 <div
                   key={project.id}
-                  onClick={() => openProjectTasks(project)}
+                  onClick={(e) => {
+                    const target = e.target as HTMLElement;
+                    if (
+                      suppressProjectCardNavigationRef.current ||
+                      target.closest('button') ||
+                      target.closest('[data-modal-root="true"]')
+                    ) {
+                      suppressProjectCardNavigationRef.current = false;
+                      return;
+                    }
+                    openProjectTasks(project);
+                  }}
                   role="button"
                   tabIndex={0}
                   onKeyDown={(e) => { if (e.key === 'Enter') openProjectTasks(project); }}
@@ -1259,19 +1271,6 @@ export const ProjectManagementPage: React.FC = () => {
 
                     {/* Tiến độ */}
                     <div className="mt-auto pt-1">
-                      {(project.updatedBy || project.updatedAt) && (
-                        <div className="mb-2 pt-1 border-t border-slate-100/50 flex items-center justify-between gap-2">
-                          <span className="text-[10px] font-semibold text-slate-400 shrink-0 whitespace-nowrap">Cập nhật:</span>
-                          <div className="min-w-0 max-w-[70%]">
-                            <AuditInfoCell 
-                              updatedBy={project.updatedBy} 
-                              updatedAt={project.updatedAt} 
-                              projectCode={project.code}
-                              className="items-end text-right" 
-                            />
-                          </div>
-                        </div>
-                      )}
                       <div className="flex items-center justify-between mb-1.5">
                         <span className="text-[11px] text-slate-400">Tiến độ</span>
                         <span className={`text-xs font-extrabold ${
@@ -1288,17 +1287,25 @@ export const ProjectManagementPage: React.FC = () => {
                   </div>
 
                   {/* Nút sửa/xóa/thông báo — hiện khi hover */}
-                  { (canManageItem(user, project, "EDIT_PROJECTS") || canManageItem(user, project, "DELETE_PROJECTS")) && (
-                    <div className="absolute top-[18px] right-3 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-20 bg-white/95 backdrop-blur-xs px-1 py-0.5 rounded-lg border border-slate-200 shadow-xs">
+                  <div
+                    className="absolute top-[18px] right-3 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-20 bg-white/95 backdrop-blur-xs px-1 py-0.5 rounded-lg border border-slate-200 shadow-xs"
+                    onClick={(e) => e.stopPropagation()}
+                    onMouseDown={(e) => e.stopPropagation()}
+                  >
                       {/* Nút chuông thông báo */}
                       <button
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
+                          suppressProjectCardNavigationRef.current = true;
+                          window.setTimeout(() => {
+                            suppressProjectCardNavigationRef.current = false;
+                          }, 0);
                           // Chuông của dự án mở toàn bộ lịch sử thay đổi của
                           // dự án, không điều hướng tới riêng bản ghi mới nhất.
                           setNotifOpenProjectId(project.id);
                         }}
+                        onMouseDown={(e) => e.stopPropagation()}
                         title="Xem toàn bộ thay đổi của dự án"
                         className="relative rounded p-1 text-slate-400 hover:text-amber-500 hover:bg-amber-50 transition"
                       >
@@ -1312,6 +1319,7 @@ export const ProjectManagementPage: React.FC = () => {
                       {canManageItem(user, project, "EDIT_PROJECTS") && (<button
                         type="button"
                         onClick={(e) => { e.stopPropagation(); openEditModal(project); }}
+                        onMouseDown={(e) => e.stopPropagation()}
                         title="Sửa tên dự án"
                         className="rounded p-1 text-slate-400 hover:text-blue-500 hover:bg-blue-50 transition"
                       >
@@ -1320,14 +1328,14 @@ export const ProjectManagementPage: React.FC = () => {
                       {canManageItem(user, project, "DELETE_PROJECTS") && (<button
                         type="button"
                         onClick={(e) => { e.stopPropagation(); setProjectToDelete(project); }}
+                        onMouseDown={(e) => e.stopPropagation()}
                         title={TEXT.deleteProject}
                         aria-label="Xóa dự án"
                         className="rounded p-1 text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition"
                       >
                         <span className="material-symbols-outlined text-[16px]">delete</span>
                       </button>)}
-                    </div>
-                  )}
+                  </div>
                   {/* Bộ điều khiển modal cho nút chuông; không ẩn bằng display:none vì modal cần được render */}
                   <AuditInfoCell
                       updatedBy={project.updatedBy}
