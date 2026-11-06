@@ -1295,34 +1295,11 @@ export const ProjectManagementPage: React.FC = () => {
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          const code = String(project.code || '').trim().toLowerCase();
-                          const id = String(project.id || '').trim().toLowerCase();
-                          const name = String(project.name || '').trim().toLowerCase();
-                          const projectNotifs = notifications
-                            .filter((notif) => {
-                              if (!isNotificationForUser(notif, currentUser, engineers, tasks)) return false;
-                              const link = String(notif.link || '').toLowerCase();
-                              const text = `${notif.title || ''} ${notif.message || ''}`.toLowerCase();
-                              const notifProject = String((notif as any).projectCode || (notif as any).projectId || '').trim().toLowerCase();
-                              return Boolean(
-                                (code && (notifProject === code || link.includes(code) || text.includes(code))) ||
-                                (id && (notifProject === id || link.includes(id))) ||
-                                (name && name.length >= 4 && text.includes(name))
-                              );
-                            })
-                            .sort((a, b) => new Date(String(b.timestamp || 0)).getTime() - new Date(String(a.timestamp || 0)).getTime());
-                          const latestNotification = projectNotifs.find((notif) => {
-                            const link = String(notif.link || '').trim();
-                            return link && link !== '__RESTART_UPDATE__' && link.startsWith('/');
-                          });
-                          if (latestNotification) {
-                            markNotificationRead(latestNotification.id);
-                            navigate(latestNotification.link!);
-                          } else {
-                            setNotifOpenProjectId(project.id);
-                          }
+                          // Chuông của dự án mở toàn bộ lịch sử thay đổi của
+                          // dự án, không điều hướng tới riêng bản ghi mới nhất.
+                          setNotifOpenProjectId(project.id);
                         }}
-                        title="Mở nội dung mới nhất đã tạo thông báo"
+                        title="Xem toàn bộ thay đổi của dự án"
                         className="relative rounded p-1 text-slate-400 hover:text-amber-500 hover:bg-amber-50 transition"
                       >
                         <span className="material-symbols-outlined text-[16px]">notifications</span>

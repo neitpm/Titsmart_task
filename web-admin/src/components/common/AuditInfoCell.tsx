@@ -75,6 +75,12 @@ const getLogNavigatePath = (action: string, projectCode?: string): string | null
     return m ? m[1] : '';
   };
   const taskName = extractQuoted(action);
+  // Một số nhật ký không đặt tên hạng mục trong dấu ngoặc kép mà ghi sau dấu
+  // hai chấm, ví dụ: "Cập nhật Mua hàng nhà thầu: Cáp đồng bọc 2x4mm2".
+  const colonItem = action.includes(':')
+    ? action.substring(action.indexOf(':') + 1).trim()
+    : '';
+  const referencedItem = taskName || colonItem;
 
   // Link tới task cụ thể
   const isTaskAction =
@@ -83,16 +89,29 @@ const getLogNavigatePath = (action: string, projectCode?: string): string | null
     a.includes('nhận việc') || a.includes('phân công') ||
     a.includes('thắc mắc') || a.includes('trao đổi') || a.includes('phản hồi');
 
-  if (isTaskAction && projectCode && taskName) {
-    return `/projects/${encodeURIComponent(projectCode)}/tasks?highlight=${encodeURIComponent(taskName)}`;
+  // Các cập nhật mua hàng nhà thầu/vật tư trong bảng dự án thực chất gắn với
+  // một dòng công việc. Mở tab Tiến độ và highlight đúng dòng đó để người
+  // dùng nhìn thấy ngay nội dung vừa thay đổi.
+  const isTaskMaterialUpdate =
+    (a.includes('mua hàng nhà thầu') || a.includes('mua sắm hàng hóa')) &&
+    Boolean(referencedItem);
+  if (isTaskMaterialUpdate && projectCode) {
+    return `/projects/${encodeURIComponent(projectCode)}/tasks?highlight=${encodeURIComponent(referencedItem)}`;
+  }
+
+  if (isTaskAction && projectCode && referencedItem) {
+    return `/projects/${encodeURIComponent(projectCode)}/tasks?highlight=${encodeURIComponent(referencedItem)}`;
   }
   if (isTaskAction && projectCode) {
     return `/projects/${encodeURIComponent(projectCode)}/tasks`;
   }
 
-  // Link tới chi phí / mua sắm / vật tư
-  if (a.includes('mua hàng') || a.includes('mua sắm') || a.includes('vật tư') || a.includes('chi phí') || a.includes('kế hoạch vật tư')) {
-    if (projectCode) return `/projects/${encodeURIComponent(projectCode)}/cost-plan`;
+  // Link tới tab Vật tư & Chi phí, chọn đúng nhóm theo nội dung nhật ký
+  if (a.includes('mua hàng nhà thầu') || a.includes('mua hàng') || a.includes('mua sắm') || a.includes('nhà thầu') || a.includes('vật tư') || a.includes('kế hoạch vật tư')) {
+    if (projectCode) return `/projects/${encodeURIComponent(projectCode)}/cost-plan?tab=TECH`;
+  }
+  if (a.includes('chi phí') || a.includes('phiếu chi') || a.includes('cấp quỹ') || a.includes('thanh toán')) {
+    if (projectCode) return `/projects/${encodeURIComponent(projectCode)}/cost-plan?tab=EXPENSE`;
   }
 
   // Link tới hồ sơ
@@ -445,11 +464,13 @@ export const AuditInfoCell: React.FC<{
     });
   }, [showModal, activityLogs, scopedLogs, engineers, updatedBy, updatedAt, formattedTime, projectCode, itemTitle, taskDiscussions]);
 
-  if (isSystemOrEmpty && !formattedTime) {
+  // Khi được mở từ nút chuông dự án (hideTrigger + forceOpen), vẫn phải
+  // dựng Modal kể cả khi dòng cập nhật tổng quan của dự án đang trống.
+  if (isSystemOrEmpty && !formattedTime && !hideTrigger && !forceOpen) {
     return <div className="text-center w-full"><span className="text-slate-300 italic text-[10px]">-</span></div>;
   }
 
-  if (isSystemOrEmpty) {
+  if (isSystemOrEmpty && !hideTrigger && !forceOpen) {
     return <div className="text-center w-full"><span className="text-slate-300 italic text-[10px]">-</span></div>;
   }
 
@@ -558,7 +579,7 @@ export const AuditInfoCell: React.FC<{
                                     const target = getLogNavigatePath(log.action, projectCode);
                                     if (target) {
                                       setShowModal(false);
-                                      navigate(target);
+                                      navigate(target, { state: { reset: Date.now() } });
                                     }
                                   }}
                                 >

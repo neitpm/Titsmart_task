@@ -571,9 +571,6 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ isSidebar = 
 
   const handleBellClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (hasMovedRef.current) {
-      return;
-    }
     // Kích hoạt xin quyền thông báo khi người dùng bấm vào chuông (Đáp ứng chính sách bắt buộc User Gesture của Apple iOS Safari)
     requestSystemNotificationPermission();
     setShowPopover(prev => !prev);
@@ -733,11 +730,18 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ isSidebar = 
     let link = notification.link || '';
 
     // Trích xuất mã dự án nếu có dạng [PROJECT_CODE] hoặc "dự án X"
-    let pCode = '';
+    // Ưu tiên mã dự án được lưu trực tiếp trên notification; nhiều thông báo
+    // cũ không nhúng mã dự án vào message nên chỉ đọc message sẽ làm mất ngữ
+    // cảnh và rơi về trang Tổng quan.
+    let pCode = String((notification as any).projectCode || (notification as any).project_code || '').trim();
+    if (!pCode) {
+      const notificationProjectId = String((notification as any).projectId || (notification as any).project_id || '').trim();
+      if (notificationProjectId) pCode = notificationProjectId;
+    }
     const pCodeMatch = message.match(/\[([A-Za-z0-9_-]+)\]/);
-    if (pCodeMatch) {
+    if (!pCode && pCodeMatch) {
       pCode = pCodeMatch[1];
-    } else {
+    } else if (!pCode) {
       const pProjectMatch = message.match(/thuộc dự án\s+([A-Za-z0-9_-]+)/i) || message.match(/dự án\s+([A-Za-z0-9_-]+)/i);
       if (pProjectMatch) {
         pCode = pProjectMatch[1].replace(/[.,:;]$/, '').trim();
@@ -811,7 +815,51 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ isSidebar = 
           navigate(`/task-assignment?tab=direct&${params.toString()}`, { state: { tab: 'direct' } });
           return;
         }
+
+        // Notification cũ có thể lưu link chỉ tới /projects/:code (trang
+        // Tổng quan). Khi đã xác định được công việc, luôn dựng lại link tới
+        // tab Tiến độ và highlight đúng dòng công việc.
+        if (finalProjectCode && (targetTask?.id || taskName || itemName)) {
+          const params = new URLSearchParams();
+          if (targetTask?.id) params.set('taskId', targetTask.id);
+          params.set('highlight', taskName || targetTask?.name || itemName);
+          navigate(`/projects/${encodeURIComponent(finalProjectCode)}/tasks?${params.toString()}`);
+          return;
+        }
       }
+    }
+
+    // Các thông báo phát sinh từ Vật tư / Mua hàng / Chi phí phải mở đúng
+    // phân hệ của dự án, kể cả khi bản ghi cũ đang chứa link mặc định về
+    // trang Tổng quan.
+    const isCostPlanNotification =
+      titleLower.includes('mua hàng') ||
+      titleLower.includes('mua sắm') ||
+      titleLower.includes('nhà thầu') ||
+      titleLower.includes('vật tư') ||
+      titleLower.includes('phiếu chi') ||
+      titleLower.includes('cấp quỹ') ||
+      msgLower.includes('mua hàng') ||
+      msgLower.includes('mua sắm') ||
+      msgLower.includes('nhà thầu') ||
+      msgLower.includes('vật tư') ||
+      msgLower.includes('phiếu chi') ||
+      msgLower.includes('cấp quỹ');
+    const isProjectTaskMaterialUpdate =
+      finalProjectCode &&
+      (titleLower.includes('mua hàng nhà thầu') || msgLower.includes('mua hàng nhà thầu') ||
+        titleLower.includes('mua sắm hàng hóa') || msgLower.includes('mua sắm hàng hóa')) &&
+      Boolean(itemName || taskName);
+    if (isProjectTaskMaterialUpdate) {
+      navigate(`/projects/${encodeURIComponent(finalProjectCode)}/tasks?highlight=${encodeURIComponent(itemName || taskName)}`);
+      return;
+    }
+    if (isCostPlanNotification && finalProjectCode) {
+      const tab = titleLower.includes('chi phí') || titleLower.includes('phiếu chi') || titleLower.includes('cấp quỹ')
+        ? 'EXPENSE'
+        : 'TECH';
+      navigate(`/projects/${encodeURIComponent(finalProjectCode)}/cost-plan?tab=${tab}`);
+      return;
     }
 
     // Điều hướng theo link có sẵn nếu hợp lệ
@@ -961,8 +1009,6 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ isSidebar = 
   };
 
   const displayNotifications = useMemo(() => {
-    const seen = new Set<string>();
-    const seenTaskKeys = new Set<string>();
     const uniqueList: typeof notifications = [];
 
     // Inject app update notification if available
@@ -985,34 +1031,16 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ isSidebar = 
       // Filter out notifications dismissed by this specific user account
       if (dismissedNotifIds.has(n.id)) return;
 
-      const cleanTitle = n.title.replace(/[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]/gu, '').trim();
-
-      // Extract task name inside quotes "..." if present (e.g. "Điện thoại IP phone...")
-      const quoteMatch = n.message?.match(/"([^"]+)"/);
-      const extractedTaskName = quoteMatch ? quoteMatch[1].trim().toLowerCase() : '';
-
-      let notifTimeKey = '';
-      try {
-        const d = new Date(n.timestamp || '');
-        if (!isNaN(d.getTime())) {
-          // Group by 2-minute bucket
-          notifTimeKey = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}-${d.getHours()}-${Math.floor(d.getMinutes() / 2)}`;
-        }
-      } catch {}
-
-      if (extractedTaskName && (n.type?.startsWith('task_') || cleanTitle.toLowerCase().includes('giao việc') || cleanTitle.toLowerCase().includes('trao đổi'))) {
-        const taskKey = `${n.type?.split(':::')[0] || 'task'}:::${extractedTaskName}:::${notifTimeKey}`;
-        if (seenTaskKeys.has(taskKey)) return;
-        seenTaskKeys.add(taskKey);
-      }
-
-      const key = `${cleanTitle}:::${n.message}`;
-      if (!seen.has(key)) {
-        seen.add(key);
-        uniqueList.push(n.type === 'app_update' ? n : { ...n, read: readNotifIds.has(n.id) });
-      }
+      // Không gộp các thông báo giống nhau: mỗi bản ghi là một hành động
+      // riêng (thêm, sửa, tạo, giao việc, cập nhật trạng thái...) và phải
+      // được giữ lại để người dùng truy vết đầy đủ lịch sử thao tác.
+      uniqueList.push(n.type === 'app_update' ? n : { ...n, read: readNotifIds.has(n.id) });
     });
-    return uniqueList;
+    return uniqueList.sort((a, b) => {
+      const aTime = new Date(a.timestamp || '').getTime();
+      const bTime = new Date(b.timestamp || '').getTime();
+      return (Number.isNaN(bTime) ? 0 : bTime) - (Number.isNaN(aTime) ? 0 : aTime);
+    });
   }, [notifications, user, engineers, tasks, dismissedNotifIds, availableUpdateVersion, readNotifIds]);
 
   // Priority notifications: Overdue 1-2 days or Due soon

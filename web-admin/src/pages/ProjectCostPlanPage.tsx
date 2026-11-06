@@ -1411,7 +1411,11 @@ export const ProjectCostPlanPage: React.FC = () => {
       }
     };
   }, [activeTab, outletContext?.setSubTitle]);
-  const [expenseSubTab, setExpenseSubTab] = useState<'SUMMARY' | 'DETAIL' | 'LABOR'>('SUMMARY');
+  const [expenseSubTab, setExpenseSubTab] = useState<'SUMMARY' | 'DETAIL' | 'LABOR' | 'FUND_REQUEST'>('SUMMARY');
+  const [fundRequests, setFundRequests] = useState<any[]>([]);
+  const [fundRequestOpen, setFundRequestOpen] = useState(false);
+  const [showExpenseActionMenu, setShowExpenseActionMenu] = useState(false);
+  const [fundRequestForm, setFundRequestForm] = useState({ amount: '', type: 'Tạm ứng', purpose: '', neededDate: new Date().toISOString().split('T')[0], note: '' });
   const [searchQuery, setSearchQuery] = useState('');
   const [isSubmittingPlan, setIsSubmittingPlan] = useState(false);
   const isSubmittingPlanRef = useRef(false);
@@ -2366,8 +2370,41 @@ export const ProjectCostPlanPage: React.FC = () => {
         {activeTab === 'EXPENSE' && (
           <div className="h-full overflow-y-auto overflow-x-hidden custom-scrollbar bg-white flex flex-col pb-16 md:pb-0" id="expense-unified-view">
 
+            <div className="flex items-center gap-1 border-b border-slate-200 bg-white px-3 md:px-5 py-2 shrink-0">
+              {([
+                ['SUMMARY', 'Danh sách chi phí'],
+                ['LABOR', 'Nhân công'],
+                
+              ] as const).map(([value, label]) => (
+                <button key={value} type="button" onClick={() => setExpenseSubTab(value)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${expenseSubTab === value ? 'bg-primary text-white' : 'text-slate-600 hover:bg-slate-100'}`}>
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {expenseSubTab === 'FUND_REQUEST' && (
+              <div className="p-4 md:p-6 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-base font-extrabold text-slate-900">Yêu cầu cấp quỹ</h2>
+                    <p className="text-xs text-slate-500 mt-1">Tạo yêu cầu cấp tiền cho dự án đang chọn.</p>
+                  </div>
+                  <button type="button" onClick={() => setFundRequestOpen(true)} className="px-3 py-2 rounded-lg bg-primary text-white text-xs font-bold flex items-center gap-1">
+                    <span className="material-symbols-outlined text-sm">add</span> Tạo yêu cầu
+                  </button>
+                </div>
+                <div className="overflow-x-auto border border-slate-200 rounded-xl">
+                  <table className="w-full text-xs text-left"><thead className="bg-slate-50 text-slate-500"><tr><th className="p-3">Ngày cần</th><th className="p-3">Loại quỹ</th><th className="p-3">Mục đích</th><th className="p-3 text-right">Số tiền</th><th className="p-3">Trạng thái</th></tr></thead>
+                    <tbody>{fundRequests.map((request) => <tr key={request.id} className="border-t border-slate-100"><td className="p-3">{request.neededDate}</td><td className="p-3">{request.type}</td><td className="p-3">{request.purpose}</td><td className="p-3 text-right font-bold">{Number(request.amount || 0).toLocaleString('vi-VN')} đ</td><td className="p-3"><span className="px-2 py-1 rounded-full bg-amber-50 text-amber-700 font-bold">Chờ duyệt</span></td></tr>)}</tbody>
+                  </table>
+                  {fundRequests.length === 0 && <div className="p-10 text-center text-slate-400 text-xs">Chưa có yêu cầu cấp quỹ.</div>}
+                </div>
+              </div>
+            )}
+
             {/* 1. BỘ LỌC & CÔNG CỤ (TOOLBAR TRÊN CÙNG) */}
-            <div className="flex border-b border-slate-200 bg-slate-50 px-3 md:px-5 py-2 gap-2 md:gap-3 sticky top-0 z-20 items-center justify-between text-xs text-slate-600 overflow-x-auto custom-scrollbar shadow-xs">
+            <div className="flex border-b border-slate-200 bg-slate-50 px-3 md:px-5 py-2 gap-2 md:gap-3 sticky top-0 z-30 items-center justify-between text-xs text-slate-600 overflow-visible shadow-xs">
               <div className="hidden md:flex items-center gap-2 md:gap-3 flex-wrap sm:flex-nowrap">
                 <div className="flex items-center gap-2.5 font-bold text-slate-500 whitespace-nowrap">
                   <span className="material-symbols-outlined text-[16px]">filter_list</span>
@@ -2485,14 +2522,23 @@ export const ProjectCostPlanPage: React.FC = () => {
                   )}
                 </div>
 
-                <button
-                  onClick={() => setIsNewExpenseOpen(true)}
-                  className="flex items-center justify-center gap-1 bg-primary text-white px-2.5 md:px-3 h-8 rounded-lg text-xs font-bold hover:bg-primary-dark transition-colors shadow-xs whitespace-nowrap cursor-pointer"
-                  title="Thêm phiếu chi"
-                >
-                  <span className="material-symbols-outlined text-[16px]">add</span>
-                  <span className="hidden sm:inline">Thêm phiếu chi</span>
-                </button>
+                <div className="relative">
+                  <button
+                    onClick={() => setShowExpenseActionMenu(v => !v)}
+                    className="flex items-center justify-center gap-1 bg-primary text-white px-2.5 md:px-3 h-8 rounded-lg text-xs font-bold hover:bg-primary-dark transition-colors shadow-xs whitespace-nowrap cursor-pointer"
+                    title="Thêm chi phí hoặc yêu cầu cấp quỹ"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">add</span>
+                    <span className="hidden sm:inline">Thêm</span>
+                    <span className="material-symbols-outlined text-[14px]">expand_more</span>
+                  </button>
+                  {showExpenseActionMenu && (
+                    <div className="absolute right-0 top-full mt-1 z-50 w-48 rounded-lg border border-slate-200 bg-white p-1 shadow-xl">
+                      <button type="button" onClick={() => { setShowExpenseActionMenu(false); setIsNewExpenseOpen(true); }} className="w-full rounded-md px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50">+ Thêm phiếu chi</button>
+                      <button type="button" onClick={() => { setShowExpenseActionMenu(false); setFundRequestOpen(true); }} className="w-full rounded-md px-3 py-2 text-left text-xs font-semibold text-blue-700 hover:bg-blue-50">+ Tạo yêu cầu cấp quỹ</button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -4639,6 +4685,22 @@ export const ProjectCostPlanPage: React.FC = () => {
           </div>
         </Modal>
       )}
+      <Modal isOpen={fundRequestOpen} onClose={() => setFundRequestOpen(false)} title="Tạo yêu cầu cấp quỹ">
+        <form className="p-4 space-y-3" onSubmit={(event) => {
+          event.preventDefault();
+          setFundRequests((items) => [{ ...fundRequestForm, id: `fund-${Date.now()}`, projectCode: selectedProject }, ...items]);
+          setFundRequestForm({ amount: '', type: 'Tạm ứng', purpose: '', neededDate: new Date().toISOString().split('T')[0], note: '' });
+          setFundRequestOpen(false);
+          triggerToast('Đã tạo yêu cầu cấp quỹ, đang chờ duyệt.', 'success');
+        }}>
+          <div className="rounded-lg bg-blue-50 border border-blue-100 p-3 text-xs text-blue-800">Dự án: <strong>{projects.find(p => p.code === selectedProject)?.name || selectedProject || 'Chưa chọn dự án'}</strong></div>
+          <div className="grid grid-cols-2 gap-3"><div><label className="block text-xs font-bold mb-1">Số tiền đề nghị *</label><input required type="number" min="0" value={fundRequestForm.amount} onChange={e => setFundRequestForm({ ...fundRequestForm, amount: e.target.value })} className="w-full border rounded-lg p-2 text-sm" /></div><div><label className="block text-xs font-bold mb-1">Ngày cần tiền *</label><input required type="date" value={fundRequestForm.neededDate} onChange={e => setFundRequestForm({ ...fundRequestForm, neededDate: e.target.value })} className="w-full border rounded-lg p-2 text-sm" /></div></div>
+          <div><label className="block text-xs font-bold mb-1">Loại quỹ</label><CustomSelect value={fundRequestForm.type} onChange={e => setFundRequestForm({ ...fundRequestForm, type: e.target.value })} className="w-full border rounded-lg p-2 text-sm"><option>Tạm ứng</option><option>Mua vật tư</option><option>Nhân công</option><option>Vận chuyển</option><option>Khác</option></CustomSelect></div>
+          <div><label className="block text-xs font-bold mb-1">Mục đích sử dụng *</label><textarea required value={fundRequestForm.purpose} onChange={e => setFundRequestForm({ ...fundRequestForm, purpose: e.target.value })} className="w-full border rounded-lg p-2 text-sm min-h-20" placeholder="Nêu rõ khoản tiền dùng cho việc gì" /></div>
+          <div><label className="block text-xs font-bold mb-1">Ghi chú</label><textarea value={fundRequestForm.note} onChange={e => setFundRequestForm({ ...fundRequestForm, note: e.target.value })} className="w-full border rounded-lg p-2 text-sm min-h-16" /></div>
+          <div className="flex justify-end gap-2 pt-2"><button type="button" onClick={() => setFundRequestOpen(false)} className="px-4 py-2 border rounded-lg text-sm">Hủy</button><button type="submit" className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-bold">Gửi yêu cầu</button></div>
+        </form>
+      </Modal>
     </PullToRefresh>
   );
 };
