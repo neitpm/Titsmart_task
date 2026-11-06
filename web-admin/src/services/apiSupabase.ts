@@ -1162,39 +1162,12 @@ export const api = {
     },
   },
   activityLogs: {
-    getAll: async () => {
+    getAll: async (projectCode?: string) => {
       try {
-        let { data, error } = await supabase
-          .from('activity_logs')
-          .select('*')
-          .neq('icon', 'LEAVE_REQUEST')
-          .neq('icon', 'ATTENDANCE_SESSION')
-          .neq('icon', 'ADJUSTMENT_REQUEST')
-          .neq('icon', 'BRANDING_CONFIG')
-          .order('timestamp', { ascending: false })
-          .limit(300);
-
-        if (error) {
-          const res = await supabase
-            .from('activity_logs')
-            .select('*')
-            .neq('icon', 'LEAVE_REQUEST')
-            .neq('icon', 'ATTENDANCE_SESSION')
-            .neq('icon', 'ADJUSTMENT_REQUEST')
-            .neq('icon', 'BRANDING_CONFIG')
-            .limit(300);
-          data = res.data;
-          error = res.error;
-        }
-
-        if (error) {
-          const res = await supabase
-            .from('activity_logs')
-            .select('*')
-            .limit(300);
-          data = res.data;
-          error = res.error;
-        }
+        // Màn hình tổng quan chỉ tải một trang; lịch sử của một dự án được lọc tại DB.
+        let query: any = supabase.from('activity_logs').select('*').order('timestamp', { ascending: false }).limit(300);
+        if (projectCode) query = query.eq('project', projectCode);
+        const { data, error } = await query;
 
         if (error) {
           console.warn('[ActivityLogs] Could not fetch from Supabase:', error.message);
@@ -1208,7 +1181,7 @@ export const api = {
             row.icon !== 'ADJUSTMENT_REQUEST' &&
             row.icon !== 'BRANDING_CONFIG'
           )
-          .map(row => {
+          .map((row: any) => {
             const act = (row.action || '').toLowerCase();
             const icon = row.icon || (act.includes('tiến độ') ? 'trending_up' :
               act.includes('chi') || act.includes('lương') || act.includes('hợp đồng') ? 'payments' :

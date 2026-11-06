@@ -1392,6 +1392,22 @@ export const useRealtimeStore = create<RealtimeStoreState>((set, get) => {
           if (updatedFields.volume !== undefined && updatedFields.volume !== existingTask.volume) changes.push(`Khối lượng: ${existingTask.volume || 0} -> ${updatedFields.volume}`);
           if (updatedFields.unit !== undefined && updatedFields.unit !== existingTask.unit) changes.push(`ĐVT: "${existingTask.unit || ''}" -> "${updatedFields.unit || ''}"`);
           if (updatedFields.assignedEngineerName !== undefined && updatedFields.assignedEngineerName !== existingTask.assignedEngineerName) changes.push(`Phân công: "${existingTask.assignedEngineerName || 'Chưa giao'}" -> "${updatedFields.assignedEngineerName || 'Chưa giao'}"`);
+          const fieldLabels: Record<string, string> = {
+            code: 'Mã hiệu', issue: 'Vấn đề', issueStatus: 'Trạng thái vấn đề',
+            techSpecStatus: 'Tình trạng kỹ thuật', dueDate: 'Hạn hoàn thành',
+            notes: 'Ghi chú', assignedEngineerId: 'Người thực hiện',
+            reviewerId: 'Người nghiệm thu', followerIds: 'Người theo dõi',
+            parentId: 'Đầu mục cha', priority: 'Độ ưu tiên', isDone: 'Hoàn thành'
+          };
+          Object.entries(updatedFields).forEach(([key, nextValue]) => {
+            if (['name', 'stt', 'status', 'purchaseStatus', 'constrStatus', 'progress', 'volume', 'unit', 'assignedEngineerName'].includes(key)) return;
+            const previousValue = (existingTask as any)[key];
+            if (JSON.stringify(previousValue) !== JSON.stringify(nextValue)) {
+              const label = fieldLabels[key] || key;
+              const formatValue = (value: any) => Array.isArray(value) ? value.join(', ') : (value === undefined || value === null || value === '' ? '(trống)' : String(value));
+              changes.push(`${label}: "${formatValue(previousValue)}" -> "${formatValue(nextValue)}"`);
+            }
+          });
         }
         const detailStr = changes.length > 0 ? ` |Detail:Dự án ${mergedTask.projectCode}, Đầu mục ${mergedTask.stt}: ${changes.join(', ')}` : '';
         get().logActivity(`Đã chỉnh sửa thông tin công việc: "${mergedTask.name}"${detailStr}`, mergedTask.projectName || mergedTask.projectCode);
@@ -2796,6 +2812,7 @@ export const useRealtimeStore = create<RealtimeStoreState>((set, get) => {
           badgeBg,
           iconColor,
         };
+        // Tổng quan chỉ giữ một cửa sổ nhỏ; lịch sử đầy đủ được truy vấn theo dự án khi mở chi tiết.
         const nextLogs = [optimisticLog, ...state.activityLogs].slice(0, 300);
         persistAndNotify({ activityLogs: nextLogs });
         return { activityLogs: nextLogs };

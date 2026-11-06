@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useRealtimeStore } from '../../services/realtimeStore';
 import { Modal } from './Modal';
 import { useNavigate } from 'react-router-dom';
+import { api } from '../../services/apiSupabase';
 
 export const formatAuditDateTime = (isoString?: string): string => {
   if (!isoString || typeof isoString !== 'string') return '';
@@ -259,6 +260,7 @@ export const AuditInfoCell: React.FC<{
   hideTrigger = false,
 }) => {
   const [showModal, setShowModal] = useState(false);
+  const [scopedLogs, setScopedLogs] = useState<any[] | null>(null);
   const navigate = useNavigate();
 
   // Mở modal khi forceOpen thay đổi sang true (từ nút chuông bên ngoài)
@@ -268,6 +270,14 @@ export const AuditInfoCell: React.FC<{
       onForceOpenHandled?.();
     }
   }, [forceOpen]);
+  React.useEffect(() => {
+    if (!showModal || !projectCode) return;
+    let cancelled = false;
+    api.activityLogs.getAll(projectCode).then((logs: any[]) => {
+      if (!cancelled) setScopedLogs(logs);
+    }).catch(() => { if (!cancelled) setScopedLogs([]); });
+    return () => { cancelled = true; };
+  }, [showModal, projectCode]);
   const [expandedUser, setExpandedUser] = useState<Record<string, boolean>>({});
   const activityLogs = useRealtimeStore(s => s.activityLogs);
   const engineers = useRealtimeStore(s => s.engineers);
@@ -332,7 +342,8 @@ export const AuditInfoCell: React.FC<{
     }
 
     // 2. Lọc activityLogs theo dự án và tên hạng mục (nếu có)
-    const filteredLogs = (activityLogs || []).filter(log => {
+    const sourceLogs = scopedLogs || (activityLogs || []);
+    const filteredLogs = sourceLogs.filter(log => {
       if (!log) return false;
       const logAction = String(log.action || '').toLowerCase();
 
@@ -432,7 +443,7 @@ export const AuditInfoCell: React.FC<{
       if (currentNorm && b.name.toLowerCase() === currentNorm.toLowerCase()) return 1;
       return b.rawTimeMs - a.rawTimeMs;
     });
-  }, [showModal, activityLogs, engineers, updatedBy, updatedAt, formattedTime, projectCode, itemTitle, taskDiscussions]);
+  }, [showModal, activityLogs, scopedLogs, engineers, updatedBy, updatedAt, formattedTime, projectCode, itemTitle, taskDiscussions]);
 
   if (isSystemOrEmpty && !formattedTime) {
     return <div className="text-center w-full"><span className="text-slate-300 italic text-[10px]">-</span></div>;
