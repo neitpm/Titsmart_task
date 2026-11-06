@@ -144,6 +144,11 @@ export const PersonnelPage: React.FC = () => {
   const [lockedIds, setLockedIds] = useState<string[]>([]);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
+  const [emergencyPhone, setEmergencyPhone] = useState('');
+  const [joinDate, setJoinDate] = useState('');
+  const [address, setAddress] = useState('');
+  const [identityNumber, setIdentityNumber] = useState('');
+  const [emergencyContactName, setEmergencyContactName] = useState('');
   const user = useAuthStore(state => state.user);
   const [role, setRole] = useState(user?.role || 'Nhân viên');
   const [username, setUsername] = useState('');
@@ -312,6 +317,11 @@ export const PersonnelPage: React.FC = () => {
     setEditingPersonId(null);
     setName('');
     setPhone('');
+    setEmergencyPhone('');
+    setJoinDate('');
+    setAddress('');
+    setIdentityNumber('');
+    setEmergencyContactName('');
     setRole('Nhân viên');
     setUsername('');
     setPassword('');
@@ -430,6 +440,11 @@ export const PersonnelPage: React.FC = () => {
     setName(person.name || '');
     setPermissions((person.permissions?.length ?? 0) > 0 ? person.permissions! : getDefaultPermissions(person.role || 'Nhân viên'));
     setPhone(person.phone || '');
+    setEmergencyPhone((person as any).emergencyPhone || (person as any).emergency_phone || '');
+    setJoinDate((person as any).joinDate || (person as any).join_date || '');
+    setAddress((person as any).address || '');
+    setIdentityNumber((person as any).identityNumber || (person as any).identity_number || '');
+    setEmergencyContactName((person as any).emergencyContactName || (person as any).emergency_contact_name || '');
     setRole(person.role || 'Nhân viên');
     setUsername((person as any).username || '');
     setPassword('');
@@ -459,6 +474,11 @@ export const PersonnelPage: React.FC = () => {
         await updateEngineer(editingPersonId, {
           name: name.trim(),
           phone,
+          emergencyPhone,
+          joinDate,
+          address,
+          identityNumber,
+          emergencyContactName,
           role,
           title: role,
           ...(username ? { username: username.trim() } : {}),
@@ -527,6 +547,11 @@ export const PersonnelPage: React.FC = () => {
         const created = await createEngineer({
           name: name.trim(),
           phone,
+          emergencyPhone,
+          joinDate,
+          address,
+          identityNumber,
+          emergencyContactName,
           role,
           title: role,
           username: username.trim(),
@@ -883,22 +908,51 @@ export const PersonnelPage: React.FC = () => {
         <form onSubmit={async (e) => { e.preventDefault(); if (loading || isSubmittingRef.current) return; isSubmittingRef.current = true; setLoading(true); try { await handleSavePerson(e); } finally { isSubmittingRef.current = false; setLoading(false); } }} className="p-1">
 <div className="flex flex-col lg:flex-row gap-4">
 <div className="lg:w-[40%] space-y-3">
+          <div className="mb-1 text-[11px] font-extrabold uppercase tracking-wide text-slate-400">Thông tin cá nhân</div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <label className="text-[13px] font-bold text-slate-700">Họ tên <span className="text-red-500">*</span></label>
               <input value={name} onChange={(event) => setName(event.target.value)} placeholder="Nhập họ tên" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:outline-none" required />
             </div>
             <div className="space-y-1">
+              <label className="text-[13px] font-bold text-slate-700">Số CCCD</label>
+              <input value={identityNumber} onChange={(event) => setIdentityNumber(event.target.value)} placeholder="Nhập số CCCD" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:outline-none" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-[13px] font-bold text-slate-700">Ngày vào công ty</label>
+              <input type="date" value={joinDate} onChange={(event) => setJoinDate(event.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:outline-none" />
+            </div>
+            <div className="space-y-1">
               <label className="text-[13px] font-bold text-slate-700">Số điện thoại</label>
               <input value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="Nhập SĐT" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:outline-none" />
             </div>
           </div>
+          <div className="space-y-1">
+            <label className="text-[13px] font-bold text-slate-700">Địa chỉ</label>
+            <input value={address} onChange={(event) => setAddress(event.target.value)} placeholder="Nhập địa chỉ hiện tại" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:outline-none" />
+          </div>
+
+          <div className="mt-3 mb-1 text-[11px] font-extrabold uppercase tracking-wide text-slate-400">Thông tin người thân</div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-[13px] font-bold text-slate-700">Tên người thân</label>
+              <input value={emergencyContactName} onChange={(event) => setEmergencyContactName(event.target.value)} placeholder="Họ tên người liên hệ" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:outline-none" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[13px] font-bold text-slate-700">SĐT người thân khẩn cấp</label>
+              <input value={emergencyPhone} onChange={(event) => setEmergencyPhone(event.target.value)} placeholder="Dùng khi không liên lạc được" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:outline-none" />
+            </div>
+          </div>
           
+            <div className="mt-3 mb-1 text-[11px] font-extrabold uppercase tracking-wide text-slate-400">Công việc</div>
             <div className="space-y-1 mb-3">
               <label className="text-[13px] font-bold text-slate-700">Vai trò / Chức danh</label>
               <input value={role} onChange={(event) => setRole(event.target.value)} placeholder="Nhập chức danh (VD: Quản trị viên, Trưởng phòng...)" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:outline-none" />
             </div>
 
+            <div className="mt-2 mb-1 text-[11px] font-extrabold uppercase tracking-wide text-slate-400">Tài khoản truy cập</div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <label className="text-[13px] font-bold text-slate-700">Tên đăng nhập</label>

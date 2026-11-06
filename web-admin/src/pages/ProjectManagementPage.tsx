@@ -1054,35 +1054,15 @@ export const ProjectManagementPage: React.FC = () => {
             <h1 className="page-title text-sm md:text-base font-extrabold text-slate-900 shrink-0">{TEXT.projectManagement}</h1>
           </div>
 
-          <div className="inline-flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200 shrink-0 gap-0.5 no-drag-region electron-no-drag" style={{ WebkitAppRegion: 'no-drag' } as any}>
-            <button
-              type="button"
-              onClick={() => setStatusFilter('all')}
-              style={{ WebkitAppRegion: 'no-drag' } as any}
-              className={`px-2.5 py-1 flex items-center gap-1.5 whitespace-nowrap text-xs rounded-md transition-all cursor-pointer select-none active:scale-95 no-drag-region electron-no-drag ${statusFilter === 'all' ? 'bg-white shadow-xs text-slate-900 ring-1 ring-slate-200/80 font-bold' : 'text-slate-600 hover:text-slate-900 font-medium hover:bg-white/50'}`}
-            >
-              <span>Tất cả</span> 
-              <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold leading-none bg-slate-200 text-slate-700">{counts.all}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setStatusFilter('active')}
-              style={{ WebkitAppRegion: 'no-drag' } as any}
-              className={`px-2.5 py-1 flex items-center gap-1.5 whitespace-nowrap text-xs rounded-md transition-all cursor-pointer select-none active:scale-95 no-drag-region electron-no-drag ${statusFilter === 'active' ? 'bg-white shadow-xs text-slate-900 ring-1 ring-slate-200/80 font-bold' : 'text-slate-600 hover:text-slate-900 font-medium hover:bg-white/50'}`}
-            >
-              <span>Đang triển khai</span> 
-              <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold leading-none bg-slate-200 text-slate-700">{counts.active}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setStatusFilter('completed')}
-              style={{ WebkitAppRegion: 'no-drag' } as any}
-              className={`px-2.5 py-1 flex items-center gap-1.5 whitespace-nowrap text-xs rounded-md transition-all cursor-pointer select-none active:scale-95 no-drag-region electron-no-drag ${statusFilter === 'completed' ? 'bg-white shadow-xs text-slate-900 ring-1 ring-slate-200/80 font-bold' : 'text-slate-600 hover:text-slate-900 font-medium hover:bg-white/50'}`}
-            >
-              <span>Hoàn thành</span> 
-              <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold leading-none bg-slate-200 text-slate-700">{counts.completed}</span>
-            </button>
-          </div>
+          <CustomSelect
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as 'all' | 'active' | 'completed' | 'on_hold')}
+            className="h-[34px] min-w-[150px] rounded-lg border border-slate-200 bg-white px-2 text-xs font-bold text-slate-700 shadow-2xs outline-none focus:border-primary"
+          >
+            <option value="all">Tất cả ({counts.all})</option>
+            <option value="active">Đang triển khai ({counts.active})</option>
+            <option value="completed">Hoàn thành ({counts.completed})</option>
+          </CustomSelect>
 
           {/* Bộ lọc dải ngày (Từ ngày ... Đến ngày ...) */}
           <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-lg px-2 py-0.5 h-[34px] shadow-2xs text-xs shrink-0">

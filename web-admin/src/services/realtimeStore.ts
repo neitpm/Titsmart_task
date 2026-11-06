@@ -477,8 +477,8 @@ interface RealtimeStoreState {
   updateTaskProgress: (id: string, progress: number, isDone: boolean) => void;
   assignEngineer: (taskId: string, engineerId: string, engineerName: string) => void;
   addEngineer: (engineer: Omit<Engineer, 'id'>) => Engineer;
-  createEngineer: (input: { name: string; phone?: string; email?: string; title?: string; role?: string; username?: string; password?: string; isLocked?: boolean; projectCodes?: string[]; permissions?: import('../types').Permission[] }) => Promise<Engineer>;
-  updateEngineer: (id: string, input: { name: string; phone?: string; title?: string; role?: string; username?: string; password?: string; isLocked?: boolean; projectCodes?: string[]; permissions?: import('../types').Permission[] }) => Promise<Engineer>;
+  createEngineer: (input: { name: string; phone?: string; emergencyPhone?: string; joinDate?: string; address?: string; identityNumber?: string; emergencyContactName?: string; email?: string; title?: string; role?: string; username?: string; password?: string; isLocked?: boolean; projectCodes?: string[]; permissions?: import('../types').Permission[] }) => Promise<Engineer>;
+  updateEngineer: (id: string, input: { name: string; phone?: string; emergencyPhone?: string; joinDate?: string; address?: string; identityNumber?: string; emergencyContactName?: string; title?: string; role?: string; username?: string; password?: string; isLocked?: boolean; projectCodes?: string[]; permissions?: import('../types').Permission[] }) => Promise<Engineer>;
   deleteEngineer: (id: string) => Promise<void>;
   deleteTask: (id: string) => void;
 
@@ -1490,6 +1490,11 @@ export const useRealtimeStore = create<RealtimeStoreState>((set, get) => {
           isLocked: input.isLocked,
         name: input.name,
         phone: input.phone,
+        emergencyPhone: input.emergencyPhone,
+        joinDate: input.joinDate,
+        address: input.address,
+        identityNumber: input.identityNumber,
+        emergencyContactName: input.emergencyContactName,
         email: input.email,
         title: input.title,
         projectCodes: input.projectCodes,
@@ -1511,6 +1516,11 @@ export const useRealtimeStore = create<RealtimeStoreState>((set, get) => {
       const updateData: any = {};
       if (input.name !== undefined) updateData.name = input.name;
       if (input.phone !== undefined) updateData.phone = input.phone;
+      if (input.emergencyPhone !== undefined) updateData.emergencyPhone = input.emergencyPhone;
+      if (input.joinDate !== undefined) updateData.joinDate = input.joinDate;
+      if (input.address !== undefined) updateData.address = input.address;
+      if (input.identityNumber !== undefined) updateData.identityNumber = input.identityNumber;
+      if (input.emergencyContactName !== undefined) updateData.emergencyContactName = input.emergencyContactName;
       if (input.title !== undefined) updateData.title = input.title;
       if (input.role !== undefined) updateData.role = input.role;
       if (input.username !== undefined) updateData.username = input.username;

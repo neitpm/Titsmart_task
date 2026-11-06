@@ -183,6 +183,11 @@ export interface Engineer {
   isLocked?: boolean;
   avatar: string;
   phone: string;
+  emergencyPhone?: string;
+  joinDate?: string;
+  address?: string;
+  identityNumber?: string;
+  emergencyContactName?: string;
   email: string;
   managedProjects?: { code: string; name: string }[];
   memberProjects?: { code: string; name: string }[];

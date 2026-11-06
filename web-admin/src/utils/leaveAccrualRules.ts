@@ -41,8 +41,22 @@ export function calculateYearLeaveAccrual(
   year: number,
   allLeaves: LeaveRequest[],
   upToMonth: number = 12,
-  adjustments: AttendanceAdjustmentRequest[] = []
+  adjustments: AttendanceAdjustmentRequest[] = [],
+  joinDate?: string
 ): YearLeaveBalanceSummary {
+  // Có ngày vào công ty: chỉ bắt đầu cộng phép sau khi đã đủ 1 tháng làm việc.
+  // Không có dữ liệu ngày vào (nhân sự cũ): giữ quy tắc cũ, mỗi tháng cộng 1 ngày.
+  const parsedJoinDate = joinDate ? new Date(`${String(joinDate).slice(0, 10)}T00:00:00`) : null;
+  const validJoinDate = parsedJoinDate && !Number.isNaN(parsedJoinDate.getTime()) ? parsedJoinDate : null;
+  const addOneMonth = (date: Date) => {
+    const result = new Date(date);
+    const originalDay = result.getDate();
+    result.setDate(1);
+    result.setMonth(result.getMonth() + 1);
+    const lastDay = new Date(result.getFullYear(), result.getMonth() + 1, 0).getDate();
+    result.setDate(Math.min(originalDay, lastDay));
+    return result;
+  };
   // Tập hợp các ngày đã được duyệt chấm công bù của nhân viên này trong năm đang xét (YYYY-MM-DD)
   const approvedAdjDates = new Set<string>();
   const approvedHalfAdjDates = new Map<string, number>(); // date -> portion (0.5 hoặc 1)
@@ -116,8 +130,10 @@ export function calculateYearLeaveAccrual(
   const monthlyDetails: Record<number, LeaveAccrualMonthResult> = {};
 
   for (let m = 1; m <= 12; m++) {
-    // Mỗi tháng cộng thêm 1 ngày phép, tối đa không quá 12 ngày/năm
-    const accruedThisMonth = cumulativeAccrued < 12 ? 1 : 0;
+    // Chỉ cộng phép khi đã hoàn tất ít nhất 1 tháng tính đến cuối tháng này.
+    const monthEnd = new Date(year, m, 0);
+    const eligibleAfterOneMonth = !validJoinDate || monthEnd >= addOneMonth(validJoinDate);
+    const accruedThisMonth = eligibleAfterOneMonth && cumulativeAccrued < 12 ? 1 : 0;
     cumulativeAccrued += accruedThisMonth;
     remainingBalance += accruedThisMonth;
 

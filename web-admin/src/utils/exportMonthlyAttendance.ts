@@ -284,7 +284,8 @@ export async function exportMonthlyAttendanceTitsmart({
     if (!leaveByEmpDay[uId]) leaveByEmpDay[uId] = {};
 
     // 1. Tính toán quota phép có lương được phép dùng trong tháng hiện tại (có tính hoàn trả khi có bù công)
-    const yearSummary = calculateYearLeaveAccrual(uId, year, uLeaves, month, adjustments);
+    const employee = engineers.find(e => e.id === uId);
+    const yearSummary = calculateYearLeaveAccrual(uId, year, uLeaves, month, adjustments, employee?.joinDate);
     // Số ngày phép có lương còn khả dụng bước vào đầu tháng này = số dư cuối tháng trước + 1 ngày của tháng này
     const prevMonthRemaining = month === 1 ? 0 : (yearSummary.monthlyDetails[month - 1]?.remainingLeaveEndOfMonth || 0);
     const accruedThisMonth = (month <= 12 && (month === 1 ? 1 : (yearSummary.monthlyDetails[month]?.cumulativeAccrued || 0) <= 12)) ? 1 : 0;

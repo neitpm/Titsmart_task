@@ -557,8 +557,9 @@ export const AttendancePage: React.FC = () => {
   const myLeaveBalance: YearLeaveBalanceSummary | null = React.useMemo(() => {
     if (!targetLeaveUserId) return null;
     const currentMonth = leaveSelectedYear === new Date().getFullYear() ? (new Date().getMonth() + 1) : 12;
-    return calculateYearLeaveAccrual(targetLeaveUserId, leaveSelectedYear, leaves, currentMonth, adjustments);
-  }, [targetLeaveUserId, leaveSelectedYear, leaves, adjustments]);
+    const targetEngineer = engineers.find(e => e.id === targetLeaveUserId);
+    return calculateYearLeaveAccrual(targetLeaveUserId, leaveSelectedYear, leaves, currentMonth, adjustments, targetEngineer?.joinDate);
+  }, [targetLeaveUserId, leaveSelectedYear, leaves, adjustments, engineers]);
 
   // Lọc danh sách chấm công bù ngay trong bộ nhớ (0ms latency)
   const displayedAdjustments = React.useMemo(() => {
@@ -1923,24 +1924,6 @@ export const AttendancePage: React.FC = () => {
             {myLeaveBalance && (
               <div className="mx-3 sm:mx-6 py-2 border-b border-slate-200/80 flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="flex items-center gap-1.5 text-xs font-black text-slate-800">
-                    <span className="material-symbols-outlined text-primary text-base">event_note</span>
-                    Quỹ phép năm:
-                  </span>
-
-                  {/* Chọn Năm */}
-                  <div className="w-24">
-                    <CustomSelect
-                      value={leaveSelectedYear}
-                      onChange={e => setLeaveSelectedYear(Number(e.target.value))}
-                      className="px-2 py-0.5 border border-slate-200 rounded-lg text-xs font-black bg-slate-50 outline-none h-7"
-                    >
-                      {[2024, 2025, 2026, 2027].map(y => (
-                        <option key={y} value={y}>{y}</option>
-                      ))}
-                    </CustomSelect>
-                  </div>
-
                   {/* Chọn Nhân viên nếu ở tab Tất cả */}
                   {canViewAll && tab === 'all' && (
                     <div className="w-36">
