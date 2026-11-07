@@ -258,17 +258,31 @@ export const TaskManagementPage: React.FC = () => {
 
     const constrStatus = task.constrStatus && task.constrStatus !== 'Chưa thi công' ? task.constrStatus : 'Đang thi công';
     const nextProgress = calculateTaskProgressFromStatuses(task.purchaseStatus, constrStatus);
+    const userName = authStore.user?.name || authStore.user?.username || 'Một nhân sự';
+    const userId = authStore.user?.id || '';
+    const nowIso = new Date().toISOString();
+
+    const updatedNotes = appendTaskDiscussion(task.notes || '', {
+      type: 'system',
+      content: 'Đã xác nhận nhận công việc',
+      senderId: userId,
+      senderName: userName,
+      senderRole: 'Nhân sự đảm nhiệm',
+      createdAt: nowIso
+    });
+
     handleUpdateTaskSync(task.id, { 
       status: 'Đang làm', 
       progress: nextProgress, 
-      constrStatus: constrStatus 
+      constrStatus: constrStatus,
+      updatedBy: userName,
+      updatedAt: nowIso,
+      notes: updatedNotes
     });
     triggerToast('Đã xác nhận nhận việc!', 'success');
     
     // Log activity to inform Admin
     const store = useRealtimeStore.getState();
-    const userName = authStore.user?.name || authStore.user?.username || 'Một nhân sự';
-    const userId = authStore.user?.id || '';
     store.logActivity(`Nhân sự ${userName} đã XÁC NHẬN NHẬN VIỆC hạng mục: "${task.name}"`, task.projectCode || task.projectName);
     
     // Also add explicit notification to assigner
@@ -288,17 +302,31 @@ export const TaskManagementPage: React.FC = () => {
   const handleReportDone = async (task: Task) => {
     const constrStatus = 'Chờ nghiệm thu';
     const nextProgress = calculateTaskProgressFromStatuses(task.purchaseStatus, constrStatus);
+    const userName = authStore.user?.name || authStore.user?.username || 'Một nhân sự';
+    const userId = authStore.user?.id || '';
+    const nowIso = new Date().toISOString();
+
+    const updatedNotes = appendTaskDiscussion(task.notes || '', {
+      type: 'system',
+      content: 'Đã báo cáo hoàn thành công việc (Chờ nghiệm thu)',
+      senderId: userId,
+      senderName: userName,
+      senderRole: 'Nhân sự đảm nhiệm',
+      createdAt: nowIso
+    });
+
     handleUpdateTaskSync(task.id, { 
       status: 'Chờ nghiệm thu', 
       progress: nextProgress, 
       constrStatus: constrStatus,
-      isDone: false
+      isDone: false,
+      updatedBy: userName,
+      updatedAt: nowIso,
+      notes: updatedNotes
     });
     triggerToast('Đã báo cáo hoàn thành! Đang chờ người giao việc nghiệm thu.', 'success');
 
     const store = useRealtimeStore.getState();
-    const userName = authStore.user?.name || authStore.user?.username || 'Một nhân sự';
-    const userId = authStore.user?.id || '';
     store.logActivity(`Nhân sự ${userName} đã BÁO CÁO HOÀN THÀNH hạng mục: "${task.name}" (Chờ nghiệm thu)`, task.projectCode || task.projectName);
 
     if (store.addNotification) {
@@ -316,8 +344,9 @@ export const TaskManagementPage: React.FC = () => {
 
   const canApproveTask = (currentUser: any, task: any): boolean => {
     if (!currentUser || !task) return false;
-    if (task.status !== 'Chờ nghiệm thu') return false;
-    return isUserTaskAssigner(currentUser, task, engineers);
+    if (!isUserTaskAssigner(currentUser, task, engineers)) return false;
+    // Cho phép nghiệm thu khi: Đang chờ nghiệm thu, hoặc tiến độ đã đạt 100%, hoặc đã hoàn thành thi công
+    return task.status === 'Chờ nghiệm thu' || task.progress >= 1 || task.constrStatus === 'Đã hoàn thành' || task.status === 'Hoàn thành';
   };
 
   const handleApproveTask = async (task: Task) => {
@@ -325,12 +354,33 @@ export const TaskManagementPage: React.FC = () => {
       triggerToast('Chỉ người giao việc mới có quyền nghiệm thu!', 'warning');
       return;
     }
-    handleUpdateTaskSync(task.id, { status: 'Hoàn thành', progress: 1, constrStatus: 'Đã hoàn thành', isDone: true });
+    const adminName = authStore.user?.name || authStore.user?.username || 'Quản lý';
+    const adminId = authStore.user?.id || '';
+    const nowIso = new Date().toISOString();
+
+    const updatedNotes = appendTaskDiscussion(task.notes || '', {
+      type: 'system',
+      content: `Đã nghiệm thu hoàn thành công việc`,
+      senderId: adminId,
+      senderName: adminName,
+      senderRole: 'Người giao việc',
+      createdAt: nowIso
+    });
+
+    handleUpdateTaskSync(task.id, { 
+      status: 'Hoàn thành', 
+      progress: 1, 
+      constrStatus: 'Đã hoàn thành', 
+      isDone: true,
+      reviewerId: adminId,
+      reviewerName: adminName,
+      updatedBy: adminName,
+      updatedAt: nowIso,
+      notes: updatedNotes
+    });
     triggerToast(`Đã nghiệm thu hoàn thành: "${task.name}"!`, 'success');
 
     const store = useRealtimeStore.getState();
-    const adminName = authStore.user?.name || authStore.user?.username || 'Quản lý';
-    const adminId = authStore.user?.id || '';
     store.logActivity(`Người giao việc ${adminName} đã NGHIỆM THU HOÀN THÀNH công việc: "${task.name}"`, task.projectCode || task.projectName);
 
     if (store.addNotification && (task.assignedEngineerId || task.assignedEngineerName)) {

@@ -400,7 +400,11 @@ export const AuditInfoCell: React.FC<{
         if (disc.type === 'question') actionLabel = `Thắc mắc: "${disc.content}"`;
         else if (disc.type === 'reply') actionLabel = `Phản hồi hướng dẫn: "${disc.content}"`;
         else if (disc.type === 'assign_note') actionLabel = `Ghi chú giao việc: "${disc.content}"`;
-        else actionLabel = `Ghi chú: "${disc.content}"`;
+        else if (disc.type === 'system' || disc.content.toLowerCase().includes('nghiệm thu') || disc.content.toLowerCase().includes('hoàn thành') || disc.content.toLowerCase().includes('nhận việc')) {
+          actionLabel = disc.content;
+        } else {
+          actionLabel = `Ghi chú: "${disc.content}"`;
+        }
 
         if (!map.has(u)) {
           const eng = (engineers || []).find(e => e?.name?.toLowerCase() === u.toLowerCase());
@@ -428,7 +432,16 @@ export const AuditInfoCell: React.FC<{
     }
 
     // 2. Lọc activityLogs theo dự án và tên hạng mục (nếu có)
-    const sourceLogs = scopedLogs || (activityLogs || []);
+    // Gộp cả scopedLogs từ server và activityLogs từ store để hiển thị tức thì mọi hành động vừa diễn ra
+    const rawCombinedLogs = [...(scopedLogs || []), ...(activityLogs || [])];
+    const seenLogKeys = new Set<string>();
+    const sourceLogs = rawCombinedLogs.filter(log => {
+      if (!log) return false;
+      const key = `${log.id || ''}:::${log.action || ''}:::${log.timestamp || ''}`;
+      if (seenLogKeys.has(key)) return false;
+      seenLogKeys.add(key);
+      return true;
+    });
     const filteredLogs = sourceLogs.filter(log => {
       if (!log) return false;
       const logAction = String(log.action || '').toLowerCase();
