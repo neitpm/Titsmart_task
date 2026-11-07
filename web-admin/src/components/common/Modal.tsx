@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 
 interface ModalProps {
   isOpen: boolean;
@@ -9,6 +9,7 @@ interface ModalProps {
   icon?: string;
   defaultMaximized?: boolean;
   requireConfirmOnClose?: boolean;
+  isDirty?: boolean;
   zIndexClass?: string;
 }
 
@@ -29,15 +30,73 @@ export const Modal: React.FC<ModalProps> = ({
   icon = 'add_task',
   defaultMaximized = false,
   requireConfirmOnClose = true,
+  isDirty,
   zIndexClass = "z-[100]",
 }) => {
   const [isMaximized, setIsMaximized] = useState<boolean>(defaultMaximized);
   const [showExitConfirm, setShowExitConfirm] = useState<boolean>(false);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const initialSnapshotRef = useRef<string | null>(null);
+
+  // Helper hàm chụp trạng thái hiện tại của tất cả inputs/textareas/selects trong modal
+  const captureFormSnapshot = useCallback((): string => {
+    if (!contentRef.current) return '';
+    const elements = contentRef.current.querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(
+      'input:not([type="hidden"]):not([type="button"]):not([type="submit"]):not([type="reset"]), textarea, select'
+    );
+    const parts: string[] = [];
+    elements.forEach((el, index) => {
+      const type = el.getAttribute('type') || el.tagName.toLowerCase();
+      if (type === 'checkbox' || type === 'radio') {
+        parts.push(`${index}:${(el as HTMLInputElement).checked}`);
+      } else {
+        parts.push(`${index}:${el.value}`);
+      }
+    });
+    return parts.join('|||');
+  }, []);
+
+  // Chụp snapshot ban đầu sau khi modal mở và các input đã render xong
+  useEffect(() => {
+    if (isOpen) {
+      setShowExitConfirm(false);
+      initialSnapshotRef.current = null;
+      // Chờ form fill giá trị ban đầu vào input
+      const timer = setTimeout(() => {
+        initialSnapshotRef.current = captureFormSnapshot();
+      }, 150);
+      return () => clearTimeout(timer);
+    } else {
+      initialSnapshotRef.current = null;
+      setShowExitConfirm(false);
+    }
+  }, [isOpen, captureFormSnapshot]);
 
   if (!isOpen) return null;
 
+  // Kiểm tra người dùng có thực sự thay đổi dữ liệu hay không
+  const checkHasUserChanges = (): boolean => {
+    // Nếu cha có truyền cờ isDirty rõ ràng
+    if (typeof isDirty === 'boolean') {
+      return isDirty;
+    }
+    // Nếu chụp được snapshot ban đầu, so sánh với snapshot hiện tại
+    if (initialSnapshotRef.current !== null) {
+      const currentSnapshot = captureFormSnapshot();
+      return currentSnapshot !== initialSnapshotRef.current;
+    }
+    return false;
+  };
+
   const handleCloseClick = () => {
-    if (requireConfirmOnClose) {
+    if (!requireConfirmOnClose) {
+      onClose();
+      return;
+    }
+
+    // Chỉ hỏi khi có thay đổi dữ liệu thực tế
+    const hasChanges = checkHasUserChanges();
+    if (hasChanges) {
       setShowExitConfirm(true);
     } else {
       onClose();
@@ -82,7 +141,7 @@ export const Modal: React.FC<ModalProps> = ({
           </div>
 
           {/* Modal Content */}
-          <div className={`${size === 'full' ? 'p-1 sm:p-4' : 'p-3.5 sm:p-4'} overflow-y-auto custom-scrollbar flex-1 flex flex-col min-h-0 h-full`}>{children}</div>
+          <div ref={contentRef} className={`${size === 'full' ? 'p-1 sm:p-4' : 'p-3.5 sm:p-4'} overflow-y-auto custom-scrollbar flex-1 flex flex-col min-h-0 h-full`}>{children}</div>
         </div>
       </div>
 
