@@ -2370,39 +2370,6 @@ export const ProjectCostPlanPage: React.FC = () => {
         {activeTab === 'EXPENSE' && (
           <div className="h-full overflow-y-auto overflow-x-hidden custom-scrollbar bg-white flex flex-col pb-16 md:pb-0" id="expense-unified-view">
 
-            <div className="flex items-center gap-1 border-b border-slate-200 bg-white px-3 md:px-5 py-2 shrink-0">
-              {([
-                ['SUMMARY', 'Danh sách chi phí'],
-                ['LABOR', 'Nhân công'],
-                
-              ] as const).map(([value, label]) => (
-                <button key={value} type="button" onClick={() => setExpenseSubTab(value)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${expenseSubTab === value ? 'bg-primary text-white' : 'text-slate-600 hover:bg-slate-100'}`}>
-                  {label}
-                </button>
-              ))}
-            </div>
-
-            {expenseSubTab === 'FUND_REQUEST' && (
-              <div className="p-4 md:p-6 space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-base font-extrabold text-slate-900">Yêu cầu cấp quỹ</h2>
-                    <p className="text-xs text-slate-500 mt-1">Tạo yêu cầu cấp tiền cho dự án đang chọn.</p>
-                  </div>
-                  <button type="button" onClick={() => setFundRequestOpen(true)} className="px-3 py-2 rounded-lg bg-primary text-white text-xs font-bold flex items-center gap-1">
-                    <span className="material-symbols-outlined text-sm">add</span> Tạo yêu cầu
-                  </button>
-                </div>
-                <div className="overflow-x-auto border border-slate-200 rounded-xl">
-                  <table className="w-full text-xs text-left"><thead className="bg-slate-50 text-slate-500"><tr><th className="p-3">Ngày cần</th><th className="p-3">Loại quỹ</th><th className="p-3">Mục đích</th><th className="p-3 text-right">Số tiền</th><th className="p-3">Trạng thái</th></tr></thead>
-                    <tbody>{fundRequests.map((request) => <tr key={request.id} className="border-t border-slate-100"><td className="p-3">{request.neededDate}</td><td className="p-3">{request.type}</td><td className="p-3">{request.purpose}</td><td className="p-3 text-right font-bold">{Number(request.amount || 0).toLocaleString('vi-VN')} đ</td><td className="p-3"><span className="px-2 py-1 rounded-full bg-amber-50 text-amber-700 font-bold">Chờ duyệt</span></td></tr>)}</tbody>
-                  </table>
-                  {fundRequests.length === 0 && <div className="p-10 text-center text-slate-400 text-xs">Chưa có yêu cầu cấp quỹ.</div>}
-                </div>
-              </div>
-            )}
-
             {/* 1. BỘ LỌC & CÔNG CỤ (TOOLBAR TRÊN CÙNG) */}
             <div className="flex border-b border-slate-200 bg-slate-50 px-3 md:px-5 py-2 gap-2 md:gap-3 sticky top-0 z-30 items-center justify-between text-xs text-slate-600 overflow-visible shadow-xs">
               <div className="hidden md:flex items-center gap-2 md:gap-3 flex-wrap sm:flex-nowrap">

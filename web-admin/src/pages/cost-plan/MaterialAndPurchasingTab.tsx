@@ -822,6 +822,33 @@ export const MaterialAndPurchasingTab: React.FC<MaterialAndPurchasingTabProps> =
   const saveEditing = (plan: ProjectMaterialPlan, pRecord?: ProjectPurchasing) => {
     if (!editingCell) return;
     const { id, field, isPurchasing } = editingCell;
+
+    // Kiểm tra nếu giá trị không hề thay đổi thì thoát ngay, không cập nhật gì
+    if (isPurchasing) {
+      const activeRecord = pRecord;
+      if (activeRecord) {
+        const origVal = (activeRecord as any)[field];
+        if (field === 'notes') {
+          const cleanCur = String(origVal || '').replace(/(\[order:[\d.]+\]|\[section\]|\[contractor\]|\[owner\])/gi, '').trim();
+          const cleanNew = String(tempValue || '').trim();
+          if (cleanCur === cleanNew) { setEditingCell(null); return; }
+        } else if (['volumeOrder', 'unitPrice', 'vatRate', 'prepayPercent', 'prepayAmount', 'costPaidAmount'].includes(field as string)) {
+          if (Number(tempValue || 0) === Number(origVal || 0)) { setEditingCell(null); return; }
+        } else {
+          if (String(tempValue ?? '').trim() === String(origVal ?? '').trim()) { setEditingCell(null); return; }
+        }
+      }
+    } else {
+      if (field === 'notes') {
+        const cleanCur = String(cleanTechNotes(plan.notes) || '').trim();
+        const cleanNew = String(tempValue || '').trim();
+        if (cleanCur === cleanNew) { setEditingCell(null); return; }
+      } else {
+        const origVal = (plan as any)[field];
+        if (String(tempValue ?? '').trim() === String(origVal ?? '').trim()) { setEditingCell(null); return; }
+      }
+    }
+
     let finalValue = tempValue;
 
     if (isPurchasing) {

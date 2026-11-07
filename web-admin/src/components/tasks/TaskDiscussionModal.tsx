@@ -132,6 +132,46 @@ export const TaskDiscussionModal: React.FC<TaskDiscussionModalProps> = ({
     if (!inputText.trim() && !selectedFile) return;
     setIsSubmitting(true);
     try {
+      // Nếu task đã hoàn thành hoặc đang chờ nghiệm thu, chỉ lưu tin nhắn trao đổi, không gọi qua onSendReply / onSendQuestion để tránh thay đổi status
+      if (isCompleted || isWaitingApproval) {
+        const store = useRealtimeStore.getState();
+        const senderRole = isFollower ? 'Người theo dõi' : (isAssigner ? 'Người giao việc' : 'Người nhận việc');
+        const updatedNotes = appendTaskDiscussion(task.notes || '', {
+          senderId: activeUserId,
+          senderName: activeUserName,
+          senderRole: senderRole,
+          type: 'note',
+          content: inputText.trim(),
+          fileUrl: selectedFile?.url,
+          fileType: selectedFile?.type,
+          fileName: selectedFile?.name
+        });
+        await store.updateTask(task.id, { 
+          notes: updatedNotes
+        });
+
+        if (store.addNotification) {
+          const parts = String(task.assignedEngineerName || '').split('|');
+          const engIds = (parts.length > 1 ? parts[1] : (task.assignedEngineerId || '')).split(',').map(s => s.trim()).filter(Boolean);
+          const engNames = (parts[0] || (task.assignedEngineerName || '')).split(',').map(s => s.trim()).filter(Boolean);
+          const targetIdList = Array.from(new Set([task.assignerId || 'admin', ...engIds, ...(task.followerIds || [])])).filter(Boolean);
+          const targetNameList = Array.from(new Set([task.assignerName || 'Quản lý', ...engNames, ...(task.followerNames || [])])).filter(Boolean);
+
+          await store.addNotification({
+            title: `Trao đổi công việc: ${task.name}`,
+            message: `${activeUserName} đã gửi trao đổi về công việc "${task.name}" [${task.projectCode}]: "${inputText.trim()}".`,
+            link: `/projects/${encodeURIComponent(task.projectCode)}/tasks?taskId=${encodeURIComponent(task.id)}&highlight=${encodeURIComponent(task.name || '')}`,
+            type: `task_reply:::${targetIdList.join(',')}:::${targetNameList.join(',')}`,
+            icon: 'chat',
+            senderId: activeUserId,
+            senderName: activeUserName
+          });
+        }
+        setInputText('');
+        setSelectedFile(null);
+        return;
+      }
+
       if (isAssignee && hasQuestion && onSendQuestion) {
         await (onSendQuestion as any)(task, inputText.trim(), selectedFile || undefined);
       } else if (onSendReply) {
@@ -501,11 +541,19 @@ export const TaskDiscussionModal: React.FC<TaskDiscussionModalProps> = ({
                 onKeyDown={e => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
-                    if (isAssignee && (isWaitingAccept || hasQuestion)) handleQuestionSubmit();
-                    else if (isAssigner && (hasQuestion || isWaitingAccept)) handleReplySubmit();
-                    else if (onSendReply) handleReplySubmit();
-                    else if (onSendQuestion) handleQuestionSubmit();
-                    else handleGenericSubmit();
+                    if (isCompleted || isWaitingApproval) {
+                      handleGenericSubmit();
+                    } else if (isAssignee && (isWaitingAccept || hasQuestion)) {
+                      handleQuestionSubmit();
+                    } else if (isAssigner && (hasQuestion || isWaitingAccept)) {
+                      handleReplySubmit();
+                    } else if (onSendReply) {
+                      handleReplySubmit();
+                    } else if (onSendQuestion) {
+                      handleQuestionSubmit();
+                    } else {
+                      handleGenericSubmit();
+                    }
                   }
                 }}
                 placeholder={isFollower ? "Người theo dõi trao đổi, góp ý hoặc đính kèm tài liệu/ảnh..." : "Nhập nội dung trao đổi, đính kèm ảnh hoặc tệp tin..."}
@@ -622,6 +670,25 @@ export const TaskDiscussionModal: React.FC<TaskDiscussionModalProps> = ({
               >
                 <span className="material-symbols-outlined text-base">verified</span>
                 Nghiệm thu hoàn thành
+              </button>
+            </>
+          ) : isCompleted || isWaitingApproval ? (
+            <>
+              <button 
+                type="button"
+                onClick={onClose} 
+                className="px-4 py-2.5 rounded-xl text-xs font-bold border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 transition-colors shadow-2xs cursor-pointer"
+              >
+                Đóng
+              </button>
+              <button 
+                type="button"
+                onClick={handleGenericSubmit}
+                disabled={isSubmitting || (!inputText.trim() && !selectedFile)}
+                className="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-primary hover:bg-primary/90 disabled:opacity-50 shadow-sm hover:shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-base">send</span>
+                {isSubmitting ? 'Đang gửi...' : 'Gửi trao đổi'}
               </button>
             </>
           ) : (

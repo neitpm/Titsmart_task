@@ -1391,16 +1391,27 @@ export const useRealtimeStore = create<RealtimeStoreState>((set, get) => {
           if (updatedFields.progress !== undefined && updatedFields.progress !== existingTask.progress) changes.push(`Tiến độ: ${Math.round((existingTask.progress || 0) * 100)}% -> ${Math.round(updatedFields.progress * 100)}%`);
           if (updatedFields.volume !== undefined && updatedFields.volume !== existingTask.volume) changes.push(`Khối lượng: ${existingTask.volume || 0} -> ${updatedFields.volume}`);
           if (updatedFields.unit !== undefined && updatedFields.unit !== existingTask.unit) changes.push(`ĐVT: "${existingTask.unit || ''}" -> "${updatedFields.unit || ''}"`);
-          if (updatedFields.assignedEngineerName !== undefined && updatedFields.assignedEngineerName !== existingTask.assignedEngineerName) changes.push(`Phân công: "${existingTask.assignedEngineerName || 'Chưa giao'}" -> "${updatedFields.assignedEngineerName || 'Chưa giao'}"`);
+          if (updatedFields.assignedEngineerName !== undefined && updatedFields.assignedEngineerName !== existingTask.assignedEngineerName) {
+            const cleanName = (val: string) => String(val || '').split('|')[0].trim() || 'Chưa giao';
+            const beforeName = cleanName(existingTask.assignedEngineerName || '');
+            const afterName = cleanName(updatedFields.assignedEngineerName || '');
+            if (beforeName !== afterName) {
+              changes.push(`Phân công: "${beforeName}" -> "${afterName}"`);
+            }
+          }
           const fieldLabels: Record<string, string> = {
             code: 'Mã hiệu', issue: 'Vấn đề', issueStatus: 'Trạng thái vấn đề',
             techSpecStatus: 'Tình trạng kỹ thuật', dueDate: 'Hạn hoàn thành',
-            notes: 'Ghi chú', assignedEngineerId: 'Người thực hiện',
-            reviewerId: 'Người nghiệm thu', followerIds: 'Người theo dõi',
+            notes: 'Ghi chú', followerNames: 'Người theo dõi', reviewerName: 'Người nghiệm thu',
             parentId: 'Đầu mục cha', priority: 'Độ ưu tiên', isDone: 'Hoàn thành'
           };
+          // Bỏ qua các trường ID kỹ thuật nội bộ hoặc trường hệ thống gây rác log
+          const ignoredFields = [
+            'name', 'stt', 'status', 'purchaseStatus', 'constrStatus', 'progress', 'volume', 'unit', 'assignedEngineerName',
+            'assignedEngineerId', 'assignerId', 'assignerName', 'reviewerId', 'followerIds', 'updatedBy', 'updatedAt', 'id', 'created_at'
+          ];
           Object.entries(updatedFields).forEach(([key, nextValue]) => {
-            if (['name', 'stt', 'status', 'purchaseStatus', 'constrStatus', 'progress', 'volume', 'unit', 'assignedEngineerName'].includes(key)) return;
+            if (ignoredFields.includes(key)) return;
             const previousValue = (existingTask as any)[key];
             if (JSON.stringify(previousValue) !== JSON.stringify(nextValue)) {
               const label = fieldLabels[key] || key;

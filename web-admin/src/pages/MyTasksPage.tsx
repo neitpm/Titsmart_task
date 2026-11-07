@@ -309,13 +309,14 @@ export const MyTasksPage: React.FC = () => {
     const userName = user?.name || user?.username || 'Nhân sự';
     const userId = user?.id || '';
     const isCurrentlyDoing = task.status === 'Đang làm';
-    const nextStatus = 'Có thắc mắc';
+    const isDoneOrCompleted = task.status === 'Hoàn thành' || task.status === 'Chờ nghiệm thu' || task.isDone;
+    const nextStatus = isDoneOrCompleted ? task.status : (isCurrentlyDoing ? 'Đang làm' : 'Có thắc mắc');
 
     const updatedNotes = appendTaskDiscussion(task.notes || '', {
       senderId: userId,
       senderName: userName,
       senderRole: 'Nhân sự thực hiện',
-      type: isCurrentlyDoing ? 'note' : 'question',
+      type: isDoneOrCompleted || isCurrentlyDoing ? 'note' : 'question',
       content: questionText,
       fileUrl: fileAttachment?.url,
       fileType: fileAttachment?.type,
@@ -382,9 +383,12 @@ export const MyTasksPage: React.FC = () => {
       fileName: fileAttachment?.name
     });
 
-    const nextStatus = (task.status === 'Đang làm' || task.status === 'Chờ nghiệm thu' || task.status === 'Hoàn thành')
+    const isDoneOrCompleted = task.status === 'Hoàn thành' || task.status === 'Chờ nghiệm thu' || task.isDone;
+    const nextStatus = isDoneOrCompleted
       ? task.status
-      : (isAssigner ? 'Chờ nhận việc' : task.status);
+      : (task.status === 'Đang làm'
+        ? task.status
+        : (task.status === 'Có thắc mắc' ? 'Chờ nhận việc' : task.status));
 
     updateTask(task.id, {
       status: nextStatus,

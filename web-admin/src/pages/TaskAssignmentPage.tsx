@@ -223,9 +223,12 @@ export const TaskAssignmentPage: React.FC = () => {
       fileName: fileAttachment?.name
     });
 
-    const nextStatus = (task.status === 'Đang làm' || task.status === 'Chờ nghiệm thu' || task.status === 'Hoàn thành')
+    const isDoneOrCompleted = task.status === 'Hoàn thành' || task.status === 'Chờ nghiệm thu' || task.isDone;
+    const nextStatus = isDoneOrCompleted
       ? task.status
-      : (isAssigner ? 'Chờ nhận việc' : task.status);
+      : (task.status === 'Đang làm'
+        ? task.status
+        : (task.status === 'Có thắc mắc' ? 'Chờ nhận việc' : task.status));
 
     updateTask(task.id, {
       status: nextStatus,
@@ -973,6 +976,11 @@ export const TaskAssignmentPage: React.FC = () => {
           fileName: selectedFile?.name
         });
       }
+      const isTaskDoneOrCompleted = existingTask && (existingTask.status === 'Hoàn thành' || existingTask.status === 'Chờ nghiệm thu' || existingTask.isDone || (existingTask.progress ?? 0) >= 1 || existingTask.constrStatus === 'Đã hoàn thành');
+      const nextStatus = isTaskDoneOrCompleted
+        ? (existingTask.status === 'Chờ nghiệm thu' ? 'Chờ nghiệm thu' : 'Hoàn thành')
+        : 'Chờ nhận việc';
+
       updateTask(id, {
         assignedEngineerId: firstEngId,
         assignedEngineerName: formattedAssigneeName,
@@ -980,7 +988,7 @@ export const TaskAssignmentPage: React.FC = () => {
         followerNames: followerNames.length > 0 ? followerNames : undefined,
         assignerId: assignerId,
         assignerName: assignerName,
-        status: 'Chờ nhận việc',
+        status: nextStatus,
         notes: updatedNotes
       });
     });

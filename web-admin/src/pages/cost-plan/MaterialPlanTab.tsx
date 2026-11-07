@@ -314,6 +314,21 @@ export const MaterialPlanTab: React.FC<MaterialPlanTabProps> = ({
     if (!editingCell) return;
     const { id, field } = editingCell;
 
+    // Kiểm tra nếu giá trị không hề thay đổi thì thoát ngay, không cập nhật gì
+    const origVal = (plan as any)[field];
+    if (field === 'notes') {
+      const cleanCur = String(plan.notes || '').replace(/(\[order:[\d.]+\]|\[section\]|\[contractor\]|\[owner\])/gi, '').trim();
+      const cleanNew = String(tempValue || '').trim();
+      if (cleanCur === cleanNew) { setEditingCell(null); return; }
+    } else if (field === 'contractVolume' || field === 'orderedVolume') {
+      if (Number(tempValue || 0) === Number(origVal || 0)) { setEditingCell(null); return; }
+    } else if (field === 'docCo' || field === 'docCq' || field === 'docFireInspection' || field === 'dispatchToSite') {
+      const boolNew = tempValue === true || tempValue === 'true' || tempValue === 'Có';
+      if (boolNew === Boolean(origVal)) { setEditingCell(null); return; }
+    } else {
+      if (String(tempValue ?? '').trim() === String(origVal ?? '').trim()) { setEditingCell(null); return; }
+    }
+
     let finalValue = tempValue;
     if (field === 'notes') {
       const existingTags = String(plan.notes || '').match(/(\[order:[\d.]+\]|\[section\]|\[contractor\]|\[owner\])/gi) || [];

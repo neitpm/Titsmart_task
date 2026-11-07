@@ -160,26 +160,99 @@ const cleanDisplayNotes = (val: string) => {
     .trim();
 };
 
+const renderChangeBadge = (val: string, type: 'before' | 'after') => {
+  if (!val || val === '—' || val === '(trống)') return <span className="text-slate-400 italic font-normal">Chưa có</span>;
+  const clean = val.toLowerCase().trim();
+
+  // Nhóm trạng thái cần làm / chưa làm / tồn đọng (tạo nên số thông báo dự án)
+  if (clean === 'chưa làm' || clean.includes('chưa làm')) {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10.5px] font-bold bg-rose-50 text-rose-700 border border-rose-300 shadow-2xs">
+        <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></span>
+        {val}
+      </span>
+    );
+  }
+  if (clean === 'chờ nhận việc' || clean.includes('chờ nhận việc')) {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10.5px] font-bold bg-amber-50 text-amber-700 border border-amber-300 shadow-2xs">
+        <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+        {val}
+      </span>
+    );
+  }
+  if (clean === 'chờ nghiệm thu' || clean.includes('chờ nghiệm thu')) {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10.5px] font-bold bg-purple-50 text-purple-700 border border-purple-300 shadow-2xs">
+        <span className="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
+        {val}
+      </span>
+    );
+  }
+  if (clean === 'có thắc mắc' || clean.includes('thắc mắc') || clean.includes('vướng mắc')) {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10.5px] font-bold bg-amber-100 text-amber-800 border border-amber-400 shadow-2xs">
+        <span className="material-symbols-outlined text-[12px] text-amber-700">warning</span>
+        {val}
+      </span>
+    );
+  }
+  if (clean === 'hoàn thành' || clean.includes('đã hoàn thành') || clean.includes('đáp ứng') || clean === 'đã có hàng') {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10.5px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-300 shadow-2xs">
+        <span className="material-symbols-outlined text-[12px] text-emerald-600">check_circle</span>
+        {val}
+      </span>
+    );
+  }
+  if (clean === 'đang làm' || clean.includes('đang thi công') || clean === 'in progress') {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10.5px] font-bold bg-blue-50 text-blue-700 border border-blue-300 shadow-2xs">
+        <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+        {val}
+      </span>
+    );
+  }
+
+  // Giá trị thường
+  return (
+    <span className={type === 'before' ? 'text-rose-700 font-medium' : 'text-slate-800 font-semibold'}>
+      {val}
+    </span>
+  );
+};
+
 const formatAuditDetail = (value: string): string => {
   return String(value || '')
     .replace(/,?\s*Ghi chú\s*:\s*(?:"[^"]*"\s*[-=]+>\s*)?\[tech-status:[^\]]+\]/gi, '')
     .replace(/\[tech-status:[^\]]+\]/gi, '')
-    .replace(/\s*,\s*(?=(?:Đầu mục|TT Đặt hàng|Tình trạng kỹ thuật|Ghi chú)\s*:)/gi, '\n')
-    .replace(/\s+-\s+(?=(?:Đầu mục|TT Đặt hàng|Tình trạng kỹ thuật|Ghi chú)\s*:)/gi, '\n')
+    .replace(/\[FOLLOWERS:[^\]]+\]/gi, '')
+    .replace(/\[ASSIGNER:[^\]]+\]/gi, '')
+    .replace(/\[THREAD:[^\]]+\]/gi, '')
+    .replace(/,?\s*Người thực hiện\s*:\s*"[^"]*"\s*[-=]+>\s*"[0-9a-f-]{20,}"/gi, '')
+    .replace(/,?\s*assignerId\s*:\s*"[^"]*"\s*[-=]+>\s*"[0-9a-f-]{20,}"/gi, '')
+    .replace(/,?\s*assignerName\s*:\s*"[^"]*"\s*[-=]+>\s*"[^"]*"/gi, '')
+    .replace(/\bfollowerNames\s*:/gi, 'Người theo dõi:')
+    .replace(/\s*,\s*(?=(?:Đầu mục|TT Đặt hàng|Tình trạng kỹ thuật|Ghi chú|Trạng thái|Phân công|Người theo dõi|Tiến độ|Khối lượng|ĐVT)\s*:)/gi, '\n')
+    .replace(/\s+-\s+(?=(?:Đầu mục|TT Đặt hàng|Tình trạng kỹ thuật|Ghi chú|Trạng thái|Phân công|Người theo dõi|Tiến độ|Khối lượng|ĐVT)\s*:)/gi, '\n')
     .replace(/\s*\|\s*/g, '\n')
     .trim();
 };
 
 const parseAuditChangeRows = (value: string): Array<{ field: string; before: string; after: string }> => {
-  const normalized = String(value || '').replace(/\s+/g, ' ').trim();
+  const normalized = String(value || '').replace(/\bfollowerNames\s*:/gi, 'Người theo dõi:').replace(/\s+/g, ' ').trim();
   const rows: Array<{ field: string; before: string; after: string }> = [];
-  const pattern = /(TT Đặt hàng|Tình trạng kỹ thuật|Ghi chú)\s*:\s*["“]?(.+?)["”]?\s*[-=]+>\s*["“]?(.+?)["”]?(?=,\s*(?:TT Đặt hàng|Tình trạng kỹ thuật|Ghi chú)\s*:|$)/gi;
+  const fieldNames = [
+    'TT Đặt hàng', 'Tình trạng kỹ thuật', 'Ghi chú', 'Trạng thái', 'Phân công', 'Người theo dõi',
+    'Thi công', 'Tiến độ', 'Khối lượng', 'ĐVT', 'Tên', 'Hạn hoàn thành', 'Vấn đề'
+  ].join('|');
+  const pattern = new RegExp(`(${fieldNames})\\s*:\\s*["“]?([^"”]+?)["”]?\\s*[-=]+>\\s*["“]?([^"”]+?)["”]?(?=,\\s*(?:${fieldNames})\\s*:|$)`, 'gi');
   let match: RegExpExecArray | null;
   while ((match = pattern.exec(normalized)) !== null) {
     rows.push({
       field: match[1].trim(),
-      before: match[2].replace(/^"|"$/g, '').trim(),
-      after: match[3].replace(/^"|"$/g, '').trim(),
+      before: match[2].replace(/^"|"$/g, '').split('|')[0].trim(),
+      after: match[3].replace(/^"|"$/g, '').split('|')[0].trim(),
     });
   }
   return rows.filter(row => {
@@ -284,11 +357,11 @@ const renderActionText = (text: string, timestamp?: string) => {
                   </thead>
                   <tbody>
                     {parseAuditChangeRows(detailText).map((row, index) => (
-                      <tr key={`${row.field}-${index}`} className="border-b border-slate-100 last:border-b-0">
-                        <td className="px-2 py-1.5 font-semibold text-slate-700">{row.field}</td>
-                        <td className="px-2 py-1.5 text-rose-700">{row.before || '—'}</td>
-                        <td className="px-2 py-1.5 font-semibold text-emerald-700">{row.after || '—'}</td>
-                        <td className="px-2 py-1.5 whitespace-nowrap text-slate-500">{formatAuditDateTime(timestamp)}</td>
+                      <tr key={`${row.field}-${index}`} className="border-b border-slate-100 last:border-b-0 hover:bg-slate-50/70 transition-colors">
+                        <td className="px-2.5 py-1.5 font-semibold text-slate-700 whitespace-nowrap">{row.field}</td>
+                        <td className="px-2.5 py-1.5">{renderChangeBadge(row.before, 'before')}</td>
+                        <td className="px-2.5 py-1.5">{renderChangeBadge(row.after, 'after')}</td>
+                        <td className="px-2.5 py-1.5 whitespace-nowrap text-slate-500 font-mono text-[10px]">{formatAuditDateTime(timestamp)}</td>
                       </tr>
                     ))}
                   </tbody>

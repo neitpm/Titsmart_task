@@ -290,6 +290,20 @@ export const PurchasingTab: React.FC<PurchasingTabProps> = ({
     if (!editingCell) return;
     const { id, field } = editingCell;
 
+    // Kiểm tra nếu giá trị không hề thay đổi thì thoát ngay, không cập nhật gì
+    const origVal = (pur as any)[field];
+    if (field === 'notes') {
+      const cleanCur = String(pur.notes || '').replace(/(\[order:[\d.]+\]|\[section\]|\[contractor\]|\[owner\])/gi, '').trim();
+      const cleanNew = String(tempValue || '').trim();
+      if (cleanCur === cleanNew) { setEditingCell(null); return; }
+    } else if (['volumeContract', 'volumeOrder', 'unitPrice', 'vatRate'].includes(field as string)) {
+      if (Number(tempValue || 0) === Number(origVal || 0)) { setEditingCell(null); return; }
+    } else if (field === 'prepayPercent') {
+      if (Math.round(Number(tempValue || 0)) === Math.round(Number(origVal || 0) * 100)) { setEditingCell(null); return; }
+    } else {
+      if (String(tempValue ?? '').trim() === String(origVal ?? '').trim()) { setEditingCell(null); return; }
+    }
+
     let finalValue = tempValue;
     if (field === 'notes') {
       const existingTags = String(pur.notes || '').match(/(\[order:[\d.]+\]|\[section\]|\[contractor\]|\[owner\])/gi) || [];
