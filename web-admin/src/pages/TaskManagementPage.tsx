@@ -269,7 +269,7 @@ export const TaskManagementPage: React.FC = () => {
     const store = useRealtimeStore.getState();
     const userName = authStore.user?.name || authStore.user?.username || 'Một nhân sự';
     const userId = authStore.user?.id || '';
-    store.logActivity(`Nhân sự ${userName} đã XÁC NHẬN NHẬN VIỆC hạng mục: "${task.name}"`, task.projectName || task.projectCode);
+    store.logActivity(`Nhân sự ${userName} đã XÁC NHẬN NHẬN VIỆC hạng mục: "${task.name}"`, task.projectCode || task.projectName);
     
     // Also add explicit notification to assigner
     if (store.addNotification) {
@@ -299,7 +299,7 @@ export const TaskManagementPage: React.FC = () => {
     const store = useRealtimeStore.getState();
     const userName = authStore.user?.name || authStore.user?.username || 'Một nhân sự';
     const userId = authStore.user?.id || '';
-    store.logActivity(`Nhân sự ${userName} đã BÁO CÁO HOÀN THÀNH hạng mục: "${task.name}" (Chờ nghiệm thu)`, task.projectName || task.projectCode);
+    store.logActivity(`Nhân sự ${userName} đã BÁO CÁO HOÀN THÀNH hạng mục: "${task.name}" (Chờ nghiệm thu)`, task.projectCode || task.projectName);
 
     if (store.addNotification) {
       await store.addNotification({
@@ -331,7 +331,7 @@ export const TaskManagementPage: React.FC = () => {
     const store = useRealtimeStore.getState();
     const adminName = authStore.user?.name || authStore.user?.username || 'Quản lý';
     const adminId = authStore.user?.id || '';
-    store.logActivity(`Người giao việc ${adminName} đã NGHIỆM THU HOÀN THÀNH công việc: "${task.name}"`, task.projectName || task.projectCode);
+    store.logActivity(`Người giao việc ${adminName} đã NGHIỆM THU HOÀN THÀNH công việc: "${task.name}"`, task.projectCode || task.projectName);
 
     if (store.addNotification && (task.assignedEngineerId || task.assignedEngineerName)) {
       const engId = task.assignedEngineerId || '';
@@ -372,7 +372,7 @@ export const TaskManagementPage: React.FC = () => {
 
     triggerToast('Đã gửi thắc mắc đến người giao việc và các nhân sự đảm nhiệm!', 'success');
     const store = useRealtimeStore.getState();
-    store.logActivity(`Nhân sự ${userName} đã GỬI THẮC MẮC về hạng mục: "${task.name}"`, task.projectName || task.projectCode);
+    store.logActivity(`Nhân sự ${userName} đã GỬI THẮC MẮC về hạng mục: "${task.name}"`, task.projectCode || task.projectName);
 
     if (store.addNotification) {
       const parts = String(task.assignedEngineerName || '').split('|');
@@ -419,7 +419,7 @@ export const TaskManagementPage: React.FC = () => {
 
     triggerToast('Đã gửi phản hồi hướng dẫn!', 'success');
     const store = useRealtimeStore.getState();
-    store.logActivity(`Người giao việc ${userName} đã PHẢN HỒI THẮC MẮC về hạng mục: "${task.name}"`, task.projectName || task.projectCode);
+    store.logActivity(`Người giao việc ${userName} đã PHẢN HỒI THẮC MẮC về hạng mục: "${task.name}"`, task.projectCode || task.projectName);
 
     if (store.addNotification && (task.assignedEngineerId || task.assignedEngineerName)) {
       const parts = String(task.assignedEngineerName || '').split('|');
@@ -2883,10 +2883,23 @@ const hasSyncedRef = useRef(false);
                               </div>
                             )}
                             {t.status === 'Hoàn thành' && (
-                              <button onClick={(e) => { e.stopPropagation(); setDiscussionTask(t); }} className="text-[9px] bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-300 pointer-events-auto px-1.5 py-0.5 rounded shadow-2xs w-full font-bold flex items-center justify-center gap-0.5 cursor-pointer" title="Gửi thắc mắc hoặc trao đổi thêm">
-                                <span className="material-symbols-outlined text-[11px]">help</span>
-                                Thắc mắc
-                              </button>
+                              <div className="flex flex-col items-center gap-0.5 w-full pointer-events-auto">
+                                <span 
+                                  className="text-[9.5px] bg-emerald-50 text-emerald-700 border border-emerald-300 px-2 py-0.5 rounded-md shadow-2xs font-bold flex items-center justify-center gap-1 w-full leading-tight select-none"
+                                  title="Công việc đã được nghiệm thu hoàn thành"
+                                >
+                                  <span className="material-symbols-outlined text-[12px] text-emerald-600">verified</span>
+                                  Đã nghiệm thu
+                                </span>
+                                <button 
+                                  onClick={(e) => { e.stopPropagation(); setDiscussionTask(t); }} 
+                                  className="text-[8.5px] text-slate-500 hover:text-amber-700 hover:underline flex items-center justify-center gap-0.5 py-0.5 cursor-pointer transition-colors" 
+                                  title="Gửi thắc mắc hoặc trao đổi thêm về công việc này"
+                                >
+                                  <span className="material-symbols-outlined text-[10px]">chat</span>
+                                  Trao đổi
+                                </button>
+                              </div>
                             )}
                           </div>
                         </td>

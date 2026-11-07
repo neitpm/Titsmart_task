@@ -46,8 +46,7 @@ const compressImageFile = async (file: File): Promise<Blob | File> => {
               resolve(file);
             }
           },
-          'image/jpeg',
-          0.8
+          'image/jpeg', 0.75
         );
       };
       img.onerror = () => resolve(file);

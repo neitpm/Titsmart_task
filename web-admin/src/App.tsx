@@ -258,8 +258,6 @@ export const App: React.FC = () => {
     fetchIssues();
     fetchEngineers();
     fetchActivityLogs();
-    fetchAccounting();
-    fetchFieldLogs();
     
     // Bật đồng bộ Realtime tối ưu giữa các thiết bị
     const cleanup = setupRealtimeSync();

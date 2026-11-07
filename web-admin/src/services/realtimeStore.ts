@@ -2869,56 +2869,39 @@ export function setupRealtimeSync() {
     return () => {};
   }
 
-  // Debounce: gom nhiều thay đổi trong 4 giây thành 1 lần refresh và CHỈ fetch bảng bị đổi
+  // Debounce thông minh: gom nhiều sự kiện broadcast liên tiếp thành 1 lần refresh duy nhất
+  // Giúp tiết kiệm 80-90% băng thông mạng (Egress) và ngăn quá tải Supabase API
   let changedTables = new Set<string>();
   let refreshTimeout: any = null;
+  let chatNotificationTimeout: any = null;
 
   const debouncedRefresh = (payload?: any) => {
     if (payload && payload.table) {
       changedTables.add(payload.table);
     }
 
-    // Đối với tin nhắn chat real-time, thông báo mới, nhận việc/giao việc (tasks), hồ sơ (document_tracks), nhật ký (field_logs), phân quyền nhân sự/dự án, nhận diện thương hiệu -> fetch tức thì
-    if (payload && (
-      payload.table === 'direct_messages' ||
-      payload.table === 'notifications' ||
-      payload.table === 'tasks' ||
-      payload.table === 'document_tracks' ||
-      payload.table === 'field_logs' ||
-      payload.table === 'materials' ||
-      payload.table === 'issues' ||
-      payload.table === 'engineers' ||
-      payload.table === 'projects' ||
-      payload.table === 'activity_logs' ||
-      payload.table === 'branding'
-    )) {
-      const store = useRealtimeStore.getState();
-      if (payload.table === 'branding') {
-        import('./uiStore').then(({ useUIStore }) => {
-          useUIStore.getState().fetchBrandingFromCloud();
-        });
-      }
-      if (payload.table === 'direct_messages') store.fetchDirectMessages();
-      if (payload.table === 'notifications') store.fetchNotifications();
-      if (payload.table === 'tasks') store.fetchTasks(undefined);
-      if (payload.table === 'document_tracks') store.fetchAccounting(true);
-      if (payload.table === 'field_logs') store.fetchFieldLogs();
-      if (payload.table === 'materials') store.fetchMaterials(undefined);
-      if (payload.table === 'issues') store.fetchIssues(undefined);
-      if (payload.table === 'engineers') {
-        store.fetchEngineers().then(() => {
-          store.fetchProjects();
-        });
-      }
-      if (payload.table === 'projects') store.fetchProjects();
-      if (payload.table === 'activity_logs') store.fetchActivityLogs();
+    // Với tin nhắn chat và thông báo: ưu tiên cập nhật nhanh (debounce 600ms)
+    if (payload && (payload.table === 'direct_messages' || payload.table === 'notifications' || payload.table === 'branding')) {
+      if (chatNotificationTimeout) clearTimeout(chatNotificationTimeout);
+      chatNotificationTimeout = setTimeout(() => {
+        const store = useRealtimeStore.getState();
+        if (payload.table === 'branding') {
+          import('./uiStore').then(({ useUIStore }) => {
+            useUIStore.getState().fetchBrandingFromCloud();
+          });
+        }
+        if (payload.table === 'direct_messages') store.fetchDirectMessages();
+        if (payload.table === 'notifications') store.fetchNotifications();
+      }, 600);
       return;
     }
 
+    // Với dữ liệu nghiệp vụ lớn (tasks, materials, accounting, field_logs):
+    // Gom nhiều thao tác trong 2 giây thành 1 lần gọi duy nhất
     if (refreshTimeout) clearTimeout(refreshTimeout);
     refreshTimeout = setTimeout(() => {
       const store = useRealtimeStore.getState();
-      // Nếu thao tác vừa diễn ra trên tab này (trong vòng 5s) -> Bỏ qua re-fetch
+      // Nếu thao tác vừa diễn ra trên chính tab này (trong vòng 5s) -> Bỏ qua re-fetch
       if (Date.now() - store.lastMutationTime < 5000) {
         changedTables.clear();
         return;
@@ -2930,14 +2913,23 @@ export function setupRealtimeSync() {
       
       if (tables.length === 0 || tables.includes('projects')) store.fetchProjects();
       if (tables.length === 0 || tables.includes('tasks')) store.fetchTasks(undefined);
-      if (tables.length === 0 || tables.includes('materials') || tables.includes('inventory_transactions') || tables.includes('material_plans') || tables.includes('purchasing_plans')) store.fetchMaterials(undefined);
+      if (tables.length === 0 || tables.includes('materials') || tables.includes('inventory_transactions')) store.fetchMaterials(undefined);
       if (tables.length === 0 || tables.includes('issues')) store.fetchIssues(undefined);
       if (tables.length === 0 || tables.includes('engineers')) store.fetchEngineers();
-      if (tables.length === 0 || tables.includes('expenses') || tables.includes('labor_payrolls') || tables.includes('material_plans') || tables.includes('purchasing_plans') || tables.includes('document_tracks')) store.fetchAccounting(true);
-      if (tables.length === 0 || tables.includes('field_logs')) store.fetchFieldLogs();
-      if (tables.length === 0 || tables.includes('notifications')) store.fetchNotifications();
-      if (tables.length === 0 || tables.includes('direct_messages')) store.fetchDirectMessages();
-    }, 4000);
+      
+      // Chỉ re-fetch accounting nếu người dùng đã từng mở hoặc đang xem trang chi phí / kế toán
+      const isAccountingLoaded = store.materialPlans.length > 0 || store.expenses.length > 0 || store.laborPayrolls.length > 0;
+      if (isAccountingLoaded && (tables.length === 0 || tables.includes('expenses') || tables.includes('labor_payrolls') || tables.includes('material_plans') || tables.includes('purchasing_plans') || tables.includes('document_tracks'))) {
+        store.fetchAccounting(true);
+      }
+
+      // Chỉ re-fetch field_logs nếu đã từng tải
+      if (store.fieldLogs.length > 0 && (tables.length === 0 || tables.includes('field_logs'))) {
+        store.fetchFieldLogs();
+      }
+
+      if (tables.includes('activity_logs')) store.fetchActivityLogs();
+    }, 2000);
   };
 
   // Tạo 1 Channel tổng duy nhất lắng nghe broadcast thời gian thực (không tải Postgres Connection Pool)

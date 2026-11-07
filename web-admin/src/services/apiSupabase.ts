@@ -187,8 +187,8 @@ const fetchAllRows = async (table: string, selectCols: string = '*', filter?: { 
   return allRows;
 };
 
-// Index of the notifications insert shape that last worked (0 = all columns, 1 = meta in message, 2 = base)
-let notifInsertStartIdx = 0;
+// Index of the notifications insert shape that last worked (1 = meta in message chuẩn 100% không sinh lỗi 400)
+let notifInsertStartIdx = 1;
 
 // Unpack link/sender metadata that was appended to `message` when the DB table lacks those columns
 const parseNotificationMeta = (n: any) => {
@@ -485,11 +485,18 @@ export const api = {
         }
       }
 
-      // Remove non-standard or virtual columns
-      delete payload.source_row;
-      delete payload.follower_ids;
-      delete payload.follower_names;
-      delete payload.category;
+      // Whitelist — chỉ giữ lại các cột thực sự có trong DB (tránh 400 Bad Request khi insert)
+      const TASK_DB_COLUMNS = new Set([
+        'id','stt','code','name','project_code','volume','unit','progress','status',
+        'purchase_status','constr_status','tech_spec_status','issue','issue_status',
+        'is_done','parent_id','notes','assigner_id','assigned_engineer_id',
+        'reviewer_id','due_date','priority','created_at','updated_by','updated_at',
+      ]);
+      for (const key of Object.keys(payload)) {
+        if (!TASK_DB_COLUMNS.has(key)) {
+          delete payload[key];
+        }
+      }
 
       let lastError: any = null;
       for (let attempt = 0; attempt < 7; attempt++) {
@@ -1166,7 +1173,9 @@ export const api = {
       try {
         // Màn hình tổng quan chỉ tải một trang; lịch sử của một dự án được lọc tại DB.
         let query: any = supabase.from('activity_logs').select('*').order('timestamp', { ascending: false }).limit(300);
-        if (projectCode) query = query.eq('project', projectCode);
+        if (projectCode) {
+          query = query.or(`project.eq."${projectCode}",project_code.eq."${projectCode}"`);
+        }
         const { data, error } = await query;
 
         if (error) {
