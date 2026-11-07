@@ -1174,9 +1174,18 @@ export const api = {
         // Màn hình tổng quan chỉ tải một trang; lịch sử của một dự án được lọc tại DB.
         let query: any = supabase.from('activity_logs').select('*').order('timestamp', { ascending: false }).limit(300);
         if (projectCode) {
-          query = query.or(`project.eq."${projectCode}",project_code.eq."${projectCode}"`);
+          query = query.eq('project', projectCode);
         }
-        const { data, error } = await query;
+        let { data, error } = await query;
+
+        // Nếu lọc theo projectCode bị lỗi hoặc rỗng (do log có thể lưu theo tên dự án), lấy 300 log mới nhất để client lọc
+        if (error || !data || data.length === 0) {
+          const fbRes = await supabase.from('activity_logs').select('*').order('timestamp', { ascending: false }).limit(300);
+          if (!fbRes.error && fbRes.data) {
+            data = fbRes.data;
+            error = null;
+          }
+        }
 
         if (error) {
           console.warn('[ActivityLogs] Could not fetch from Supabase:', error.message);

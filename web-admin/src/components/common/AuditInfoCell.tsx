@@ -366,6 +366,7 @@ export const AuditInfoCell: React.FC<{
   const [expandedUser, setExpandedUser] = useState<Record<string, boolean>>({});
   const activityLogs = useRealtimeStore(s => s.activityLogs);
   const engineers = useRealtimeStore(s => s.engineers);
+  const projects = useRealtimeStore(s => s.projects);
 
   const formattedTime = formatAuditDateTime(updatedAt);
   const isSystemOrEmpty = !updatedBy || updatedBy.trim() === '';
@@ -443,7 +444,14 @@ export const AuditInfoCell: React.FC<{
       if (projectCode) {
         const logProj = String(log.project || '').trim().toLowerCase();
         const pCode = String(projectCode).trim().toLowerCase();
-        if (logProj !== pCode) return false;
+        let isProjectMatch = logProj === pCode;
+        if (!isProjectMatch) {
+          const matchedProj = projects.find(p => p.code?.toLowerCase() === pCode || p.id?.toLowerCase() === pCode);
+          if (matchedProj && matchedProj.name) {
+            isProjectMatch = logProj === matchedProj.name.trim().toLowerCase();
+          }
+        }
+        if (!isProjectMatch) return false;
 
         // Nếu có itemTitle mà log không chứa itemTitle và là loại log cụ thể khác, bỏ qua để tránh nhiễm log vật tư / công việc khác
         if (cleanItemTitle && cleanItemTitle.length >= 3) {
