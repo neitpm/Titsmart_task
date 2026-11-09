@@ -51,12 +51,18 @@ export const DashboardPage: React.FC = () => {
   const issues = useRealtimeStore(s => s.issues);
   const documentTracks = useRealtimeStore(s => s.documentTracks);
   const fieldLogs = useRealtimeStore(s => s.fieldLogs);
+  const fetchAccounting = useRealtimeStore(s => s.fetchAccounting);
 
   const [selectedProjects, setSelectedProjects] = useState<string[]>([]);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [projectSearchQuery, setProjectSearchQuery] = useState('');
   const [attendanceTodayLogs, setAttendanceTodayLogs] = useState<any[]>([]);
   const filterRef = React.useRef<HTMLDivElement>(null);
+
+  // Tự động tải kế hoạch chi phí / chi tiêu nếu chưa tải về Store
+  useEffect(() => {
+    fetchAccounting();
+  }, [fetchAccounting]);
 
   useEffect(() => {
     let isMounted = true;
