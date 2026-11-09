@@ -209,12 +209,11 @@ export const ProjectCostPlanPage: React.FC = () => {
   const updateTask = useRealtimeStore(s => s.updateTask);
   const fetchAccounting = useRealtimeStore(s => s.fetchAccounting);
   const logActivity = useRealtimeStore(s => s.logActivity);
+  const addNotification = useRealtimeStore(s => s.addNotification);
 
   useEffect(() => {
-    // Chỉ tải từ DB nếu store chưa có dữ liệu (lần đầu vào app)
-    if ((materialPlans.length === 0 && purchasingPlans.length === 0 && expenses.length === 0)) {
-      fetchAccounting();
-    }
+    // Luôn tải lại chi phí / kế toán khi vào trang để đảm bảo dữ liệu mới nhất
+    fetchAccounting(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -1415,7 +1414,16 @@ export const ProjectCostPlanPage: React.FC = () => {
   const [fundRequests, setFundRequests] = useState<any[]>([]);
   const [fundRequestOpen, setFundRequestOpen] = useState(false);
   const [showExpenseActionMenu, setShowExpenseActionMenu] = useState(false);
-  const [fundRequestForm, setFundRequestForm] = useState({ amount: '', type: 'Tạm ứng', purpose: '', neededDate: new Date().toISOString().split('T')[0], note: '' });
+  const [fundRequestForm, setFundRequestForm] = useState({
+    amount: '',
+    type: 'Tạm ứng',
+    purpose: '',
+    neededDate: new Date().toISOString().split('T')[0],
+    reviewerId: '',
+    reviewerName: '',
+    reviewerTitle: '',
+    note: ''
+  });
   const [searchQuery, setSearchQuery] = useState('');
   const [isSubmittingPlan, setIsSubmittingPlan] = useState(false);
   const isSubmittingPlanRef = useRef(false);
@@ -1438,6 +1446,16 @@ export const ProjectCostPlanPage: React.FC = () => {
     setSearchQuery('');
     setStatusFilter('ALL');
   }, [activeTab]);
+
+  // Khi chuyển dự án khác: reset bộ lọc người phụ trách và bộ lọc chi phí
+  useEffect(() => {
+    setExpenseFilterSpender('all');
+    setExpenseFilterContent('all');
+    setExpenseFilterUnit('all');
+    setExpenseFilterDateFrom('');
+    setExpenseFilterDateTo('');
+    setSearchQuery('');
+  }, [selectedProject]);
 
   // Modals state
   const [editingPlan, setEditingPlan] = useState<ProjectMaterialPlan | null>(null);
@@ -4653,19 +4671,182 @@ export const ProjectCostPlanPage: React.FC = () => {
         </Modal>
       )}
       <Modal isOpen={fundRequestOpen} onClose={() => setFundRequestOpen(false)} title="Tạo yêu cầu cấp quỹ">
-        <form className="p-4 space-y-3" onSubmit={(event) => {
+        <form className="p-4 space-y-3" onSubmit={async (event) => {
           event.preventDefault();
-          setFundRequests((items) => [{ ...fundRequestForm, id: `fund-${Date.now()}`, projectCode: selectedProject }, ...items]);
-          setFundRequestForm({ amount: '', type: 'Tạm ứng', purpose: '', neededDate: new Date().toISOString().split('T')[0], note: '' });
+          if (!fundRequestForm.reviewerId) {
+            triggerToast('Vui lòng chọn người duyệt!', 'warning');
+            return;
+          }
+
+          const curProjectObj = projects.find(p => p.code === selectedProject);
+          const pName = curProjectObj?.name || selectedProject || 'Dự án';
+          const requesterName = user?.name || user?.username || 'Nhân sự';
+          const formattedAmount = Number(fundRequestForm.amount).toLocaleString('vi-VN');
+
+          const createdRequest = {
+            ...fundRequestForm,
+            id: `fund-${Date.now()}`,
+            projectCode: selectedProject,
+            projectName: pName,
+            creatorId: user?.id,
+            creatorName: requesterName,
+            creatorTitle: (user as any)?.title || user?.role || 'Nhân sự',
+            status: 'PENDING',
+            createdAt: new Date().toISOString()
+          };
+          setFundRequests((items) => [createdRequest, ...items]);
+
+          // Bắn thông báo trực tiếp đến Người duyệt được chọn
+          if (addNotification && fundRequestForm.reviewerId) {
+            const rev = engineers.find(item => item.id === fundRequestForm.reviewerId);
+            const targetId = rev?.id || fundRequestForm.reviewerId;
+            const targetName = rev?.name || fundRequestForm.reviewerName;
+
+            await addNotification({
+              title: `Yêu cầu cấp quỹ mới: ${pName}`,
+              message: `${requesterName} vừa gửi yêu cầu cấp quỹ ${formattedAmount} đ (${fundRequestForm.type}) cần duyệt. Mục đích: ${fundRequestForm.purpose}`,
+              type: `fund_request_pending:::${targetId}:::${targetName}`,
+              icon: 'payments',
+              link: '/project-cost-plan',
+              senderId: user?.id
+            }).catch(() => {});
+          }
+
+          // Ghi nhận vào Nhật ký hoạt động & Lịch sử thao tác hệ thống
+          if (logActivity) {
+            logActivity(
+              `Đã tạo YÊU CẦU CẤP QUỸ ${formattedAmount} đ (${fundRequestForm.type}) - Người duyệt: ${fundRequestForm.reviewerName || 'Chưa rõ'}`,
+              selectedProject || pName
+            );
+          }
+
+          setFundRequestForm({
+            amount: '',
+            type: 'Tạm ứng',
+            purpose: '',
+            neededDate: new Date().toISOString().split('T')[0],
+            reviewerId: '',
+            reviewerName: '',
+            reviewerTitle: '',
+            note: ''
+          });
           setFundRequestOpen(false);
-          triggerToast('Đã tạo yêu cầu cấp quỹ, đang chờ duyệt.', 'success');
+          triggerToast('Đã gửi yêu cầu cấp quỹ và thông báo đến người duyệt!', 'success');
         }}>
-          <div className="rounded-lg bg-blue-50 border border-blue-100 p-3 text-xs text-blue-800">Dự án: <strong>{projects.find(p => p.code === selectedProject)?.name || selectedProject || 'Chưa chọn dự án'}</strong></div>
-          <div className="grid grid-cols-2 gap-3"><div><label className="block text-xs font-bold mb-1">Số tiền đề nghị *</label><input required type="number" min="0" value={fundRequestForm.amount} onChange={e => setFundRequestForm({ ...fundRequestForm, amount: e.target.value })} className="w-full border rounded-lg p-2 text-sm" /></div><div><label className="block text-xs font-bold mb-1">Ngày cần tiền *</label><input required type="date" value={fundRequestForm.neededDate} onChange={e => setFundRequestForm({ ...fundRequestForm, neededDate: e.target.value })} className="w-full border rounded-lg p-2 text-sm" /></div></div>
-          <div><label className="block text-xs font-bold mb-1">Loại quỹ</label><CustomSelect value={fundRequestForm.type} onChange={e => setFundRequestForm({ ...fundRequestForm, type: e.target.value })} className="w-full border rounded-lg p-2 text-sm"><option>Tạm ứng</option><option>Mua vật tư</option><option>Nhân công</option><option>Vận chuyển</option><option>Khác</option></CustomSelect></div>
-          <div><label className="block text-xs font-bold mb-1">Mục đích sử dụng *</label><textarea required value={fundRequestForm.purpose} onChange={e => setFundRequestForm({ ...fundRequestForm, purpose: e.target.value })} className="w-full border rounded-lg p-2 text-sm min-h-20" placeholder="Nêu rõ khoản tiền dùng cho việc gì" /></div>
-          <div><label className="block text-xs font-bold mb-1">Ghi chú</label><textarea value={fundRequestForm.note} onChange={e => setFundRequestForm({ ...fundRequestForm, note: e.target.value })} className="w-full border rounded-lg p-2 text-sm min-h-16" /></div>
-          <div className="flex justify-end gap-2 pt-2"><button type="button" onClick={() => setFundRequestOpen(false)} className="px-4 py-2 border rounded-lg text-sm">Hủy</button><button type="submit" className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-bold">Gửi yêu cầu</button></div>
+          <div className="rounded-lg bg-blue-50 border border-blue-100 p-3 text-xs text-blue-800">
+            Dự án: <strong>{projects.find(p => p.code === selectedProject)?.name || selectedProject || 'Chưa chọn dự án'}</strong>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-bold mb-1">Số tiền đề nghị *</label>
+              <input
+                required
+                type="number"
+                min="0"
+                placeholder="VD: 5000000"
+                value={fundRequestForm.amount}
+                onChange={e => setFundRequestForm({ ...fundRequestForm, amount: e.target.value })}
+                className="w-full border rounded-lg p-2 text-sm focus:ring-1 focus:ring-primary focus:border-primary"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold mb-1">Ngày cần tiền *</label>
+              <input
+                required
+                type="date"
+                value={fundRequestForm.neededDate}
+                onChange={e => setFundRequestForm({ ...fundRequestForm, neededDate: e.target.value })}
+                className="w-full border rounded-lg p-2 text-sm focus:ring-1 focus:ring-primary focus:border-primary"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold mb-1">Loại quỹ</label>
+            <CustomSelect
+              value={fundRequestForm.type}
+              onChange={e => setFundRequestForm({ ...fundRequestForm, type: e.target.value })}
+              className="w-full border rounded-lg p-2 text-sm"
+            >
+              <option>Tạm ứng</option>
+              <option>Mua vật tư</option>
+              <option>Nhân công</option>
+              <option>Vận chuyển</option>
+              <option>Khác</option>
+            </CustomSelect>
+          </div>
+
+          {/* Chọn Người duyệt */}
+          <div>
+            <label className="block text-xs font-bold mb-1 text-slate-800 flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-[16px] text-primary">verified_user</span>
+                <span>Người duyệt *</span>
+              </span>
+            </label>
+            <CustomSelect
+              value={fundRequestForm.reviewerId}
+              onChange={e => {
+                const targetId = e.target.value;
+                const eng = engineers.find(item => item.id === targetId);
+                setFundRequestForm({
+                  ...fundRequestForm,
+                  reviewerId: targetId,
+                  reviewerName: eng?.name || '',
+                  reviewerTitle: eng?.title || eng?.role || ''
+                });
+              }}
+              searchable={true}
+              className="w-full border rounded-lg p-2 text-sm bg-white"
+            >
+              <option value="">-- Chọn người duyệt --</option>
+              {engineers
+                .filter(eng => !eng.isLocked && !(eng as any).is_locked)
+                .map(eng => (
+                  <option key={eng.id} value={eng.id}>
+                    {eng.name}
+                  </option>
+                ))}
+            </CustomSelect>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold mb-1">Mục đích sử dụng *</label>
+            <textarea
+              required
+              value={fundRequestForm.purpose}
+              onChange={e => setFundRequestForm({ ...fundRequestForm, purpose: e.target.value })}
+              className="w-full border rounded-lg p-2 text-sm min-h-20 focus:ring-1 focus:ring-primary focus:border-primary"
+              placeholder="Nêu rõ khoản tiền dùng cho việc gì"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold mb-1">Ghi chú</label>
+            <textarea
+              value={fundRequestForm.note}
+              onChange={e => setFundRequestForm({ ...fundRequestForm, note: e.target.value })}
+              className="w-full border rounded-lg p-2 text-sm min-h-16 focus:ring-1 focus:ring-primary focus:border-primary"
+              placeholder="Ghi chú thêm nếu có..."
+            />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <button
+              type="button"
+              onClick={() => setFundRequestOpen(false)}
+              className="px-4 py-2 border rounded-lg text-sm text-slate-600 hover:bg-slate-50"
+            >
+              Hủy
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-lg text-sm font-bold shadow-xs transition-colors"
+            >
+              Gửi yêu cầu
+            </button>
+          </div>
         </form>
       </Modal>
     </PullToRefresh>
