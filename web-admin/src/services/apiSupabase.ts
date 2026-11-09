@@ -1197,6 +1197,7 @@ export const api = {
             row.icon !== 'LEAVE_REQUEST' && 
             row.icon !== 'ATTENDANCE_SESSION' && 
             row.icon !== 'ADJUSTMENT_REQUEST' &&
+            row.icon !== 'FUND_REQUEST' &&
             row.icon !== 'BRANDING_CONFIG'
           )
           .map((row: any) => {
@@ -2524,7 +2525,120 @@ export const api = {
     }
   },
 
+  fundRequests: {
+    getAll: async () => {
+      try {
+        let { data, error } = await supabase
+          .from('activity_logs')
+          .select('*')
+          .eq('icon', 'FUND_REQUEST')
+          .order('timestamp', { ascending: false })
+          .limit(300);
 
+        if (error) {
+          const res = await supabase
+            .from('activity_logs')
+            .select('*')
+            .eq('icon', 'FUND_REQUEST')
+            .limit(300);
+          data = res.data;
+          error = res.error;
+        }
+
+        if (error) return [];
+
+        return (data || []).map(row => {
+          try {
+            const payload = typeof row.action === 'string' ? JSON.parse(row.action) : row.action;
+            return { id: row.id, ...payload };
+          } catch { return null; }
+        }).filter(Boolean);
+      } catch (err) {
+        return [];
+      }
+    },
+    create: async (input: {
+      projectCode: string;
+      projectName?: string;
+      amount: number | string;
+      type: string;
+      purpose: string;
+      neededDate: string;
+      creatorId?: string;
+      creatorName: string;
+      creatorTitle?: string;
+      reviewerId: string;
+      reviewerName: string;
+      reviewerTitle?: string;
+      note?: string;
+    }) => {
+      const payloadData: any = {
+        projectCode: input.projectCode,
+        projectName: input.projectName || input.projectCode,
+        amount: Number(input.amount) || 0,
+        type: input.type || 'Tạm ứng',
+        purpose: input.purpose,
+        neededDate: input.neededDate,
+        creatorId: input.creatorId,
+        creatorName: input.creatorName,
+        creatorTitle: input.creatorTitle || 'Nhân sự',
+        reviewerId: input.reviewerId,
+        reviewerName: input.reviewerName,
+        reviewerTitle: input.reviewerTitle || '',
+        note: input.note || '',
+        status: 'PENDING',
+        createdAt: new Date().toISOString()
+      };
+      const payload: any = {
+        user: input.creatorName,
+        project: input.projectName || input.projectCode || 'Cấp quỹ',
+        icon: 'FUND_REQUEST',
+        action: JSON.stringify(payloadData),
+        timestamp: payloadData.createdAt
+      };
+      let { data, error } = await supabase.from('activity_logs').insert(payload).select().single();
+      if (error) {
+        if (error.code === 'PGRST204' || String(error.message).includes('created_at') || String(error.message).includes('timestamp')) {
+          delete payload.timestamp;
+          payload.created_at = payloadData.createdAt;
+          const retry = await supabase.from('activity_logs').insert(payload).select().single();
+          data = retry.data;
+          error = retry.error;
+        }
+      }
+      return { id: data?.id || `fund-${Date.now()}`, ...payloadData } as any;
+    },
+    review: async (id: string, reviewData: {
+      status: 'APPROVED' | 'REJECTED';
+      reviewerId?: string;
+      reviewerName: string;
+      reason?: string;
+    }) => {
+      const { data: row, error: fetchErr } = await supabase.from('activity_logs').select('action').eq('id', id).single();
+      if (fetchErr) throw fetchErr;
+      const payloadData = typeof row.action === 'string' ? JSON.parse(row.action) : row.action;
+      payloadData.status = reviewData.status;
+      payloadData.reviewedBy = reviewData.reviewerName;
+      payloadData.reviewedAt = new Date().toISOString();
+      if (reviewData.status === 'REJECTED') {
+        payloadData.rejectReason = reviewData.reason || 'Không được phê duyệt';
+        payloadData.rejectedBy = reviewData.reviewerName;
+        payloadData.rejectedAt = payloadData.reviewedAt;
+      } else {
+        payloadData.approvedBy = reviewData.reviewerName;
+        payloadData.approvedAt = payloadData.reviewedAt;
+      }
+
+      const { data, error } = await supabase.from('activity_logs').update({ action: JSON.stringify(payloadData) }).eq('id', id).select().single();
+      if (error) throw error;
+      return { id: data.id, ...payloadData } as any;
+    },
+    delete: async (id: string) => {
+      const { error } = await supabase.from('activity_logs').delete().eq('id', id);
+      if (error) throw error;
+      return { success: true };
+    }
+  },
 
   directMessages: {
     getAll: async () => {

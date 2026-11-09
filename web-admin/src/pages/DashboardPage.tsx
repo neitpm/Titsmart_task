@@ -154,6 +154,23 @@ export const DashboardPage: React.FC = () => {
     const totalActualCost = displayEnhancedProjects.reduce((sum, p) => sum + (p.totalCost || 0), 0);
     const costPercent = totalContractValue > 0 ? Math.round((totalActualCost / totalContractValue) * 100) : 0;
 
+    // Chi phí và Quỹ từ bảng Phiếu chi / Quỹ (Expense Dashboard)
+    const targetExpenses = expenses.filter(exp => {
+      const pCode = (exp.projectCode || (exp as any).project_code || '').trim();
+      return targetCodes.length === 0 || targetCodes.includes(pCode);
+    });
+    let totalExpenseFund = 0;
+    let totalExpenseSpent = 0;
+    targetExpenses.forEach(exp => {
+      const isFundRow = (exp.content || '').trim().toLowerCase() === 'quỹ' || (exp.content || '').trim().toLowerCase() === 'cấp quỹ';
+      const isTransfer = (exp.content || '').toLowerCase().includes('chuyển quỹ') || (exp.description || '').toLowerCase().includes('chuyển quỹ');
+      const spent = isFundRow || isTransfer ? 0 : Number(exp.totalAmount || 0);
+      const fund = Number(exp.incomeAmount || 0);
+      totalExpenseSpent += spent;
+      totalExpenseFund += fund;
+    });
+    const totalExpenseBalance = totalExpenseFund - totalExpenseSpent;
+
     const allTasks = tasks.filter(t => !isTaskSectionHeaderItem(t) && targetCodes.includes(t.projectCode));
     const totalTasksCount = allTasks.length;
     const completedTasksCount = allTasks.filter(t => isTaskActuallyDone(t)).length;
@@ -190,9 +207,12 @@ export const DashboardPage: React.FC = () => {
       totalDocs,
       completedDocs,
       activeEngineers,
-      attendanceTodayCount
+      attendanceTodayCount,
+      totalExpenseFund,
+      totalExpenseSpent,
+      totalExpenseBalance
     };
-  }, [displayEnhancedProjects, targetCodes, tasks, documentTracks, engineers, attendanceTodayLogs]);
+  }, [displayEnhancedProjects, targetCodes, tasks, documentTracks, engineers, attendanceTodayLogs, expenses]);
 
   // 1. BIỂU ĐỒ TIẾN ĐỘ THI CÔNG (%)
   const progressData = useMemo(() => {
@@ -534,7 +554,7 @@ export const DashboardPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Card 2: Tổng thực chi */}
+          {/* Card 2: Đã chi thực tế & Tồn quỹ */}
           <div 
             onClick={() => {
               const el = document.getElementById('personnel-cost-summary');
@@ -548,13 +568,13 @@ export const DashboardPage: React.FC = () => {
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 shrink-0 group-hover:scale-105 transition-transform">
                 <span className="material-symbols-outlined text-[20px]">account_balance_wallet</span>
               </div>
-              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-tight truncate">Tổng thực chi</h3>
+              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-tight truncate">Đã chi thực tế</h3>
             </div>
-            <div className="text-lg sm:text-xl font-black text-slate-900 truncate" title={formatCurrency(topMetrics.totalActualCost)}>
-              {formatCurrency(topMetrics.totalActualCost)}
+            <div className="text-lg sm:text-xl font-black text-rose-600 truncate" title={formatCurrency(topMetrics.totalExpenseSpent)}>
+              {formatCurrency(topMetrics.totalExpenseSpent)}
             </div>
-            <div className="mt-2 text-[11px] font-semibold text-slate-500 truncate">
-              <span className="text-emerald-600 font-bold">{topMetrics.costPercent}%</span> ngân sách HĐ
+            <div className="mt-2 text-[11px] font-semibold text-slate-500 truncate" title={`Tồn quỹ: ${formatCurrency(topMetrics.totalExpenseBalance)} (Quỹ nhận: ${formatCurrency(topMetrics.totalExpenseFund)})`}>
+              Tồn: <span className={`font-bold ${topMetrics.totalExpenseBalance >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>{formatCurrency(topMetrics.totalExpenseBalance)}</span>
             </div>
           </div>
 

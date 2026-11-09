@@ -402,6 +402,40 @@ export const isNotificationForUser = (notification: any, user: any, engineers: a
     return isAdmin;
   }
 
+  // 4. Fund requests (Yêu cầu cấp quỹ: `fund_request_pending:::targetId:::targetName`)
+  if (tLow.includes('cấp quỹ') || mLow.includes('cấp quỹ') || typeStr.startsWith('fund_request')) {
+    // 1. Không gửi thông báo "Yêu cầu cấp quỹ mới (chờ duyệt)" cho chính người tạo đơn
+    const isFundRequestPending = typeStr.startsWith('fund_request_pending') || tLow.includes('yêu cầu cấp quỹ mới');
+    const isSenderInMessage = myNames.some(n => n && mLow.startsWith(n.toLowerCase()));
+    if (isFundRequestPending && (isSenderById || isSenderByName || isSenderInMessage)) {
+      return false;
+    }
+
+    if (typeStr.includes(':::')) {
+      const parts = typeStr.split(':::');
+      const targetIds = (parts[1] || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+      const targetNames = (parts[2] || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+
+      const isMeId = targetIds.some(tId => myIds.includes(tId) || (myEng && tId === String(myEng.id).toLowerCase()));
+      const isMeName = targetNames.some(tName => myNames.some(n => tName.includes(n) || n.includes(tName)));
+
+      // Người duyệt được chỉ định luôn thấy
+      if (isMeId || isMeName) return true;
+
+      // Admin / Quản trị viên (nếu không phải người tạo đơn) luôn thấy yêu cầu chờ duyệt
+      if (isAdmin || user?.role === 'admin' || user?.permissions?.includes('MANAGE_PAYROLL' as any) || user?.permissions?.includes('APPROVE_LEAVE_FINAL' as any)) {
+        return true;
+      }
+
+      return false;
+    }
+
+    if (tLow.includes('đã được duyệt') || tLow.includes('từ chối') || tLow.includes('phê duyệt')) {
+      if (myNames.some(n => mLow.includes(n))) return true;
+    }
+    return isAdmin;
+  }
+
   // 5. Admins and managers can see all other project/general notifications
   if (isAdmin) return true;
 
