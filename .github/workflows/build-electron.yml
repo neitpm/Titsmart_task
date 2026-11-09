@@ -186,35 +186,3 @@ jobs:
           web-admin/ios/App/TITSMART-v${{ env.version }}.ipa
         update_release: true
         fail_on_unmatched_files: false
-
-  send-email:
-    name: Send Email Notification
-    needs: [build-electron, build-android, build-ios]
-    runs-on: ubuntu-latest
-
-    steps:
-    - name: Checkout Repository
-      uses: actions/checkout@v4
-
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: 22
-
-    - name: Generate Email Body
-      run: node generate_mail.js
-
-    - name: Send Notification Email
-      uses: dawidd6/action-send-mail@v3
-      with:
-        server_address: mail90168.maychuemail.com
-        server_port: 465
-        secure: true
-        username: "kythuat@titsmart.vn"
-        password: "Vcuong1@"
-        subject: "[TITSMART] Phần mềm quản lý dự án đã có bản cập nhật mới"
-        to: kythuat@titsmart.vn
-        from: Hệ thống TITSMART <kythuat@titsmart.vn>
-        html_body: file://mail_body.html
-
-
