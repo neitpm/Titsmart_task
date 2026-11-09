@@ -2728,6 +2728,7 @@ export const ProjectCostPlanPage: React.FC = () => {
                       user && (
                         user.role === 'admin' ||
                         user.username?.toLowerCase() === 'admin' ||
+                        user.name?.toLowerCase() === 'admin' ||
                         roleStr === 'admin' ||
                         roleStr.includes('quản trị viên')
                       )
@@ -5247,6 +5248,7 @@ export const ProjectCostPlanPage: React.FC = () => {
                       user && (
                         user.role === 'admin' ||
                         user.username?.toLowerCase() === 'admin' ||
+                        user.name?.toLowerCase() === 'admin' ||
                         roleStr === 'admin' ||
                         roleStr.includes('quản trị viên')
                       )

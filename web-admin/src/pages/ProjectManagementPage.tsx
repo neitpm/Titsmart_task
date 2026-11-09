@@ -1199,7 +1199,7 @@ export const ProjectManagementPage: React.FC = () => {
                       <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0 text-slate-500 font-extrabold text-xs mt-0.5">
                         {String(idx + 1).padStart(2, '0')}
                       </div>
-                      <div className="flex-1 bg-blue-50 rounded-lg px-2.5 py-1.5 sm:px-3 sm:py-2 flex items-center justify-between gap-2 min-w-0 transition-[padding] group-hover:pr-24">
+                      <div className="flex-1 bg-blue-50 rounded-lg px-2.5 py-1.5 sm:px-3 sm:py-2 flex items-center justify-between gap-2 min-w-0 transition-[padding] pr-20 sm:pr-2 sm:group-hover:pr-24">
                         <p className="font-bold text-primary text-sm leading-snug line-clamp-2" title={project.name}>
                           {project.name}
                         </p>
@@ -1286,9 +1286,9 @@ export const ProjectManagementPage: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Nút sửa/xóa/thông báo — hiện khi hover */}
+                  {/* Nút sửa/xóa/thông báo — hiện khi hover trên desktop, luôn hiện trên mobile */}
                   <div
-                    className="absolute top-[18px] right-3 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-20 bg-white/95 backdrop-blur-xs px-1 py-0.5 rounded-lg border border-slate-200 shadow-xs"
+                    className="absolute top-[18px] right-3 flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity z-20 bg-white/95 backdrop-blur-xs px-1 py-0.5 rounded-lg border border-slate-200 shadow-xs"
                     onClick={(e) => e.stopPropagation()}
                     onMouseDown={(e) => e.stopPropagation()}
                   >
