@@ -16,6 +16,7 @@ interface UIStoreState {
   companySlogan: string;
   companyLogo: string | null;
   allowDirectFundApproval: boolean;
+  allowDualCheckerReviewerRole: boolean;
   defaultAccountantId?: string;
   defaultAccountantName?: string;
   isApplyingBranding: boolean;
@@ -28,6 +29,7 @@ interface UIStoreState {
   setAutoShowNotificationPopup: (val: boolean) => void;
   setShowChatWidget: (val: boolean) => void;
   setAllowDirectFundApproval: (val: boolean) => void;
+  setAllowDualCheckerReviewerRole: (val: boolean) => void;
   setDefaultAccountant: (id?: string, name?: string) => void;
   setAvailableUpdateVersion: (val: string | null) => void;
   setIsUpdatingApp: (val: boolean) => void;
@@ -55,10 +57,12 @@ export const useUIStore = create<UIStoreState>()(
       companySlogan: 'Project Manager',
       companyLogo: null,
       allowDirectFundApproval: false,
+      allowDualCheckerReviewerRole: false,
       defaultAccountantId: '',
       defaultAccountantName: '',
       isApplyingBranding: false,
       setAllowDirectFundApproval: (val) => set({ allowDirectFundApproval: val }),
+      setAllowDualCheckerReviewerRole: (val) => set({ allowDualCheckerReviewerRole: val }),
       setDefaultAccountant: (id, name) => set({ defaultAccountantId: id || '', defaultAccountantName: name || '' }),
       setSidebarHoverToExpand: (val) => set({ sidebarHoverToExpand: val }),
       setSidebarShowToggleButton: (val) => set({ sidebarShowToggleButton: val }),
@@ -137,6 +141,7 @@ export const useUIStore = create<UIStoreState>()(
         companySlogan: state.companySlogan,
         companyLogo: state.companyLogo,
         allowDirectFundApproval: state.allowDirectFundApproval,
+        allowDualCheckerReviewerRole: state.allowDualCheckerReviewerRole,
         defaultAccountantId: state.defaultAccountantId,
         defaultAccountantName: state.defaultAccountantName,
       }),

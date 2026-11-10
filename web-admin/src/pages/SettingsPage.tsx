@@ -182,6 +182,8 @@ export const SettingsPage: React.FC = () => {
     companyLogo,
     allowDirectFundApproval,
     setAllowDirectFundApproval,
+    allowDualCheckerReviewerRole,
+    setAllowDualCheckerReviewerRole,
     defaultAccountantId,
     defaultAccountantName,
     setDefaultAccountant,
@@ -764,7 +766,49 @@ export const SettingsPage: React.FC = () => {
                         </div>
                       </div>
 
-                      {/* Tùy chọn 2: Kế toán phụ trách mặc định */}
+                      {/* Tùy chọn 2: Cho phép người kiểm tra kiêm người duyệt */}
+                      <div className="flex items-start justify-between gap-4 p-3.5 rounded-xl bg-slate-50 border border-slate-200/80">
+                        <div>
+                          <span className="text-xs font-bold text-slate-800 block">Cho phép Người kiểm tra kiêm nhiệm Người duyệt</span>
+                          <span className="text-[11px] text-slate-500 block mt-0.5">
+                            Mặc định TẮT (Người kiểm tra không được duyệt lại yêu cầu). Khi BẬT, một nhân sự có thể vừa kiểm tra vừa phê duyệt đơn cấp quỹ nếu công ty có nhu cầu kiêm nhiệm.
+                          </span>
+                        </div>
+                        <div className="flex items-center bg-slate-200/80 p-0.5 rounded-lg border border-slate-200/60 shrink-0">
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              setAllowDualCheckerReviewerRole(true);
+                              if (logActivity) {
+                                await logActivity('Đã BẬT cấu hình cho phép Người kiểm tra kiêm Người duyệt cấp quỹ', 'Hệ thống');
+                              }
+                              triggerToast('Đã BẬT chế độ cho phép kiêm nhiệm kiểm tra & duyệt!', 'success');
+                            }}
+                            className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${
+                              allowDualCheckerReviewerRole ? 'bg-white text-emerald-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                            }`}
+                          >
+                            Bật
+                          </button>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              setAllowDualCheckerReviewerRole(false);
+                              if (logActivity) {
+                                await logActivity('Đã TẮT cấu hình cho phép Người kiểm tra kiêm Người duyệt cấp quỹ', 'Hệ thống');
+                              }
+                              triggerToast('Đã TẮT chế độ kiêm nhiệm (Bắt buộc người duyệt và người kiểm tra riêng biệt)!', 'info');
+                            }}
+                            className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${
+                              !allowDualCheckerReviewerRole ? 'bg-white text-rose-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                            }`}
+                          >
+                            Tắt
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Tùy chọn 3: Kế toán phụ trách mặc định */}
                       <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 space-y-2">
                         <label className="block text-xs font-bold text-slate-800">
                           Nhân sự Kế toán phụ trách chuyển khoản mặc định

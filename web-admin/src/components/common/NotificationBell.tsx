@@ -402,10 +402,10 @@ export const isNotificationForUser = (notification: any, user: any, engineers: a
     return isAdmin;
   }
 
-  // 4. Fund requests (Yêu cầu cấp quỹ: `fund_request_pending:::targetId:::targetName`)
+  // 4. Fund requests (Yêu cầu cấp quỹ: `fund_request_...:::targetId:::targetName`)
   if (tLow.includes('cấp quỹ') || mLow.includes('cấp quỹ') || typeStr.startsWith('fund_request')) {
-    // 1. Không gửi thông báo "Yêu cầu cấp quỹ mới (chờ duyệt)" cho chính người tạo đơn
-    const isFundRequestPending = typeStr.startsWith('fund_request_pending') || tLow.includes('yêu cầu cấp quỹ mới');
+    // 1. Không gửi thông báo "Yêu cầu cấp quỹ mới (chờ duyệt/kiểm tra)" cho chính người tạo đơn
+    const isFundRequestPending = typeStr.startsWith('fund_request_pending') || typeStr.startsWith('fund_request_checked') || tLow.includes('yêu cầu cấp quỹ mới');
     const isSenderInMessage = myNames.some(n => n && mLow.startsWith(n.toLowerCase()));
     if (isFundRequestPending && (isSenderById || isSenderByName || isSenderInMessage)) {
       return false;
@@ -419,7 +419,7 @@ export const isNotificationForUser = (notification: any, user: any, engineers: a
       const isMeId = targetIds.some(tId => myIds.includes(tId) || (myEng && tId === String(myEng.id).toLowerCase()));
       const isMeName = targetNames.some(tName => myNames.some(n => tName.includes(n) || n.includes(tName)));
 
-      // Người duyệt được chỉ định luôn thấy
+      // Người được chỉ định đích danh luôn thấy
       if (isMeId || isMeName) return true;
 
       // Admin / Quản trị viên / Người có quyền kiểm tra, duyệt, chuyển tiền (nếu không phải người tạo đơn) luôn thấy yêu cầu chờ xử lý
@@ -891,29 +891,31 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ isSidebar = 
       }
     }
 
-    // Xử lý thông báo Yêu cầu cấp quỹ (kể cả thông báo cũ lưu link /project-cost-plan không hợp lệ)
+    // Xử lý thông báo Yêu cầu cấp quỹ (ưu tiên link lưu trực tiếp trên thông báo mang projectCode và fundId)
     const isFundNotification = 
       titleLower.includes('cấp quỹ') || 
       msgLower.includes('cấp quỹ') || 
       (notification.type && notification.type.startsWith('fund_request'));
 
     if (isFundNotification) {
-      // Tìm kiếm dự án theo tên trong title: "Yêu cầu cấp quỹ mới: Trạm biến áp..."
-      let targetProjectCode = finalProjectCode;
-      if (!targetProjectCode && title.includes(':')) {
-        const afterColon = title.split(':')[1]?.trim() || '';
-        const cleanAfterColon = afterColon.toLowerCase();
-        const store = useRealtimeStore.getState();
-        const matched = (store.projects || []).find(p => 
-          (p.name && (p.name.toLowerCase() === cleanAfterColon || p.name.toLowerCase().includes(cleanAfterColon) || cleanAfterColon.includes(p.name.toLowerCase()))) ||
-          (p.code && (p.code.toLowerCase() === cleanAfterColon || cleanAfterColon.includes(p.code.toLowerCase())))
-        );
-        if (matched) {
-          targetProjectCode = matched.code || matched.id;
-        }
+      // 1. Ưu tiên điều hướng thẳng theo notification.link nếu đã chứa đường dẫn cost-plan
+      if (link && (link.includes('cost-plan') || link.includes('fundId='))) {
+        navigate(link);
+        return;
       }
 
-      const notifFundId = notification.id ? `&fundId=${encodeURIComponent(notification.id)}` : '';
+      // 2. Nếu thông báo cũ chưa có link trực tiếp, lấy projectCode từ notification hoặc trích xuất từ link
+      let targetProjectCode = pCode || finalProjectCode;
+      let targetFundId = '';
+      if (link && link.includes('fundId=')) {
+        const m = link.match(/fundId=([^&]+)/);
+        if (m && m[1]) targetFundId = decodeURIComponent(m[1]);
+      }
+      if (!targetFundId && notification.id) {
+        targetFundId = notification.id;
+      }
+
+      const notifFundId = targetFundId ? `&fundId=${encodeURIComponent(targetFundId)}` : '';
 
       if (targetProjectCode) {
         navigate(`/projects/${encodeURIComponent(targetProjectCode)}/cost-plan?tab=EXPENSE&openFundRequests=true${notifFundId}`);
