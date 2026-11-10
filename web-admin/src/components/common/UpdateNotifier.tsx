@@ -92,7 +92,7 @@ export const UpdateNotifier: React.FC = () => {
   // ─── Web & Mobile In-App Update Checker (GitHub Releases) ───
   const checkWebVersion = useCallback(async () => {
     try {
-      const response = await fetch('https://api.github.com/repos/kennhope13/Titsmart_task/releases/latest', {
+      const response = await fetch('https://api.github.com/repos/neitpm/Titsmart_task/releases/latest', {
         headers: { 'Accept': 'application/vnd.github.v3+json' }
       });
       if (!response.ok) return;
@@ -103,7 +103,7 @@ export const UpdateNotifier: React.FC = () => {
       if (latestTag && compareVersions(latestTag, currentVerEnv) > 0) {
         const apkAsset = data.assets?.find((a: any) => a.name.toLowerCase().endsWith('.apk'));
         const downloadUrl = apkAsset?.browser_download_url 
-          || `https://github.com/kennhope13/Titsmart_task/releases/download/v${latestTag}/TITSMART-v${latestTag}.apk`;
+          || `https://github.com/neitpm/Titsmart_task/releases/download/v${latestTag}/TITSMART-v${latestTag}.apk`;
 
         notifyNewVersion(latestTag, 'web', downloadUrl);
       }
@@ -161,7 +161,7 @@ export const UpdateNotifier: React.FC = () => {
     if (isCapacitorNative) {
       const downloadUrl = (state.message && state.message.startsWith('http')) 
         ? state.message 
-        : `https://github.com/kennhope13/Titsmart_task/releases/download/v${state.version || availableUpdateVersion}/TITSMART-v${state.version || availableUpdateVersion}.apk`;
+        : `https://github.com/neitpm/Titsmart_task/releases/download/v${state.version || availableUpdateVersion}/TITSMART-v${state.version || availableUpdateVersion}.apk`;
       try {
         window.open(downloadUrl, '_system');
       } catch (_) {
