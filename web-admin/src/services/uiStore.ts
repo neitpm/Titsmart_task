@@ -15,6 +15,9 @@ interface UIStoreState {
   companyName: string;
   companySlogan: string;
   companyLogo: string | null;
+  allowDirectFundApproval: boolean;
+  defaultAccountantId?: string;
+  defaultAccountantName?: string;
   isApplyingBranding: boolean;
   setSidebarHoverToExpand: (val: boolean) => void;
   setSidebarShowToggleButton: (val: boolean) => void;
@@ -24,6 +27,8 @@ interface UIStoreState {
   setShowNotificationBell: (val: boolean) => void;
   setAutoShowNotificationPopup: (val: boolean) => void;
   setShowChatWidget: (val: boolean) => void;
+  setAllowDirectFundApproval: (val: boolean) => void;
+  setDefaultAccountant: (id?: string, name?: string) => void;
   setAvailableUpdateVersion: (val: string | null) => void;
   setIsUpdatingApp: (val: boolean) => void;
   setCompanyName: (val: string) => void;
@@ -49,7 +54,12 @@ export const useUIStore = create<UIStoreState>()(
       companyName: 'TITSMART',
       companySlogan: 'Project Manager',
       companyLogo: null,
+      allowDirectFundApproval: false,
+      defaultAccountantId: '',
+      defaultAccountantName: '',
       isApplyingBranding: false,
+      setAllowDirectFundApproval: (val) => set({ allowDirectFundApproval: val }),
+      setDefaultAccountant: (id, name) => set({ defaultAccountantId: id || '', defaultAccountantName: name || '' }),
       setSidebarHoverToExpand: (val) => set({ sidebarHoverToExpand: val }),
       setSidebarShowToggleButton: (val) => set({ sidebarShowToggleButton: val }),
       setIsSidebarExpanded: (val) => set((state) => ({ 
@@ -126,6 +136,9 @@ export const useUIStore = create<UIStoreState>()(
         companyName: state.companyName,
         companySlogan: state.companySlogan,
         companyLogo: state.companyLogo,
+        allowDirectFundApproval: state.allowDirectFundApproval,
+        defaultAccountantId: state.defaultAccountantId,
+        defaultAccountantName: state.defaultAccountantName,
       }),
     }
   )

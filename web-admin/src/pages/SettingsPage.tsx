@@ -60,6 +60,10 @@ const ALL_PERMISSION_GROUPS: {
       { key: 'EDIT_PAYMENTS', label: 'Cập nhật thanh toán' },
       { key: 'VIEW_EXPENSES', label: 'Xem chi phí công trình' },
       { key: 'EDIT_EXPENSES', label: 'Quản lý chi phí công trình' },
+      { key: 'CHECK_FUND_REQUEST', label: 'Kiểm tra yêu cầu cấp quỹ' },
+      { key: 'APPROVE_FUND_REQUEST', label: 'Duyệt yêu cầu cấp quỹ (Lãnh đạo)' },
+      { key: 'PROCESS_FUND_TRANSFER', label: 'Xử lý chuyển khoản cấp quỹ (Kế toán)' },
+      { key: 'CONFIRM_FUND_RECEIPT', label: 'Xác nhận đã nhận tiền cấp quỹ' },
     ]
   },
   {
@@ -176,6 +180,11 @@ export const SettingsPage: React.FC = () => {
     companyName,
     companySlogan,
     companyLogo,
+    allowDirectFundApproval,
+    setAllowDirectFundApproval,
+    defaultAccountantId,
+    defaultAccountantName,
+    setDefaultAccountant,
     saveBrandingToCloud,
     sidebarShowToggleButton,
     sidebarHoverToExpand,
@@ -221,7 +230,20 @@ export const SettingsPage: React.FC = () => {
   // Activity Logs Store & State
   const activityLogs = useRealtimeStore(state => state.activityLogs);
   const projects = useRealtimeStore(state => state.projects);
+  const engineers = useRealtimeStore(state => state.engineers || []);
+  const logActivity = useRealtimeStore(state => state.logActivity);
   const fetchActivityLogs = useRealtimeStore(state => state.fetchActivityLogs);
+
+  const logFundConfigChange = async (enabled: boolean) => {
+    try {
+      if (logActivity) {
+        await logActivity(
+          `${enabled ? 'BẬT' : 'TẮT'} cấu hình "Cho phép Lãnh đạo duyệt trực tiếp cấp quỹ (bỏ qua bước kiểm tra)"`,
+          'Cài đặt hệ thống'
+        );
+      }
+    } catch {}
+  };
 
   const [logSearchQuery, setLogSearchQuery] = useState('');
   const [logModuleFilter, setLogModuleFilter] = useState<ActivityModule>('all');
@@ -691,6 +713,88 @@ export const SettingsPage: React.FC = () => {
                     </div>
                   )}
                 </div>
+
+                {/* Cấu hình Quy trình Cấp Quỹ (Chỉ System Admin) */}
+                {isSystemAdmin(user) && (
+                  <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs p-6 space-y-4">
+                    <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100">
+                      <span className="material-symbols-outlined text-xl text-primary">account_balance_wallet</span>
+                      <div>
+                        <h2 className="text-sm font-extrabold text-slate-800">Quy trình duyệt cấp quỹ dự án</h2>
+                        <p className="text-xs text-slate-500">Cấu hình luồng kiểm tra, duyệt và kế toán xử lý chuyển khoản</p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      {/* Tùy chọn 1: Cho phép duyệt trực tiếp */}
+                      <div className="flex items-start justify-between gap-4 p-3.5 rounded-xl bg-slate-50 border border-slate-200/80">
+                        <div>
+                          <span className="text-xs font-bold text-slate-800 block">Cho phép Lãnh đạo duyệt trực tiếp (bỏ qua bước kiểm tra)</span>
+                          <span className="text-[11px] text-slate-500 block mt-0.5">
+                            Khi bật, Lãnh đạo có thể phê duyệt ngay khi có yêu cầu cấp quỹ mà không cần chờ Người kiểm tra xác nhận. Mọi lượt bật/tắt đều được lưu vào nhật ký hệ thống.
+                          </span>
+                        </div>
+                        <div className="flex items-center bg-slate-200/80 p-0.5 rounded-lg border border-slate-200/60 shrink-0">
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              setAllowDirectFundApproval(true);
+                              await logFundConfigChange(true);
+                              triggerToast('Đã BẬT cấu hình cho phép duyệt trực tiếp cấp quỹ!', 'success');
+                            }}
+                            className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${
+                              allowDirectFundApproval ? 'bg-white text-emerald-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                            }`}
+                          >
+                            Bật
+                          </button>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              setAllowDirectFundApproval(false);
+                              await logFundConfigChange(false);
+                              triggerToast('Đã TẮT cấu hình duyệt trực tiếp (bắt buộc qua bước kiểm tra)!', 'info');
+                            }}
+                            className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${
+                              !allowDirectFundApproval ? 'bg-white text-rose-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                            }`}
+                          >
+                            Tắt
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Tùy chọn 2: Kế toán phụ trách mặc định */}
+                      <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 space-y-2">
+                        <label className="block text-xs font-bold text-slate-800">
+                          Nhân sự Kế toán phụ trách chuyển khoản mặc định
+                        </label>
+                        <p className="text-[11px] text-slate-500">
+                          Hệ thống sẽ tự động gán kế toán này khi nhân viên tạo yêu cầu cấp quỹ (nhân viên không cần tự chọn thủ công để tránh sai sót).
+                        </p>
+                        <select
+                          value={defaultAccountantId || ''}
+                          onChange={(e) => {
+                            const selectedId = e.target.value;
+                            const eng = engineers.find(item => item.id === selectedId);
+                            setDefaultAccountant(selectedId, eng?.name || '');
+                            triggerToast(`Đã thiết lập Kế toán phụ trách: ${eng?.name || 'Tự do'}`, 'success');
+                          }}
+                          className="w-full md:w-80 px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                        >
+                          <option value="">-- Để trống (Chọn kế toán khi duyệt) --</option>
+                          {engineers
+                            .filter(eng => !eng.isLocked && !(eng as any).is_locked)
+                            .map(eng => (
+                              <option key={eng.id} value={eng.id}>
+                                {eng.name} ({eng.title || eng.role || 'Nhân sự'})
+                              </option>
+                            ))}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 

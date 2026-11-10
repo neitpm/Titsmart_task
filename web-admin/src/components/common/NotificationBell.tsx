@@ -422,8 +422,17 @@ export const isNotificationForUser = (notification: any, user: any, engineers: a
       // Người duyệt được chỉ định luôn thấy
       if (isMeId || isMeName) return true;
 
-      // Admin / Quản trị viên (nếu không phải người tạo đơn) luôn thấy yêu cầu chờ duyệt
-      if (isAdmin || user?.role === 'admin' || user?.permissions?.includes('MANAGE_PAYROLL' as any) || user?.permissions?.includes('APPROVE_LEAVE_FINAL' as any)) {
+      // Admin / Quản trị viên / Người có quyền kiểm tra, duyệt, chuyển tiền (nếu không phải người tạo đơn) luôn thấy yêu cầu chờ xử lý
+      if (
+        isAdmin || 
+        user?.role === 'admin' || 
+        user?.permissions?.includes('CHECK_FUND_REQUEST' as any) ||
+        user?.permissions?.includes('APPROVE_FUND_REQUEST' as any) ||
+        user?.permissions?.includes('PROCESS_FUND_TRANSFER' as any) ||
+        user?.permissions?.includes('CONFIRM_FUND_RECEIPT' as any) ||
+        user?.permissions?.includes('MANAGE_PAYROLL' as any) || 
+        user?.permissions?.includes('APPROVE_LEAVE_FINAL' as any)
+      ) {
         return true;
       }
 

@@ -3,6 +3,7 @@ export type Permission = 'VIEW_PROJECT_DIAGRAM' | 'MANAGE_PROJECT_DIAGRAM'
   | 'VIEW_TASKS' | 'IMPORT_TASKS' | 'EDIT_TASKS' | 'ASSIGN_TASKS' | 'UPDATE_TASK_PROGRESS' | 'APPROVE_TASKS'
   | 'VIEW_MATERIALS' | 'IMPORT_MATERIALS' | 'EDIT_MATERIALS' | 'UPDATE_MATERIAL_STATUS'
   | 'VIEW_FINANCE' | 'EDIT_PRICES' | 'VIEW_PAYMENTS' | 'EDIT_PAYMENTS' | 'VIEW_EXPENSES' | 'EDIT_EXPENSES'
+  | 'CHECK_FUND_REQUEST' | 'APPROVE_FUND_REQUEST' | 'PROCESS_FUND_TRANSFER' | 'CONFIRM_FUND_RECEIPT'
   | 'VIEW_DOCUMENTS' | 'CREATE_DOCUMENTS' | 'EDIT_DOCUMENTS' | 'DELETE_DOCUMENTS' | 'MANAGE_DOCUMENTS'
   | 'VIEW_USERS' | 'EDIT_USERS' | 'MANAGE_USERS' | 'MANAGE_PERMISSIONS' | 'MANAGE_PAYROLL' | 'APPROVE_LEAVE_STEP1' | 'APPROVE_LEAVE_FINAL'
   | 'EXPORT_DATA' | 'MANAGE_INVENTORY' | 'VIEW_FIELD_LOGS' | 'MANAGE_FIELD_LOGS' | 'VIEW_ACTIVITY_LOG';
@@ -250,6 +251,93 @@ export interface LeaveRequest {
   updatedAt?: string;
 }
 
+export type FundRequestStatus = 
+  | 'PENDING_CHECK' 
+  | 'NEED_MORE_INFO' 
+  | 'CHECKED_WAITING_APPROVAL' 
+  | 'REJECTED_BY_CHECKER' 
+  | 'APPROVED_WAITING_ACCOUNTING' 
+  | 'ACCOUNTING_PROCESSING' 
+  | 'TRANSFERRED_WAITING_CONFIRMATION' 
+  | 'COMPLETED' 
+  | 'REJECTED'
+  // Legacy compatibility:
+  | 'PENDING'
+  | 'APPROVED';
+
+export interface FundRequestAuditLog {
+  action: string;
+  actorId: string;
+  actorName: string;
+  actorRole?: string;
+  timestamp: string;
+  note?: string;
+  attachmentUrl?: string;
+}
+
+export interface FundRequest {
+  id: string;
+  projectCode: string;
+  projectName?: string;
+  amount: number;
+  type: string;
+  purpose: string;
+  neededDate: string;
+  note?: string;
+  status: FundRequestStatus;
+
+  // Người tạo
+  creatorId?: string;
+  creatorName: string;
+  creatorTitle?: string;
+  createdAt: string;
+
+  // Người kiểm tra (bước 1)
+  checkerId?: string;
+  checkerName?: string;
+  checkerTitle?: string;
+  checkedAt?: string;
+  checkerNote?: string;
+
+  // Người duyệt lãnh đạo (bước 2)
+  reviewerId?: string;
+  reviewerName?: string;
+  reviewerTitle?: string;
+  reviewedAt?: string;
+  reviewNote?: string;
+  isDirectApproval?: boolean;
+  directApprovalReason?: string;
+
+  // Kế toán xử lý (bước 3)
+  accountantId?: string;
+  accountantName?: string;
+  accountantReceivedAt?: string;
+  transferDocUrl?: string; // Bắt buộc file UNC
+  transferDocName?: string;
+  transferredAt?: string;
+  transferNote?: string;
+
+  // Người tạo xác nhận nhận tiền (bước 4)
+  confirmedAt?: string;
+  confirmNote?: string;
+  expenseCreated?: boolean;
+  expenseId?: string;
+
+  // Từ chối / Bổ sung
+  rejectReason?: string;
+  rejectedBy?: string;
+  rejectedAt?: string;
+  moreInfoReason?: string;
+
+  // Lịch sử từng bước
+  history?: FundRequestAuditLog[];
+
+  // Legacy fields
+  notificationId?: string;
+  approvedBy?: string;
+  approvedAt?: string;
+}
+
 export type AttendanceAdjustmentType = 'Bù vào ca' | 'Bù ra ca' | 'Bù cả ngày';
 
 export interface AttendanceAdjustmentRequest {
@@ -384,6 +472,7 @@ export interface ProjectExpense {
   balanceFund?: number;
   notes?: string;
   invoiceUrl?: string;
+  fundRequestId?: string; // Khóa ngoại duy nhất liên kết với đơn cấp quỹ để chống nạp trùng
   updatedBy?: string;
   updatedAt?: string;
 }

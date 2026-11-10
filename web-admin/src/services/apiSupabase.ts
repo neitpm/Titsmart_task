@@ -2567,11 +2567,31 @@ export const api = {
       creatorId?: string;
       creatorName: string;
       creatorTitle?: string;
+      checkerId?: string;
+      checkerName?: string;
+      checkerTitle?: string;
       reviewerId: string;
       reviewerName: string;
       reviewerTitle?: string;
+      accountantId?: string;
+      accountantName?: string;
       note?: string;
+      status?: string;
+      history?: any[];
     }) => {
+      const nowIso = new Date().toISOString();
+      const initialStatus = input.status || (input.checkerId ? 'PENDING_CHECK' : 'CHECKED_WAITING_APPROVAL');
+      const initialHistory = input.history || [
+        {
+          action: 'TẠO YÊU CẦU',
+          actorId: input.creatorId || '',
+          actorName: input.creatorName,
+          actorRole: input.creatorTitle || 'Người tạo',
+          timestamp: nowIso,
+          note: input.note || input.purpose
+        }
+      ];
+
       const payloadData: any = {
         projectCode: input.projectCode,
         projectName: input.projectName || input.projectCode,
@@ -2582,12 +2602,18 @@ export const api = {
         creatorId: input.creatorId,
         creatorName: input.creatorName,
         creatorTitle: input.creatorTitle || 'Nhân sự',
+        checkerId: input.checkerId || '',
+        checkerName: input.checkerName || '',
+        checkerTitle: input.checkerTitle || '',
         reviewerId: input.reviewerId,
         reviewerName: input.reviewerName,
         reviewerTitle: input.reviewerTitle || '',
+        accountantId: input.accountantId || '',
+        accountantName: input.accountantName || '',
         note: input.note || '',
-        status: 'PENDING',
-        createdAt: new Date().toISOString()
+        status: initialStatus,
+        history: initialHistory,
+        createdAt: nowIso
       };
       const payload: any = {
         user: input.creatorName,
@@ -2606,27 +2632,29 @@ export const api = {
           error = retry.error;
         }
       }
-      return { id: data?.id || `fund-${Date.now()}`, ...payloadData } as any;
+      if (error || !data) {
+        throw error || new Error('Không thể lưu yêu cầu cấp quỹ lên hệ thống.');
+      }
+      return { id: data.id, ...payloadData } as any;
     },
-    review: async (id: string, reviewData: {
-      status: 'APPROVED' | 'REJECTED';
-      reviewerId?: string;
-      reviewerName: string;
-      reason?: string;
-    }) => {
+    review: async (id: string, reviewData: any) => {
       const { data: row, error: fetchErr } = await supabase.from('activity_logs').select('action').eq('id', id).single();
       if (fetchErr) throw fetchErr;
       const payloadData = typeof row.action === 'string' ? JSON.parse(row.action) : row.action;
-      payloadData.status = reviewData.status;
-      payloadData.reviewedBy = reviewData.reviewerName;
-      payloadData.reviewedAt = new Date().toISOString();
-      if (reviewData.status === 'REJECTED') {
-        payloadData.rejectReason = reviewData.reason || 'Không được phê duyệt';
-        payloadData.rejectedBy = reviewData.reviewerName;
-        payloadData.rejectedAt = payloadData.reviewedAt;
-      } else {
-        payloadData.approvedBy = reviewData.reviewerName;
-        payloadData.approvedAt = payloadData.reviewedAt;
+      
+      // Hợp nhất các trường cập nhật
+      Object.assign(payloadData, reviewData);
+      payloadData.updatedAt = new Date().toISOString();
+
+      // Lưu lịch sử audit nếu có entry mới
+      if (reviewData.auditEntry) {
+        const history = Array.isArray(payloadData.history) ? payloadData.history : [];
+        history.push({
+          ...reviewData.auditEntry,
+          timestamp: reviewData.auditEntry.timestamp || new Date().toISOString()
+        });
+        payloadData.history = history;
+        delete payloadData.auditEntry;
       }
 
       const { data, error } = await supabase.from('activity_logs').update({ action: JSON.stringify(payloadData) }).eq('id', id).select().single();

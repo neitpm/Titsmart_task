@@ -55,6 +55,10 @@ const ALL_PERMISSION_GROUPS: {
       { key: 'EDIT_PAYMENTS', label: 'Cập nhật thanh toán' },
       { key: 'VIEW_EXPENSES', label: 'Xem chi phí công trình' },
       { key: 'EDIT_EXPENSES', label: 'Quản lý chi phí công trình' },
+      { key: 'CHECK_FUND_REQUEST', label: 'Kiểm tra yêu cầu cấp quỹ' },
+      { key: 'APPROVE_FUND_REQUEST', label: 'Duyệt yêu cầu cấp quỹ (Lãnh đạo)' },
+      { key: 'PROCESS_FUND_TRANSFER', label: 'Xử lý chuyển khoản cấp quỹ (Kế toán)' },
+      { key: 'CONFIRM_FUND_RECEIPT', label: 'Xác nhận đã nhận tiền cấp quỹ' },
     ]
   },
   {
