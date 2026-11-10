@@ -7,6 +7,9 @@ import { useRealtimeStore } from '../services/realtimeStore';
 import { useAuthStore } from '../services/authStore';
 import { Toast } from '../components/common/Toast';
 import { Modal } from '../components/common/Modal';
+import { RoleLevelConfigModal } from '../components/common/RoleLevelConfigModal';
+import { useRoleLevelStore, CustomRoleLevel } from '../services/roleLevelStore';
+import { isSystemAdmin } from '../services/authStore';
 import { CustomSelect } from '@/components/common/CustomSelect';
 import { PullToRefresh } from '../components/common/PullToRefresh';
 import { EmployeePeriodToolbar } from '../components/tasks/EmployeePeriodToolbar';
@@ -156,7 +159,13 @@ export const PersonnelPage: React.FC = () => {
   const [selectedProjectCodes, setSelectedProjectCodes] = useState<string[]>([]);
   const [isAllProjects, setIsAllProjects] = useState(false);
   const [permissions, setPermissions] = useState<Permission[]>([]);
-  const [selectedLevel, setSelectedLevel] = useState<'level1' | 'level2' | 'level3' | null>(null);
+  const [selectedLevel, setSelectedLevel] = useState<string | null>(null);
+  const [isRoleConfigModalOpen, setIsRoleConfigModalOpen] = useState(false);
+  const { levels: roleLevels, fetchLevelsFromCloud } = useRoleLevelStore();
+
+  useEffect(() => {
+    fetchLevelsFromCloud();
+  }, [fetchLevelsFromCloud]);
   const [submitting, setSubmitting] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingPersonId, setEditingPersonId] = useState<string | null>(null);
@@ -769,11 +778,22 @@ export const PersonnelPage: React.FC = () => {
               )}
             </div>
 
+            {isSystemAdmin(user) && (
+              <button
+                onClick={() => setIsRoleConfigModalOpen(true)}
+                title="Cấu hình cấp phân quyền cho hệ thống"
+                className="bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-primary hover:border-blue-300 h-8 md:h-[34px] px-2.5 md:px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs shrink-0 transition-colors cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[16px] text-primary">tune</span>
+                <span className="hidden sm:inline">Cấu hình cấp quyền</span>
+              </button>
+            )}
+
             {(hasPermission(user, 'MANAGE_USERS') || hasPermission(user, 'EDIT_USERS')) && (
               <button
                 onClick={openCreateModal}
                 title="Thêm nhân sự"
-                className="bg-primary text-white h-8 md:h-[34px] w-8 md:w-auto px-0 md:px-3.5 rounded-lg text-xs font-bold hover:opacity-90 flex items-center justify-center gap-1.5 shadow-xs shrink-0"
+                className="bg-primary text-white h-8 md:h-[34px] w-8 md:w-auto px-0 md:px-3.5 rounded-lg text-xs font-bold hover:opacity-90 flex items-center justify-center gap-1.5 shadow-xs shrink-0 cursor-pointer"
               >
                 <span className="material-symbols-outlined text-[14px]">add</span>
                 <span className="hidden md:inline">Thêm nhân sự</span>
@@ -966,114 +986,86 @@ export const PersonnelPage: React.FC = () => {
 
             {/* CẤP ĐỘ PHÂN QUYỀN */}
             <div className="space-y-2 pt-2 border-t border-slate-100">
-              <label className="text-[13px] font-bold text-slate-700">
-                Phân quyền
-              </label>
+              <div className="flex items-center justify-between">
+                <label className="text-[13px] font-bold text-slate-700">
+                  Phân quyền
+                </label>
+                {isSystemAdmin(user) && (
+                  <button
+                    type="button"
+                    onClick={() => setIsRoleConfigModalOpen(true)}
+                    className="flex items-center gap-1 text-[11px] font-bold text-primary hover:text-blue-800 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-2 py-0.5 rounded-lg transition-colors cursor-pointer"
+                    title="Cấu hình thêm/sửa/xóa các cấp quyền dành cho Admin"
+                  >
+                    <span className="material-symbols-outlined text-[13px]">tune</span>
+                    <span>Cấu hình cấp</span>
+                  </button>
+                )}
+              </div>
               
-              <div className="space-y-1.5 bg-slate-50 border border-slate-200 rounded-lg p-2.5">
-                {/* Cấp 1: Cao nhất (Toàn quyền / Ban Giám Đốc / Duyệt C2) */}
-                <label className="flex items-center gap-2.5 text-sm p-1 hover:bg-slate-100/80 rounded cursor-pointer transition-colors select-none">
-                  <input
-                    type="checkbox"
-                    checked={
-                      selectedLevel === 'level1' ||
-                      (permissions.includes('APPROVE_LEAVE_FINAL') && permissions.includes('DELETE_PROJECTS'))
-                    }
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setSelectedLevel('level1');
-                        setPermissions([...ALL_AVAILABLE_PERMISSIONS]);
-                        if (!role || role === 'Nhân viên') {
-                          setRole('Giám đốc');
-                        }
-                      } else {
-                        setSelectedLevel(null);
-                        setPermissions([]);
-                      }
-                    }}
-                    className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary cursor-pointer"
-                  />
-                  <span className="text-xs font-semibold text-slate-800">Cấp 1</span>
-                </label>
+              <div className="space-y-1.5 bg-slate-50 border border-slate-200 rounded-lg p-2.5 max-h-48 overflow-y-auto custom-scrollbar">
+                {roleLevels.map((lvl) => {
+                  const isChecked = selectedLevel === lvl.id || (
+                    lvl.id === 'level1' && permissions.includes('APPROVE_LEAVE_FINAL') && permissions.includes('DELETE_PROJECTS')
+                  ) || (
+                    lvl.id === 'level2' && permissions.includes('APPROVE_LEAVE_STEP1') && !permissions.includes('APPROVE_LEAVE_FINAL')
+                  ) || (
+                    lvl.id === 'level3' &&
+                    permissions.includes('VIEW_PROJECTS') &&
+                    permissions.includes('VIEW_TASKS') &&
+                    permissions.includes('UPDATE_TASK_PROGRESS') &&
+                    permissions.includes('VIEW_FIELD_LOGS') &&
+                    permissions.includes('MANAGE_FIELD_LOGS') &&
+                    permissions.includes('VIEW_MATERIALS') &&
+                    permissions.includes('UPDATE_MATERIAL_STATUS') &&
+                    permissions.includes('VIEW_USERS') &&
+                    permissions.includes('VIEW_PROJECT_DIAGRAM') &&
+                    permissions.includes('VIEW_DOCUMENTS') &&
+                    !permissions.includes('APPROVE_LEAVE_STEP1') &&
+                    !permissions.includes('APPROVE_LEAVE_FINAL') &&
+                    !permissions.includes('VIEW_FINANCE') &&
+                    !permissions.includes('CREATE_PROJECTS')
+                  );
 
-                {/* Cấp 2: Quản lý / Trưởng nhóm (Duyệt C1) */}
-                <label className="flex items-center gap-2.5 text-sm p-1 hover:bg-slate-100/80 rounded cursor-pointer transition-colors select-none">
-                  <input
-                    type="checkbox"
-                    checked={
-                      selectedLevel === 'level2' ||
-                      (permissions.includes('APPROVE_LEAVE_STEP1') && !permissions.includes('APPROVE_LEAVE_FINAL'))
-                    }
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setSelectedLevel('level2');
-                        setPermissions([
-                          'VIEW_PROJECTS', 'CREATE_PROJECTS', 'EDIT_PROJECTS',
-                          'VIEW_TASKS', 'IMPORT_TASKS', 'EDIT_TASKS', 'ASSIGN_TASKS', 'UPDATE_TASK_PROGRESS', 'APPROVE_TASKS', 'VIEW_FIELD_LOGS', 'MANAGE_FIELD_LOGS',
-                          'VIEW_MATERIALS', 'IMPORT_MATERIALS', 'EDIT_MATERIALS', 'UPDATE_MATERIAL_STATUS', 'MANAGE_INVENTORY',
-                          'VIEW_FINANCE', 'VIEW_PAYMENTS', 'VIEW_EXPENSES', 'EDIT_EXPENSES',
-                          'VIEW_USERS', 'EDIT_USERS', 'MANAGE_PAYROLL', 'EXPORT_DATA', 'VIEW_ACTIVITY_LOG',
-                          'APPROVE_LEAVE_STEP1',
-                          'VIEW_PROJECT_DIAGRAM', 'VIEW_DOCUMENTS', 'MANAGE_DOCUMENTS'
-                        ]);
-                      } else {
-                        setSelectedLevel(null);
-                        setPermissions([]);
-                      }
-                    }}
-                    className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary cursor-pointer"
-                  />
-                  <span className="text-xs font-semibold text-slate-800">Cấp 2</span>
-                </label>
-
-                {/* Cấp 3: Nhân viên / Kỹ sư hiện trường (Khớp chính xác ảnh mẫu) */}
-                <label className="flex items-center gap-2.5 text-sm p-1 hover:bg-slate-100/80 rounded cursor-pointer transition-colors select-none">
-                  <input
-                    type="checkbox"
-                    checked={
-                      selectedLevel === 'level3' ||
-                      (
-                        permissions.includes('VIEW_PROJECTS') &&
-                        permissions.includes('VIEW_TASKS') &&
-                        permissions.includes('UPDATE_TASK_PROGRESS') &&
-                        permissions.includes('VIEW_FIELD_LOGS') &&
-                        permissions.includes('MANAGE_FIELD_LOGS') &&
-                        permissions.includes('VIEW_MATERIALS') &&
-                        permissions.includes('UPDATE_MATERIAL_STATUS') &&
-                        permissions.includes('VIEW_USERS') &&
-                        permissions.includes('VIEW_PROJECT_DIAGRAM') &&
-                        permissions.includes('VIEW_DOCUMENTS') &&
-                        !permissions.includes('APPROVE_LEAVE_STEP1') &&
-                        !permissions.includes('APPROVE_LEAVE_FINAL') &&
-                        !permissions.includes('VIEW_FINANCE') &&
-                        !permissions.includes('CREATE_PROJECTS')
-                      )
-                    }
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setSelectedLevel('level3');
-                        setPermissions([
-                          'VIEW_PROJECTS',
-                          'VIEW_TASKS', 'UPDATE_TASK_PROGRESS', 'VIEW_FIELD_LOGS', 'MANAGE_FIELD_LOGS',
-                          'VIEW_MATERIALS', 'UPDATE_MATERIAL_STATUS',
-                          'VIEW_USERS',
-                          'VIEW_PROJECT_DIAGRAM', 'VIEW_DOCUMENTS'
-                        ]);
-                      } else {
-                        setSelectedLevel(null);
-                        setPermissions([]);
-                      }
-                    }}
-                    className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary cursor-pointer"
-                  />
-                  <span className="text-xs font-semibold text-slate-800">Cấp 3</span>
-                </label>
+                  return (
+                    <label
+                      key={lvl.id}
+                      className="flex items-center gap-2.5 text-sm p-1 hover:bg-slate-100/80 rounded cursor-pointer transition-colors select-none"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedLevel(lvl.id);
+                            setPermissions([...lvl.permissions]);
+                            if (lvl.defaultRoleName && (!role || role === 'Nhân viên')) {
+                              setRole(lvl.defaultRoleName);
+                            }
+                          } else {
+                            setSelectedLevel(null);
+                            setPermissions([]);
+                          }
+                        }}
+                        className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary cursor-pointer shrink-0"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <span className="text-xs font-semibold text-slate-800 block truncate">
+                          {lvl.name}
+                        </span>
+                        {lvl.description && (
+                          <span className="text-[10px] text-slate-400 block truncate">
+                            {lvl.description}
+                          </span>
+                        )}
+                      </div>
+                    </label>
+                  );
+                })}
               </div>
             </div>
           
-          
-            
-<div className="pt-4 mt-3 flex justify-end gap-3 border-t border-slate-100">
+            <div className="pt-4 mt-3 flex justify-end gap-3 border-t border-slate-100">
             <button type="button" onClick={closeForm} className="px-5 py-2 bg-slate-100 text-slate-700 rounded-lg font-bold text-sm hover:bg-slate-200 transition-colors">Hủy</button>
             <button
               type="submit"
@@ -1217,6 +1209,18 @@ export const PersonnelPage: React.FC = () => {
 </div>
 </form>
       </Modal>
+      <RoleLevelConfigModal
+        isOpen={isRoleConfigModalOpen}
+        onClose={() => setIsRoleConfigModalOpen(false)}
+        onSelectLevel={(lvl) => {
+          setSelectedLevel(lvl.id);
+          setPermissions([...lvl.permissions]);
+          if (lvl.defaultRoleName && (!role || role === 'Nhân viên')) {
+            setRole(lvl.defaultRoleName);
+          }
+        }}
+      />
+
       {deletingPerson && (
         <Modal isOpen={!!deletingPerson} onClose={() => setDeletingPerson(null)} title="Xác nhận xóa">
           <div className="py-4">

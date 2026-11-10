@@ -2746,6 +2746,60 @@ export const api = {
     }
   },
 
+  customRoleLevels: {
+    get: async (): Promise<any[] | null> => {
+      try {
+        const { data, error } = await supabase
+          .from('activity_logs')
+          .select('id, action, timestamp')
+          .eq('icon', 'ROLE_LEVELS_CONFIG')
+          .order('timestamp', { ascending: false })
+          .limit(1);
+
+        if (error || !data || data.length === 0) return null;
+        const row = data[0];
+        const payload = typeof row.action === 'string' ? JSON.parse(row.action) : row.action;
+        return Array.isArray(payload?.levels) ? payload.levels : null;
+      } catch (err) {
+        console.warn('[RoleLevels] Could not fetch role levels config:', err);
+        return null;
+      }
+    },
+
+    save: async (levels: any[], updatedBy?: string) => {
+      try {
+        const payloadData = {
+          levels,
+          updatedBy: updatedBy || 'Admin',
+          updatedAt: new Date().toISOString()
+        };
+
+        const payload: any = {
+          user: updatedBy || 'Admin',
+          project: 'SYSTEM_SETTINGS',
+          icon: 'ROLE_LEVELS_CONFIG',
+          action: JSON.stringify(payloadData),
+          timestamp: payloadData.updatedAt
+        };
+
+        let { error } = await supabase.from('activity_logs').insert(payload);
+        if (error) {
+          if (error.code === 'PGRST204' || String(error.message).includes('created_at') || String(error.message).includes('timestamp')) {
+            delete payload.timestamp;
+            payload.created_at = payloadData.updatedAt;
+            await supabase.from('activity_logs').insert(payload);
+          } else {
+            throw error;
+          }
+        }
+        return payloadData;
+      } catch (err) {
+        console.error('[RoleLevels] Failed to save role levels config to cloud:', err);
+        throw err;
+      }
+    }
+  },
+
   branding: {
     get: async (): Promise<{ companyName?: string; companySlogan?: string; companyLogo?: string | null; updatedAt?: string } | null> => {
       try {

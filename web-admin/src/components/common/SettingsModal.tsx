@@ -6,6 +6,7 @@ import { broadcastRealtimeSync } from '../../services/realtimeStore';
 import { uploadAttachment } from '../../utils/fileUploadHelper';
 import { Modal } from './Modal';
 import { ChangePasswordModal } from './ChangePasswordModal';
+import { RoleLevelConfigModal } from './RoleLevelConfigModal';
 import { Toast } from './Toast';
 import { registerWebDeviceToken } from '../../services/notificationDispatchService';
 import { requestSystemNotificationPermission, sendSystemNotification } from '../../services/systemNotificationService';
@@ -21,6 +22,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
   const user = useAuthStore(state => state.user);
   const isAdmin = user?.username === 'admin' || user?.role === 'admin' || user?.role === 'Quản trị viên';
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+  const [isRoleConfigOpen, setIsRoleConfigOpen] = useState(false);
   const [toastState, setToastState] = useState({ show: false, message: '', type: 'success' as 'success' | 'info' | 'warning' | 'error' });
 
   const triggerToast = (message: string, type: 'success' | 'info' | 'warning' | 'error' = 'success') => {
@@ -588,6 +590,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
           </div>
         </div>
       </Modal>
+
+      {/* Role Level Config Modal */}
+      <RoleLevelConfigModal
+        isOpen={isRoleConfigOpen}
+        onClose={() => setIsRoleConfigOpen(false)}
+      />
 
       {/* Change Password Modal */}
       <ChangePasswordModal
