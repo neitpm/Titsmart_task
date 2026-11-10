@@ -168,9 +168,8 @@ export const DashboardPage: React.FC = () => {
     let totalExpenseFund = 0;
     let totalExpenseSpent = 0;
     targetExpenses.forEach(exp => {
-      const isFundRow = (exp.content || '').trim().toLowerCase() === 'quỹ' || (exp.content || '').trim().toLowerCase() === 'cấp quỹ';
-      const isTransfer = (exp.content || '').toLowerCase().includes('chuyển quỹ') || (exp.description || '').toLowerCase().includes('chuyển quỹ');
-      const spent = isFundRow || isTransfer ? 0 : Number(exp.totalAmount || 0);
+      const isFundRow = (exp.content || '').trim().toLowerCase() === 'quỹ';
+      const spent = isFundRow ? 0 : Number(exp.totalAmount || 0);
       const fund = Number(exp.incomeAmount || 0);
       totalExpenseSpent += spent;
       totalExpenseFund += fund;
