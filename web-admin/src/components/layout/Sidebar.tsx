@@ -3,7 +3,7 @@ import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useRealtimeStore } from '../../services/realtimeStore';
 import { useAuthStore, hasPermission, isExecutiveOrAdmin } from '../../services/authStore';
 import { useUIStore } from '../../services/uiStore';
-import { SettingsModal } from '../common/SettingsModal';
+
 import { NotificationBell } from '../common/NotificationBell';
 
 interface SidebarProps {
@@ -33,7 +33,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
   const currentProjectId = match && match[1] !== 'new' ? match[1] : null;
   const currentProject = projects.find(p => p.id === currentProjectId || p.code === currentProjectId);
 
-  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
   
   const isExpanded = isExpandedProp !== undefined 
@@ -129,8 +129,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
       { label: 'Quản lý hồ sơ', path: '/document-tracking', icon: 'folder_managed', req: 'VIEW_DOCUMENTS' },
       { label: 'Tổng kho', path: '/materials', icon: 'warehouse', req: 'VIEW_MATERIALS' },
       { label: 'Chấm công', path: '/attendance', icon: 'schedule', req: 'VIEW_TASKS' },
-      { label: 'Nhân sự', path: '/personnel', icon: 'groups', req: 'VIEW_USERS' },
-      ...(isAdminAccount || hasPermission(user, 'VIEW_ACTIVITY_LOG') ? [{ label: 'Nhật ký', path: '/activity-log', icon: 'history', req: 'VIEW_ACTIVITY_LOG' }] : [])
+      { label: 'Nhân sự', path: '/personnel', icon: 'groups', req: 'VIEW_USERS' }
     ];
 
     return [{
@@ -154,8 +153,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
           !isSidebarExpanded && isSidebarHovered ? 'shadow-[4px_0_24px_rgba(0,0,0,0.18)]' : 'shadow-[0_0_15px_rgba(0,0,0,0.05)]'
         } overflow-x-hidden ${isExpanded ? 'w-[170px]' : 'w-[56px]'}`}
       >
-        <div className="relative h-12 px-2 flex items-center gap-1.5 border-b border-slate-100 min-w-0 flex-shrink-0">
-          <div className="flex-1 flex items-center gap-2 min-w-0">
+        <div className="relative h-12 px-2 flex items-center border-b border-slate-100 min-w-0 flex-shrink-0">
+          <div className="flex-1 flex items-center min-w-0 px-1">
             <div 
               className={`relative w-8 h-8 flex items-center justify-center flex-shrink-0 ${sidebarShowToggleButton ? 'cursor-pointer group/logo' : ''}`}
               onClick={() => sidebarShowToggleButton && toggleSidebar && toggleSidebar()}
@@ -173,7 +172,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
               )}
             </div>
             
-            <div className={`min-w-0 flex-1 flex flex-col justify-center transition-opacity duration-200 overflow-hidden ${isExpanded ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+            <div className={`min-w-0 flex-1 flex flex-col justify-center ml-2.5 transition-opacity duration-200 overflow-hidden ${isExpanded ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
               <h1 className={`font-extrabold ${nameFontSizeClass} text-blue-900 leading-tight tracking-tight`} title={activeCompanyName}>
                 {activeCompanyName}
               </h1>
@@ -212,14 +211,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
                       end={item.path === '/'}
                       title={!isExpanded ? item.label : undefined}
                       className={({ isActive }) =>
-                        `flex items-center rounded-lg text-xs transition-colors overflow-hidden whitespace-nowrap h-10 w-full px-3 gap-3 ${
+                        `flex items-center rounded-lg text-xs transition-colors overflow-hidden whitespace-nowrap h-10 w-full px-1 gap-2 ${
                           isActive || isTask
                             ? 'text-primary bg-blue-100 font-bold shadow-xs'
                             : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 font-semibold'
                         }`
                       }
                     >
-                      <span className="material-symbols-outlined text-lg flex-shrink-0 w-5 h-5 flex items-center justify-center">{item.icon}</span>
+                      <div className="w-8 h-8 flex-shrink-0 flex items-center justify-center">
+                        <span className="material-symbols-outlined text-[20px]">{item.icon}</span>
+                      </div>
                       <span className={`truncate flex-1 font-semibold text-xs transition-opacity duration-200 ${isExpanded ? 'opacity-100' : 'opacity-0'}`}>{item.label}</span>
                     </NavLink>
                   );
@@ -233,11 +234,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
             {/* User Profile */}
             <button
               type="button"
-              onClick={() => setShowSettingsModal(true)}
+              onClick={() => navigate('/settings')}
               title={!isExpanded ? "Cài đặt & Tài khoản" : undefined}
-              className="flex items-center rounded-xl transition-all overflow-hidden h-10 w-full px-2.5 py-2 gap-2.5 hover:bg-slate-100"
+              className="flex items-center rounded-lg transition-all overflow-hidden h-10 w-full px-1 gap-2 hover:bg-slate-100"
             >
-              <div className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-slate-400 bg-slate-100 uppercase shadow-xs border border-slate-200">
+              <div className="w-8 h-8 flex-shrink-0 flex items-center justify-center text-slate-500">
                 <span className="material-symbols-outlined text-[20px]">person</span>
               </div>
               <div className={`text-left leading-tight flex-1 min-w-0 transition-opacity duration-200 ${isExpanded ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
@@ -247,7 +248,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
                 <span className="block text-[10px] text-slate-500 truncate" title={user?.title}>{user?.title || 'Quản trị viên'}</span>
               </div>
               {isExpanded && (
-                <span className="material-symbols-outlined text-base text-slate-400 hover:text-primary shrink-0">
+                <span className="material-symbols-outlined text-base text-slate-400 hover:text-primary shrink-0 mr-1">
                   settings
                 </span>
               )}
@@ -377,9 +378,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
                   <button
                     onClick={() => {
                       setIsMobileDrawerOpen(false);
-                      setShowSettingsModal(true);
+                      navigate('/settings');
                     }}
-                    className="flex items-center gap-1.5 text-xs font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-100 px-3 py-1.5 rounded-xl transition-colors shadow-2xs"
+                    className="flex items-center gap-1.5 text-xs font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-100 px-3 py-1.5 rounded-xl transition-colors shadow-2xs cursor-pointer"
                     title="Cài đặt hệ thống"
                   >
                     <span className="material-symbols-outlined text-base text-slate-600">settings</span>
@@ -436,7 +437,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
         </button>
       </div>
 
-      <SettingsModal isOpen={showSettingsModal} onClose={() => setShowSettingsModal(false)} />
+      
     </>
   );
 };

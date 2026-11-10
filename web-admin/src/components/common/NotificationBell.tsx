@@ -863,6 +863,21 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ isSidebar = 
       }
     }
 
+    // Xử lý thông báo Yêu cầu cấp quỹ (kể cả thông báo cũ lưu link /project-cost-plan không hợp lệ)
+    const isFundNotification = 
+      titleLower.includes('cấp quỹ') || 
+      msgLower.includes('cấp quỹ') || 
+      (notification.type && notification.type.startsWith('fund_request'));
+
+    if (isFundNotification) {
+      if (finalProjectCode) {
+        navigate(`/projects/${encodeURIComponent(finalProjectCode)}/cost-plan?tab=EXPENSE&openFundRequests=true`);
+      } else {
+        navigate('/cost-plan?tab=EXPENSE&openFundRequests=true');
+      }
+      return;
+    }
+
     // Các thông báo phát sinh từ Vật tư / Mua hàng / Chi phí phải mở đúng
     // phân hệ của dự án, kể cả khi bản ghi cũ đang chứa link mặc định về
     // trang Tổng quan.
@@ -872,13 +887,11 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ isSidebar = 
       titleLower.includes('nhà thầu') ||
       titleLower.includes('vật tư') ||
       titleLower.includes('phiếu chi') ||
-      titleLower.includes('cấp quỹ') ||
       msgLower.includes('mua hàng') ||
       msgLower.includes('mua sắm') ||
       msgLower.includes('nhà thầu') ||
       msgLower.includes('vật tư') ||
-      msgLower.includes('phiếu chi') ||
-      msgLower.includes('cấp quỹ');
+      msgLower.includes('phiếu chi');
     const isProjectTaskMaterialUpdate =
       finalProjectCode &&
       (titleLower.includes('mua hàng nhà thầu') || msgLower.includes('mua hàng nhà thầu') ||
@@ -889,7 +902,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ isSidebar = 
       return;
     }
     if (isCostPlanNotification && finalProjectCode) {
-      const tab = titleLower.includes('chi phí') || titleLower.includes('phiếu chi') || titleLower.includes('cấp quỹ')
+      const tab = titleLower.includes('chi phí') || titleLower.includes('phiếu chi')
         ? 'EXPENSE'
         : 'TECH';
       navigate(`/projects/${encodeURIComponent(finalProjectCode)}/cost-plan?tab=${tab}`);

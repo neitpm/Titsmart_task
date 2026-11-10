@@ -1450,6 +1450,11 @@ export const ProjectCostPlanPage: React.FC = () => {
     if (spenderParam) {
       setExpenseFilterSpender(spenderParam);
     }
+    // Mở popup Duyệt cấp quỹ nếu có tham số openFundRequests=true
+    if (searchParams.get('openFundRequests') === 'true' || searchParams.get('fundRequests') === 'open') {
+      setActiveTab('EXPENSE');
+      setFundRequestListOpen(true);
+    }
   }, [searchParams]);
 
   useEffect(() => {
@@ -4975,7 +4980,7 @@ export const ProjectCostPlanPage: React.FC = () => {
               message: `${requesterName} vừa gửi yêu cầu cấp quỹ ${formattedAmount} đ (${fundRequestForm.type}) cần duyệt. Mục đích: ${fundRequestForm.purpose}`,
               type: `fund_request_pending:::${targetId}:::${targetName}`,
               icon: 'payments',
-              link: '/project-cost-plan',
+              link: selectedProject ? `/projects/${encodeURIComponent(selectedProject)}/cost-plan?tab=EXPENSE&openFundRequests=true` : `/cost-plan?tab=EXPENSE&openFundRequests=true`,
               senderId: user?.id,
               senderName: requesterName
             }).catch(() => {});
@@ -5337,7 +5342,7 @@ export const ProjectCostPlanPage: React.FC = () => {
                                       message: `Yêu cầu cấp quỹ ${numericAmount.toLocaleString('vi-VN')} đ của bạn đã được ${reviewerName} phê duyệt và nạp vào quỹ.`,
                                       type: `fund_request_approved:::${req.creatorId}:::${req.creatorName}`,
                                       icon: 'check_circle',
-                                      link: '/project-cost-plan',
+                                      link: selectedProject ? `/projects/${encodeURIComponent(selectedProject)}/cost-plan?tab=EXPENSE&openFundRequests=true` : `/cost-plan?tab=EXPENSE&openFundRequests=true`,
                                       senderId: user?.id,
                                       senderName: reviewerName
                                     }).catch(() => {});
@@ -5435,7 +5440,7 @@ export const ProjectCostPlanPage: React.FC = () => {
                 message: `Yêu cầu cấp quỹ của bạn không được phê duyệt. Lý do: ${reason}`,
                 type: `fund_request_rejected:::${req.creatorId}:::${req.creatorName}`,
                 icon: 'cancel',
-                link: '/project-cost-plan',
+                link: selectedProject ? `/projects/${encodeURIComponent(selectedProject)}/cost-plan?tab=EXPENSE&openFundRequests=true` : `/cost-plan?tab=EXPENSE&openFundRequests=true`,
                 senderId: user?.id,
                 senderName: reviewerName
               }).catch(() => {});

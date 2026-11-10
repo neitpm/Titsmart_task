@@ -778,16 +778,7 @@ export const PersonnelPage: React.FC = () => {
               )}
             </div>
 
-            {isSystemAdmin(user) && (
-              <button
-                onClick={() => setIsRoleConfigModalOpen(true)}
-                title="Cấu hình cấp phân quyền cho hệ thống"
-                className="bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-primary hover:border-blue-300 h-8 md:h-[34px] px-2.5 md:px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs shrink-0 transition-colors cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-[16px] text-primary">tune</span>
-                <span className="hidden sm:inline">Cấu hình cấp quyền</span>
-              </button>
-            )}
+            
 
             {(hasPermission(user, 'MANAGE_USERS') || hasPermission(user, 'EDIT_USERS')) && (
               <button
@@ -990,17 +981,7 @@ export const PersonnelPage: React.FC = () => {
                 <label className="text-[13px] font-bold text-slate-700">
                   Phân quyền
                 </label>
-                {isSystemAdmin(user) && (
-                  <button
-                    type="button"
-                    onClick={() => setIsRoleConfigModalOpen(true)}
-                    className="flex items-center gap-1 text-[11px] font-bold text-primary hover:text-blue-800 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-2 py-0.5 rounded-lg transition-colors cursor-pointer"
-                    title="Cấu hình thêm/sửa/xóa các cấp quyền dành cho Admin"
-                  >
-                    <span className="material-symbols-outlined text-[13px]">tune</span>
-                    <span>Cấu hình cấp</span>
-                  </button>
-                )}
+                
               </div>
               
               <div className="space-y-1.5 bg-slate-50 border border-slate-200 rounded-lg p-2.5 max-h-48 overflow-y-auto custom-scrollbar">

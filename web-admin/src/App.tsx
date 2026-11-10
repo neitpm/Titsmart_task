@@ -13,6 +13,7 @@ import { MaterialTrackingPage } from './pages/MaterialTrackingPage';
 import { IssueResolutionPage } from './pages/IssueResolutionPage';
 import { PersonnelPage } from './pages/PersonnelPage';
 import { AccountPage } from './pages/AccountPage';
+import { SettingsPage } from './pages/SettingsPage';
 import { DocumentTrackingPage } from './pages/DocumentTrackingPage';
 import { ActivityLogPage } from './pages/ActivityLogPage';
 import { FieldLogsPage } from './pages/FieldLogsPage';
@@ -310,6 +311,7 @@ export const App: React.FC = () => {
           <Route path="/activity-log" element={<ActivityLogPage />} />
           <Route path="/attendance" element={<AttendancePage />} />
           <Route path="/account" element={<AccountPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

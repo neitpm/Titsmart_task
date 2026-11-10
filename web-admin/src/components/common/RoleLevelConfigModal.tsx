@@ -173,7 +173,7 @@ export const RoleLevelConfigModal: React.FC<RoleLevelConfigModalProps> = ({
       alert('Không thể xóa các cấp mặc định của hệ thống.');
       return;
     }
-    if (!window.confirm(`Bạn chắc chắn muốn xóa "${level.name}"?`)) return;
+    
 
     try {
       await deleteLevel(level.id, user?.username || 'Admin');
@@ -220,7 +220,7 @@ export const RoleLevelConfigModal: React.FC<RoleLevelConfigModalProps> = ({
                   key={lvl.id}
                   onClick={() => {
                     if (isCreating || isEditing) {
-                      if (!window.confirm('Bạn có thay đổi chưa lưu, vẫn chuyển cấp?')) return;
+                      handleCancelForm();
                       handleCancelForm();
                     }
                     setActiveLevelId(lvl.id);
