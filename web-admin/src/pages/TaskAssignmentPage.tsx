@@ -4,7 +4,7 @@ import { useLocation, useSearchParams, useNavigate, Navigate } from 'react-route
 import { SharedTaskTabs } from '../components/common/SharedTaskTabs';
 import { CustomSelect } from '../components/common/CustomSelect';
 import { useRealtimeStore, calculateTaskProgressFromStatuses } from '../services/realtimeStore';
-import { useAuthStore, hasPermission } from '../services/authStore';
+import { useAuthStore, hasPermission, isExecutiveOrAdmin } from '../services/authStore';
 import { AuditInfoCell } from '../components/common/AuditInfoCell';
 import { ConfirmModal } from '../components/common/ConfirmModal';
 import { Task, isTaskActuallyDone, isTaskSectionHeaderItem } from '../types';
@@ -105,8 +105,8 @@ export const TaskAssignmentPage: React.FC = () => {
     const uName = String(currentUser.name || '').toLowerCase();
     const uUsername = String(currentUser.username || '').toLowerCase();
 
-    // 1. Quản trị viên tối cao luôn có quyền xóa
-    if (uRole === 'admin' || uRole === 'quản trị viên' || uUsername === 'admin') {
+    // 1. Quản trị viên tối cao hoặc Lãnh đạo Cấp 1 luôn có quyền xóa
+    if (isExecutiveOrAdmin(currentUser) || uRole === 'pm') {
       return true;
     }
 
@@ -1041,7 +1041,7 @@ export const TaskAssignmentPage: React.FC = () => {
     }
   };
 
-  const isAdmin = user?.role === 'admin' || user?.role === 'Quản trị viên' || user?.role === 'pm' || user?.username === 'admin';
+  const isAdmin = isExecutiveOrAdmin(user) || user?.role === 'pm';
   const canAccessAssignment = isAdmin || hasPermission(user, 'ASSIGN_TASKS');
 
   if (!canAccessAssignment) {

@@ -43,26 +43,62 @@ export const getDefaultPermissions = (role: string): Permission[] => {
   ];
 };
 
+/**
+ * Kiểm tra xem người dùng có phải là Admin kỹ thuật (System Admin) hay không
+ * Quyền kỹ thuật tối cao: cấu hình app, phân quyền nhân sự, thiết lập hệ thống
+ */
+export const isSystemAdmin = (user: AuthUser | null | undefined): boolean => {
+  if (!user) return false;
+  const username = String(user.username || '').toLowerCase();
+  const name = String(user.name || '').toLowerCase();
+  const role = String(user.role || '').toLowerCase();
+  return username === 'admin' || name === 'admin' || role === 'admin' || role === 'quản trị viên' || role.includes('quản trị hệ thống');
+};
+
+/**
+ * Kiểm tra xem người dùng có phải là Lãnh đạo hoặc Admin (Ban Quản trị Cấp 1) hay không:
+ * - Admin kỹ thuật (admin)
+ * - Ban Giám Đốc / Lãnh đạo cấp cao
+ * - Nhân sự được phân Cấp 1 (sở hữu các quyền hạt nhân của Cấp 1)
+ */
+export const isExecutiveOrAdmin = (user: AuthUser | null | undefined): boolean => {
+  if (!user) return false;
+  if (isSystemAdmin(user)) return true;
+
+  const role = String(user.role || '').toLowerCase();
+  if (role.includes('giám đốc') || role.includes('ban giám đốc') || role.includes('lãnh đạo')) return true;
+
+  // Kiểm tra quyền Cấp 1: Có quyền duyệt cấp cao, quản lý dự án & xóa/quản lý nhân sự
+  const perms = user.permissions || [];
+  const hasLevel1Perms = 
+    (perms.includes('APPROVE_LEAVE_FINAL') && perms.includes('DELETE_PROJECTS')) ||
+    (perms.includes('MANAGE_PAYROLL') && perms.includes('VIEW_FINANCE')) ||
+    perms.includes('MANAGE_PERMISSIONS');
+
+  return Boolean(hasLevel1Perms);
+};
+
 export const hasPermission = (user: AuthUser | null | undefined, perm: Permission): boolean => {
   if (!user) return false;
-  // If user is the hardcoded superadmin
-  if (user.username === 'admin') return true;
+  // If user is technical admin or Cấp 1 executive
+  if (isExecutiveOrAdmin(user)) return true;
   return user.permissions?.includes(perm) || false;
 };
 
 /**
  * Kiểm tra quyền quản lý (Sửa/Xóa):
- * - Admin / Quản trị viên / PM: Toàn quyền với tất cả file/hồ sơ/dữ liệu
+ * - Admin / Lãnh đạo Cấp 1 / PM: Toàn quyền với tất cả file/hồ sơ/dữ liệu
  * - Nhân sự có quyền chi tiết tương ứng (VD: 'MANAGE_DOCUMENTS', 'EDIT_DOCUMENTS', 'DELETE_PROJECTS',...): Toàn quyền quản lý
  * - Hoặc chính chủ người tạo/tải lên
  */
 export const canManageItem = (user: AuthUser | null | undefined, item: any, requiredPerm: Permission = 'MANAGE_DOCUMENTS'): boolean => {
   if (!user) return false;
   
+  if (isExecutiveOrAdmin(user)) return true;
+
   const role = String(user.role || '').toLowerCase();
-  const username = String(user.username || '').toLowerCase();
-  const isAdmin = role === 'admin' || role === 'quản trị viên' || role === 'pm' || role === 'quản lý dự án' || role === 'manager' || username === 'admin';
-  if (isAdmin) return true;
+  const isPM = role === 'pm' || role === 'quản lý dự án' || role === 'manager';
+  if (isPM) return true;
 
   // Nếu người dùng được Admin tích chọn quyền chi tiết tương ứng (VD: 'EDIT_PROJECTS', 'DELETE_PROJECTS', 'MANAGE_DOCUMENTS')
   if (requiredPerm && user.permissions && Array.isArray(user.permissions)) {

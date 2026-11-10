@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useRealtimeStore } from '../../services/realtimeStore';
-import { useAuthStore, hasPermission } from '../../services/authStore';
+import { useAuthStore, hasPermission, isExecutiveOrAdmin } from '../../services/authStore';
 import { useUIStore } from '../../services/uiStore';
 import { SettingsModal } from '../common/SettingsModal';
 import { NotificationBell } from '../common/NotificationBell';
@@ -41,7 +41,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
     : (isSidebarExpanded || isSidebarHovered);
   const toggleSidebar = toggleSidebarProp || toggleSidebarExpanded;
   const navigate = useNavigate();
-  const isAdmin = user?.role === 'admin' || user?.role === 'Quản trị viên' || user?.role === 'pm';
+  const isAdmin = isExecutiveOrAdmin(user) || user?.role === 'pm';
   const defaultTaskPath = isAdmin ? '/task-assignment?tab=unassigned' : '/my-tasks';
   const sidebarRef = useRef<HTMLElement>(null);
 
@@ -120,7 +120,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
       ].filter(group => group.items.length > 0);
     }
 
-    const isAdminAccount = user?.role === 'admin' || user?.role === 'Quản trị viên' || user?.username === 'admin';
+    const isAdminAccount = isExecutiveOrAdmin(user);
 
     const mainItems = [
       { label: 'Tổng quan', path: '/dashboard', icon: 'analytics', req: 'VIEW_PROJECTS' },
@@ -130,7 +130,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
       { label: 'Tổng kho', path: '/materials', icon: 'warehouse', req: 'VIEW_MATERIALS' },
       { label: 'Chấm công', path: '/attendance', icon: 'schedule', req: 'VIEW_TASKS' },
       { label: 'Nhân sự', path: '/personnel', icon: 'groups', req: 'VIEW_USERS' },
-      ...(isAdminAccount ? [{ label: 'Nhật ký', path: '/activity-log', icon: 'history', req: 'VIEW_ACTIVITY_LOG' }] : [])
+      ...(isAdminAccount || hasPermission(user, 'VIEW_ACTIVITY_LOG') ? [{ label: 'Nhật ký', path: '/activity-log', icon: 'history', req: 'VIEW_ACTIVITY_LOG' }] : [])
     ];
 
     return [{

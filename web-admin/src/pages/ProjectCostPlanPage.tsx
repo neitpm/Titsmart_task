@@ -4,7 +4,7 @@ import { exportToStyledExcel } from '../utils/excelExportUtils';
 import { cleanNotes } from '../utils/cleanNotesUtils';
 import { useParams, useOutletContext, useSearchParams } from 'react-router-dom';
 import { useRealtimeStore } from '../services/realtimeStore';
-import { useAuthStore } from '../services/authStore';
+import { useAuthStore, isExecutiveOrAdmin, isSystemAdmin } from '../services/authStore';
 import { CostPlanSummaryTable } from './cost-plan/CostPlanSummaryTable';
 import { Modal } from '../components/common/Modal';
 import { Toast } from '../components/common/Toast';
@@ -2723,16 +2723,7 @@ export const ProjectCostPlanPage: React.FC = () => {
                   <span className="material-symbols-outlined text-[16px]">account_balance_wallet</span>
                   <span>Duyệt cấp quỹ</span>
                   {(() => {
-                    const roleStr = String(user?.role || '').toLowerCase();
-                    const isSystemAdmin = Boolean(
-                      user && (
-                        user.role === 'admin' ||
-                        user.username?.toLowerCase() === 'admin' ||
-                        user.name?.toLowerCase() === 'admin' ||
-                        roleStr === 'admin' ||
-                        roleStr.includes('quản trị viên')
-                      )
-                    );
+                    const isSystemAdminUser = isExecutiveOrAdmin(user);
 
                     const pendingCount = allFundRequests.filter(r => {
                       if (r.status !== 'PENDING') return false;
@@ -2746,14 +2737,14 @@ export const ProjectCostPlanPage: React.FC = () => {
                       );
                       if (isCreator) return false;
 
-                      // Chỉ đếm nếu bản thân là người duyệt được chỉ định hoặc Admin hệ thống
+                      // Chỉ đếm nếu bản thân là người duyệt được chỉ định hoặc Admin / Lãnh đạo Cấp 1
                       const rRevId = String(r.reviewerId || '').trim().toLowerCase();
                       const rRevNorm = normalizeStr(r.reviewerName);
                       const isDesignated = Boolean(
                         (rRevId && myUserIdentifiers.ids.has(rRevId)) ||
                         (rRevNorm && myUserIdentifiers.names.has(rRevNorm))
                       );
-                      return isDesignated || isSystemAdmin;
+                      return isDesignated || isSystemAdminUser;
                     }).length;
                     return pendingCount > 0 ? (
                       <span className="flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 text-white text-[10px] font-black animate-pulse">
@@ -5162,22 +5153,14 @@ export const ProjectCostPlanPage: React.FC = () => {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {(() => {
-                  const roleStr = String(user?.role || '').toLowerCase();
-                  const isSystemAdmin = Boolean(
-                    user && (
-                      user.role === 'admin' ||
-                      user.username?.toLowerCase() === 'admin' ||
-                      roleStr === 'admin' ||
-                      roleStr.includes('quản trị viên')
-                    )
-                  );
+                  const isSystemAdminUser = isExecutiveOrAdmin(user);
 
                   // Lọc theo quyền xem (giống AttendancePage canViewAll):
-                  // - Quản trị viên hệ thống: Xem toàn bộ đơn
+                  // - Quản trị viên hệ thống / Lãnh đạo Cấp 1: Xem toàn bộ đơn
                   // - Người khác: Chỉ thấy các đơn do mình tạo HOẶC mình được chỉ định duyệt
                   const visibleRequests = allFundRequests.filter(r => {
                     if (selectedProject && r.projectCode && r.projectCode !== selectedProject) return false;
-                    if (isSystemAdmin) return true;
+                    if (isSystemAdminUser) return true;
 
                     const rCreatorId = String(r.creatorId || '').trim().toLowerCase();
                     const rCreatorNorm = normalizeStr(r.creatorName);
@@ -5244,24 +5227,16 @@ export const ProjectCostPlanPage: React.FC = () => {
                     // 1. Nếu đơn ĐÃ CHỈ ĐỊNH người duyệt: CHỈ người duyệt được chỉ định mới có quyền duyệt đơn này (hoặc Admin tối cao khi cần can thiệp)
                     // 2. Tuyệt đối không cho phép người khác vào duyệt thay
                     const hasDesignatedReviewer = Boolean(req.reviewerId || (req.reviewerName && req.reviewerName.trim()));
-                    const isSystemAdmin = Boolean(
-                      user && (
-                        user.role === 'admin' ||
-                        user.username?.toLowerCase() === 'admin' ||
-                        user.name?.toLowerCase() === 'admin' ||
-                        roleStr === 'admin' ||
-                        roleStr.includes('quản trị viên')
-                      )
-                    );
+                    const isSystemAdminUser = isExecutiveOrAdmin(user);
 
                     let canReview = false;
                     if (!isCreator) {
                       if (hasDesignatedReviewer) {
-                        // Đã chọn đích danh: Chỉ người được chỉ định hoặc Quản trị viên tối cao
-                        canReview = isDesignatedReviewer || isSystemAdmin;
+                        // Đã chọn đích danh: Người được chỉ định hoặc Quản trị viên / Lãnh đạo Cấp 1
+                        canReview = isDesignatedReviewer || isSystemAdminUser;
                       } else {
                         // Không chỉ định: Quản trị viên / Ban giám đốc / Kế toán trưởng
-                        canReview = isAdminUser;
+                        canReview = isAdminUser || isSystemAdminUser;
                       }
                     }
 

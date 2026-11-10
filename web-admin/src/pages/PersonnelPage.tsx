@@ -983,6 +983,9 @@ export const PersonnelPage: React.FC = () => {
                       if (e.target.checked) {
                         setSelectedLevel('level1');
                         setPermissions([...ALL_AVAILABLE_PERMISSIONS]);
+                        if (!role || role === 'Nhân viên') {
+                          setRole('Giám đốc');
+                        }
                       } else {
                         setSelectedLevel(null);
                         setPermissions([]);

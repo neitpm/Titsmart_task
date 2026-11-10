@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import * as XLSX from 'xlsx';
 import { exportToStyledExcel } from '../utils/excelExportUtils';
 import { useRealtimeStore } from '../services/realtimeStore';
-import { useAuthStore } from '../services/authStore';
+import { useAuthStore, isExecutiveOrAdmin, hasPermission } from '../services/authStore';
 import { Modal } from '../components/common/Modal';
 import { PullToRefresh } from '../components/common/PullToRefresh';
 
@@ -136,7 +136,7 @@ export const ActivityLogPage: React.FC = () => {
   const projects = useRealtimeStore(state => state.projects);
   const fetchActivityLogs = useRealtimeStore(state => state.fetchActivityLogs);
   const user = useAuthStore(state => state.user);
-  const isAdmin = user?.role === 'admin' || user?.role === 'Quản trị viên' || user?.username === 'admin';
+  const isAdmin = isExecutiveOrAdmin(user) || hasPermission(user, 'VIEW_ACTIVITY_LOG');
 
   React.useEffect(() => {
     if (isAdmin) {
