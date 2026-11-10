@@ -5430,15 +5430,15 @@ export const ProjectCostPlanPage: React.FC = () => {
                       (rAccNorm && myUserIdentifiers.names.has(rAccNorm))
                     );
 
-                    // Phân quyền hành động động:
-                    // 1. Kiểm tra: Người kiểm tra được chọn hoặc có quyền CHECK_FUND_REQUEST (không được là người tạo)
-                    const canDoCheck = (isChecker || (canCheckPerm && !isCreator)) || isSystemAdminUser;
-                    // 2. Lãnh đạo duyệt: Người duyệt được chọn hoặc có quyền APPROVE_FUND_REQUEST (không được là người tạo)
-                    const canDoApprove = (isReviewer || (canApprovePerm && !isCreator)) || isSystemAdminUser;
-                    // 3. Kế toán xử lý & chuyển khoản: Người kế toán được chọn hoặc có quyền PROCESS_FUND_TRANSFER
-                    const canDoTransfer = (isAccountant || canTransferPerm) || isSystemAdminUser;
-                    // 4. Xác nhận nhận tiền: Chính người tạo hoặc người có quyền CONFIRM_FUND_RECEIPT
-                    const canDoConfirm = isCreator || canConfirmPerm || isSystemAdminUser;
+                    // Phân quyền hành động nghiệp vụ chặt chẽ:
+                    // 1. Kiểm tra: Phải là Người kiểm tra được chọn HOẶC có quyền CHECK_FUND_REQUEST (tuyệt đối không phải người tạo)
+                    const canDoCheck = !isCreator && (isChecker || canCheckPerm);
+                    // 2. Lãnh đạo duyệt: Phải là Người duyệt được chọn HOẶC có quyền APPROVE_FUND_REQUEST (tuyệt đối không phải người tạo)
+                    const canDoApprove = !isCreator && (isReviewer || canApprovePerm);
+                    // 3. Kế toán xử lý & chuyển khoản: Phải là Người kế toán được chỉ định HOẶC có quyền PROCESS_FUND_TRANSFER
+                    const canDoTransfer = isAccountant || canTransferPerm;
+                    // 4. Xác nhận nhận tiền: Chính người tạo đơn HOẶC có quyền CONFIRM_FUND_RECEIPT
+                    const canDoConfirm = isCreator || canConfirmPerm;
 
                     const curProjObj = projects.find(p => p.code === (req.projectCode || selectedProject));
                     const pName = curProjObj?.name || req.projectName || req.projectCode || 'Dự án';
@@ -5562,6 +5562,22 @@ export const ProjectCostPlanPage: React.FC = () => {
                                       note: 'Hồ sơ, số tiền và mục đích hợp lệ. Chuyển Lãnh đạo phê duyệt.'
                                     };
 
+                                    // 1. Gọi API cập nhật server trước
+                                    if (req.id && !req.id.startsWith('notif-') && !req.id.startsWith('fund-')) {
+                                      try {
+                                        await api.fundRequests.review(req.id, {
+                                          status: 'CHECKED_WAITING_APPROVAL',
+                                          checkedAt: nowIso,
+                                          auditEntry
+                                        });
+                                      } catch (err: any) {
+                                        console.error('Lỗi khi cập nhật kiểm tra:', err);
+                                        triggerToast('Lỗi kết nối máy chủ! Không thể xác nhận kiểm tra.', 'warning');
+                                        return;
+                                      }
+                                    }
+
+                                    // 2. API thành công -> Cập nhật State giao diện & Local storage
                                     setReviewedFundActions(prev => ({
                                       ...prev,
                                       [req.id]: { status: 'CHECKED_WAITING_APPROVAL', time: nowIso, reviewer: reviewerName },
@@ -5581,15 +5597,7 @@ export const ProjectCostPlanPage: React.FC = () => {
                                       history: [...(r.history || []), auditEntry]
                                     } : r));
 
-                                    if (req.id && !req.id.startsWith('notif-') && !req.id.startsWith('fund-')) {
-                                      api.fundRequests.review(req.id, {
-                                        status: 'CHECKED_WAITING_APPROVAL',
-                                        checkedAt: nowIso,
-                                        auditEntry
-                                      }).catch(err => console.error('Supabase review error:', err));
-                                    }
-
-                                    // Bắn thông báo cho Lãnh đạo duyệt (reviewerId)
+                                    // 3. Gửi thông báo cho Lãnh đạo duyệt (reviewerId)
                                     if (addNotification && req.reviewerId) {
                                       await addNotification({
                                         title: `Yêu cầu cấp quỹ đã kiểm tra: ${pName}`,
@@ -5660,6 +5668,25 @@ export const ProjectCostPlanPage: React.FC = () => {
                                         : 'Lãnh đạo phê duyệt thành công. Chuyển kế toán xử lý chuyển khoản.'
                                     };
 
+                                    // 1. Gọi API cập nhật server trước
+                                    if (req.id && !req.id.startsWith('notif-') && !req.id.startsWith('fund-')) {
+                                      try {
+                                        await api.fundRequests.review(req.id, {
+                                          status: 'APPROVED_WAITING_ACCOUNTING',
+                                          reviewerId: user?.id,
+                                          reviewerName,
+                                          reviewedAt: nowIso,
+                                          isDirectApproval: allowDirectApproval && isPendingCheck,
+                                          auditEntry
+                                        });
+                                      } catch (err: any) {
+                                        console.error('Lỗi khi phê duyệt cấp quỹ:', err);
+                                        triggerToast('Lỗi kết nối máy chủ! Không thể lưu trạng thái phê duyệt.', 'warning');
+                                        return;
+                                      }
+                                    }
+
+                                    // 2. API thành công -> Cập nhật State giao diện & Local storage
                                     setReviewedFundActions(prev => ({
                                       ...prev,
                                       [req.id]: { status: 'APPROVED_WAITING_ACCOUNTING', time: nowIso, reviewer: reviewerName },
@@ -5683,18 +5710,7 @@ export const ProjectCostPlanPage: React.FC = () => {
                                       history: [...(r.history || []), auditEntry]
                                     } : r));
 
-                                    if (req.id && !req.id.startsWith('notif-') && !req.id.startsWith('fund-')) {
-                                      api.fundRequests.review(req.id, {
-                                        status: 'APPROVED_WAITING_ACCOUNTING',
-                                        reviewerId: user?.id,
-                                        reviewerName,
-                                        reviewedAt: nowIso,
-                                        isDirectApproval: allowDirectApproval && isPendingCheck,
-                                        auditEntry
-                                      }).catch(err => console.error('Supabase review error:', err));
-                                    }
-
-                                    // Bắn thông báo cho Kế toán phụ trách & Người tạo đơn
+                                    // 3. Bắn thông báo cho Kế toán phụ trách & Người tạo đơn
                                     if (addNotification) {
                                       if (req.accountantId) {
                                         await addNotification({
@@ -5763,6 +5779,24 @@ export const ProjectCostPlanPage: React.FC = () => {
                                         note: 'Kế toán đã tiếp nhận hồ sơ và đang làm thủ tục chuyển khoản ngân hàng.'
                                       };
 
+                                      // 1. Gọi API Supabase trước
+                                      if (req.id && !req.id.startsWith('notif-') && !req.id.startsWith('fund-')) {
+                                        try {
+                                          await api.fundRequests.review(req.id, {
+                                            status: 'ACCOUNTING_PROCESSING',
+                                            accountantId: user?.id,
+                                            accountantName: reviewerName,
+                                            accountantReceivedAt: nowIso,
+                                            auditEntry
+                                          });
+                                        } catch (err: any) {
+                                          console.error('Lỗi khi tiếp nhận xử lý:', err);
+                                          triggerToast('Lỗi kết nối máy chủ! Không thể lưu trạng thái tiếp nhận.', 'warning');
+                                          return;
+                                        }
+                                      }
+
+                                      // 2. API thành công -> Cập nhật State
                                       cachedFundRequests = cachedFundRequests.map(r => r.id === req.id ? {
                                         ...r,
                                         status: 'ACCOUNTING_PROCESSING',
@@ -5779,16 +5813,6 @@ export const ProjectCostPlanPage: React.FC = () => {
                                         accountantReceivedAt: nowIso,
                                         history: [...(r.history || []), auditEntry]
                                       } : r));
-
-                                      if (req.id && !req.id.startsWith('notif-') && !req.id.startsWith('fund-')) {
-                                        api.fundRequests.review(req.id, {
-                                          status: 'ACCOUNTING_PROCESSING',
-                                          accountantId: user?.id,
-                                          accountantName: reviewerName,
-                                          accountantReceivedAt: nowIso,
-                                          auditEntry
-                                        }).catch(err => console.error('Supabase review error:', err));
-                                      }
 
                                       triggerToast('Đã tiếp nhận xử lý chuyển khoản!', 'info');
                                     }}
@@ -5837,35 +5861,22 @@ export const ProjectCostPlanPage: React.FC = () => {
                                     note: 'Đã nhận đủ tiền cấp quỹ vào tài khoản cá nhân/dự án. Hoàn tất quy trình cấp quỹ.'
                                   };
 
-                                  setReviewedFundActions(prev => ({
-                                    ...prev,
-                                    [req.id]: { status: 'COMPLETED', time: nowIso, reviewer: reviewerName },
-                                    ...(req.notificationId ? { [req.notificationId]: { status: 'COMPLETED', time: nowIso, reviewer: reviewerName } } : {})
-                                  }));
-
-                                  cachedFundRequests = cachedFundRequests.map(r => r.id === req.id ? {
-                                    ...r,
-                                    status: 'COMPLETED',
-                                    confirmedAt: nowIso,
-                                    history: [...(r.history || []), auditEntry]
-                                  } : r);
-                                  setFundRequests(prev => prev.map(r => r.id === req.id ? {
-                                    ...r,
-                                    status: 'COMPLETED',
-                                    confirmedAt: nowIso,
-                                    history: [...(r.history || []), auditEntry]
-                                  } : r));
-
-                                  // Ghi vào Supabase
+                                  // 1. Gọi API Supabase cập nhật trạng thái đơn trước
                                   if (req.id && !req.id.startsWith('notif-') && !req.id.startsWith('fund-')) {
-                                    api.fundRequests.review(req.id, {
-                                      status: 'COMPLETED',
-                                      confirmedAt: nowIso,
-                                      auditEntry
-                                    }).catch(err => console.error('Supabase review error:', err));
+                                    try {
+                                      await api.fundRequests.review(req.id, {
+                                        status: 'COMPLETED',
+                                        confirmedAt: nowIso,
+                                        auditEntry
+                                      });
+                                    } catch (err: any) {
+                                      console.error('Lỗi khi xác nhận hoàn tất cấp quỹ:', err);
+                                      triggerToast('Lỗi kết nối máy chủ! Không thể xác nhận nhận tiền.', 'warning');
+                                      return;
+                                    }
                                   }
 
-                                  // Tự động tạo giao dịch nạp quỹ DUY NHẤT nếu chưa có
+                                  // 2. Tự động tạo giao dịch nạp quỹ DUY NHẤT nếu chưa có (có chống trùng cả ở DB)
                                   if (!alreadyHasExpense) {
                                     try {
                                       await addExpense({
@@ -5890,7 +5901,27 @@ export const ProjectCostPlanPage: React.FC = () => {
                                     }
                                   }
 
-                                  // Bắn thông báo hoàn tất cho Lãnh đạo & Kế toán
+                                  // 3. Cập nhật State giao diện & Local Storage
+                                  setReviewedFundActions(prev => ({
+                                    ...prev,
+                                    [req.id]: { status: 'COMPLETED', time: nowIso, reviewer: reviewerName },
+                                    ...(req.notificationId ? { [req.notificationId]: { status: 'COMPLETED', time: nowIso, reviewer: reviewerName } } : {})
+                                  }));
+
+                                  cachedFundRequests = cachedFundRequests.map(r => r.id === req.id ? {
+                                    ...r,
+                                    status: 'COMPLETED',
+                                    confirmedAt: nowIso,
+                                    history: [...(r.history || []), auditEntry]
+                                  } : r);
+                                  setFundRequests(prev => prev.map(r => r.id === req.id ? {
+                                    ...r,
+                                    status: 'COMPLETED',
+                                    confirmedAt: nowIso,
+                                    history: [...(r.history || []), auditEntry]
+                                  } : r));
+
+                                  // 4. Bắn thông báo hoàn tất cho Lãnh đạo & Kế toán
                                   if (addNotification) {
                                     const notifTargets = [req.reviewerId, req.accountantId].filter(Boolean);
                                     for (const tId of notifTargets) {
@@ -5991,6 +6022,25 @@ export const ProjectCostPlanPage: React.FC = () => {
               note: reason
             };
 
+            // 1. Gọi API Supabase trước
+            if (req.id && !req.id.startsWith('notif-') && !req.id.startsWith('fund-')) {
+              try {
+                await api.fundRequests.review(req.id, {
+                  status: nextStatus,
+                  reviewerId: user?.id,
+                  reviewerName,
+                  rejectReason: nextStatus.startsWith('REJECT') ? reason : undefined,
+                  moreInfoReason: nextStatus === 'NEED_MORE_INFO' ? reason : undefined,
+                  auditEntry
+                });
+              } catch (err: any) {
+                console.error('Lỗi khi từ chối/yêu cầu bổ sung:', err);
+                triggerToast('Lỗi kết nối máy chủ! Không thể thực hiện thao tác.', 'warning');
+                return;
+              }
+            }
+
+            // 2. API thành công -> Cập nhật State giao diện & Local Storage
             setReviewedFundActions(prev => ({
               ...prev,
               [req.id]: { status: nextStatus, reason, time: nowIso, reviewer: reviewerName },
@@ -6012,18 +6062,7 @@ export const ProjectCostPlanPage: React.FC = () => {
               history: [...(r.history || []), auditEntry]
             } : r));
 
-            // Đồng bộ Supabase nếu là record activity_logs
-            if (req.id && !req.id.startsWith('notif-') && !req.id.startsWith('fund-')) {
-              api.fundRequests.review(req.id, {
-                status: nextStatus,
-                reviewerId: user?.id,
-                reviewerName,
-                rejectReason: nextStatus.startsWith('REJECT') ? reason : undefined,
-                moreInfoReason: nextStatus === 'NEED_MORE_INFO' ? reason : undefined,
-                auditEntry
-              }).catch(err => console.error('Supabase review error:', err));
-            }
-
+            // 3. Gửi thông báo cho người tạo
             if (addNotification && req.creatorId) {
               await addNotification({
                 title: notifTitle,
@@ -6120,6 +6159,26 @@ export const ProjectCostPlanPage: React.FC = () => {
               attachmentUrl: fundRequestTransferModal.docUrl
             };
 
+            // 1. Gọi API Supabase trước
+            if (req.id && !req.id.startsWith('notif-') && !req.id.startsWith('fund-')) {
+              try {
+                await api.fundRequests.review(req.id, {
+                  status: 'TRANSFERRED_WAITING_CONFIRMATION',
+                  transferredAt: nowIso,
+                  transferDocUrl: fundRequestTransferModal.docUrl,
+                  transferNote: fundRequestTransferModal.note,
+                  accountantId: user?.id,
+                  accountantName: reviewerName,
+                  auditEntry
+                });
+              } catch (err: any) {
+                console.error('Lỗi khi lưu thông tin chuyển khoản:', err);
+                triggerToast('Lỗi kết nối máy chủ! Không thể lưu trạng thái chuyển khoản.', 'warning');
+                return;
+              }
+            }
+
+            // 2. API thành công -> Cập nhật State & Local Storage
             setReviewedFundActions(prev => ({
               ...prev,
               [req.id]: { status: 'TRANSFERRED_WAITING_CONFIRMATION', time: nowIso, reviewer: reviewerName, docUrl: fundRequestTransferModal.docUrl },
@@ -6147,19 +6206,7 @@ export const ProjectCostPlanPage: React.FC = () => {
               history: [...(r.history || []), auditEntry]
             } : r));
 
-            if (req.id && !req.id.startsWith('notif-') && !req.id.startsWith('fund-')) {
-              api.fundRequests.review(req.id, {
-                status: 'TRANSFERRED_WAITING_CONFIRMATION',
-                transferredAt: nowIso,
-                transferDocUrl: fundRequestTransferModal.docUrl,
-                transferNote: fundRequestTransferModal.note,
-                accountantId: user?.id,
-                accountantName: reviewerName,
-                auditEntry
-              }).catch(err => console.error('Supabase review error:', err));
-            }
-
-            // Bắn thông báo cho Người tạo yêu cầu để vào xác nhận nhận tiền
+            // 3. Gửi thông báo cho Người tạo yêu cầu để xác nhận nhận tiền
             if (addNotification && req.creatorId) {
               await addNotification({
                 title: `Kế toán đã chuyển khoản cấp quỹ: ${pName}`,

@@ -1459,6 +1459,30 @@ export const api = {
     },
     createExpense: async (data: any) => {
       const payload = toSnakeCase(data);
+
+      // Chống nạp trùng cấp quỹ ở tầng database: Nếu có fund_request_id, kiểm tra xem đã tồn tại chưa
+      if (payload.fund_request_id || (payload.notes && payload.notes.includes('[FUND_ID:'))) {
+        try {
+          const reqId = payload.fund_request_id;
+          let checkQuery = supabase.from('expenses').select('id, fund_request_id, notes');
+          if (reqId) {
+            checkQuery = checkQuery.or(`fund_request_id.eq.${reqId},notes.ilike.%[FUND_ID:${reqId}]%`);
+          } else {
+            const m = payload.notes.match(/\[FUND_ID:([^\]]+)\]/);
+            if (m && m[1]) {
+              checkQuery = checkQuery.or(`fund_request_id.eq.${m[1]},notes.ilike.%[FUND_ID:${m[1]}]%`);
+            }
+          }
+          const { data: existingRows } = await checkQuery.limit(1);
+          if (existingRows && existingRows.length > 0) {
+            console.warn('[Accounting] Bỏ qua vì giao dịch cấp quỹ đã tồn tại:', existingRows[0].id);
+            return toCamelCase(existingRows[0]);
+          }
+        } catch (checkErr) {
+          console.warn('[Accounting] Kiểm tra trùng fund_request_id bỏ qua lỗi nhỏ:', checkErr);
+        }
+      }
+
       const { data: result, error } = await supabase.from('expenses').insert(payload).select().single();
       if (error) {
         // Handle foreign key constraint error if 'OFFICE' project row doesn't exist yet in projects table
