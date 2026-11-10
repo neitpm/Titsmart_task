@@ -1474,6 +1474,8 @@ export const ProjectCostPlanPage: React.FC = () => {
     };
   }, [activeTab, outletContext?.setSubTitle]);
   const [expenseSubTab, setExpenseSubTab] = useState<'SUMMARY' | 'DETAIL' | 'LABOR' | 'FUND_REQUEST'>('SUMMARY');
+  // Lấy id yêu cầu cần highlight/chọn nếu có từ URL
+  const targetFundId = searchParams.get('fundId') || searchParams.get('highlightFundId');
   const [fundRequests, setFundRequests] = useState<any[]>(() => {
     try {
       if (cachedFundRequests && cachedFundRequests.length > 0) return cachedFundRequests;
@@ -1563,9 +1565,13 @@ export const ProjectCostPlanPage: React.FC = () => {
           const rawAmountStr = amountMatch ? amountMatch[1].replace(/[.,]/g, '') : '0';
           const numericAmount = Number(rawAmountStr) || 0;
 
-          const titleProjName = notif.title.replace(/^Yêu cầu cấp quỹ mới:\s*/i, '').trim();
-          const matchedProj = projects.find(p => p.name === titleProjName || p.code === titleProjName);
-          const pCode = matchedProj?.code || selectedProject;
+          const titleProjName = notif.title.replace(/^Yêu cầu cấp quỹ mới:\s*/i, '').replace(/^Yêu cầu cấp quỹ đã được duyệt:\s*/i, '').trim();
+          const cleanTitleProj = titleProjName.toLowerCase();
+          const matchedProj = projects.find(p => 
+            (p.name && (p.name.toLowerCase() === cleanTitleProj || p.name.toLowerCase().includes(cleanTitleProj) || cleanTitleProj.includes(p.name.toLowerCase()))) || 
+            (p.code && (p.code.toLowerCase() === cleanTitleProj || p.code.toLowerCase().includes(cleanTitleProj)))
+          );
+          const pCode = matchedProj?.code || matchedProj?.id || (selectedProject || 'COMPANY');
 
           list.push({
             id: notifId,
@@ -5184,9 +5190,13 @@ export const ProjectCostPlanPage: React.FC = () => {
                   // - Quản trị viên hệ thống / Lãnh đạo Cấp 1: Xem toàn bộ đơn
                   // - Người khác: Chỉ thấy các đơn do mình tạo HOẶC mình được chỉ định duyệt
                   const visibleRequests = allFundRequests.filter(r => {
+                    // Nếu người dùng bấm từ thông báo đích danh một đơn cấp quỹ (hoặc mở danh sách khi chưa lọc đúng dự án):
+                    // Ưu tiên hiển thị nếu trùng dự án hoặc nếu đơn đó chính là đơn đích
+                    if (targetFundId && (r.id === targetFundId || r.notificationId === targetFundId)) {
+                      return true;
+                    }
+
                     if (selectedProject && r.projectCode && r.projectCode !== selectedProject) {
-                      // Nếu có mã dự án nhưng không trùng dự án đang chọn thì bỏ qua
-                      // (Trừ khi dự án đang chọn rỗng)
                       return false;
                     }
                     if (isSystemAdminUser) return true;

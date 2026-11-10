@@ -893,20 +893,23 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ isSidebar = 
       let targetProjectCode = finalProjectCode;
       if (!targetProjectCode && title.includes(':')) {
         const afterColon = title.split(':')[1]?.trim() || '';
+        const cleanAfterColon = afterColon.toLowerCase();
         const store = useRealtimeStore.getState();
         const matched = (store.projects || []).find(p => 
-          (p.name && (p.name.toLowerCase().includes(afterColon.toLowerCase()) || afterColon.toLowerCase().includes(p.name.toLowerCase()))) ||
-          (p.code && p.code.toLowerCase() === afterColon.toLowerCase())
+          (p.name && (p.name.toLowerCase() === cleanAfterColon || p.name.toLowerCase().includes(cleanAfterColon) || cleanAfterColon.includes(p.name.toLowerCase()))) ||
+          (p.code && (p.code.toLowerCase() === cleanAfterColon || cleanAfterColon.includes(p.code.toLowerCase())))
         );
         if (matched) {
           targetProjectCode = matched.code || matched.id;
         }
       }
 
+      const notifFundId = notification.id ? `&fundId=${encodeURIComponent(notification.id)}` : '';
+
       if (targetProjectCode) {
-        navigate(`/projects/${encodeURIComponent(targetProjectCode)}/cost-plan?tab=EXPENSE&openFundRequests=true`);
+        navigate(`/projects/${encodeURIComponent(targetProjectCode)}/cost-plan?tab=EXPENSE&openFundRequests=true${notifFundId}`);
       } else {
-        navigate('/cost-plan?tab=EXPENSE&openFundRequests=true');
+        navigate(`/cost-plan?tab=EXPENSE&openFundRequests=true${notifFundId}`);
       }
       return;
     }
