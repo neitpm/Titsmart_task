@@ -1394,6 +1394,9 @@ export const ProjectCostPlanPage: React.FC = () => {
   };
 
   const { projectId } = useParams();
+  const [searchParams] = useSearchParams();
+  const initialTab = searchParams.get('tab') || 'TECH';
+  const initialSpender = searchParams.get('spender') || 'all';
 
   // Active Project Code
   const projectOptions = useMemo(() => {
@@ -1411,15 +1414,16 @@ export const ProjectCostPlanPage: React.FC = () => {
   const [selectedProject, setSelectedProject] = useState<string>('');
 
   const resolvedProjectCode = useMemo(() => {
-    if (!projectId) return '';
-    const cleanId = decodeURIComponent(projectId).trim().toLowerCase();
+    const rawParam = projectId || searchParams.get('project');
+    if (!rawParam) return '';
+    const cleanId = decodeURIComponent(rawParam).trim().toLowerCase();
     const proj = projects.find(p => 
       (p.id && p.id.toLowerCase() === cleanId) || 
       (p.code && p.code.toLowerCase() === cleanId) ||
       (p.name && p.name.toLowerCase() === cleanId)
     );
-    return proj ? (proj.code || proj.id) : projectId;
-  }, [projectId, projects]);
+    return proj ? (proj.code || proj.id) : rawParam;
+  }, [projectId, searchParams, projects]);
 
   useEffect(() => {
     if (resolvedProjectCode) {
@@ -1432,10 +1436,6 @@ export const ProjectCostPlanPage: React.FC = () => {
       setSelectedProject('');
     }
   }, [resolvedProjectCode, projectOptions, selectedProject]);
-
-  const [searchParams] = useSearchParams();
-  const initialTab = searchParams.get('tab') || 'TECH';
-  const initialSpender = searchParams.get('spender') || 'all';
 
   const [activeTab, setActiveTab] = useState<any>(initialTab);
   const outletContext = useOutletContext<{ setSubTitle?: (title: string) => void }>();
@@ -5138,7 +5138,27 @@ export const ProjectCostPlanPage: React.FC = () => {
               Các đơn đề nghị cấp tạm ứng / chi phí dự án cần người có thẩm quyền phê duyệt:
             </span>
             <span className="text-xs font-bold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-full">
-              Tổng cộng {allFundRequests.filter(r => r.projectCode === selectedProject || !selectedProject).length} yêu cầu
+              {(() => {
+                const isSystemAdminUser = isExecutiveOrAdmin(user);
+                const reqCount = allFundRequests.filter(r => {
+                  if (selectedProject && r.projectCode && r.projectCode !== selectedProject) return false;
+                  if (isSystemAdminUser) return true;
+                  const rCreatorId = String(r.creatorId || '').trim().toLowerCase();
+                  const rCreatorNorm = normalizeStr(r.creatorName);
+                  const isCreator = Boolean(
+                    (rCreatorId && myUserIdentifiers.ids.has(rCreatorId)) ||
+                    (rCreatorNorm && myUserIdentifiers.names.has(rCreatorNorm))
+                  );
+                  const rRevId = String(r.reviewerId || '').trim().toLowerCase();
+                  const rRevNorm = normalizeStr(r.reviewerName);
+                  const isDesignatedReviewer = Boolean(
+                    (rRevId && myUserIdentifiers.ids.has(rRevId)) ||
+                    (rRevNorm && myUserIdentifiers.names.has(rRevNorm))
+                  );
+                  return isCreator || isDesignatedReviewer;
+                }).length;
+                return `Tổng cộng ${reqCount} yêu cầu`;
+              })()}
             </span>
           </div>
 
@@ -5164,7 +5184,11 @@ export const ProjectCostPlanPage: React.FC = () => {
                   // - Quản trị viên hệ thống / Lãnh đạo Cấp 1: Xem toàn bộ đơn
                   // - Người khác: Chỉ thấy các đơn do mình tạo HOẶC mình được chỉ định duyệt
                   const visibleRequests = allFundRequests.filter(r => {
-                    if (selectedProject && r.projectCode && r.projectCode !== selectedProject) return false;
+                    if (selectedProject && r.projectCode && r.projectCode !== selectedProject) {
+                      // Nếu có mã dự án nhưng không trùng dự án đang chọn thì bỏ qua
+                      // (Trừ khi dự án đang chọn rỗng)
+                      return false;
+                    }
                     if (isSystemAdminUser) return true;
 
                     const rCreatorId = String(r.creatorId || '').trim().toLowerCase();

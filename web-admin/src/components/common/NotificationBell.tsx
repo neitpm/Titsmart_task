@@ -782,6 +782,25 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ isSidebar = 
       }
     }
 
+    // Nếu tiêu đề dạng "Yêu cầu cấp quỹ mới: Tên dự án" hoặc "Yêu cầu cấp quỹ đã được duyệt: Tên dự án"
+    if (!pCode && title.includes('cấp quỹ')) {
+      const colonParts = title.split(':');
+      if (colonParts.length > 1) {
+        const potentialProj = colonParts.slice(1).join(':').trim();
+        if (potentialProj) {
+          const store = useRealtimeStore.getState();
+          const found = (store.projects || []).find(p => 
+            p.name?.toLowerCase().includes(potentialProj.toLowerCase()) || 
+            potentialProj.toLowerCase().includes(p.name?.toLowerCase() || '') ||
+            p.code?.toLowerCase() === potentialProj.toLowerCase()
+          );
+          if (found) {
+            pCode = found.code || found.id;
+          }
+        }
+      }
+    }
+
     // Trích xuất tên hạng mục/hồ sơ sau dấu hai chấm nếu có
     let itemName = '';
     if (title.includes(':')) {
@@ -870,8 +889,22 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ isSidebar = 
       (notification.type && notification.type.startsWith('fund_request'));
 
     if (isFundNotification) {
-      if (finalProjectCode) {
-        navigate(`/projects/${encodeURIComponent(finalProjectCode)}/cost-plan?tab=EXPENSE&openFundRequests=true`);
+      // Tìm kiếm dự án theo tên trong title: "Yêu cầu cấp quỹ mới: Trạm biến áp..."
+      let targetProjectCode = finalProjectCode;
+      if (!targetProjectCode && title.includes(':')) {
+        const afterColon = title.split(':')[1]?.trim() || '';
+        const store = useRealtimeStore.getState();
+        const matched = (store.projects || []).find(p => 
+          (p.name && (p.name.toLowerCase().includes(afterColon.toLowerCase()) || afterColon.toLowerCase().includes(p.name.toLowerCase()))) ||
+          (p.code && p.code.toLowerCase() === afterColon.toLowerCase())
+        );
+        if (matched) {
+          targetProjectCode = matched.code || matched.id;
+        }
+      }
+
+      if (targetProjectCode) {
+        navigate(`/projects/${encodeURIComponent(targetProjectCode)}/cost-plan?tab=EXPENSE&openFundRequests=true`);
       } else {
         navigate('/cost-plan?tab=EXPENSE&openFundRequests=true');
       }
