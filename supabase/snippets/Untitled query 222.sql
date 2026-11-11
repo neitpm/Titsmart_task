@@ -1,16 +1,36 @@
 -- ==============================================================================
--- MIGRATION SCRIPT: TOÀN DIỆN BẢO MẬT RPC, TRANSACTION ATOMIC VÀ RLS CHO CẤP QUỸ
+-- MIGRATION SCRIPT: PHÂN TÁCH HOÀN TOÀN FUND_REQUEST VÀ FUND_REQUEST_AUDIT
+-- BẢO ĐẢM ATOMIC TRANSACTION, RLS VÀ KHÔNG BAO GIỜ NHÂN BẢN YÊU CẦU CẤP QUỸ
 -- ==============================================================================
 
--- 1. BẢO ĐẢM CỘT fund_request_id TRÊN EXPENSES VÀ UNIQUE INDEX CHỐNG NẠP TRÙNG QUỸ
+-- 1. BẢO ĐẢM CỘT fund_request_id TRÊN EXPENSES VÀ CỘT auth_user_id TRÊN ENGINEERS
 ALTER TABLE public.expenses ADD COLUMN IF NOT EXISTS fund_request_id text;
+ALTER TABLE public.engineers ADD COLUMN IF NOT EXISTS auth_user_id uuid;
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_expenses_unique_fund_request_id 
 ON public.expenses (fund_request_id) 
 WHERE fund_request_id IS NOT NULL AND fund_request_id <> '';
 
--- 2. HÀM RPC TẠO YÊU CẦU CẤP QUỸ CHÍNH THỨC (CREATE FUND REQUEST RPC)
--- Thay vì để frontend insert tự do vào activity_logs, hàm này kiểm tra auth.uid()
+-- Tự động đồng bộ mapping giữa auth.users và engineers theo email hoặc username nếu chưa map
+-- Dùng EXECUTE động trong DO $$ để tránh parse error khi ALTER TABLE chạy trong cùng batch
+DO $$
+BEGIN
+  EXECUTE '
+    UPDATE public.engineers e
+    SET auth_user_id = u.id
+    FROM auth.users u
+    WHERE e.auth_user_id IS NULL
+      AND (
+        (e.email IS NOT NULL AND lower(e.email) = lower(u.email))
+        OR (e.username IS NOT NULL AND lower(u.email) = lower(e.username || ''@titsmart.vn''))
+      );
+  ';
+EXCEPTION WHEN OTHERS THEN
+  RAISE NOTICE 'Mapping auth_user_id warning: %', SQLERRM;
+END $$;
+
+-- 2. HÀM RPC TẠO YÊU CẦU CẤP QUỸ CHÍNH THỨC
+-- Gồm: 1 bản ghi FUND_REQUEST chính (dữ liệu trạng thái) + 1 bản ghi FUND_REQUEST_AUDIT (nhật ký)
 CREATE OR REPLACE FUNCTION public.create_fund_request(
   p_project_code text,
   p_project_name text,
@@ -42,6 +62,7 @@ DECLARE
   v_action jsonb;
   v_history jsonb;
   v_inserted_id uuid;
+  v_audit_action_text text;
 BEGIN
   -- 1. Lấy auth.uid() từ JWT session Supabase
   v_auth_uid := auth.uid();
@@ -123,6 +144,7 @@ BEGIN
     'createdAt', v_now
   );
 
+  -- 4. BẢN GHI DUY NHẤT LƯU YÊU CẦU CẤP QUỸ: icon = 'FUND_REQUEST'
   INSERT INTO public.activity_logs (
     "user",
     project,
@@ -138,11 +160,33 @@ BEGIN
   )
   RETURNING id INTO v_inserted_id;
 
+  -- 5. BẢN GHI LỊCH SỬ THAO TÁC AUDIT LOG CHO DỰ ÁN: icon = 'FUND_REQUEST_AUDIT'
+  -- Bản ghi này phục vụ modal "Danh sách người cập nhật & Lịch sử thao tác", KHÔNG ĐƯA VÀO fundRequests.getAll()
+  v_audit_action_text := 'Tạo yêu cầu cấp quỹ ' || to_char(p_amount, 'FM999,999,999,999') || ' đ (' || COALESCE(p_type, 'Tạm ứng') || '): ' || p_purpose;
+  
+  INSERT INTO public.activity_logs (
+    "user",
+    project,
+    icon,
+    action,
+    timestamp,
+    badge_bg,
+    icon_color
+  ) VALUES (
+    v_user_name,
+    COALESCE(p_project_code, 'COMPANY'),
+    'FUND_REQUEST_AUDIT',
+    v_audit_action_text,
+    now(),
+    'bg-blue-50',
+    'text-blue-600'
+  );
+
   RETURN jsonb_build_object('id', v_inserted_id, 'action', v_action);
 END;
 $$;
 
--- 3. HÀM RPC PHÊ DUYỆT CẤP QUỸ & TÍNH NGUYÊN TỬ (ATOMIC TRANSACTION: RPC ĐỔI STATUS + INSERT EXPENSE NẾU COMPLETED)
+-- 3. HÀM RPC PHÊ DUYỆT CẤP QUỸ, GHI AUDIT LOG VÀ TÍNH NGUYÊN TỬ (ATOMIC)
 CREATE OR REPLACE FUNCTION public.review_fund_request(
   p_request_id uuid,
   p_target_status text,
@@ -194,6 +238,11 @@ DECLARE
   v_needed_date text;
   v_doc_url text;
   v_next_stt int;
+
+  -- Biến mô tả cho dòng FUND_REQUEST_AUDIT
+  v_audit_text text;
+  v_audit_badge text := 'bg-slate-50';
+  v_audit_color text := 'text-slate-600';
 BEGIN
   -- 1. Lấy auth.uid() từ JWT session Supabase
   v_auth_uid := auth.uid();
@@ -221,7 +270,7 @@ BEGIN
   v_has_approve_perm := (v_perms ? 'APPROVE_FUND_REQUEST');
   v_has_check_perm := (v_perms ? 'CHECK_FUND_REQUEST');
   v_has_transfer_perm := (v_perms ? 'PROCESS_FUND_TRANSFER');
-  -- Nhận diện tài khoản Kế toán: là người có vai trò Kế toán hoặc (chức danh kế toán và không phải Lãnh đạo/Giám đốc/Admin)
+  -- Nhận diện tài khoản Kế toán: vai trò Kế toán hoặc (quyền transfer mà không có quyền approve)
   v_is_accountant := lower(COALESCE(v_user_role, '')) LIKE '%kế toán%' 
     OR (v_has_transfer_perm AND NOT v_has_approve_perm AND lower(COALESCE(v_user_role, '')) NOT IN ('admin', 'quản trị viên', 'giám đốc', 'lãnh đạo'));
 
@@ -255,34 +304,66 @@ BEGIN
     IF v_current_status NOT IN ('PENDING_CHECK', 'NEED_MORE_INFO') THEN
       RAISE EXCEPTION 'Không thể chuyển sang Đã kiểm tra từ trạng thái hiện tại (%)', v_current_status;
     END IF;
+    v_audit_text := 'Người kiểm tra xác nhận đã kiểm tra yêu cầu cấp quỹ (' || to_char(v_fund_amount, 'FM999,999,999,999') || ' đ): ' || COALESCE(p_note, 'Hồ sơ hợp lệ');
+    v_audit_badge := 'bg-amber-50';
+    v_audit_color := 'text-amber-600';
+
   ELSIF p_target_status = 'NEED_MORE_INFO' THEN
     IF v_current_status NOT IN ('PENDING_CHECK', 'CHECKED_WAITING_APPROVAL') THEN
       RAISE EXCEPTION 'Chỉ có thể yêu cầu bổ sung khi đơn ở bước kiểm tra hoặc chờ duyệt.';
     END IF;
+    v_audit_text := 'Yêu cầu bổ sung hồ sơ cấp quỹ: ' || COALESCE(p_note, 'Vui lòng bổ sung thêm thông tin');
+    v_audit_badge := 'bg-cyan-50';
+    v_audit_color := 'text-cyan-600';
+
   ELSIF p_target_status = 'REJECTED_BY_CHECKER' THEN
     IF v_current_status NOT IN ('PENDING_CHECK') THEN
       RAISE EXCEPTION 'Người kiểm tra chỉ có thể từ chối khi đơn ở trạng thái Chờ kiểm tra.';
     END IF;
+    v_audit_text := 'Người kiểm tra từ chối yêu cầu cấp quỹ: ' || COALESCE(p_note, 'Không hợp lệ');
+    v_audit_badge := 'bg-rose-50';
+    v_audit_color := 'text-rose-600';
+
   ELSIF p_target_status = 'APPROVED_WAITING_ACCOUNTING' THEN
     IF v_current_status NOT IN ('CHECKED_WAITING_APPROVAL', 'PENDING_CHECK') THEN
       RAISE EXCEPTION 'Chỉ có thể phê duyệt khi yêu cầu đã được kiểm tra (trạng thái hiện tại: %)', v_current_status;
     END IF;
+    v_audit_text := 'Lãnh đạo phê duyệt cấp quỹ ' || to_char(v_fund_amount, 'FM999,999,999,999') || ' đ, chỉ định Kế toán: ' || COALESCE(p_accountant_name, 'Kế toán');
+    v_audit_badge := 'bg-blue-50';
+    v_audit_color := 'text-blue-600';
+
   ELSIF p_target_status = 'REJECTED' THEN
     IF v_current_status NOT IN ('CHECKED_WAITING_APPROVAL', 'PENDING_CHECK') THEN
       RAISE EXCEPTION 'Lãnh đạo chỉ có thể từ chối khi yêu cầu đang chờ phê duyệt.';
     END IF;
+    v_audit_text := 'Lãnh đạo từ chối yêu cầu cấp quỹ: ' || COALESCE(p_note, 'Không được phê duyệt');
+    v_audit_badge := 'bg-rose-50';
+    v_audit_color := 'text-rose-600';
+
   ELSIF p_target_status = 'ACCOUNTING_PROCESSING' THEN
     IF v_current_status NOT IN ('APPROVED_WAITING_ACCOUNTING', 'APPROVED') THEN
       RAISE EXCEPTION 'Kế toán chỉ có thể tiếp nhận khi yêu cầu đã được Lãnh đạo phê duyệt.';
     END IF;
+    v_audit_text := 'Kế toán tiếp nhận xử lý hồ sơ chuyển khoản cấp quỹ ' || to_char(v_fund_amount, 'FM999,999,999,999') || ' đ';
+    v_audit_badge := 'bg-amber-50';
+    v_audit_color := 'text-amber-600';
+
   ELSIF p_target_status = 'TRANSFERRED_WAITING_CONFIRMATION' THEN
     IF v_current_status NOT IN ('ACCOUNTING_PROCESSING', 'APPROVED_WAITING_ACCOUNTING', 'APPROVED') THEN
       RAISE EXCEPTION 'Chỉ có thể chuyển tiền sau khi yêu cầu đã được duyệt và kế toán tiếp nhận.';
     END IF;
+    v_audit_text := 'Kế toán đã chuyển khoản ' || to_char(COALESCE(p_transfer_amount, v_fund_amount), 'FM999,999,999,999') || ' đ (Mã GD: ' || COALESCE(p_transaction_code, 'N/A') || ') & đính kèm UNC';
+    v_audit_badge := 'bg-purple-50';
+    v_audit_color := 'text-purple-600';
+
   ELSIF p_target_status = 'COMPLETED' THEN
     IF v_current_status NOT IN ('TRANSFERRED_WAITING_CONFIRMATION') THEN
       RAISE EXCEPTION 'Chỉ có thể xác nhận hoàn tất sau khi Kế toán đã chuyển khoản và gửi UNC.';
     END IF;
+    v_audit_text := 'Người tạo đã xác nhận nhận đủ tiền cấp quỹ (' || to_char(v_fund_amount, 'FM999,999,999,999') || ' đ). Nạp quỹ dự án hoàn tất!';
+    v_audit_badge := 'bg-emerald-50';
+    v_audit_color := 'text-emerald-600';
+
   ELSE
     RAISE EXCEPTION 'Trạng thái mục tiêu không hợp lệ: %', p_target_status;
   END IF;
@@ -358,7 +439,7 @@ BEGIN
   END IF;
 
   -- ==============================================================================
-  -- 6. CẬP NHẬT DỮ LIỆU BẢN GHI ACTIVITY_LOGS
+  -- 6. CẬP NHẬT DỮ LIỆU BẢN GHI FUND_REQUEST CHÍNH (KHÔNG TẠO BẢN GHI FUND_REQUEST MỚI)
   -- ==============================================================================
   v_action := jsonb_set(v_action, '{status}', to_jsonb(p_target_status));
   v_action := jsonb_set(v_action, '{updatedAt}', to_jsonb(v_now));
@@ -384,27 +465,50 @@ BEGIN
     v_action := jsonb_set(v_action, '{transferNote}', to_jsonb(p_transfer_note));
   END IF;
 
-  -- Ghi nhận lịch sử audit trail
+  -- Ghi nhận lịch sử audit trail vào JSON của đơn
   v_audit_entry := jsonb_build_object(
     'action', p_target_status,
     'actorId', v_user_id,
     'actorName', v_user_name,
     'actorRole', COALESCE(v_user_role, 'Nhân sự'),
     'timestamp', v_now,
-    'note', COALESCE(p_note, 'Cập nhật trạng thái ' || p_target_status)
+    'note', COALESCE(p_note, 'Cập nhật trạng thái ' || p_target_status),
+    'attachmentUrl', p_transfer_doc_url
   );
 
   v_history := COALESCE(v_action->'history', '[]'::jsonb);
   v_history := v_history || jsonb_build_array(v_audit_entry);
   v_action := jsonb_set(v_action, '{history}', v_history);
 
-  -- Cập nhật vào bảng activity_logs
+  -- Cập nhật bản ghi duy nhất FUND_REQUEST
   UPDATE public.activity_logs
   SET action = v_action::text
   WHERE id = p_request_id;
 
   -- ==============================================================================
-  -- 7. TÍNH NGUYÊN TỬ: KHI COMPLETED -> TỰ ĐỘNG TẠO EXPENSE NẠP QUỸ TRONG CÙNG TRANSACTION
+  -- 7. GHI BẢN GHI LỊCH SỬ THAO TÁC AUDIT DỰ ÁN: icon = 'FUND_REQUEST_AUDIT'
+  -- Bản ghi này phục vụ modal "Danh sách người cập nhật & Lịch sử thao tác"
+  -- ==============================================================================
+  INSERT INTO public.activity_logs (
+    "user",
+    project,
+    icon,
+    action,
+    timestamp,
+    badge_bg,
+    icon_color
+  ) VALUES (
+    v_user_name,
+    COALESCE(v_project_code, 'COMPANY'),
+    'FUND_REQUEST_AUDIT',
+    v_audit_text,
+    now(),
+    v_audit_badge,
+    v_audit_color
+  );
+
+  -- ==============================================================================
+  -- 8. TÍNH NGUYÊN TỬ: KHI COMPLETED -> TỰ ĐỘNG TẠO EXPENSE NẠP QUỸ TRONG CÙNG TRANSACTION
   -- ==============================================================================
   IF p_target_status = 'COMPLETED' THEN
     -- Kiểm tra xem đã có expense nạp quỹ cho fund_request này chưa (chống trùng lặp tuyệt đối)
@@ -466,7 +570,7 @@ GRANT EXECUTE ON FUNCTION public.create_fund_request(text, text, numeric, text, 
 REVOKE ALL ON FUNCTION public.review_fund_request(uuid, text, text, text, numeric, text, text, text, text, text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.review_fund_request(uuid, text, text, text, numeric, text, text, text, text, text) TO authenticated;
 
--- 5. BẢO MẬT RLS CHẶN TRỰC TIẾP INSERT/UPDATE VÀO ACTIVITY_LOGS ĐỐI VỚI ICON FUND_REQUEST
+-- 5. BẢO MẬT RLS CHẶN TRỰC TIẾP INSERT/UPDATE VÀO CẢ FUND_REQUEST VÀ FUND_REQUEST_AUDIT
 ALTER TABLE public.activity_logs ENABLE ROW LEVEL SECURITY;
 
 -- Cho phép đọc toàn bộ nhật ký nếu đã đăng nhập
@@ -485,25 +589,25 @@ BEGIN
   END IF;
 END $$;
 
--- Chặn người dùng tự ý insert FUND_REQUEST qua direct API (bắt buộc phải qua create_fund_request RPC)
+-- Chặn direct insert cả FUND_REQUEST và FUND_REQUEST_AUDIT (chỉ RPC mới được ghi)
 DROP POLICY IF EXISTS "Allow authenticated insert activity_logs" ON public.activity_logs;
 DROP POLICY IF EXISTS "Allow authenticated insert non_fund_request activity_logs" ON public.activity_logs;
 CREATE POLICY "Allow authenticated insert non_fund_request activity_logs"
 ON public.activity_logs FOR INSERT
 TO authenticated
 WITH CHECK (
-  icon <> 'FUND_REQUEST'
+  icon NOT IN ('FUND_REQUEST', 'FUND_REQUEST_AUDIT')
 );
 
--- Chặn direct update FUND_REQUEST qua direct API (bắt buộc phải qua review_fund_request RPC)
+-- Chặn direct update cả FUND_REQUEST và FUND_REQUEST_AUDIT (chỉ RPC mới được cập nhật)
 DROP POLICY IF EXISTS "Allow authenticated update activity_logs" ON public.activity_logs;
 DROP POLICY IF EXISTS "Allow authenticated update non_fund_request activity_logs" ON public.activity_logs;
 CREATE POLICY "Allow authenticated update non_fund_request activity_logs"
 ON public.activity_logs FOR UPDATE
 TO authenticated
 USING (
-  icon <> 'FUND_REQUEST'
+  icon NOT IN ('FUND_REQUEST', 'FUND_REQUEST_AUDIT')
 )
 WITH CHECK (
-  icon <> 'FUND_REQUEST'
+  icon NOT IN ('FUND_REQUEST', 'FUND_REQUEST_AUDIT')
 );

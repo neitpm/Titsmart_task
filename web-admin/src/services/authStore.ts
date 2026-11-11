@@ -381,193 +381,124 @@ export const useAuthStore = create<AuthStoreState>((set, get) => ({
       email = `${cleanUsername}@titsmart.vn`;
     }
 
-    const isSystemAdmin = cleanUsername.toLowerCase() === 'admin' || email.toLowerCase() === 'admin@titsmart.vn';
-    const isDefaultAdminPassword = password === 'admin123';
+    // 1. BẮT BUỘC ĐĂNG NHẬP THẬT BẰNG SUPABASE AUTH (GoTrue)
+    // Tuyệt đối không cho phép đăng nhập thành công giả hoặc catch bỏ qua lỗi
+    // Tuyệt đối không tự động signUp từ phía frontend bằng mật khẩu người dùng
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
-    // 0. Tài khoản Quản trị viên hệ thống cố định (admin / admin123) LUÔN ĐĂNG NHẬP THÀNH CÔNG
-    if (isSystemAdmin && isDefaultAdminPassword) {
-      let engineerData: any = null;
+    if (authError || !authData?.user) {
+      console.warn('[Supabase Auth] Login failed:', authError?.message);
+
+      // Kiểm tra xem tài khoản có tồn tại trong bảng engineers để đưa ra thông báo chính xác
+      let existingEngineer: any = null;
       try {
         const { data: engRes } = await supabase
           .from('engineers')
-          .select('*')
+          .select('id, name, username, email, is_locked, isLocked, is_active')
           .or(`email.eq.${email},username.eq.${cleanUsername}`)
           .maybeSingle();
-        engineerData = engRes;
+        existingEngineer = engRes;
       } catch (_) {}
 
-      const user: AuthUser = {
-        id: engineerData?.id || 'user-admin',
-        username: 'admin',
-        name: engineerData?.name || 'Admin',
-        role: 'admin',
-        title: engineerData?.title || 'Quản trị viên',
-        email: engineerData?.email || 'admin@titsmart.vn',
-        phone: engineerData?.phone || '0901 234 567',
-        projectCodes: engineerData?.project_codes || engineerData?.projectCodes || [],
-        permissions: getDefaultPermissions('admin'),
+      if (existingEngineer) {
+        if (existingEngineer.is_locked || existingEngineer.isLocked || existingEngineer.is_active === false) {
+          return { ok: false, error: 'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ Quản trị viên.' };
+        }
+        // Tài khoản có trong danh sách nhân sự nhưng chưa có trong Supabase Auth hoặc sai mật khẩu
+        if (authError?.message?.includes('Invalid login credentials')) {
+          return {
+            ok: false,
+            error: 'Tài khoản hoặc mật khẩu không đúng, hoặc tài khoản chưa được đồng bộ xác thực Supabase Auth. Vui lòng liên hệ Quản trị viên để kiểm tra và đồng bộ.',
+          };
+        }
+      }
+
+      return {
+        ok: false,
+        error: authError?.message || 'Tài khoản hoặc mật khẩu không đúng.',
       };
-      saveSession(user);
-      set({ user });
-      return { ok: true };
     }
 
-    const demoAccount = DEMO_ACCOUNTS.find(
-      acc => (acc.username.toLowerCase() === cleanUsername.toLowerCase() || acc.email.toLowerCase() === email.toLowerCase()) && acc.password === password
-    );
+    // 2. ĐÃ XÁC THỰC THÀNH CÔNG VỚI SUPABASE AUTH (authData.user tồn tại)
+    const authUser = authData.user;
+    const authUid = authUser.id;
 
-    // 1. Kiểm tra trực tiếp bảng nhân sự (engineers) trong Database
-    // Điều này đảm bảo mật khẩu được Admin/Quản lý cập nhật sẽ có hiệu lực ngay lập tức
+    // 3. KIỂM TRA PHIÊN THẬT TỪ getSession()
+    const { data: sessionRes, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !sessionRes?.session?.user) {
+      await supabase.auth.signOut().catch(() => {});
+      return {
+        ok: false,
+        error: 'Không thể tạo phiên làm việc Supabase Auth hợp lệ. Vui lòng thử lại.',
+      };
+    }
+
+    // 4. TRUY VẤN DỮ LIỆU NHÂN SỰ TƯƠNG ỨNG TỪ BẢNG ENGINEERS THEO auth_user_id HOẶC THÔNG TIN TÀI KHOẢN
     let engineerData: any = null;
     try {
       const { data: engRes } = await supabase
         .from('engineers')
         .select('*')
-        .or(`email.eq.${email},username.eq.${cleanUsername}`)
+        .or(`auth_user_id.eq.${authUid},email.eq.${email},username.eq.${cleanUsername},id.eq.${authUid}`)
         .maybeSingle();
       engineerData = engRes;
     } catch (e) {
       console.warn('Failed to query engineers table:', e);
     }
 
-    if (engineerData) {
-      // Kiểm tra trạng thái khóa tài khoản
-      if (engineerData.is_locked || engineerData.isLocked || engineerData.is_active === false) {
-        return { ok: false, error: 'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ Quản trị viên.' };
-      }
-
-      // Nếu trong DB có lưu mật khẩu (do Admin đổi hoặc tạo ban đầu)
-      if (engineerData.password && String(engineerData.password).trim() !== '') {
-        const isMatch = String(engineerData.password) === String(password) || (isSystemAdmin && isDefaultAdminPassword);
-        if (!isMatch) {
-          return { ok: false, error: 'Tài khoản hoặc mật khẩu không đúng.' };
-        }
-
-        // Mật khẩu khớp chính xác với mật khẩu trong Database!
-        let rawRole = engineerData.role || 'staff';
-        let englishRole = rawRole;
-        if (rawRole === 'Quản trị viên' || isSystemAdmin) englishRole = 'admin';
-        if (rawRole === 'Quản lý dự án') englishRole = 'pm';
-        if (rawRole === 'Kỹ sư hiện trường') englishRole = 'engineer';
-        if (rawRole === 'Nhân viên') englishRole = 'staff';
-
-        const user: AuthUser = {
-          id: engineerData.id || 'user-' + cleanUsername,
-          username: engineerData.username || cleanUsername,
-          name: engineerData.name || cleanUsername,
-          role: englishRole,
-          title: engineerData.title || engineerData.role || 'Nhân viên',
-          email: engineerData.email || email,
-          phone: engineerData.phone || '',
-          projectCodes: engineerData.project_codes || engineerData.projectCodes || [],
-          permissions: engineerData.permissions || getDefaultPermissions(englishRole),
-        };
-
-        saveSession(user);
-        set({ user });
-
-        // Thử đồng bộ ngầm GoTrue Supabase Auth (nếu có)
-        try {
-          supabase.auth.signInWithPassword({ email, password }).catch(() => {});
-        } catch (_) {}
-
-        return { ok: true };
-      }
+    // Nếu tài khoản bị khóa trong DB nhân sự
+    if (engineerData && (engineerData.is_locked || engineerData.isLocked || engineerData.is_active === false)) {
+      await supabase.auth.signOut().catch(() => {});
+      return { ok: false, error: 'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ Quản trị viên.' };
     }
 
-    // 2. Nếu khớp demoAccount cố định (admin, kst, nhanvien,...)
-    if (demoAccount) {
-      const user: AuthUser = {
-        id: engineerData?.id || 'user-' + demoAccount.username,
-        username: demoAccount.username,
-        name: engineerData?.name || demoAccount.name,
-        role: demoAccount.role,
-        title: engineerData?.title || demoAccount.title,
-        email: engineerData?.email || demoAccount.email,
-        phone: engineerData?.phone || demoAccount.phone,
-        projectCodes: engineerData?.project_codes || engineerData?.projectCodes || [],
-        permissions: engineerData?.permissions || getDefaultPermissions(demoAccount.role),
+    const isSystemAdmin = cleanUsername.toLowerCase() === 'admin' || email.toLowerCase() === 'admin@titsmart.vn';
+
+    // Nếu không tìm thấy thông tin nhân sự và không phải admin mặc định
+    if (!engineerData && !isSystemAdmin) {
+      await supabase.auth.signOut().catch(() => {});
+      return {
+        ok: false,
+        error: 'Tài khoản chưa được đồng bộ xác thực với danh sách nhân sự. Admin cần đồng bộ tài khoản trước khi đăng nhập.',
       };
-      saveSession(user);
-      set({ user });
-      return { ok: true };
     }
 
-    // 3. Nếu trong DB chưa có cột password, thử qua Supabase Auth GoTrue
-    let data: any = null;
-    let error: any = null;
-
-    try {
-      const signInRes = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-      data = signInRes.data;
-      error = signInRes.error;
-
-      // Auto-register if user doesn't exist, then sign in again
-      if (error && error.message.includes('Invalid login credentials')) {
-        const signUpRes = await supabase.auth.signUp({
-          email,
-          password,
-          options: { data: { confirmed_at: new Date().toISOString() } },
-        });
-        if (!signUpRes.error) {
-          const retryRes = await supabase.auth.signInWithPassword({ email, password });
-          if (!retryRes.error) {
-            data = retryRes.data;
-            error = null;
-          } else if (signUpRes.data.user) {
-            data = signUpRes.data;
-            error = null;
-          }
-        }
-      }
-    } catch (err) {
-      console.warn('Supabase auth request failed:', err);
-    }
-
-    if (error) {
-      console.error('Supabase login error:', error.message);
-      return { ok: false, error: 'Tài khoản hoặc mật khẩu không đúng.' };
-    }
-
-    if (data.user) {
-      if (engineerData && (engineerData.is_locked || engineerData.isLocked || engineerData.is_active === false)) {
-        await supabase.auth.signOut();
-        return { ok: false, error: 'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ Quản trị viên.' };
-      }
-
-      const account = DEMO_ACCOUNTS.find((acc) => acc.email.toLowerCase() === email.toLowerCase());
-
-      if (!engineerData && cleanUsername !== 'admin' && email !== 'admin@titsmart.vn') {
-        await supabase.auth.signOut();
-        return { ok: false, error: 'Tài khoản này không tồn tại hoặc đã bị xóa khỏi hệ thống.' };
-      }
-      
-      let rawRole = engineerData?.role || account?.role || 'staff';
-      let englishRole = rawRole;
-      if (rawRole === 'Quản trị viên') englishRole = 'admin';
-      if (rawRole === 'Quản lý dự án') englishRole = 'pm';
-      if (rawRole === 'Kỹ sư hiện trường') englishRole = 'engineer';
-      if (rawRole === 'Nhân viên') englishRole = 'staff';
-
-      const user: AuthUser = {
-        id: data.user.id,
-        username: engineerData?.username || account?.username || cleanUsername,
-        name: engineerData?.name || account?.name || cleanUsername,
-        role: englishRole,
-        title: engineerData?.title || account?.title || 'Nhân viên',
-        email: data.user.email || email,
-        phone: engineerData?.phone || account?.phone || '',
-        projectCodes: engineerData?.project_codes || [],
-        permissions: engineerData?.permissions || getDefaultPermissions(englishRole),
+    // YÊU CẦU BẢO MẬT: MAPPING auth_user_id BẮT BUỘC ĐƯỢC ADMIN/BACKEND/MIGRATION THIẾT LẬP
+    // Frontend tuyệt đối không tự ý cập nhật ngầm mapping vào DB.
+    // Nếu tài khoản nhân sự chưa có liên kết auth_user_id chính xác với Supabase Auth user id:
+    if (engineerData && engineerData.auth_user_id !== authUid && !isSystemAdmin) {
+      await supabase.auth.signOut().catch(() => {});
+      return {
+        ok: false,
+        error: 'Tài khoản chưa được liên kết xác thực (auth_user_id) với hệ thống. Quản trị viên cần chạy đồng bộ mapping tài khoản trước khi bạn có thể đăng nhập.',
       };
-      saveSession(user);
-      set({ user });
-      return { ok: true };
     }
-    return { ok: false, error: 'Tài khoản hoặc mật khẩu không đúng.' };
+
+    let rawRole = engineerData?.role || (isSystemAdmin ? 'Quản trị viên' : 'staff');
+    let englishRole = rawRole;
+    if (rawRole === 'Quản trị viên' || isSystemAdmin) englishRole = 'admin';
+    if (rawRole === 'Quản lý dự án') englishRole = 'pm';
+    if (rawRole === 'Kỹ sư hiện trường') englishRole = 'engineer';
+    if (rawRole === 'Nhân viên') englishRole = 'staff';
+
+    const user: AuthUser = {
+      id: engineerData?.id || authUid,
+      username: engineerData?.username || cleanUsername,
+      name: engineerData?.name || cleanUsername,
+      role: englishRole,
+      title: engineerData?.title || engineerData?.role || (isSystemAdmin ? 'Quản trị viên' : 'Nhân sự'),
+      email: authUser.email || email,
+      phone: engineerData?.phone || '',
+      projectCodes: engineerData?.project_codes || engineerData?.projectCodes || [],
+      permissions: engineerData?.permissions || getDefaultPermissions(englishRole),
+    };
+
+    saveSession(user);
+    set({ user });
+    return { ok: true };
   },
   logout: async () => {
     set({ isLoggingOut: true });

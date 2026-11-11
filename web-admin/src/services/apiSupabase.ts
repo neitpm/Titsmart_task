@@ -2626,6 +2626,12 @@ export const api = {
       status?: string;
       history?: any[];
     }) => {
+      // 0. Kiểm tra phiên Supabase Auth bắt buộc trước khi gọi RPC
+      const { data: sessionRes, error: sessionErr } = await supabase.auth.getSession();
+      if (sessionErr || !sessionRes?.session?.user) {
+        throw new Error('Lỗi xác thực: Phiên làm việc Supabase chưa được kích hoạt hoặc đã hết hạn. Vui lòng đăng xuất và đăng nhập lại để tiếp tục.');
+      }
+
       // 1. Thử gọi RPC create_fund_request bảo mật ở cấp database
       const { data: rpcData, error: rpcErr } = await supabase.rpc('create_fund_request', {
         p_project_code: input.projectCode,
@@ -2656,6 +2662,12 @@ export const api = {
       throw new Error('Không nhận được phản hồi từ máy chủ khi tạo yêu cầu cấp quỹ.');
     },
     review: async (id: string, reviewData: any) => {
+      // 0. Kiểm tra phiên Supabase Auth bắt buộc trước khi gọi RPC
+      const { data: sessionRes, error: sessionErr } = await supabase.auth.getSession();
+      if (sessionErr || !sessionRes?.session?.user) {
+        throw new Error('Lỗi xác thực: Phiên làm việc Supabase chưa được kích hoạt hoặc đã hết hạn. Vui lòng đăng xuất và đăng nhập lại để tiếp tục.');
+      }
+
       // 1. GỌI BẮT BUỘC HÀM RPC review_fund_request TRÊN POSTGRESQL SUPABASE ĐỂ BẢO ĐẢM BẢO MẬT BACKEND/DATABASE
       // Tuyệt đối không fallback sang direct update (tránh bypass bảo mật)
       const { data: rpcData, error: rpcErr } = await supabase.rpc('review_fund_request', {

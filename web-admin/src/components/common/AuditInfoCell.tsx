@@ -58,6 +58,9 @@ const getActionBadge = (action: string) => {
   if (clean.includes('xóa') || clean.includes('hủy')) {
     return { icon: 'cancel', color: 'text-rose-700 bg-rose-50 border-rose-200' };
   }
+  if (clean.includes('cấp quỹ') || clean.includes('unc') || clean.includes('tạm ứng')) {
+    return { icon: 'payments', color: 'text-purple-700 bg-purple-50 border-purple-200' };
+  }
   return { icon: 'edit_note', color: 'text-slate-600 bg-slate-100 border-slate-200' };
 };
 
