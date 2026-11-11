@@ -265,6 +265,11 @@ export const ProjectCostPlanPage: React.FC = () => {
       if (myLinkedEng.username) ids.add(String(myLinkedEng.username).trim().toLowerCase());
       if (myLinkedEng.name) names.add(normalizeStr(myLinkedEng.name));
     }
+    // Nếu là admin hệ thống, luôn nhận diện định danh 'admin'
+    if (isSystemAdmin(user)) {
+      ids.add('admin');
+      names.add('admin');
+    }
     return { ids, names };
   }, [user, myLinkedEng]);
 
@@ -5555,16 +5560,20 @@ export const ProjectCostPlanPage: React.FC = () => {
                       (rAccNorm && myUserIdentifiers.names.has(rAccNorm))
                     );
 
-                    // Nhận diện tài khoản Kế toán: vai trò hoặc chức danh có từ "kế toán" hoặc có quyền xử lý chuyển tiền
+                    // Nhận diện tài khoản Kế toán thuần túy: có từ "kế toán" trong vai trò/chức danh hoặc có quyền transfer nhưng KHÔNG phải admin/lãnh đạo/người duyệt
                     const userRoleStr = String(user?.role || '').toLowerCase();
                     const userTitleStr = String((user as any)?.title || '').toLowerCase();
-                    const isAccountantAccount = userRoleStr.includes('kế toán') || userTitleStr.includes('kế toán') || canTransferPerm;
+                    const isPureAccountant = !isSystemAdminUser && !isReviewer && (
+                      userRoleStr.includes('kế toán') || 
+                      userTitleStr.includes('kế toán') || 
+                      (canTransferPerm && !canApprovePerm)
+                    );
 
                     // Phân quyền hành động nghiệp vụ chặt chẽ:
-                    const canDoCheck = !isCreator && !isAccountantAccount && (isChecker || canCheckPerm);
-                    const canDoApprove = !isCreator && !isAccountantAccount && (!isChecker || allowDualRole) && (isReviewer || (canApprovePerm && !isAccountantAccount));
-                    const canDoTransfer = req.accountantId ? isAccountant : (isAccountant || canTransferPerm);
-                    const canDoConfirm = isCreator;
+                    const canDoCheck = !isCreator && !isPureAccountant && (isChecker || canCheckPerm || isSystemAdminUser);
+                    const canDoApprove = !isCreator && !isPureAccountant && (!isChecker || allowDualRole || isSystemAdminUser) && (isReviewer || canApprovePerm || isSystemAdminUser);
+                    const canDoTransfer = req.accountantId ? (isAccountant || isSystemAdminUser) : (isAccountant || canTransferPerm || isSystemAdminUser);
+                    const canDoConfirm = isCreator || isSystemAdminUser;
 
                     const curProjObj = projects.find(p => p.code === (req.projectCode || selectedProject));
                     const pName = curProjObj?.name || req.projectName || req.projectCode || 'Dự án';
@@ -6053,12 +6062,16 @@ export const ProjectCostPlanPage: React.FC = () => {
 
                 const userRoleStr = String(user?.role || '').toLowerCase();
                 const userTitleStr = String((user as any)?.title || '').toLowerCase();
-                const isAccountantAccount = userRoleStr.includes('kế toán') || userTitleStr.includes('kế toán') || canTransferPerm;
+                const isPureAccountant = !isSystemAdminUser && !isReviewer && (
+                  userRoleStr.includes('kế toán') || 
+                  userTitleStr.includes('kế toán') || 
+                  (canTransferPerm && !canApprovePerm)
+                );
 
-                const canDoCheck = !isCreator && !isAccountantAccount && (isChecker || canCheckPerm);
-                const canDoApprove = !isCreator && !isAccountantAccount && (!isChecker || allowDualRole) && (isReviewer || (canApprovePerm && !isAccountantAccount));
-                const canDoTransfer = req.accountantId ? isAccountant : (isAccountant || canTransferPerm);
-                const canDoConfirm = isCreator;
+                const canDoCheck = !isCreator && !isPureAccountant && (isChecker || canCheckPerm || isSystemAdminUser);
+                const canDoApprove = !isCreator && !isPureAccountant && (!isChecker || allowDualRole || isSystemAdminUser) && (isReviewer || canApprovePerm || isSystemAdminUser);
+                const canDoTransfer = req.accountantId ? (isAccountant || isSystemAdminUser) : (isAccountant || canTransferPerm || isSystemAdminUser);
+                const canDoConfirm = isCreator || isSystemAdminUser;
 
                 const curProjObj = projects.find(p => p.code === (req.projectCode || selectedProject));
                 const pName = curProjObj?.name || req.projectName || req.projectCode || 'Dự án';
