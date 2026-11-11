@@ -375,43 +375,65 @@ export const useAuthStore = create<AuthStoreState>((set, get) => ({
     }
   },
   login: async (usernameOrEmail, password) => {
-    const cleanUsername = usernameOrEmail.trim();
-    let email = cleanUsername;
-    if (!email.includes('@')) {
-      email = `${cleanUsername}@titsmart.vn`;
+    const cleanInput = usernameOrEmail.trim();
+
+    // 1. TRA CỨU TÀI KHOẢN TRONG BẢNG ENGINEERS ĐỂ LẤY EMAIL THỰC TẾ
+    // Người dùng có thể nhập username (ví dụ: 'admin', 'kst', 'duc.nv') hoặc email trực tiếp
+    let resolvedEmail = cleanInput;
+    let preEngineer: any = null;
+
+    try {
+      if (cleanInput.includes('@')) {
+        // Người dùng nhập trực tiếp email
+        const { data: engRes } = await supabase
+          .from('engineers')
+          .select('*')
+          .ilike('email', cleanInput)
+          .maybeSingle();
+        preEngineer = engRes;
+        resolvedEmail = cleanInput;
+      } else {
+        // Người dùng nhập username -> tra cứu username trong bảng engineers để lấy email thật
+        const { data: engRes } = await supabase
+          .from('engineers')
+          .select('*')
+          .ilike('username', cleanInput)
+          .maybeSingle();
+        preEngineer = engRes;
+
+        if (preEngineer && preEngineer.email && preEngineer.email.trim() !== '') {
+          resolvedEmail = preEngineer.email.trim();
+        } else {
+          // Fallback nếu trong DB chưa có cột email hoặc tài khoản admin mặc định
+          resolvedEmail = `${cleanInput}@titsmart.vn`;
+        }
+      }
+    } catch (err) {
+      console.warn('Tra cứu engineers trước đăng nhập warning:', err);
+      if (!resolvedEmail.includes('@')) {
+        resolvedEmail = `${cleanInput}@titsmart.vn`;
+      }
     }
 
-    // 1. BẮT BUỘC ĐĂNG NHẬP THẬT BẰNG SUPABASE AUTH (GoTrue)
-    // Tuyệt đối không cho phép đăng nhập thành công giả hoặc catch bỏ qua lỗi
-    // Tuyệt đối không tự động signUp từ phía frontend bằng mật khẩu người dùng
+    // Nếu tài khoản đã bị khóa trong bảng nhân sự thì chặn ngay từ đầu
+    if (preEngineer && (preEngineer.is_locked || preEngineer.isLocked || preEngineer.is_active === false)) {
+      return { ok: false, error: 'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ Quản trị viên.' };
+    }
+
+    // 2. BẮT BUỘC ĐĂNG NHẬP BẰNG SUPABASE AUTH (GoTrue) VỚI EMAIL THẬT
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-      email,
+      email: resolvedEmail,
       password,
     });
 
     if (authError || !authData?.user) {
-      console.warn('[Supabase Auth] Login failed:', authError?.message);
+      console.warn('[Supabase Auth] Login failed with resolved email:', resolvedEmail, authError?.message);
 
-      // Kiểm tra xem tài khoản có tồn tại trong bảng engineers để đưa ra thông báo chính xác
-      let existingEngineer: any = null;
-      try {
-        const { data: engRes } = await supabase
-          .from('engineers')
-          .select('id, name, username, email, is_locked, isLocked, is_active')
-          .or(`email.eq.${email},username.eq.${cleanUsername}`)
-          .maybeSingle();
-        existingEngineer = engRes;
-      } catch (_) {}
-
-      if (existingEngineer) {
-        if (existingEngineer.is_locked || existingEngineer.isLocked || existingEngineer.is_active === false) {
-          return { ok: false, error: 'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ Quản trị viên.' };
-        }
-        // Tài khoản có trong danh sách nhân sự nhưng chưa có trong Supabase Auth hoặc sai mật khẩu
+      if (preEngineer) {
         if (authError?.message?.includes('Invalid login credentials')) {
           return {
             ok: false,
-            error: 'Tài khoản hoặc mật khẩu không đúng, hoặc tài khoản chưa được đồng bộ xác thực Supabase Auth. Vui lòng liên hệ Quản trị viên để kiểm tra và đồng bộ.',
+            error: 'Mật khẩu không đúng, hoặc tài khoản chưa được đồng bộ xác thực với Supabase Auth. Vui lòng liên hệ Quản trị viên.',
           };
         }
       }
@@ -422,11 +444,11 @@ export const useAuthStore = create<AuthStoreState>((set, get) => ({
       };
     }
 
-    // 2. ĐÃ XÁC THỰC THÀNH CÔNG VỚI SUPABASE AUTH (authData.user tồn tại)
+    // 3. ĐÃ XÁC THỰC THÀNH CÔNG VỚI SUPABASE AUTH (authData.user tồn tại)
     const authUser = authData.user;
     const authUid = authUser.id;
 
-    // 3. KIỂM TRA PHIÊN THẬT TỪ getSession()
+    // 4. KIỂM TRA PHIÊN THẬT TỪ getSession()
     const { data: sessionRes, error: sessionError } = await supabase.auth.getSession();
     if (sessionError || !sessionRes?.session?.user) {
       await supabase.auth.signOut().catch(() => {});
@@ -436,17 +458,19 @@ export const useAuthStore = create<AuthStoreState>((set, get) => ({
       };
     }
 
-    // 4. TRUY VẤN DỮ LIỆU NHÂN SỰ TƯƠNG ỨNG TỪ BẢNG ENGINEERS THEO auth_user_id HOẶC THÔNG TIN TÀI KHOẢN
-    let engineerData: any = null;
-    try {
-      const { data: engRes } = await supabase
-        .from('engineers')
-        .select('*')
-        .or(`auth_user_id.eq.${authUid},email.eq.${email},username.eq.${cleanUsername},id.eq.${authUid}`)
-        .maybeSingle();
-      engineerData = engRes;
-    } catch (e) {
-      console.warn('Failed to query engineers table:', e);
+    // 5. TRUY VẤN DỮ LIỆU NHÂN SỰ TƯƠNG ỨNG TỪ BẢNG ENGINEERS THEO auth_user_id HOẶC THÔNG TIN TÀI KHOẢN
+    let engineerData: any = preEngineer;
+    if (!engineerData) {
+      try {
+        const { data: engRes } = await supabase
+          .from('engineers')
+          .select('*')
+          .or(`auth_user_id.eq.${authUid},email.ilike.${resolvedEmail},username.ilike.${cleanInput},id.eq.${authUid}`)
+          .maybeSingle();
+        engineerData = engRes;
+      } catch (e) {
+        console.warn('Failed to query engineers table:', e);
+      }
     }
 
     // Nếu tài khoản bị khóa trong DB nhân sự
@@ -455,7 +479,7 @@ export const useAuthStore = create<AuthStoreState>((set, get) => ({
       return { ok: false, error: 'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ Quản trị viên.' };
     }
 
-    const isSystemAdmin = cleanUsername.toLowerCase() === 'admin' || email.toLowerCase() === 'admin@titsmart.vn';
+    const isSystemAdmin = cleanInput.toLowerCase() === 'admin' || resolvedEmail.toLowerCase() === 'admin@titsmart.vn';
 
     // Nếu không tìm thấy thông tin nhân sự và không phải admin mặc định
     if (!engineerData && !isSystemAdmin) {
@@ -486,11 +510,11 @@ export const useAuthStore = create<AuthStoreState>((set, get) => ({
 
     const user: AuthUser = {
       id: engineerData?.id || authUid,
-      username: engineerData?.username || cleanUsername,
-      name: engineerData?.name || cleanUsername,
+      username: engineerData?.username || cleanInput,
+      name: engineerData?.name || cleanInput,
       role: englishRole,
       title: engineerData?.title || engineerData?.role || (isSystemAdmin ? 'Quản trị viên' : 'Nhân sự'),
-      email: authUser.email || email,
+      email: authUser.email || resolvedEmail,
       phone: engineerData?.phone || '',
       projectCodes: engineerData?.project_codes || engineerData?.projectCodes || [],
       permissions: engineerData?.permissions || getDefaultPermissions(englishRole),
