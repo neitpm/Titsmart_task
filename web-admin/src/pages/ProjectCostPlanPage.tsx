@@ -1589,7 +1589,7 @@ export const ProjectCostPlanPage: React.FC = () => {
 
   useEffect(() => {
     fetchFundRequests(1, false);
-  }, [selectedProject]);
+  }, [selectedProject, fundRequestListOpen]);
 
   useEffect(() => {
     try {
@@ -5390,13 +5390,28 @@ export const ProjectCostPlanPage: React.FC = () => {
             <span className="text-xs text-slate-500 font-medium">
               Quy trình 5 bước: Kiểm tra ➔ Lãnh đạo duyệt ➔ Kế toán chuyển khoản & tải UNC ➔ Người tạo xác nhận nhận tiền ➔ Nạp quỹ.
             </span>
-            <span className="text-xs font-bold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-full">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => fetchFundRequests(1, false)}
+                disabled={fundRequestsLoading}
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition-colors disabled:opacity-50"
+                title="Tải lại danh sách yêu cầu mới nhất từ máy chủ"
+              >
+                <span className={`material-symbols-outlined text-[14px] ${fundRequestsLoading ? 'animate-spin' : ''}`}>sync</span>
+                <span>Làm mới</span>
+              </button>
+              <span className="text-xs font-bold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-full">
               {(() => {
                 const isSystemAdminUser = isSystemAdmin(user);
                 const canCheck = hasPermission(user, 'CHECK_FUND_REQUEST');
                 const canApprove = hasPermission(user, 'APPROVE_FUND_REQUEST');
                 const canTransfer = hasPermission(user, 'PROCESS_FUND_TRANSFER');
                 const canConfirm = hasPermission(user, 'CONFIRM_FUND_RECEIPT');
+
+                const userRoleStr = String(user?.role || '').toLowerCase();
+                const userTitleStr = String((user as any)?.title || '').toLowerCase();
+                const isAccountantRoleOrPerm = userRoleStr.includes('kế toán') || userTitleStr.includes('kế toán') || canTransfer;
 
                 const reqCount = allFundRequests.filter(r => {
                   if (selectedProject && r.projectCode && r.projectCode !== selectedProject) {
@@ -5434,11 +5449,12 @@ export const ProjectCostPlanPage: React.FC = () => {
                     (rAccNorm && myUserIdentifiers.names.has(rAccNorm))
                   );
 
-                  return isCreator || isChecker || isReviewer || isAccountant || canCheck || canApprove || canTransfer || canConfirm;
+                  return isCreator || isChecker || isReviewer || isAccountant || isAccountantRoleOrPerm || canCheck || canApprove || canTransfer || canConfirm;
                 }).length;
                 return `Tổng cộng ${reqCount} yêu cầu`;
               })()}
             </span>
+            </div>
           </div>
 
           {/* GIAO DIỆN DESKTOP: BẢNG CHI TIẾT */}
@@ -5505,8 +5521,12 @@ export const ProjectCostPlanPage: React.FC = () => {
                       (rAccNorm && myUserIdentifiers.names.has(rAccNorm))
                     );
 
+                    const userRoleStr = String(user?.role || '').toLowerCase();
+                    const userTitleStr = String((user as any)?.title || '').toLowerCase();
+                    const isAccountantRoleOrPerm = userRoleStr.includes('kế toán') || userTitleStr.includes('kế toán') || canTransferPerm;
+
                     // Phải có vai trò liên quan trực tiếp hoặc có permission nghiệp vụ phù hợp
-                    return isCreator || isChecker || isReviewer || isAccountant || canCheckPerm || canApprovePerm || canTransferPerm || canConfirmPerm;
+                    return isCreator || isChecker || isReviewer || isAccountant || isAccountantRoleOrPerm || canCheckPerm || canApprovePerm || canTransferPerm || canConfirmPerm;
                   });
 
                   if (visibleRequests.length === 0) {
@@ -6010,7 +6030,11 @@ export const ProjectCostPlanPage: React.FC = () => {
                   (rAccNorm && myUserIdentifiers.names.has(rAccNorm))
                 );
 
-                return isCreator || isChecker || isReviewer || isAccountant || canCheckPerm || canApprovePerm || canTransferPerm || canConfirmPerm;
+                const userRoleStr = String(user?.role || '').toLowerCase();
+                const userTitleStr = String((user as any)?.title || '').toLowerCase();
+                const isAccountantRoleOrPerm = userRoleStr.includes('kế toán') || userTitleStr.includes('kế toán') || canTransferPerm;
+
+                return isCreator || isChecker || isReviewer || isAccountant || isAccountantRoleOrPerm || canCheckPerm || canApprovePerm || canTransferPerm || canConfirmPerm;
               });
 
               if (visibleRequests.length === 0) {
