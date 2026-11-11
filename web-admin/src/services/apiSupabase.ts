@@ -2685,6 +2685,10 @@ export const api = {
         throw new Error('Lỗi xác thực: Phiên làm việc Supabase chưa được kích hoạt hoặc đã hết hạn. Vui lòng đăng xuất và đăng nhập lại để tiếp tục.');
       }
 
+      const parsedAmount = (reviewData.actualTransferAmount !== undefined && reviewData.actualTransferAmount !== null && reviewData.actualTransferAmount !== '')
+        ? Number(String(reviewData.actualTransferAmount).replace(/[^0-9.]/g, ''))
+        : null;
+
       // 1. GỌI BẮT BUỘC HÀM RPC review_fund_request TRÊN POSTGRESQL SUPABASE ĐỂ BẢO ĐẢM BẢO MẬT BACKEND/DATABASE
       // Tuyệt đối không fallback sang direct update (tránh bypass bảo mật)
       const { data: rpcData, error: rpcErr } = await supabase.rpc('review_fund_request', {
@@ -2692,7 +2696,7 @@ export const api = {
         p_target_status: reviewData.status,
         p_accountant_id: reviewData.accountantId || null,
         p_accountant_name: reviewData.accountantName || null,
-        p_transfer_amount: reviewData.actualTransferAmount ? Number(reviewData.actualTransferAmount) : null,
+        p_transfer_amount: (parsedAmount && !isNaN(parsedAmount) && parsedAmount > 0) ? parsedAmount : null,
         p_transfer_date: reviewData.transferDate || null,
         p_transaction_code: reviewData.transactionCode || null,
         p_transfer_doc_url: reviewData.transferDocUrl || null,

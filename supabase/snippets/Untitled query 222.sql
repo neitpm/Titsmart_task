@@ -462,8 +462,12 @@ BEGIN
       IF p_transfer_doc_url IS NULL OR trim(p_transfer_doc_url) = '' THEN
         RAISE EXCEPTION 'Nghiệp vụ: Kế toán bắt buộc phải tải lên chứng từ Ủy nhiệm chi (UNC) / Bill chuyển tiền.';
       END IF;
+      -- Nếu p_transfer_amount không được truyền hoặc <= 0 thì tự động fallback về số tiền của đơn (v_fund_amount)
       IF p_transfer_amount IS NULL OR p_transfer_amount <= 0 THEN
-        RAISE EXCEPTION 'Nghiệp vụ: Bắt buộc nhập số tiền thực chuyển hợp lệ.';
+        p_transfer_amount := v_fund_amount;
+      END IF;
+      IF p_transfer_amount IS NULL OR p_transfer_amount <= 0 THEN
+        RAISE EXCEPTION 'Nghiệp vụ: Bắt buộc nhập số tiền thực chuyển hợp lệ (lớn hơn 0).';
       END IF;
     END IF;
   END IF;
