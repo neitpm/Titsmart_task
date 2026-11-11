@@ -5707,7 +5707,7 @@ export const ProjectCostPlanPage: React.FC = () => {
                                         });
                                       } catch (err: any) {
                                         console.error('Lỗi khi cập nhật kiểm tra:', err);
-                                        triggerToast('Lỗi kết nối máy chủ! Không thể xác nhận kiểm tra.', 'warning');
+                                        triggerToast(err?.message || 'Lỗi máy chủ! Không thể xác nhận kiểm tra.', 'warning');
                                         return;
                                       }
                                     }
@@ -5861,7 +5861,7 @@ export const ProjectCostPlanPage: React.FC = () => {
                                           });
                                         } catch (err: any) {
                                           console.error('Lỗi khi tiếp nhận xử lý:', err);
-                                          triggerToast('Lỗi kết nối máy chủ! Không thể lưu trạng thái tiếp nhận.', 'warning');
+                                          triggerToast(err?.message || 'Lỗi máy chủ! Không thể lưu trạng thái tiếp nhận.', 'warning');
                                           return;
                                         }
                                       }
@@ -6059,7 +6059,7 @@ export const ProjectCostPlanPage: React.FC = () => {
                 });
               } catch (err: any) {
                 console.error('Lỗi khi từ chối/yêu cầu bổ sung:', err);
-                triggerToast('Lỗi kết nối máy chủ! Không thể thực hiện thao tác.', 'warning');
+                triggerToast(err?.message || 'Lỗi máy chủ! Không thể thực hiện thao tác.', 'warning');
                 return;
               }
             }
@@ -6211,7 +6211,7 @@ export const ProjectCostPlanPage: React.FC = () => {
                 });
               } catch (err: any) {
                 console.error('Lỗi khi phê duyệt cấp quỹ:', err);
-                triggerToast('Lỗi kết nối máy chủ! Không thể lưu trạng thái phê duyệt.', 'warning');
+                triggerToast(err?.message || 'Lỗi máy chủ! Không thể lưu trạng thái phê duyệt.', 'warning');
                 return;
               }
             }
@@ -6694,7 +6694,7 @@ export const ProjectCostPlanPage: React.FC = () => {
                 });
               } catch (err: any) {
                 console.error('Lỗi khi lưu thông tin chuyển khoản:', err);
-                triggerToast('Lỗi kết nối máy chủ! Không thể lưu trạng thái chuyển khoản.', 'warning');
+                triggerToast(err?.message || 'Lỗi máy chủ! Không thể lưu trạng thái chuyển khoản.', 'warning');
                 return;
               }
             }
