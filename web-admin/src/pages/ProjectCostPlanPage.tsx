@@ -5436,7 +5436,8 @@ export const ProjectCostPlanPage: React.FC = () => {
             </span>
           </div>
 
-          <div className="overflow-x-auto border border-slate-200 rounded-xl">
+          {/* GIAO DIỆN DESKTOP: BẢNG CHI TIẾT */}
+          <div className="hidden md:block overflow-x-auto border border-slate-200 rounded-xl">
             <table className="w-full text-left border-collapse text-xs">
               <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
                 <tr>
@@ -5560,19 +5561,9 @@ export const ProjectCostPlanPage: React.FC = () => {
                     const isAccountantAccount = userRoleStr.includes('kế toán') || userTitleStr.includes('kế toán') || canTransferPerm;
 
                     // Phân quyền hành động nghiệp vụ chặt chẽ:
-                    // 1. Kiểm tra: Phải là Người kiểm tra được chọn HOẶC có quyền CHECK_FUND_REQUEST (tuyệt đối không phải người tạo, và không phải kế toán)
                     const canDoCheck = !isCreator && !isAccountantAccount && (isChecker || canCheckPerm);
-
-                    // 2. Lãnh đạo duyệt: Phải là Người duyệt được chỉ định HOẶC (có quyền APPROVE_FUND_REQUEST và là Lãnh đạo/Admin thực thụ)
-                    //    TUYỆT ĐỐI KHÔNG: người tạo, người kiểm tra của đơn (trừ khi bật allowDualRole), và TÀI KHOẢN KẾ TOÁN
                     const canDoApprove = !isCreator && !isAccountantAccount && (!isChecker || allowDualRole) && (isReviewer || (canApprovePerm && !isAccountantAccount));
-
-                    // 3. Kế toán xử lý & chuyển khoản: 
-                    //    BẮT BUỘC chỉ Kế toán được chỉ định đích danh (req.accountantId) mới được xử lý tiếp nhận & chuyển khoản
-                    //    (Nếu đơn chưa có accountantId - trường hợp đơn cũ - thì mới cho phép người có canTransferPerm nhận)
                     const canDoTransfer = req.accountantId ? isAccountant : (isAccountant || canTransferPerm);
-
-                    // 4. Xác nhận nhận tiền: TUYỆT ĐỐI chỉ chính người tạo đơn mới được xác nhận nhận tiền (người kiểm tra, lãnh đạo, kế toán không được thao tác)
                     const canDoConfirm = isCreator;
 
                     const curProjObj = projects.find(p => p.code === (req.projectCode || selectedProject));
@@ -5659,7 +5650,6 @@ export const ProjectCostPlanPage: React.FC = () => {
                         </td>
                         <td className="p-2.5 text-center whitespace-nowrap">
                           <div className="flex items-center justify-center gap-1 flex-wrap">
-                            {/* Nút Xem Lịch sử Audit Log */}
                             <button
                               type="button"
                               onClick={() => setFundRequestHistoryModal({ isOpen: true, req })}
@@ -5669,7 +5659,6 @@ export const ProjectCostPlanPage: React.FC = () => {
                               Lịch sử
                             </button>
 
-                            {/* Nút Xem UNC nếu đã có file */}
                             {req.transferDocUrl && (
                               <button
                                 type="button"
@@ -5681,7 +5670,7 @@ export const ProjectCostPlanPage: React.FC = () => {
                               </button>
                             )}
 
-                            {/* BƯỚC 1: NGƯỜI KIỂM TRA (khi PENDING_CHECK hoặc NEED_MORE_INFO) */}
+                            {/* BƯỚC 1: NGƯỜI KIỂM TRA */}
                             {isPendingCheck && canDoCheck && (
                               <>
                                 <button
@@ -5697,7 +5686,6 @@ export const ProjectCostPlanPage: React.FC = () => {
                                       note: 'Hồ sơ, số tiền và mục đích hợp lệ. Chuyển Lãnh đạo phê duyệt.'
                                     };
 
-                                    // 1. Gọi API cập nhật server trước
                                     if (req.id && !req.id.startsWith('notif-') && !req.id.startsWith('fund-')) {
                                       try {
                                         await api.fundRequests.review(req.id, {
@@ -5712,7 +5700,6 @@ export const ProjectCostPlanPage: React.FC = () => {
                                       }
                                     }
 
-                                    // 2. API thành công -> Cập nhật State giao diện & Local storage
                                     setReviewedFundActions(prev => ({
                                       ...prev,
                                       [req.id]: { status: 'CHECKED_WAITING_APPROVAL', time: nowIso, reviewer: reviewerName },
@@ -5732,7 +5719,6 @@ export const ProjectCostPlanPage: React.FC = () => {
                                       history: [...(r.history || []), auditEntry]
                                     } : r));
 
-                                    // 3. Gửi thông báo cho Lãnh đạo duyệt (reviewerId)
                                     if (addNotification && req.reviewerId) {
                                       const nowTimeStr = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) + ' ' + new Date().toLocaleDateString('vi-VN');
                                       const pCodeParam = req.projectCode || selectedProject || '';
@@ -5753,7 +5739,7 @@ export const ProjectCostPlanPage: React.FC = () => {
 
                                     triggerToast('Đã xác nhận kiểm tra và gửi Lãnh đạo duyệt!', 'success');
                                   }}
-                                  className="px-2 py-1 rounded bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[10px] shadow-xs"
+                                  className="px-2 py-1 rounded bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[10px] shadow-xs active:scale-95 transition-all"
                                   title="Xác nhận hồ sơ hợp lệ và chuyển Lãnh đạo duyệt"
                                 >
                                   Đã kiểm tra
@@ -5768,7 +5754,7 @@ export const ProjectCostPlanPage: React.FC = () => {
                                       actionType: 'NEED_MORE_INFO'
                                     });
                                   }}
-                                  className="px-1.5 py-1 rounded bg-cyan-50 hover:bg-cyan-100 text-cyan-800 border border-cyan-200 font-bold text-[10px]"
+                                  className="px-1.5 py-1 rounded bg-cyan-50 hover:bg-cyan-100 text-cyan-800 border border-cyan-200 font-bold text-[10px] active:scale-95 transition-all"
                                   title="Yêu cầu người tạo bổ sung hồ sơ / thông tin"
                                 >
                                   Bổ sung
@@ -5783,7 +5769,7 @@ export const ProjectCostPlanPage: React.FC = () => {
                                       actionType: 'REJECT_CHECKER'
                                     });
                                   }}
-                                  className="px-1.5 py-1 rounded bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-[10px]"
+                                  className="px-1.5 py-1 rounded bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-[10px] active:scale-95 transition-all"
                                   title="Người kiểm tra từ chối"
                                 >
                                   Từ chối
@@ -5791,13 +5777,12 @@ export const ProjectCostPlanPage: React.FC = () => {
                               </>
                             )}
 
-                            {/* BƯỚC 2: LÃNH ĐẠO DUYỆT (khi CHECKED_WAITING_APPROVAL hoặc khi PENDING_CHECK nếu bật duyệt trực tiếp) */}
+                            {/* BƯỚC 2: LÃNH ĐẠO DUYỆT */}
                             {(isCheckedWaiting || (isPendingCheck && allowDirectApproval)) && canDoApprove && (
                               <>
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    // Mở modal Lãnh đạo duyệt để chọn Kế toán xử lý
                                     const defaultAccId = useUIStore.getState().defaultAccountantId || '';
                                     const defaultAccName = useUIStore.getState().defaultAccountantName || '';
                                     const matchedAcc = engineers.find(e => e.id === (req.accountantId || defaultAccId));
@@ -5809,7 +5794,7 @@ export const ProjectCostPlanPage: React.FC = () => {
                                       note: ''
                                     });
                                   }}
-                                  className="px-2 py-1 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] shadow-xs"
+                                  className="px-2 py-1 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] shadow-xs active:scale-95 transition-all"
                                   title="Lãnh đạo phê duyệt và chỉ định kế toán xử lý chuyển khoản"
                                 >
                                   Duyệt
@@ -5824,7 +5809,7 @@ export const ProjectCostPlanPage: React.FC = () => {
                                       actionType: 'REJECT'
                                     });
                                   }}
-                                  className="px-1.5 py-1 rounded bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-[10px]"
+                                  className="px-1.5 py-1 rounded bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-[10px] active:scale-95 transition-all"
                                   title="Lãnh đạo từ chối yêu cầu"
                                 >
                                   Từ chối
@@ -5832,7 +5817,7 @@ export const ProjectCostPlanPage: React.FC = () => {
                               </>
                             )}
 
-                            {/* BƯỚC 3: KẾ TOÁN XỬ LÝ (khi APPROVED_WAITING_ACCOUNTING hoặc ACCOUNTING_PROCESSING) */}
+                            {/* BƯỚC 3: KẾ TOÁN XỬ LÝ */}
                             {(isApprovedWaitingAcc || isAccountingProcessing) && canDoTransfer && (
                               <>
                                 {isApprovedWaitingAcc && (
@@ -5849,7 +5834,6 @@ export const ProjectCostPlanPage: React.FC = () => {
                                         note: 'Kế toán đã tiếp nhận hồ sơ và đang làm thủ tục chuyển khoản ngân hàng.'
                                       };
 
-                                      // 1. Gọi API Supabase trước
                                       if (req.id && !req.id.startsWith('notif-') && !req.id.startsWith('fund-')) {
                                         try {
                                           await api.fundRequests.review(req.id, {
@@ -5866,7 +5850,6 @@ export const ProjectCostPlanPage: React.FC = () => {
                                         }
                                       }
 
-                                      // 2. API thành công -> Cập nhật State
                                       cachedFundRequests = cachedFundRequests.map(r => r.id === req.id ? {
                                         ...r,
                                         status: 'ACCOUNTING_PROCESSING',
@@ -5884,7 +5867,6 @@ export const ProjectCostPlanPage: React.FC = () => {
                                         history: [...(r.history || []), auditEntry]
                                       } : r));
 
-                                      // 3. Gửi thông báo cho Người tạo và Lãnh đạo duyệt
                                       if (addNotification) {
                                         const nowTimeStr = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) + ' ' + new Date().toLocaleDateString('vi-VN');
                                         const pCodeParam = req.projectCode || selectedProject || '';
@@ -5908,7 +5890,7 @@ export const ProjectCostPlanPage: React.FC = () => {
 
                                       triggerToast('Đã tiếp nhận xử lý chuyển khoản!', 'info');
                                     }}
-                                    className="px-1.5 py-1 rounded bg-amber-600 hover:bg-amber-700 text-white font-bold text-[10px]"
+                                    className="px-1.5 py-1 rounded bg-amber-600 hover:bg-amber-700 text-white font-bold text-[10px] active:scale-95 transition-all"
                                     title="Kế toán xác nhận tiếp nhận hồ sơ"
                                   >
                                     Tiếp nhận
@@ -5927,7 +5909,7 @@ export const ProjectCostPlanPage: React.FC = () => {
                                       note: ''
                                     });
                                   }}
-                                  className="px-2 py-1 rounded bg-purple-600 hover:bg-purple-700 text-white font-bold text-[10px] shadow-xs"
+                                  className="px-2 py-1 rounded bg-purple-600 hover:bg-purple-700 text-white font-bold text-[10px] shadow-xs active:scale-95 transition-all"
                                   title="Kế toán chuyển khoản và bắt buộc tải lên chứng từ UNC"
                                 >
                                   Đã chuyển & Tải UNC
@@ -5935,7 +5917,7 @@ export const ProjectCostPlanPage: React.FC = () => {
                               </>
                             )}
 
-                            {/* BƯỚC 4: NGƯỜI TẠO XÁC NHẬN NHẬN TIỀN (khi TRANSFERRED_WAITING_CONFIRMATION) */}
+                            {/* BƯỚC 4: NGƯỜI TẠO XÁC NHẬN NHẬN TIỀN */}
                             {isTransferredWaiting && canDoConfirm && (
                               <button
                                 type="button"
@@ -5948,7 +5930,7 @@ export const ProjectCostPlanPage: React.FC = () => {
                                     note: ''
                                   });
                                 }}
-                                className="px-2 py-1 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] shadow-xs"
+                                className="px-2 py-1 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] shadow-xs active:scale-95 transition-all"
                                 title="Người tạo xác nhận tiền đã về tài khoản (Đã nhận đủ / Thiếu / Chưa nhận)"
                               >
                                 Xác nhận nhận tiền
@@ -5969,6 +5951,469 @@ export const ProjectCostPlanPage: React.FC = () => {
                 })()}
               </tbody>
             </table>
+          </div>
+
+          {/* GIAO DIỆN DI ĐỘNG (MOBILE CARD VIEW) - TỐI ƯU CẢM ỨNG 100% CHO ANDROID & IOS */}
+          <div className="block md:hidden space-y-3">
+            {(() => {
+              const isSystemAdminUser = isSystemAdmin(user);
+              const canCheckPerm = hasPermission(user, 'CHECK_FUND_REQUEST');
+              const canApprovePerm = hasPermission(user, 'APPROVE_FUND_REQUEST');
+              const canTransferPerm = hasPermission(user, 'PROCESS_FUND_TRANSFER');
+              const canConfirmPerm = hasPermission(user, 'CONFIRM_FUND_RECEIPT');
+              const allowDirectApproval = useUIStore.getState().allowDirectFundApproval;
+              const allowDualRole = useUIStore.getState().allowDualCheckerReviewerRole;
+
+              const visibleRequests = allFundRequests.filter(r => {
+                if (selectedProject && r.projectCode && r.projectCode !== selectedProject) {
+                  if (!targetFundId || (r.id !== targetFundId && r.notificationId !== targetFundId)) {
+                    return false;
+                  }
+                }
+                if (isSystemAdminUser) return true;
+
+                const rCreatorId = String(r.creatorId || '').trim().toLowerCase();
+                const rCreatorNorm = normalizeStr(r.creatorName);
+                const isCreator = Boolean(
+                  (rCreatorId && myUserIdentifiers.ids.has(rCreatorId)) ||
+                  (rCreatorNorm && myUserIdentifiers.names.has(rCreatorNorm))
+                );
+
+                const rCheckId = String(r.checkerId || '').trim().toLowerCase();
+                const rCheckNorm = normalizeStr(r.checkerName);
+                const isChecker = Boolean(
+                  (rCheckId && myUserIdentifiers.ids.has(rCheckId)) ||
+                  (rCheckNorm && myUserIdentifiers.names.has(rCheckNorm))
+                );
+
+                const rRevId = String(r.reviewerId || '').trim().toLowerCase();
+                const rRevNorm = normalizeStr(r.reviewerName);
+                const isReviewer = Boolean(
+                  (rRevId && myUserIdentifiers.ids.has(rRevId)) ||
+                  (rRevNorm && myUserIdentifiers.names.has(rRevNorm))
+                );
+
+                const rAccId = String(r.accountantId || '').trim().toLowerCase();
+                const rAccNorm = normalizeStr(r.accountantName);
+                const isAccountant = Boolean(
+                  (rAccId && myUserIdentifiers.ids.has(rAccId)) ||
+                  (rAccNorm && myUserIdentifiers.names.has(rAccNorm))
+                );
+
+                return isCreator || isChecker || isReviewer || isAccountant || canCheckPerm || canApprovePerm || canTransferPerm || canConfirmPerm;
+              });
+
+              if (visibleRequests.length === 0) {
+                return (
+                  <div className="p-6 text-center text-slate-400 italic bg-slate-50 rounded-xl border border-dashed border-slate-200 text-xs">
+                    Chưa có yêu cầu cấp quỹ nào liên quan đến bạn trong dự án này.
+                  </div>
+                );
+              }
+
+              return visibleRequests.map(req => {
+                const status = req.status || 'PENDING_CHECK';
+                const isPendingCheck = status === 'PENDING_CHECK' || status === 'PENDING';
+                const isNeedMoreInfo = status === 'NEED_MORE_INFO';
+                const isCheckedWaiting = status === 'CHECKED_WAITING_APPROVAL';
+                const isRejectedChecker = status === 'REJECTED_BY_CHECKER';
+                const isApprovedWaitingAcc = status === 'APPROVED_WAITING_ACCOUNTING';
+                const isAccountingProcessing = status === 'ACCOUNTING_PROCESSING';
+                const isTransferredWaiting = status === 'TRANSFERRED_WAITING_CONFIRMATION';
+                const isCompleted = status === 'COMPLETED' || status === 'APPROVED';
+                const isRejected = status === 'REJECTED';
+
+                const rCreatorId = String(req.creatorId || '').trim().toLowerCase();
+                const rCreatorNorm = normalizeStr(req.creatorName);
+                const isCreator = Boolean(
+                  (rCreatorId && myUserIdentifiers.ids.has(rCreatorId)) ||
+                  (rCreatorNorm && myUserIdentifiers.names.has(rCreatorNorm))
+                );
+
+                const rCheckId = String(req.checkerId || '').trim().toLowerCase();
+                const rCheckNorm = normalizeStr(req.checkerName);
+                const isChecker = Boolean(
+                  (rCheckId && myUserIdentifiers.ids.has(rCheckId)) ||
+                  (rCheckNorm && myUserIdentifiers.names.has(rCheckNorm))
+                );
+
+                const rRevId = String(req.reviewerId || '').trim().toLowerCase();
+                const rRevNorm = normalizeStr(req.reviewerName);
+                const isReviewer = Boolean(
+                  (rRevId && myUserIdentifiers.ids.has(rRevId)) ||
+                  (rRevNorm && myUserIdentifiers.names.has(rRevNorm))
+                );
+
+                const rAccId = String(req.accountantId || '').trim().toLowerCase();
+                const rAccNorm = normalizeStr(req.accountantName);
+                const isAccountant = Boolean(
+                  (rAccId && myUserIdentifiers.ids.has(rAccId)) ||
+                  (rAccNorm && myUserIdentifiers.names.has(rAccNorm))
+                );
+
+                const userRoleStr = String(user?.role || '').toLowerCase();
+                const userTitleStr = String((user as any)?.title || '').toLowerCase();
+                const isAccountantAccount = userRoleStr.includes('kế toán') || userTitleStr.includes('kế toán') || canTransferPerm;
+
+                const canDoCheck = !isCreator && !isAccountantAccount && (isChecker || canCheckPerm);
+                const canDoApprove = !isCreator && !isAccountantAccount && (!isChecker || allowDualRole) && (isReviewer || (canApprovePerm && !isAccountantAccount));
+                const canDoTransfer = req.accountantId ? isAccountant : (isAccountant || canTransferPerm);
+                const canDoConfirm = isCreator;
+
+                const curProjObj = projects.find(p => p.code === (req.projectCode || selectedProject));
+                const pName = curProjObj?.name || req.projectName || req.projectCode || 'Dự án';
+                const numericAmount = Number(req.amount || 0);
+                const reviewerName = user?.name || user?.username || 'Quản lý';
+
+                return (
+                  <div key={`m-${req.id}`} className="bg-white rounded-xl border border-slate-200 p-3.5 shadow-xs space-y-2.5">
+                    {/* Header Card: Người tạo & Số tiền */}
+                    <div className="flex items-start justify-between gap-2 border-b border-slate-100 pb-2">
+                      <div>
+                        <div className="font-bold text-slate-800 text-sm">{req.creatorName}</div>
+                        <div className="text-[11px] text-slate-400">{req.neededDate ? `Ngày cần: ${req.neededDate}` : 'Chưa định ngày'} • {req.type}</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-black text-blue-600 text-base">{numericAmount.toLocaleString('vi-VN')} đ</div>
+                        <div>
+                          {isPendingCheck && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                              Chờ kiểm tra
+                            </span>
+                          )}
+                          {isNeedMoreInfo && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-50 text-cyan-700 border border-cyan-200">
+                              Cần bổ sung TT
+                            </span>
+                          )}
+                          {isCheckedWaiting && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                              Đã kiểm tra - Chờ duyệt
+                            </span>
+                          )}
+                          {isRejectedChecker && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                              Ktra từ chối
+                            </span>
+                          )}
+                          {isApprovedWaitingAcc && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                              Đã duyệt - Chờ chuyển
+                            </span>
+                          )}
+                          {isAccountingProcessing && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-50 text-orange-700 border border-orange-200">
+                              Kế toán đang xử lý
+                            </span>
+                          )}
+                          {isTransferredWaiting && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200">
+                              Đã chuyển - Chờ xác nhận
+                            </span>
+                          )}
+                          {isCompleted && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              ✓ Đã cấp tiền
+                            </span>
+                          )}
+                          {isRejected && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                              ✕ Từ chối
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Mục đích & Ghi chú */}
+                    <div className="text-xs text-slate-700">
+                      <div className="font-semibold text-slate-900">{req.purpose}</div>
+                      {req.note && <div className="text-[11px] text-slate-400 italic mt-0.5">Ghi chú: {req.note}</div>}
+                      {req.rejectReason && <div className="text-[11px] text-rose-600 font-semibold mt-0.5">Lý do từ chối: {req.rejectReason}</div>}
+                      {req.moreInfoReason && <div className="text-[11px] text-cyan-700 font-semibold mt-0.5">Yêu cầu bổ sung: {req.moreInfoReason}</div>}
+                    </div>
+
+                    {/* Chi tiết phân công: Kiểm tra - Duyệt - Kế toán */}
+                    <div className="grid grid-cols-3 gap-1 bg-slate-50 p-2 rounded-lg text-[11px] text-slate-600">
+                      <div>
+                        <span className="text-slate-400 block text-[9px] uppercase font-bold">Kiểm tra</span>
+                        <span className="font-semibold truncate block">{req.checkerName || 'Chưa có'}</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 block text-[9px] uppercase font-bold">Duyệt</span>
+                        <span className="font-semibold truncate block">{req.reviewerName || 'Chưa có'}</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 block text-[9px] uppercase font-bold">Kế toán</span>
+                        <span className="font-semibold truncate block">{req.accountantName || 'Chung'}</span>
+                      </div>
+                    </div>
+
+                    {/* Nút Thao tác trên điện thoại: To, Rõ, Dễ chạm */}
+                    <div className="flex items-center justify-between gap-1.5 pt-1">
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setFundRequestHistoryModal({ isOpen: true, req })}
+                          className="px-2.5 py-1.5 rounded-lg bg-slate-100 active:bg-slate-200 text-slate-700 font-bold text-xs"
+                        >
+                          Lịch sử
+                        </button>
+                        {req.transferDocUrl && (
+                          <button
+                            type="button"
+                            onClick={() => openPreview(req.transferDocUrl)}
+                            className="px-2.5 py-1.5 rounded-lg bg-purple-50 active:bg-purple-100 text-purple-700 font-bold text-xs border border-purple-200"
+                          >
+                            Xem UNC
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        {/* BƯỚC 1: KIỂM TRA */}
+                        {isPendingCheck && canDoCheck && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                const nowIso = new Date().toISOString();
+                                const auditEntry = {
+                                  action: 'XÁC NHẬN ĐÃ KIỂM TRA',
+                                  actorId: user?.id || '',
+                                  actorName: reviewerName,
+                                  actorRole: 'Người kiểm tra',
+                                  timestamp: nowIso,
+                                  note: 'Hồ sơ, số tiền và mục đích hợp lệ. Chuyển Lãnh đạo phê duyệt.'
+                                };
+
+                                if (req.id && !req.id.startsWith('notif-') && !req.id.startsWith('fund-')) {
+                                  try {
+                                    await api.fundRequests.review(req.id, {
+                                      status: 'CHECKED_WAITING_APPROVAL',
+                                      checkedAt: nowIso,
+                                      auditEntry
+                                    });
+                                  } catch (err: any) {
+                                    console.error('Lỗi khi cập nhật kiểm tra:', err);
+                                    triggerToast(err?.message || 'Lỗi máy chủ! Không thể xác nhận kiểm tra.', 'warning');
+                                    return;
+                                  }
+                                }
+
+                                setReviewedFundActions(prev => ({
+                                  ...prev,
+                                  [req.id]: { status: 'CHECKED_WAITING_APPROVAL', time: nowIso, reviewer: reviewerName },
+                                  ...(req.notificationId ? { [req.notificationId]: { status: 'CHECKED_WAITING_APPROVAL', time: nowIso, reviewer: reviewerName } } : {})
+                                }));
+
+                                cachedFundRequests = cachedFundRequests.map(r => r.id === req.id ? {
+                                  ...r,
+                                  status: 'CHECKED_WAITING_APPROVAL',
+                                  checkedAt: nowIso,
+                                  history: [...(r.history || []), auditEntry]
+                                } : r);
+                                setFundRequests(prev => prev.map(r => r.id === req.id ? {
+                                  ...r,
+                                  status: 'CHECKED_WAITING_APPROVAL',
+                                  checkedAt: nowIso,
+                                  history: [...(r.history || []), auditEntry]
+                                } : r));
+
+                                if (addNotification && req.reviewerId) {
+                                  const nowTimeStr = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) + ' ' + new Date().toLocaleDateString('vi-VN');
+                                  const pCodeParam = req.projectCode || selectedProject || '';
+                                  const linkBase = pCodeParam
+                                    ? `/projects/${encodeURIComponent(pCodeParam)}/cost-plan?tab=EXPENSE&openFundRequests=true&fundId=${encodeURIComponent(req.id)}`
+                                    : `/cost-plan?tab=EXPENSE&openFundRequests=true&fundId=${encodeURIComponent(req.id)}`;
+
+                                  await addNotification({
+                                    title: `Yêu cầu cấp quỹ đã kiểm tra: ${pName}`,
+                                    message: `Mã: #${req.id}. Người kiểm tra: ${reviewerName} lúc ${nowTimeStr}. Nội dung: Đã kiểm tra hồ sơ hợp lệ. Số tiền: ${numericAmount.toLocaleString('vi-VN')} đ cho ${req.creatorName}. Trạng thái: Đã kiểm tra - Chờ duyệt. Vui lòng phê duyệt & chỉ định kế toán.`,
+                                    type: `fund_request_pending:::${req.reviewerId}:::${req.reviewerName}`,
+                                    icon: 'verified_user',
+                                    link: linkBase,
+                                    senderId: user?.id,
+                                    senderName: reviewerName
+                                  }).catch(() => {});
+                                }
+
+                                triggerToast('Đã xác nhận kiểm tra và gửi Lãnh đạo duyệt!', 'success');
+                              }}
+                              className="px-3 py-1.5 rounded-lg bg-indigo-600 active:bg-indigo-700 text-white font-bold text-xs shadow-xs"
+                            >
+                              Đã kiểm tra
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setFundRequestRejectModal({
+                                  isOpen: true,
+                                  req,
+                                  reason: '',
+                                  actionType: 'NEED_MORE_INFO'
+                                });
+                              }}
+                              className="px-2.5 py-1.5 rounded-lg bg-cyan-50 active:bg-cyan-100 text-cyan-800 border border-cyan-200 font-bold text-xs"
+                            >
+                              Bổ sung
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setFundRequestRejectModal({
+                                  isOpen: true,
+                                  req,
+                                  reason: '',
+                                  actionType: 'REJECT_CHECKER'
+                                });
+                              }}
+                              className="px-2.5 py-1.5 rounded-lg bg-rose-50 active:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-xs"
+                            >
+                              Từ chối
+                            </button>
+                          </>
+                        )}
+
+                        {/* BƯỚC 2: LÃNH ĐẠO DUYỆT */}
+                        {(isCheckedWaiting || (isPendingCheck && allowDirectApproval)) && canDoApprove && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const defaultAccId = useUIStore.getState().defaultAccountantId || '';
+                                const defaultAccName = useUIStore.getState().defaultAccountantName || '';
+                                const matchedAcc = engineers.find(e => e.id === (req.accountantId || defaultAccId));
+                                setFundRequestApproveModal({
+                                  isOpen: true,
+                                  req,
+                                  selectedAccountantId: req.accountantId || defaultAccId || '',
+                                  selectedAccountantName: req.accountantName || matchedAcc?.name || defaultAccName || '',
+                                  note: ''
+                                });
+                              }}
+                              className="px-3.5 py-1.5 rounded-lg bg-emerald-600 active:bg-emerald-700 text-white font-bold text-xs shadow-xs"
+                            >
+                              Duyệt
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setFundRequestRejectModal({
+                                  isOpen: true,
+                                  req,
+                                  reason: '',
+                                  actionType: 'REJECT'
+                                });
+                              }}
+                              className="px-2.5 py-1.5 rounded-lg bg-rose-50 active:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-xs"
+                            >
+                              Từ chối
+                            </button>
+                          </>
+                        )}
+
+                        {/* BƯỚC 3: KẾ TOÁN */}
+                        {(isApprovedWaitingAcc || isAccountingProcessing) && canDoTransfer && (
+                          <>
+                            {isApprovedWaitingAcc && (
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  const nowIso = new Date().toISOString();
+                                  const auditEntry = {
+                                    action: 'KẾ TOÁN TIẾP NHẬN XỬ LÝ',
+                                    actorId: user?.id || '',
+                                    actorName: reviewerName,
+                                    actorRole: 'Kế toán',
+                                    timestamp: nowIso,
+                                    note: 'Kế toán đã tiếp nhận hồ sơ và đang làm thủ tục chuyển khoản ngân hàng.'
+                                  };
+
+                                  if (req.id && !req.id.startsWith('notif-') && !req.id.startsWith('fund-')) {
+                                    try {
+                                      await api.fundRequests.review(req.id, {
+                                        status: 'ACCOUNTING_PROCESSING',
+                                        accountantId: user?.id,
+                                        accountantName: reviewerName,
+                                        accountantReceivedAt: nowIso,
+                                        auditEntry
+                                      });
+                                    } catch (err: any) {
+                                      console.error('Lỗi khi tiếp nhận xử lý:', err);
+                                      triggerToast(err?.message || 'Lỗi máy chủ! Không thể lưu trạng thái tiếp nhận.', 'warning');
+                                      return;
+                                    }
+                                  }
+
+                                  cachedFundRequests = cachedFundRequests.map(r => r.id === req.id ? {
+                                    ...r,
+                                    status: 'ACCOUNTING_PROCESSING',
+                                    accountantId: user?.id,
+                                    accountantName: reviewerName,
+                                    accountantReceivedAt: nowIso,
+                                    history: [...(r.history || []), auditEntry]
+                                  } : r);
+                                  setFundRequests(prev => prev.map(r => r.id === req.id ? {
+                                    ...r,
+                                    status: 'ACCOUNTING_PROCESSING',
+                                    accountantId: user?.id,
+                                    accountantName: reviewerName,
+                                    accountantReceivedAt: nowIso,
+                                    history: [...(r.history || []), auditEntry]
+                                  } : r));
+
+                                  triggerToast('Đã tiếp nhận xử lý chuyển khoản!', 'info');
+                                }}
+                                className="px-2.5 py-1.5 rounded-lg bg-amber-600 active:bg-amber-700 text-white font-bold text-xs"
+                              >
+                                Tiếp nhận
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setFundRequestTransferModal({
+                                  isOpen: true,
+                                  req,
+                                  actualAmount: String(req.amount || ''),
+                                  transferDate: new Date().toISOString().split('T')[0],
+                                  txCode: '',
+                                  docUrl: req.transferDocUrl || '',
+                                  note: ''
+                                });
+                              }}
+                              className="px-3 py-1.5 rounded-lg bg-purple-600 active:bg-purple-700 text-white font-bold text-xs shadow-xs"
+                            >
+                              Tải UNC
+                            </button>
+                          </>
+                        )}
+
+                        {/* BƯỚC 4: NGƯỜI TẠO XÁC NHẬN */}
+                        {isTransferredWaiting && canDoConfirm && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setFundRequestConfirmModal({
+                                isOpen: true,
+                                req,
+                                receiptStatus: 'FULL',
+                                actualReceivedAmount: String(req.amount || ''),
+                                note: ''
+                              });
+                            }}
+                            className="px-3.5 py-1.5 rounded-lg bg-emerald-600 active:bg-emerald-700 text-white font-bold text-xs shadow-xs"
+                          >
+                            Xác nhận nhận tiền
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              });
+            })()}
           </div>
 
           <div className="flex items-center justify-between pt-2">
