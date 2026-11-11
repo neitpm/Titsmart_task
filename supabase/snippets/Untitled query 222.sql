@@ -215,7 +215,9 @@ DECLARE
   v_creator_id text;
   v_creator_name text;
   v_checker_id text;
+  v_checker_name text;
   v_reviewer_id text;
+  v_reviewer_name text;
   v_assigned_accountant_id text;
   v_current_status text;
   v_now text;
@@ -257,6 +259,26 @@ BEGIN
   WHERE auth_user_id = v_auth_uid OR id::text = v_auth_uid::text
   LIMIT 1;
 
+  -- Nếu chưa map auth_user_id, tự động liên kết engineers theo username hoặc email với auth.users
+  IF v_user_id IS NULL THEN
+    SELECT COALESCE(e.auth_user_id::text, e.id::text), e.name, e.role, e.permissions
+    INTO v_user_id, v_user_name, v_user_role, v_perms
+    FROM public.engineers e
+    JOIN auth.users u ON (
+      (e.email IS NOT NULL AND lower(e.email) = lower(u.email))
+      OR (e.username IS NOT NULL AND lower(u.email) = lower(e.username || '@titsmart.vn'))
+    )
+    WHERE u.id = v_auth_uid
+    LIMIT 1;
+
+    IF v_user_id IS NOT NULL THEN
+      -- Tự động cập nhật auth_user_id để các lần sau tra cứu trực tiếp
+      UPDATE public.engineers 
+      SET auth_user_id = v_auth_uid 
+      WHERE (id::text = v_user_id OR auth_user_id::text = v_user_id) AND auth_user_id IS NULL;
+    END IF;
+  END IF;
+
   IF v_user_id IS NULL THEN
     v_user_id := v_auth_uid::text;
     v_user_name := 'User ' || substring(v_user_id from 1 for 8);
@@ -288,7 +310,9 @@ BEGIN
   v_creator_id := COALESCE(v_action->>'creatorId', '');
   v_creator_name := COALESCE(v_action->>'creatorName', '');
   v_checker_id := COALESCE(v_action->>'checkerId', '');
+  v_checker_name := COALESCE(v_action->>'checkerName', '');
   v_reviewer_id := COALESCE(v_action->>'reviewerId', '');
+  v_reviewer_name := COALESCE(v_action->>'reviewerName', '');
   v_assigned_accountant_id := COALESCE(v_action->>'accountantId', '');
   v_current_status := COALESCE(v_action->>'status', 'PENDING_CHECK');
   v_fund_amount := COALESCE((v_action->>'amount')::numeric, 0);
@@ -377,7 +401,10 @@ BEGIN
     IF (v_user_id = v_creator_id OR v_auth_uid::text = v_creator_id) THEN
       RAISE EXCEPTION 'Phân quyền: Người tạo đơn không được tự kiểm tra yêu cầu của chính mình.';
     END IF;
-    IF (v_user_id <> v_checker_id AND v_auth_uid::text <> v_checker_id) AND NOT v_has_check_perm THEN
+    -- Kiểm tra: Cho phép nếu khớp ID, khớp auth_uid, khớp họ tên được gán, HOẶC có quyền CHECK_FUND_REQUEST, HOẶC Admin
+    IF (v_user_id <> v_checker_id AND v_auth_uid::text <> v_checker_id AND lower(trim(v_user_name)) <> lower(trim(v_checker_name)))
+       AND NOT v_has_check_perm
+       AND NOT (lower(COALESCE(v_user_role, '')) IN ('admin', 'quản trị viên')) THEN
       RAISE EXCEPTION 'Phân quyền: Chỉ Người kiểm tra được chỉ định hoặc nhân sự có quyền CHECK_FUND_REQUEST mới được kiểm tra đơn này.';
     END IF;
   END IF;
@@ -391,7 +418,9 @@ BEGIN
     IF v_is_accountant THEN
       RAISE EXCEPTION 'Phân quyền: Tài khoản Kế toán không có quyền phê duyệt cấp quỹ.';
     END IF;
-    IF (v_user_id <> v_reviewer_id AND v_auth_uid::text <> v_reviewer_id) AND NOT v_has_approve_perm THEN
+    IF (v_user_id <> v_reviewer_id AND v_auth_uid::text <> v_reviewer_id AND lower(trim(v_user_name)) <> lower(trim(v_reviewer_name))) 
+       AND NOT v_has_approve_perm 
+       AND NOT (lower(COALESCE(v_user_role, '')) IN ('admin', 'quản trị viên')) THEN
       RAISE EXCEPTION 'Phân quyền: Bạn không phải người duyệt được chỉ định hoặc không có quyền APPROVE_FUND_REQUEST.';
     END IF;
 
@@ -418,12 +447,12 @@ BEGIN
   -- BƯỚC 3: KẾ TOÁN XỬ LÝ (Tiếp nhận / Chuyển khoản)
   IF p_target_status IN ('ACCOUNTING_PROCESSING', 'TRANSFERRED_WAITING_CONFIRMATION') THEN
     -- Cho phép thực hiện nếu:
-    -- 1. Trùng khớp ID hoặc auth_uid của Kế toán được chỉ định
+    -- 1. Trùng khớp ID, auth_uid, hoặc họ tên của Kế toán được chỉ định
     -- 2. Hoặc người thao tác có quyền PROCESS_FUND_TRANSFER
     -- 3. Hoặc người thao tác có vai trò/chức danh Kế toán
     -- 4. Hoặc là Admin / Quản trị viên
     IF v_assigned_accountant_id <> '' 
-       AND (v_user_id <> v_assigned_accountant_id AND v_auth_uid::text <> v_assigned_accountant_id)
+       AND (v_user_id <> v_assigned_accountant_id AND v_auth_uid::text <> v_assigned_accountant_id AND lower(trim(v_user_name)) <> lower(trim(COALESCE(v_action->>'accountantName', ''))))
        AND NOT v_has_transfer_perm
        AND NOT (lower(COALESCE(v_user_role, '')) LIKE '%kế toán%')
        AND NOT (lower(COALESCE(v_user_role, '')) IN ('admin', 'quản trị viên')) THEN
