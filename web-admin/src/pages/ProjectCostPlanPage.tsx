@@ -1546,21 +1546,44 @@ export const ProjectCostPlanPage: React.FC = () => {
   const [fundRequestListOpen, setFundRequestListOpen] = useState(false);
   const [fundRequestsLoading, setFundRequestsLoading] = useState(false);
 
-  const fetchFundRequests = async () => {
+  const [fundRequestPage, setFundRequestPage] = useState(1);
+  const [fundRequestHasMore, setFundRequestHasMore] = useState(false);
+  const [fundRequestTotalCount, setFundRequestTotalCount] = useState<number | null>(null);
+  const FUND_REQUEST_PAGE_SIZE = 20;
+
+  const fetchFundRequests = async (page = 1, append = false) => {
     try {
-      const data = await api.fundRequests.getAll();
+      setFundRequestsLoading(true);
+      const data: any = await api.fundRequests.getAll({ page, pageSize: FUND_REQUEST_PAGE_SIZE });
       if (Array.isArray(data)) {
-        cachedFundRequests = data;
-        setFundRequests(data);
-        localStorage.setItem('titsmart_fund_requests', JSON.stringify(data));
+        const total = typeof (data as any).totalCount === 'number' ? (data as any).totalCount : data.length;
+        setFundRequestTotalCount(total);
+        setFundRequestHasMore(page * FUND_REQUEST_PAGE_SIZE < total);
+        setFundRequestPage(page);
+
+        if (append) {
+          const merged = [...cachedFundRequests];
+          data.forEach(item => {
+            if (!merged.some(m => m.id === item.id)) merged.push(item);
+          });
+          cachedFundRequests = merged;
+          setFundRequests(merged);
+          localStorage.setItem('titsmart_fund_requests', JSON.stringify(merged));
+        } else {
+          cachedFundRequests = data;
+          setFundRequests(data);
+          localStorage.setItem('titsmart_fund_requests', JSON.stringify(data));
+        }
       }
     } catch (e) {
       console.error('Failed to fetch fund requests', e);
+    } finally {
+      setFundRequestsLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchFundRequests();
+    fetchFundRequests(1, false);
   }, [selectedProject]);
 
   useEffect(() => {
@@ -5531,13 +5554,24 @@ export const ProjectCostPlanPage: React.FC = () => {
                       (rAccNorm && myUserIdentifiers.names.has(rAccNorm))
                     );
 
+                    // Nhận diện tài khoản Kế toán: vai trò hoặc chức danh có từ "kế toán" hoặc có quyền xử lý chuyển tiền
+                    const userRoleStr = String(user?.role || '').toLowerCase();
+                    const userTitleStr = String((user as any)?.title || '').toLowerCase();
+                    const isAccountantAccount = userRoleStr.includes('kế toán') || userTitleStr.includes('kế toán') || canTransferPerm;
+
                     // Phân quyền hành động nghiệp vụ chặt chẽ:
-                    // 1. Kiểm tra: Phải là Người kiểm tra được chọn HOẶC có quyền CHECK_FUND_REQUEST (tuyệt đối không phải người tạo)
-                    const canDoCheck = !isCreator && (isChecker || canCheckPerm);
-                    // 2. Lãnh đạo duyệt: Phải là Người duyệt được chọn HOẶC có quyền APPROVE_FUND_REQUEST (tuyệt đối không phải người tạo, và nếu là người kiểm tra của đơn thì bắt buộc phải được cấu hình cho phép kiêm nhiệm; kế toán không được kiêm duyệt)
-                    const canDoApprove = !isCreator && (!isChecker || allowDualRole) && (isReviewer || canApprovePerm);
-                    // 3. Kế toán xử lý & chuyển khoản: Phải là Kế toán được chỉ định HOẶC có quyền PROCESS_FUND_TRANSFER (nếu đơn chưa gán ai)
+                    // 1. Kiểm tra: Phải là Người kiểm tra được chọn HOẶC có quyền CHECK_FUND_REQUEST (tuyệt đối không phải người tạo, và không phải kế toán)
+                    const canDoCheck = !isCreator && !isAccountantAccount && (isChecker || canCheckPerm);
+
+                    // 2. Lãnh đạo duyệt: Phải là Người duyệt được chỉ định HOẶC (có quyền APPROVE_FUND_REQUEST và là Lãnh đạo/Admin thực thụ)
+                    //    TUYỆT ĐỐI KHÔNG: người tạo, người kiểm tra của đơn (trừ khi bật allowDualRole), và TÀI KHOẢN KẾ TOÁN
+                    const canDoApprove = !isCreator && !isAccountantAccount && (!isChecker || allowDualRole) && (isReviewer || (canApprovePerm && !isAccountantAccount));
+
+                    // 3. Kế toán xử lý & chuyển khoản: 
+                    //    BẮT BUỘC chỉ Kế toán được chỉ định đích danh (req.accountantId) mới được xử lý tiếp nhận & chuyển khoản
+                    //    (Nếu đơn chưa có accountantId - trường hợp đơn cũ - thì mới cho phép người có canTransferPerm nhận)
                     const canDoTransfer = req.accountantId ? isAccountant : (isAccountant || canTransferPerm);
+
                     // 4. Xác nhận nhận tiền: TUYỆT ĐỐI chỉ chính người tạo đơn mới được xác nhận nhận tiền (người kiểm tra, lãnh đạo, kế toán không được thao tác)
                     const canDoConfirm = isCreator;
 
@@ -5937,7 +5971,19 @@ export const ProjectCostPlanPage: React.FC = () => {
             </table>
           </div>
 
-          <div className="flex justify-end pt-2">
+          <div className="flex items-center justify-between pt-2">
+            <div>
+              {fundRequestHasMore && (
+                <button
+                  type="button"
+                  disabled={fundRequestsLoading}
+                  onClick={() => fetchFundRequests(fundRequestPage + 1, true)}
+                  className="px-3 py-1.5 border border-primary/40 rounded-lg text-xs font-bold text-primary hover:bg-primary/5 transition-colors disabled:opacity-50"
+                >
+                  {fundRequestsLoading ? 'Đang tải thêm...' : `Xem thêm yêu cầu cũ (Trang ${fundRequestPage + 1})`}
+                </button>
+              )}
+            </div>
             <button
               type="button"
               onClick={() => setFundRequestListOpen(false)}
@@ -6360,6 +6406,7 @@ export const ProjectCostPlanPage: React.FC = () => {
                 note: fundRequestConfirmModal.note || `Đã nhận đủ ${targetAmount.toLocaleString('vi-VN')} đ vào tài khoản. Hoàn tất cấp quỹ.`
               };
 
+              // GỌI RPC TRƯỚC (RPC REVIEW_FUND_REQUEST SẼ NẠP EXPENSE MỘT CÁCH NGUYÊN TỬ TRONG CÙNG TRANSACTION)
               if (req.id && !req.id.startsWith('notif-') && !req.id.startsWith('fund-')) {
                 try {
                   await api.fundRequests.review(req.id, {
@@ -6369,34 +6416,15 @@ export const ProjectCostPlanPage: React.FC = () => {
                   });
                 } catch (err: any) {
                   console.error('Lỗi khi xác nhận hoàn tất cấp quỹ:', err);
-                  triggerToast('Lỗi kết nối máy chủ! Không thể xác nhận nhận tiền.', 'warning');
+                  triggerToast(err?.message || 'Lỗi kết nối máy chủ! Không thể xác nhận nhận tiền.', 'warning');
                   return;
                 }
               }
 
-              if (!alreadyHasExpense) {
-                try {
-                  await addExpense({
-                    stt: String(currentProjExpenses.length + 1),
-                    date: req.neededDate || new Date().toISOString().split('T')[0],
-                    spenderName: req.creatorName,
-                    content: 'Cấp quỹ',
-                    description: `Cấp quỹ hoàn tất: ${req.purpose}`,
-                    unit: 'đợt',
-                    quantity: 1,
-                    unitPrice: 0,
-                    taxAmount: 0,
-                    totalAmount: 0,
-                    incomeAmount: targetAmount,
-                    notes: `[FUND_ID:${req.id}] Cấp quỹ hoàn tất xác nhận bởi ${reviewerName} lúc ${new Date().toLocaleTimeString('vi-VN')} ${new Date().toLocaleDateString('vi-VN')}`,
-                    invoiceUrl: req.transferDocUrl || undefined,
-                    fundRequestId: req.id,
-                    projectCode: req.projectCode || selectedProject
-                  });
-                } catch (expErr) {
-                  console.error('Add expense error:', expErr);
-                }
-              }
+              // Làm mới danh sách chi phí từ máy chủ để hiển thị ngay dòng nạp quỹ vừa được RPC tạo ra một cách nguyên tử
+              try {
+                await fetchAccounting(true);
+              } catch {}
 
               setReviewedFundActions(prev => ({
                 ...prev,

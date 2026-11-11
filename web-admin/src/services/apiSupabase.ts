@@ -2550,33 +2550,56 @@ export const api = {
   },
 
   fundRequests: {
-    getAll: async () => {
+    getAll: async (options?: { page?: number; pageSize?: number }) => {
       try {
-        let { data, error } = await supabase
+        const page = options?.page || 1;
+        const pageSize = options?.pageSize;
+
+        let query = supabase
           .from('activity_logs')
-          .select('*')
+          .select('*', { count: 'exact' })
           .eq('icon', 'FUND_REQUEST')
-          .order('timestamp', { ascending: false })
-          .limit(300);
+          .order('timestamp', { ascending: false });
+
+        if (pageSize && pageSize > 0) {
+          const from = (page - 1) * pageSize;
+          const to = from + pageSize - 1;
+          query = query.range(from, to);
+        }
+
+        let { data, error, count } = await query;
 
         if (error) {
-          const res = await supabase
+          let retryQuery = supabase
             .from('activity_logs')
-            .select('*')
+            .select('*', { count: 'exact' })
             .eq('icon', 'FUND_REQUEST')
-            .limit(300);
+            .order('timestamp', { ascending: false });
+
+          if (pageSize && pageSize > 0) {
+            const from = (page - 1) * pageSize;
+            const to = from + pageSize - 1;
+            retryQuery = retryQuery.range(from, to);
+          }
+          const res = await retryQuery;
           data = res.data;
           error = res.error;
+          count = res.count;
         }
 
         if (error) return [];
 
-        return (data || []).map(row => {
+        const list: any = (data || []).map(row => {
           try {
             const payload = typeof row.action === 'string' ? JSON.parse(row.action) : row.action;
             return { id: row.id, ...payload };
           } catch { return null; }
         }).filter(Boolean);
+
+        list.totalCount = count ?? list.length;
+        list.page = page;
+        list.pageSize = pageSize;
+        return list;
       } catch (err) {
         return [];
       }
@@ -2603,87 +2626,62 @@ export const api = {
       status?: string;
       history?: any[];
     }) => {
-      const nowIso = new Date().toISOString();
-      const initialStatus = input.status || (input.checkerId ? 'PENDING_CHECK' : 'CHECKED_WAITING_APPROVAL');
-      const initialHistory = input.history || [
-        {
-          action: 'TẠO YÊU CẦU',
-          actorId: input.creatorId || '',
-          actorName: input.creatorName,
-          actorRole: input.creatorTitle || 'Người tạo',
-          timestamp: nowIso,
-          note: input.note || input.purpose
-        }
-      ];
+      // 1. Thử gọi RPC create_fund_request bảo mật ở cấp database
+      const { data: rpcData, error: rpcErr } = await supabase.rpc('create_fund_request', {
+        p_project_code: input.projectCode,
+        p_project_name: input.projectName || input.projectCode,
+        p_amount: Number(input.amount) || 0,
+        p_type: input.type || 'Tạm ứng',
+        p_purpose: input.purpose,
+        p_needed_date: input.neededDate,
+        p_checker_id: input.checkerId || null,
+        p_checker_name: input.checkerName || null,
+        p_checker_title: input.checkerTitle || null,
+        p_reviewer_id: input.reviewerId,
+        p_reviewer_name: input.reviewerName,
+        p_reviewer_title: input.reviewerTitle || null,
+        p_note: input.note || null
+      });
 
-      const payloadData: any = {
-        projectCode: input.projectCode,
-        projectName: input.projectName || input.projectCode,
-        amount: Number(input.amount) || 0,
-        type: input.type || 'Tạm ứng',
-        purpose: input.purpose,
-        neededDate: input.neededDate,
-        creatorId: input.creatorId,
-        creatorName: input.creatorName,
-        creatorTitle: input.creatorTitle || 'Nhân sự',
-        checkerId: input.checkerId || '',
-        checkerName: input.checkerName || '',
-        checkerTitle: input.checkerTitle || '',
-        reviewerId: input.reviewerId,
-        reviewerName: input.reviewerName,
-        reviewerTitle: input.reviewerTitle || '',
-        accountantId: input.accountantId || '',
-        accountantName: input.accountantName || '',
-        note: input.note || '',
-        status: initialStatus,
-        history: initialHistory,
-        createdAt: nowIso
-      };
-      const payload: any = {
-        user: input.creatorName,
-        project: input.projectName || input.projectCode || 'Cấp quỹ',
-        icon: 'FUND_REQUEST',
-        action: JSON.stringify(payloadData),
-        timestamp: payloadData.createdAt
-      };
-      let { data, error } = await supabase.from('activity_logs').insert(payload).select().single();
-      if (error) {
-        if (error.code === 'PGRST204' || String(error.message).includes('created_at') || String(error.message).includes('timestamp')) {
-          delete payload.timestamp;
-          payload.created_at = payloadData.createdAt;
-          const retry = await supabase.from('activity_logs').insert(payload).select().single();
-          data = retry.data;
-          error = retry.error;
-        }
+      if (!rpcErr && rpcData) {
+        const actionObj = typeof rpcData.action === 'string' ? JSON.parse(rpcData.action) : rpcData.action;
+        return { id: rpcData.id, ...actionObj };
       }
-      if (error || !data) {
-        throw error || new Error('Không thể lưu yêu cầu cấp quỹ lên hệ thống.');
+
+      if (rpcErr) {
+        console.error('[create_fund_request RPC Error]:', rpcErr);
+        throw new Error(rpcErr.message || 'Lỗi khi tạo yêu cầu cấp quỹ trên máy chủ.');
       }
-      return { id: data.id, ...payloadData } as any;
+
+      throw new Error('Không nhận được phản hồi từ máy chủ khi tạo yêu cầu cấp quỹ.');
     },
     review: async (id: string, reviewData: any) => {
-      const { data: row, error: fetchErr } = await supabase.from('activity_logs').select('action').eq('id', id).single();
-      if (fetchErr) throw fetchErr;
-      const payloadData = typeof row.action === 'string' ? JSON.parse(row.action) : row.action;
-      
-      // Hợp nhất các trường cập nhật
-      Object.assign(payloadData, reviewData);
-      payloadData.updatedAt = new Date().toISOString();
+      // 1. GỌI BẮT BUỘC HÀM RPC review_fund_request TRÊN POSTGRESQL SUPABASE ĐỂ BẢO ĐẢM BẢO MẬT BACKEND/DATABASE
+      // Tuyệt đối không fallback sang direct update (tránh bypass bảo mật)
+      const { data: rpcData, error: rpcErr } = await supabase.rpc('review_fund_request', {
+        p_request_id: id,
+        p_target_status: reviewData.status,
+        p_accountant_id: reviewData.accountantId || null,
+        p_accountant_name: reviewData.accountantName || null,
+        p_transfer_amount: reviewData.actualTransferAmount ? Number(reviewData.actualTransferAmount) : null,
+        p_transfer_date: reviewData.transferDate || null,
+        p_transaction_code: reviewData.transactionCode || null,
+        p_transfer_doc_url: reviewData.transferDocUrl || null,
+        p_transfer_note: reviewData.transferNote || null,
+        p_note: reviewData.auditEntry?.note || reviewData.note || null
+      });
 
-      // Lưu lịch sử audit nếu có entry mới
-      if (reviewData.auditEntry) {
-        const history = Array.isArray(payloadData.history) ? payloadData.history : [];
-        history.push({
-          ...reviewData.auditEntry,
-          timestamp: reviewData.auditEntry.timestamp || new Date().toISOString()
-        });
-        payloadData.history = history;
-        delete payloadData.auditEntry;
+      if (rpcErr) {
+        console.error('[review_fund_request RPC Error]:', rpcErr);
+        throw new Error(rpcErr.message || 'Lỗi xử lý nghiệp vụ trên máy chủ database.');
       }
 
-      const { data, error } = await supabase.from('activity_logs').update({ action: JSON.stringify(payloadData) }).eq('id', id).select().single();
-      if (error) throw error;
-      return { id: data.id, ...payloadData } as any;
+      if (!rpcData) {
+        throw new Error('Máy chủ không trả về kết quả sau khi duyệt yêu cầu cấp quỹ.');
+      }
+
+      const actionObj = typeof rpcData.action === 'string' ? JSON.parse(rpcData.action) : rpcData.action;
+      return { id: rpcData.id || id, ...actionObj };
     },
     delete: async (id: string) => {
       const { error } = await supabase.from('activity_logs').delete().eq('id', id);
