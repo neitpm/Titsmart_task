@@ -2689,6 +2689,15 @@ export const api = {
         ? Number(String(reviewData.actualTransferAmount).replace(/[^0-9.]/g, ''))
         : null;
 
+      console.log('[RPC review_fund_request payload]', {
+        p_request_id: id,
+        p_target_status: reviewData.status,
+        p_transfer_amount: (parsedAmount && !isNaN(parsedAmount) && parsedAmount > 0) ? parsedAmount : null,
+        p_transfer_amount_type: typeof parsedAmount,
+        p_transfer_date: reviewData.transferDate,
+        p_transfer_doc_url: reviewData.transferDocUrl
+      });
+
       // 1. GỌI BẮT BUỘC HÀM RPC review_fund_request TRÊN POSTGRESQL SUPABASE ĐỂ BẢO ĐẢM BẢO MẬT BACKEND/DATABASE
       // Tuyệt đối không fallback sang direct update (tránh bypass bảo mật)
       const { data: rpcData, error: rpcErr } = await supabase.rpc('review_fund_request', {

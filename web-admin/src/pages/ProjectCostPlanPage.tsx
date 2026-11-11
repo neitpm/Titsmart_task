@@ -7196,6 +7196,16 @@ export const ProjectCostPlanPage: React.FC = () => {
             // 1. Gọi API Supabase trước
             if (req.id && !req.id.startsWith('notif-') && !req.id.startsWith('fund-')) {
               try {
+                console.log('[TRANSFER DEBUG]', {
+                  requestId: req.id,
+                  rawActual: fundRequestTransferModal.actualAmount,
+                  parsedAmount: numericAmount,
+                  amountType: typeof numericAmount,
+                  requestedAmount: req.amount,
+                  transferDate: fundRequestTransferModal.transferDate,
+                  docUrl: fundRequestTransferModal.docUrl
+                });
+
                 await api.fundRequests.review(req.id, {
                   status: 'TRANSFERRED_WAITING_CONFIRMATION',
                   transferredAt: nowIso,
