@@ -417,8 +417,17 @@ BEGIN
 
   -- BƯỚC 3: KẾ TOÁN XỬ LÝ (Tiếp nhận / Chuyển khoản)
   IF p_target_status IN ('ACCOUNTING_PROCESSING', 'TRANSFERRED_WAITING_CONFIRMATION') THEN
-    IF v_assigned_accountant_id <> '' AND (v_user_id <> v_assigned_accountant_id AND v_auth_uid::text <> v_assigned_accountant_id) THEN
-      RAISE EXCEPTION 'Phân quyền: Chỉ đích danh Kế toán được chỉ định xử lý mới có quyền thực hiện thao tác này.';
+    -- Cho phép thực hiện nếu:
+    -- 1. Trùng khớp ID hoặc auth_uid của Kế toán được chỉ định
+    -- 2. Hoặc người thao tác có quyền PROCESS_FUND_TRANSFER
+    -- 3. Hoặc người thao tác có vai trò/chức danh Kế toán
+    -- 4. Hoặc là Admin / Quản trị viên
+    IF v_assigned_accountant_id <> '' 
+       AND (v_user_id <> v_assigned_accountant_id AND v_auth_uid::text <> v_assigned_accountant_id)
+       AND NOT v_has_transfer_perm
+       AND NOT (lower(COALESCE(v_user_role, '')) LIKE '%kế toán%')
+       AND NOT (lower(COALESCE(v_user_role, '')) IN ('admin', 'quản trị viên')) THEN
+      RAISE EXCEPTION 'Phân quyền: Yêu cầu này đã được Lãnh đạo giao đích danh cho Kế toán khác xử lý. Bạn cần có quyền chuyển tiền hoặc vai trò Kế toán để tiếp nhận.';
     END IF;
     IF p_target_status = 'TRANSFERRED_WAITING_CONFIRMATION' THEN
       IF p_transfer_doc_url IS NULL OR trim(p_transfer_doc_url) = '' THEN
