@@ -1,9 +1,9 @@
 {
-  "version": "3.8.271",
-  "date": "2026-10-24",
+  "version": "3.8.371",
+  "date": "2026-11-11",
   "notes": [
-    "Tối ưu hóa bộ xem trước tệp Excel (.xlsx, .xls, .csv) mượt mà, loại bỏ hiện tượng đơ lag.",
-    "Lazy loading theo từng sheet, hiển thị nhanh 100 dòng đầu và bổ sung thanh tìm kiếm tiện lợi."
+    "Quy trình cấp quỹ khép kín 5 bước: Kiểm tra -> Lãnh đạo duyệt -> Kế toán tiếp nhận & chuyển khoản -> Xác nhận nhận tiền -> Nạp quỹ tự động.",
+    "Bảo mật giao dịch bằng RPC PostgreSQL nguyên tử, loại bỏ cache sai lệch, đồng bộ thời gian thực."
   ],
-  "buildDate": "2026-10-24T07:11:00.000Z"
+  "buildDate": "2026-11-11T07:50:00.000Z"
 }
