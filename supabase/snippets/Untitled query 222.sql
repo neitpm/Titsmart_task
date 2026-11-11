@@ -366,7 +366,7 @@ BEGIN
 
   ELSIF p_target_status = 'ACCOUNTING_PROCESSING' THEN
     IF v_current_status NOT IN ('APPROVED_WAITING_ACCOUNTING', 'APPROVED') THEN
-      RAISE EXCEPTION 'Kế toán chỉ có thể tiếp nhận khi yêu cầu đã được Lãnh đạo phê duyệt.';
+      RAISE EXCEPTION 'Kế toán chỉ có thể tiếp nhận khi yêu cầu đã được Lãnh đạo phê duyệt (Trạng thái thực tế trên Database: %, Yêu cầu ID: %). Vui lòng làm mới danh sách.', v_current_status, p_request_id;
     END IF;
     v_audit_text := 'Kế toán tiếp nhận xử lý hồ sơ chuyển khoản cấp quỹ ' || to_char(v_fund_amount, 'FM999,999,999,999') || ' đ';
     v_audit_badge := 'bg-amber-50';

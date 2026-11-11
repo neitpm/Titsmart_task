@@ -1715,9 +1715,12 @@ export const ProjectCostPlanPage: React.FC = () => {
       }
     });
 
-    // Áp dụng trạng thái duyệt đã lưu (APPROVED / REJECTED / ...) hoặc đối chiếu đã nạp vào Bảng Chi phí / Quỹ
+    // Áp dụng trạng thái: Nếu bản ghi từ Database đã có status khác PENDING_CHECK / PENDING (tức đã có dữ liệu thực tế từ Supabase)
+    // thì TUYỆT ĐỐI ƯU TIÊN dữ liệu từ Database, không để reviewedFundActions trong local storage đè sai lệch dữ liệu.
     return list.map(req => {
-      const action = reviewedFundActions[req.id] || (req.notificationId ? reviewedFundActions[req.notificationId] : undefined);
+      // Chỉ dùng action tạm cho các bản ghi notification cũ chưa có trong DB thực tế
+      const isLegacyNotif = String(req.id || '').startsWith('notif-');
+      const action = isLegacyNotif ? (reviewedFundActions[req.id] || (req.notificationId ? reviewedFundActions[req.notificationId] : undefined)) : undefined;
       if (action) {
         return {
           ...req,
@@ -5866,6 +5869,14 @@ export const ProjectCostPlanPage: React.FC = () => {
 
                                       if (req.id && !req.id.startsWith('notif-') && !req.id.startsWith('fund-')) {
                                         try {
+                                          // 1. Kiểm tra trạng thái thực tế từ server trước khi gọi RPC
+                                          const latest = await api.fundRequests.getById(req.id);
+                                          if (latest && latest.status !== 'APPROVED_WAITING_ACCOUNTING' && latest.status !== 'APPROVED') {
+                                            await fetchFundRequests(1, false);
+                                            triggerToast(`Yêu cầu chưa được Lãnh đạo duyệt trên Database (Trạng thái thực tế: ${latest.status || 'Chờ kiểm tra'}). Đang làm mới danh sách...`, 'warning');
+                                            return;
+                                          }
+
                                           await api.fundRequests.review(req.id, {
                                             status: 'ACCOUNTING_PROCESSING',
                                             accountantId: user?.id,
@@ -5875,6 +5886,7 @@ export const ProjectCostPlanPage: React.FC = () => {
                                           });
                                         } catch (err: any) {
                                           console.error('Lỗi khi tiếp nhận xử lý:', err);
+                                          await fetchFundRequests(1, false);
                                           triggerToast(err?.message || 'Lỗi máy chủ! Không thể lưu trạng thái tiếp nhận.', 'warning');
                                           return;
                                         }
@@ -6371,6 +6383,14 @@ export const ProjectCostPlanPage: React.FC = () => {
 
                                   if (req.id && !req.id.startsWith('notif-') && !req.id.startsWith('fund-')) {
                                     try {
+                                      // 1. Kiểm tra trạng thái thực tế từ server trước khi gọi RPC
+                                      const latest = await api.fundRequests.getById(req.id);
+                                      if (latest && latest.status !== 'APPROVED_WAITING_ACCOUNTING' && latest.status !== 'APPROVED') {
+                                        await fetchFundRequests(1, false);
+                                        triggerToast(`Yêu cầu chưa được Lãnh đạo duyệt trên Database (Trạng thái thực tế: ${latest.status || 'Chờ kiểm tra'}). Đang làm mới danh sách...`, 'warning');
+                                        return;
+                                      }
+
                                       await api.fundRequests.review(req.id, {
                                         status: 'ACCOUNTING_PROCESSING',
                                         accountantId: user?.id,
@@ -6380,6 +6400,7 @@ export const ProjectCostPlanPage: React.FC = () => {
                                       });
                                     } catch (err: any) {
                                       console.error('Lỗi khi tiếp nhận xử lý:', err);
+                                      await fetchFundRequests(1, false);
                                       triggerToast(err?.message || 'Lỗi máy chủ! Không thể lưu trạng thái tiếp nhận.', 'warning');
                                       return;
                                     }

@@ -2661,6 +2661,23 @@ export const api = {
 
       throw new Error('Không nhận được phản hồi từ máy chủ khi tạo yêu cầu cấp quỹ.');
     },
+    getById: async (id: string) => {
+      try {
+        const { data, error } = await supabase
+          .from('activity_logs')
+          .select('*')
+          .eq('id', id)
+          .single();
+
+        if (error || !data) return null;
+        const payload = typeof data.action === 'string' ? JSON.parse(data.action) : data.action;
+        return { id: data.id, ...payload };
+      } catch (err) {
+        console.error('[fundRequests.getById Error]:', err);
+        return null;
+      }
+    },
+
     review: async (id: string, reviewData: any) => {
       // 0. Kiểm tra phiên Supabase Auth bắt buộc trước khi gọi RPC
       const { data: sessionRes, error: sessionErr } = await supabase.auth.getSession();
