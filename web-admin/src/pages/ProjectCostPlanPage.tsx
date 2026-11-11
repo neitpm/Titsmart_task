@@ -7171,7 +7171,15 @@ export const ProjectCostPlanPage: React.FC = () => {
             const reviewerName = user?.name || user?.username || 'Kế toán';
             const curProjObj = projects.find(p => p.code === (req.projectCode || selectedProject));
             const pName = curProjObj?.name || req.projectName || req.projectCode || 'Dự án';
-            const numericAmount = Number(fundRequestTransferModal.actualAmount || req.amount || 0);
+            const rawActual = String(fundRequestTransferModal.actualAmount || req.amount || '0').replace(/[^0-9]/g, '');
+            let numericAmount = Number(fundRequestTransferModal.actualAmount || req.amount || 0);
+            if ((!numericAmount || isNaN(numericAmount) || numericAmount <= 0) && rawActual) {
+              numericAmount = Number(rawActual);
+            }
+            if (!numericAmount || isNaN(numericAmount) || numericAmount <= 0) {
+              triggerToast('Vui lòng nhập số tiền thực chuyển hợp lệ lớn hơn 0!', 'warning');
+              return;
+            }
 
             const auditEntry = {
               action: 'KẾ TOÁN ĐÃ CHUYỂN TIỀN & ĐÍNH KÈM UNC',
@@ -7191,6 +7199,9 @@ export const ProjectCostPlanPage: React.FC = () => {
                 await api.fundRequests.review(req.id, {
                   status: 'TRANSFERRED_WAITING_CONFIRMATION',
                   transferredAt: nowIso,
+                  actualTransferAmount: numericAmount,
+                  transferDate: fundRequestTransferModal.transferDate || nowIso.split('T')[0],
+                  transactionCode: fundRequestTransferModal.txCode || '',
                   transferDocUrl: fundRequestTransferModal.docUrl,
                   transferNote: fundRequestTransferModal.note,
                   accountantId: user?.id,
@@ -7282,11 +7293,15 @@ export const ProjectCostPlanPage: React.FC = () => {
                 Số tiền thực chuyển (VNĐ) *
               </label>
               <input
-                type="number"
+                type="text"
                 required
                 className="w-full border border-slate-300 rounded-lg p-2 text-xs focus:ring-1 focus:ring-primary focus:border-primary outline-none"
+                placeholder="Nhập số tiền..."
                 value={fundRequestTransferModal.actualAmount}
-                onChange={e => setFundRequestTransferModal(prev => ({ ...prev, actualAmount: e.target.value }))}
+                onChange={e => {
+                  const val = e.target.value.replace(/[^0-9]/g, '');
+                  setFundRequestTransferModal(prev => ({ ...prev, actualAmount: val }));
+                }}
               />
             </div>
             <div>
