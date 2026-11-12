@@ -2633,8 +2633,8 @@ export const ProjectCostPlanPage: React.FC = () => {
       )}
 
       {/* TABS SELECTOR */}
-      <div className="flex items-center justify-between border-b border-slate-200 bg-white px-2 sm:px-4 shadow-xs border-x overflow-x-hidden">
-        <div className="flex items-center justify-between sm:justify-start w-full sm:w-auto gap-1 sm:gap-4">
+      <div className="flex items-center justify-between border-b border-slate-200 bg-white px-2 sm:px-4 shadow-xs border-x overflow-x-auto no-scrollbar">
+        <div className="flex items-center justify-between sm:justify-start w-full sm:w-auto gap-1 sm:gap-4 shrink-0">
           {[
             { id: 'TECH', label: 'Đặt hàng', icon: 'list_alt', show: true },
             { id: 'DOCS', label: 'Chứng từ', icon: 'description', show: true },
@@ -7171,11 +7171,10 @@ export const ProjectCostPlanPage: React.FC = () => {
             const reviewerName = user?.name || user?.username || 'Kế toán';
             const curProjObj = projects.find(p => p.code === (req.projectCode || selectedProject));
             const pName = curProjObj?.name || req.projectName || req.projectCode || 'Dự án';
-            const rawActual = String(fundRequestTransferModal.actualAmount || req.amount || '0').replace(/[^0-9]/g, '');
-            let numericAmount = Number(fundRequestTransferModal.actualAmount || req.amount || 0);
-            if ((!numericAmount || isNaN(numericAmount) || numericAmount <= 0) && rawActual) {
-              numericAmount = Number(rawActual);
-            }
+            // Luôn strip non-digit trước khi parse để tránh "1.000.000.000" → 1
+            const rawActual = String(fundRequestTransferModal.actualAmount ?? '').replace(/[^0-9]/g, '')
+              || String(req.amount ?? '').replace(/[^0-9]/g, '');
+            const numericAmount = Number(rawActual) || 0;
             if (!numericAmount || isNaN(numericAmount) || numericAmount <= 0) {
               triggerToast('Vui lòng nhập số tiền thực chuyển hợp lệ lớn hơn 0!', 'warning');
               return;

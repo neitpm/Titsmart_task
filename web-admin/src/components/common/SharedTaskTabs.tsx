@@ -66,7 +66,7 @@ export const SharedTaskTabs: React.FC<SharedTaskTabsProps> = ({
 
   return (
     <div 
-      className="h-[34px] sm:h-[36px] w-full sm:w-auto flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200 shrink-0 gap-0.5 sm:gap-1" 
+      className="h-[34px] sm:h-[36px] max-w-full overflow-x-auto no-scrollbar flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200 shrink-0 gap-0.5 sm:gap-1" 
       style={{ WebkitAppRegion: 'no-drag' } as any}
     >
       <button 

@@ -2685,8 +2685,11 @@ export const api = {
         throw new Error('Lỗi xác thực: Phiên làm việc Supabase chưa được kích hoạt hoặc đã hết hạn. Vui lòng đăng xuất và đăng nhập lại để tiếp tục.');
       }
 
-      const parsedAmount = (reviewData.actualTransferAmount !== undefined && reviewData.actualTransferAmount !== null && reviewData.actualTransferAmount !== '')
-        ? Number(String(reviewData.actualTransferAmount).replace(/[^0-9.]/g, ''))
+      // Strip tất cả ký tự không phải digit (kể cả dấu chấm phân cách nghìn) trước khi parse
+      // Tránh "1.000.000.000" → 1 khi dùng Number() trực tiếp
+      const rawAmountStr = String(reviewData.actualTransferAmount ?? '').replace(/[^0-9]/g, '');
+      const parsedAmount = (rawAmountStr && rawAmountStr !== '')
+        ? Number(rawAmountStr)
         : null;
 
       console.log('[RPC review_fund_request payload]', {
