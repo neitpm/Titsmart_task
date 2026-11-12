@@ -44,47 +44,37 @@ serve(async (req: Request) => {
       );
     }
 
-    // 1.2 Kiểm tra quyền Quản trị viên chặt chẽ theo auth.uid() & permissions
+    // 1.2 Kiểm tra quyền Quản trị viên chặt chẽ: BẮT BUỘC auth_user_id === callerUser.id
     const adminClient = createClient(supabaseUrl, supabaseServiceKey);
     const callerId = String(callerUser.id || '').trim();
-    const callerEmail = String(callerUser.email || '').trim().toLowerCase();
 
-    // Tra cứu bản ghi nhân sự duy nhất ứng với auth_user_id của caller
-    let { data: callerEng } = await adminClient
+    // Tra cứu bản ghi nhân sự duy nhất ứng với auth_user_id của caller (Không auto-heal ngầm)
+    const { data: callerEng } = await adminClient
       .from("engineers")
       .select("id, role, permissions, auth_user_id, is_active, email")
       .eq("auth_user_id", callerId)
       .maybeSingle();
 
-    // Fallback duy nhất: Nếu tài khoản Admin hệ thống ban đầu chưa kịp mapping auth_user_id
-    if (!callerEng && (callerEmail === "admin@titsmart.vn" || callerUser.user_metadata?.role === "admin")) {
-      const { data: adminFallback } = await adminClient
-        .from("engineers")
-        .select("id, role, permissions, auth_user_id, is_active, email")
-        .eq("email", callerEmail)
-        .maybeSingle();
-
-      if (adminFallback) {
-        callerEng = adminFallback;
-        // Tự động chuẩn hóa mapping auth_user_id cho Admin để không dùng fallback ở các lần sau
-        await adminClient
-          .from("engineers")
-          .update({ auth_user_id: callerId, account_status: "ACTIVE", is_active: true })
-          .eq("id", adminFallback.id);
-      }
-    }
-
-    if (!callerEng || callerEng.is_active === false) {
+    if (!callerEng) {
       return new Response(
-        JSON.stringify({ error: "Forbidden: Caller account is disabled or not linked to personnel profile." }),
+        JSON.stringify({ 
+          error: "Forbidden: Caller account is not mapped to an active personnel record (auth_user_id unlinked). Please contact system administrator." 
+        }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Tiêu chuẩn phân quyền: Phải có quyền MANAGE_USERS hoặc là System Admin (admin/Quản trị viên)
+    if (callerEng.is_active === false) {
+      return new Response(
+        JSON.stringify({ error: "Forbidden: Caller account has been deactivated." }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Tiêu chuẩn phân quyền: Phải có quyền MANAGE_USERS hoặc là System Admin (admin/Quản trị viên) trong database
     const permissions: string[] = Array.isArray(callerEng.permissions) ? callerEng.permissions : [];
     const roleStr = String(callerEng.role || '').toLowerCase();
-    const isSystemAdminRole = roleStr === "admin" || roleStr === "quản trị viên" || callerEmail === "admin@titsmart.vn";
+    const isSystemAdminRole = roleStr === "admin" || roleStr === "quản trị viên";
     const hasManageUsers = isSystemAdminRole || permissions.includes("MANAGE_USERS");
 
     if (!hasManageUsers) {
