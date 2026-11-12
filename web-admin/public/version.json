@@ -1,9 +1,10 @@
 {
-  "version": "3.8.372",
-  "date": "2026-11-11",
+  "version": "3.8.373",
+  "date": "2026-11-12",
   "notes": [
-    "Khắc phục triệt để lỗi chuyển khoản cấp quỹ: Chuẩn hóa dữ liệu số tiền thực chuyển truyền vào RPC Supabase.",
-    "Bổ sung tự động fallback số tiền được duyệt khi gửi xác nhận chuyển khoản & đính kèm UNC."
+    "Tối ưu responsive toàn diện cho hệ thống trên tất cả kích thước màn hình từ 10 đến 20 inch.",
+    "Bổ sung thanh cuộn ngang 6px hiển thị mượt mà cho toàn bộ các bảng dữ liệu có nhiều cột số liệu.",
+    "Tối ưu hiển thị form modal, card KPI và biểu đồ trên laptop nhỏ, netbook và tablet."
   ],
-  "buildDate": "2026-11-11T09:32:00.000Z"
+  "buildDate": "2026-11-12T02:45:00.000Z"
 }

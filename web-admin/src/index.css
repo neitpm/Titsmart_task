@@ -30,11 +30,10 @@
 /* Custom Scrollbar Styling */
 ::-webkit-scrollbar {
   width: 6px;
-  height: 0px;
+  height: 6px;
 }
 ::-webkit-scrollbar:horizontal {
-  height: 0px !important;
-  display: none !important;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
@@ -107,8 +106,7 @@
   height: 0px;
 }
 .custom-scrollbar::-webkit-scrollbar:horizontal {
-  height: 0px !important;
-  display: none !important;
+  height: 6px;
 }
 .custom-scrollbar::-webkit-scrollbar-track {
   background: transparent;
