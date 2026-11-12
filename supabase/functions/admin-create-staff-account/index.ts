@@ -16,7 +16,10 @@ serve(async (req: Request) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
 
+    console.log("[admin-create-staff-account] Invoked with method:", req.method);
+
     if (!supabaseServiceKey) {
+      console.error("[admin-create-staff-account] Missing SUPABASE_SERVICE_ROLE_KEY");
       return new Response(
         JSON.stringify({ error: "Missing SUPABASE_SERVICE_ROLE_KEY environment variable" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -271,8 +274,12 @@ serve(async (req: Request) => {
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err: any) {
+    console.error("[admin-create-staff-account] Unhandled exception:", err);
     return new Response(
-      JSON.stringify({ error: err?.message || "Internal server error" }),
+      JSON.stringify({ 
+        error: "Internal server error: " + (err?.message || "Unknown exception"),
+        stack: err?.stack || undefined
+      }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
