@@ -1175,14 +1175,8 @@ export const api = {
           throw new Error('Bạn cần đăng nhập với quyền Quản trị viên để thực hiện thao tác này.');
         }
 
-        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'http://127.0.0.1:54321';
-        const response = await fetch(`${supabaseUrl}/functions/v1/admin-create-staff-account`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-          body: JSON.stringify({
+        const { data: resData, error: funcError } = await supabase.functions.invoke('admin-create-staff-account', {
+          body: {
             action: 'sync',
             engineer_id: engineer.id,
             username: engineer.username,
@@ -1198,12 +1192,11 @@ export const api = {
             identity_number: engineer.identityNumber || engineer.identity_number,
             emergency_phone: engineer.emergencyPhone || engineer.emergency_phone,
             emergency_contact_name: engineer.emergencyContactName || engineer.emergency_contact_name,
-          }),
+          },
         });
 
-        const resData = await response.json();
-        if (!response.ok) {
-          throw new Error(resData?.error || 'Lỗi khi kích hoạt tài khoản qua Edge Function');
+        if (funcError) {
+          throw new Error(funcError.message || 'Lỗi khi kích hoạt tài khoản qua Edge Function');
         }
 
         return { success: true, data: resData };
