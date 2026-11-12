@@ -75,10 +75,10 @@ serve(async (req: Request) => {
     }
 
     // Tiêu chuẩn phân quyền: Phải có quyền MANAGE_USERS hoặc là System Admin (admin/Quản trị viên) trong database
-    const permissions: string[] = Array.isArray(callerEng.permissions) ? callerEng.permissions : [];
+    const callerPermissions: string[] = Array.isArray(callerEng.permissions) ? callerEng.permissions : [];
     const roleStr = String(callerEng.role || '').toLowerCase();
     const isSystemAdminRole = roleStr === "admin" || roleStr === "quản trị viên";
-    const hasManageUsers = isSystemAdminRole || permissions.includes("MANAGE_USERS");
+    const hasManageUsers = isSystemAdminRole || callerPermissions.includes("MANAGE_USERS");
 
     if (!hasManageUsers) {
       return new Response(
