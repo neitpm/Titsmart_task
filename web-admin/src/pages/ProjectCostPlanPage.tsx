@@ -2743,8 +2743,8 @@ export const ProjectCostPlanPage: React.FC = () => {
           <div className="h-full overflow-y-auto overflow-x-hidden custom-scrollbar bg-white flex flex-col pb-16 md:pb-0" id="expense-unified-view">
 
             {/* 1. BỘ LỌC & CÔNG CỤ (TOOLBAR TRÊN CÙNG) */}
-            <div className="flex border-b border-slate-200 bg-slate-50 px-3 md:px-5 py-2 gap-2 md:gap-3 sticky top-0 z-30 items-center justify-between text-xs text-slate-600 overflow-visible shadow-xs">
-              <div className="hidden md:flex items-center gap-2 md:gap-3 flex-wrap sm:flex-nowrap">
+            <div className="flex border-b border-slate-200 bg-slate-50 px-3 md:px-5 py-2 gap-2 md:gap-3 sticky top-0 z-30 items-center justify-between text-xs text-slate-600 overflow-x-auto custom-scrollbar shadow-xs">
+              <div className="hidden md:flex items-center gap-2 md:gap-3 flex-nowrap shrink-0">
                 <div className="flex items-center gap-2.5 font-bold text-slate-500 whitespace-nowrap">
                   <span className="material-symbols-outlined text-[16px]">filter_list</span>
                 </div>
@@ -2753,15 +2753,15 @@ export const ProjectCostPlanPage: React.FC = () => {
                   <span className="text-slate-500 font-medium whitespace-nowrap text-xs">Ngày chi:</span>
                   <div className="flex items-center gap-1 border border-slate-200 rounded px-1.5 py-0.5 bg-white shadow-xs">
                     <span className="text-slate-400 font-medium whitespace-nowrap text-[11px]">Từ</span>
-                    <input type="date" value={expenseFilterDateFrom} onChange={e => setExpenseFilterDateFrom(e.target.value)} className="bg-transparent border-none outline-none text-xs w-[115px] text-slate-700 cursor-pointer" />
+                    <input type="date" value={expenseFilterDateFrom} onChange={e => setExpenseFilterDateFrom(e.target.value)} className="bg-transparent border-none outline-none text-xs w-[110px] text-slate-700 cursor-pointer" />
                     <span className="text-slate-300">|</span>
                     <span className="text-slate-400 font-medium whitespace-nowrap text-[11px]">Đến</span>
-                    <input type="date" value={expenseFilterDateTo} onChange={e => setExpenseFilterDateTo(e.target.value)} className="bg-transparent border-none outline-none text-xs w-[115px] text-slate-700 cursor-pointer" />
+                    <input type="date" value={expenseFilterDateTo} onChange={e => setExpenseFilterDateTo(e.target.value)} className="bg-transparent border-none outline-none text-xs w-[110px] text-slate-700 cursor-pointer" />
                   </div>
                 </div>
                 <div className="flex items-center gap-1.5 md:gap-2">
                   <span className="text-slate-500 font-medium whitespace-nowrap text-xs">Người PT/Chi:</span>
-                  <div className="min-w-[130px] max-w-[200px]">
+                  <div className="min-w-[120px] max-w-[180px]">
                     <CustomSelect
                       value={expenseFilterSpender}
                       onChange={(e) => setExpenseFilterSpender(e.target.value)}
@@ -2776,8 +2776,8 @@ export const ProjectCostPlanPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 w-full md:w-auto justify-between md:justify-end md:ml-auto">
-                <div className="relative flex-1 md:w-52 md:flex-initial">
+              <div className="flex items-center gap-1.5 md:gap-2 shrink-0 md:ml-auto">
+                <div className="relative w-36 sm:w-44 md:w-48 lg:w-52 shrink-0">
                   <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-[14px]">search</span>
                   <input
                     type="text"
@@ -2792,22 +2792,22 @@ export const ProjectCostPlanPage: React.FC = () => {
                   onClick={() => {
                     if (fileInputRef.current) fileInputRef.current.click();
                   }}
-                  className="flex items-center justify-center gap-1.5 border border-blue-200 bg-blue-50 text-primary px-2.5 md:px-3 h-8 rounded-lg text-xs font-bold hover:bg-blue-100 active:scale-95 transition-all shadow-xs whitespace-nowrap cursor-pointer"
+                  className="flex items-center justify-center gap-1.5 border border-blue-200 bg-blue-50 text-primary px-2.5 md:px-3 h-8 rounded-lg text-xs font-bold hover:bg-blue-100 active:scale-95 transition-all shadow-xs whitespace-nowrap cursor-pointer shrink-0"
                   title="Nhập file (Excel, CSV, PDF, Word)"
                 >
                   <span className="material-symbols-outlined text-[16px]">file_upload</span>
-                  <span className="hidden sm:inline">Nhập file</span>
+                  <span className="hidden lg:inline">Nhập file</span>
                 </button>
 
-                <div className="relative">
+                <div className="relative shrink-0">
                   <button
                     onClick={() => setShowExpenseExportMenu(!showExpenseExportMenu)}
-                    className="flex items-center justify-center gap-1 border border-emerald-200 bg-emerald-50 text-emerald-700 px-2.5 md:px-3 h-8 rounded-lg text-xs font-bold hover:bg-emerald-100 active:scale-95 transition-all shadow-xs whitespace-nowrap cursor-pointer"
+                    className="flex items-center justify-center gap-1 border border-emerald-200 bg-emerald-50 text-emerald-700 px-2.5 md:px-3 h-8 rounded-lg text-xs font-bold hover:bg-emerald-100 active:scale-95 transition-all shadow-xs whitespace-nowrap cursor-pointer shrink-0"
                     title="Xuất file (Excel, CSV, PDF, Word)"
                   >
                     <span className="material-symbols-outlined text-[16px]">file_download</span>
-                    <span className="hidden sm:inline">Xuất file</span>
-                    <span className="material-symbols-outlined text-xs hidden sm:inline">expand_more</span>
+                    <span className="hidden lg:inline">Xuất file</span>
+                    <span className="material-symbols-outlined text-xs hidden lg:inline">expand_more</span>
                   </button>
                   {showExpenseExportMenu && (
                     <>
@@ -2865,11 +2865,11 @@ export const ProjectCostPlanPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setFundRequestListOpen(true)}
-                  className="flex items-center gap-1.5 h-8 px-2.5 rounded-lg border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 text-xs font-bold transition-all shadow-xs relative"
+                  className="flex items-center gap-1.5 h-8 px-2.5 rounded-lg border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 text-xs font-bold transition-all shadow-xs relative shrink-0 whitespace-nowrap cursor-pointer"
                   title="Xem danh sách yêu cầu cấp quỹ chờ duyệt"
                 >
                   <span className="material-symbols-outlined text-[16px]">account_balance_wallet</span>
-                  <span>Duyệt cấp quỹ</span>
+                  <span className="hidden sm:inline">Duyệt cấp quỹ</span>
                   {(() => {
                     const isSystemAdminUser = isSystemAdmin(user);
                     const canCheck = hasPermission(user, 'CHECK_FUND_REQUEST');
@@ -2928,10 +2928,10 @@ export const ProjectCostPlanPage: React.FC = () => {
                   })()}
                 </button>
 
-                <div className="relative">
+                <div className="relative shrink-0">
                   <button
                     onClick={() => setShowExpenseActionMenu(v => !v)}
-                    className="flex items-center justify-center gap-1 bg-primary text-white px-2.5 md:px-3 h-8 rounded-lg text-xs font-bold hover:bg-primary-dark transition-colors shadow-xs whitespace-nowrap cursor-pointer"
+                    className="flex items-center justify-center gap-1 bg-primary text-white px-2.5 md:px-3 h-8 rounded-lg text-xs font-bold hover:bg-primary-dark transition-colors shadow-xs whitespace-nowrap cursor-pointer shrink-0"
                     title="Thêm chi phí hoặc yêu cầu cấp quỹ"
                   >
                     <span className="material-symbols-outlined text-[16px]">add</span>

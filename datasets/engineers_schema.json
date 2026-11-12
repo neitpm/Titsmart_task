@@ -1,0 +1,140 @@
+{
+  "table": "engineers",
+  "total_rows": 19,
+  "columns": {
+    "id": {
+      "sample_value": "d59fc942-4cc5-4070-a70e-72aec083f891",
+      "inferred_type": "uuid"
+    },
+    "code": {
+      "sample_value": null,
+      "inferred_type": "text/nullable"
+    },
+    "name": {
+      "sample_value": "Lê Nhựt Tân",
+      "inferred_type": "text"
+    },
+    "title": {
+      "sample_value": "Nhân viên",
+      "inferred_type": "text"
+    },
+    "avatar": {
+      "sample_value": null,
+      "inferred_type": "text/nullable"
+    },
+    "phone": {
+      "sample_value": "091234712",
+      "inferred_type": "text"
+    },
+    "email": {
+      "sample_value": null,
+      "inferred_type": "text/nullable"
+    },
+    "created_at": {
+      "sample_value": "2026-08-19T04:26:09.164788+00:00",
+      "inferred_type": "timestamp with time zone"
+    },
+    "role": {
+      "sample_value": "Nhân viên",
+      "inferred_type": "text"
+    },
+    "username": {
+      "sample_value": "tan",
+      "inferred_type": "text"
+    },
+    "password": {
+      "sample_value": "123456",
+      "inferred_type": "text"
+    },
+    "is_locked": {
+      "sample_value": false,
+      "inferred_type": "boolean"
+    },
+    "project_codes": {
+      "sample_value": [
+        "DUONG_DAY_110KV_RACH_GIA_2_VINH_QUANG",
+        "TRAM_BIEN_AP_110KV_TRA_ON",
+        "TRAM_BIEN_AP_220KV_NAM_CAN",
+        "TRAM_BIEN_AP_110KV_PHUOC_TAN",
+        "TEST_DU_AN",
+        "TRAM_BIEN_AP_110KV_KCN_THANH_LOC",
+        "CHI_PHI_VAN_PHONG",
+        "NHA_O_XA_HOI_DUONG_DIEN_BIEN_PHUONG_LAO_",
+        "TBA_220KV_NAM_CAM_VA_DUONG_DAY_DAU_NOI",
+        "TRAM_BIEN_AP_110KV_DA_HUOAI",
+        "LU_DOAN_CONG_BINH_25_BIEN_HOA",
+        "TBA_500KV_CU_CHI_VA_CAC_DUONG_DAY_DAU_NO",
+        "AGRIBANK-GIA-NHIA",
+        "SU-DOAN-5"
+      ],
+      "inferred_type": "jsonb"
+    },
+    "permissions": {
+      "sample_value": [
+        "VIEW_PROJECTS",
+        "VIEW_TASKS",
+        "UPDATE_TASK_PROGRESS",
+        "VIEW_FIELD_LOGS",
+        "MANAGE_FIELD_LOGS",
+        "VIEW_MATERIALS",
+        "UPDATE_MATERIAL_STATUS",
+        "VIEW_USERS",
+        "VIEW_PROJECT_DIAGRAM",
+        "VIEW_DOCUMENTS"
+      ],
+      "inferred_type": "jsonb"
+    },
+    "updated_by": {
+      "sample_value": "Phạm Minh Tiên",
+      "inferred_type": "text"
+    },
+    "updated_at": {
+      "sample_value": "2026-10-04T05:10:10.074+00:00",
+      "inferred_type": "timestamp with time zone"
+    }
+  },
+  "sample_row": {
+    "id": "d59fc942-4cc5-4070-a70e-72aec083f891",
+    "code": null,
+    "name": "Lê Nhựt Tân",
+    "title": "Nhân viên",
+    "avatar": null,
+    "phone": "091234712",
+    "email": null,
+    "created_at": "2026-08-19T04:26:09.164788+00:00",
+    "role": "Nhân viên",
+    "username": "tan",
+    "password": "123456",
+    "is_locked": false,
+    "project_codes": [
+      "DUONG_DAY_110KV_RACH_GIA_2_VINH_QUANG",
+      "TRAM_BIEN_AP_110KV_TRA_ON",
+      "TRAM_BIEN_AP_220KV_NAM_CAN",
+      "TRAM_BIEN_AP_110KV_PHUOC_TAN",
+      "TEST_DU_AN",
+      "TRAM_BIEN_AP_110KV_KCN_THANH_LOC",
+      "CHI_PHI_VAN_PHONG",
+      "NHA_O_XA_HOI_DUONG_DIEN_BIEN_PHUONG_LAO_",
+      "TBA_220KV_NAM_CAM_VA_DUONG_DAY_DAU_NOI",
+      "TRAM_BIEN_AP_110KV_DA_HUOAI",
+      "LU_DOAN_CONG_BINH_25_BIEN_HOA",
+      "TBA_500KV_CU_CHI_VA_CAC_DUONG_DAY_DAU_NO",
+      "AGRIBANK-GIA-NHIA",
+      "SU-DOAN-5"
+    ],
+    "permissions": [
+      "VIEW_PROJECTS",
+      "VIEW_TASKS",
+      "UPDATE_TASK_PROGRESS",
+      "VIEW_FIELD_LOGS",
+      "MANAGE_FIELD_LOGS",
+      "VIEW_MATERIALS",
+      "UPDATE_MATERIAL_STATUS",
+      "VIEW_USERS",
+      "VIEW_PROJECT_DIAGRAM",
+      "VIEW_DOCUMENTS"
+    ],
+    "updated_by": "Phạm Minh Tiên",
+    "updated_at": "2026-10-04T05:10:10.074+00:00"
+  }
+}

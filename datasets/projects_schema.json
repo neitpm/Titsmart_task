@@ -1,0 +1,113 @@
+{
+  "table": "projects",
+  "total_rows": 25,
+  "columns": {
+    "id": {
+      "sample_value": "900d27ed-b9a0-4958-92ce-8671fd014bcd",
+      "inferred_type": "uuid"
+    },
+    "code": {
+      "sample_value": "GIAM_SAT_CONG_TRINH_CC1",
+      "inferred_type": "text"
+    },
+    "name": {
+      "sample_value": "Giám sát công trình CC1",
+      "inferred_type": "text"
+    },
+    "client": {
+      "sample_value": "CC1",
+      "inferred_type": "text"
+    },
+    "location": {
+      "sample_value": "Việt Nam",
+      "inferred_type": "text"
+    },
+    "contract_value": {
+      "sample_value": null,
+      "inferred_type": "text/nullable"
+    },
+    "progress_percent": {
+      "sample_value": 0,
+      "inferred_type": "integer"
+    },
+    "status": {
+      "sample_value": "active",
+      "inferred_type": "text"
+    },
+    "active_teams": {
+      "sample_value": 0,
+      "inferred_type": "integer"
+    },
+    "total_tasks": {
+      "sample_value": 0,
+      "inferred_type": "integer"
+    },
+    "completed_tasks": {
+      "sample_value": 0,
+      "inferred_type": "integer"
+    },
+    "issue_tasks_count": {
+      "sample_value": 0,
+      "inferred_type": "integer"
+    },
+    "manager_id": {
+      "sample_value": null,
+      "inferred_type": "text/nullable"
+    },
+    "manager_name": {
+      "sample_value": "Chưa phân công",
+      "inferred_type": "text"
+    },
+    "start_date": {
+      "sample_value": "2026-09-01",
+      "inferred_type": "text"
+    },
+    "end_date": {
+      "sample_value": null,
+      "inferred_type": "text/nullable"
+    },
+    "created_at": {
+      "sample_value": "2026-09-01T03:02:01.72182+00:00",
+      "inferred_type": "timestamp with time zone"
+    },
+    "notes": {
+      "sample_value": "[MEMBERS:d9f4c22b-9f8a-4649-9ebc-93b334a83298,dde414a8-1eb9-42e5-a9ee-63eabf8d33d4,8c5f82b9-d338-4cc5-abfb-54639e28502f,1fba88d0-ee08-4136-9038-ad927850262e,9e48e6d6-4c32-4166-9578-f8710d224bc7,eade0dfb-ee34-4091-8664-310f74b4d182,55402d3a-bae4-4d95-abcf-8199f3633f2e,b7718003-1483-4a2a-94a2-c0e15665de05,3ab2431d-0c5a-4750-8a05-29ec9d87bc6c]",
+      "inferred_type": "text"
+    },
+    "updated_at": {
+      "sample_value": "2026-10-09T08:00:17.196+00:00",
+      "inferred_type": "timestamp with time zone"
+    },
+    "diagram_url": {
+      "sample_value": null,
+      "inferred_type": "text/nullable"
+    },
+    "updated_by": {
+      "sample_value": "Phạm Minh Tiên",
+      "inferred_type": "text"
+    }
+  },
+  "sample_row": {
+    "id": "900d27ed-b9a0-4958-92ce-8671fd014bcd",
+    "code": "GIAM_SAT_CONG_TRINH_CC1",
+    "name": "Giám sát công trình CC1",
+    "client": "CC1",
+    "location": "Việt Nam",
+    "contract_value": null,
+    "progress_percent": 0,
+    "status": "active",
+    "active_teams": 0,
+    "total_tasks": 0,
+    "completed_tasks": 0,
+    "issue_tasks_count": 0,
+    "manager_id": null,
+    "manager_name": "Chưa phân công",
+    "start_date": "2026-09-01",
+    "end_date": null,
+    "created_at": "2026-09-01T03:02:01.72182+00:00",
+    "notes": "[MEMBERS:d9f4c22b-9f8a-4649-9ebc-93b334a83298,dde414a8-1eb9-42e5-a9ee-63eabf8d33d4,8c5f82b9-d338-4cc5-abfb-54639e28502f,1fba88d0-ee08-4136-9038-ad927850262e,9e48e6d6-4c32-4166-9578-f8710d224bc7,eade0dfb-ee34-4091-8664-310f74b4d182,55402d3a-bae4-4d95-abcf-8199f3633f2e,b7718003-1483-4a2a-94a2-c0e15665de05,3ab2431d-0c5a-4750-8a05-29ec9d87bc6c]",
+    "updated_at": "2026-10-09T08:00:17.196+00:00",
+    "diagram_url": null,
+    "updated_by": "Phạm Minh Tiên"
+  }
+}

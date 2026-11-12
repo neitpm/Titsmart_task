@@ -1,0 +1,23 @@
+{
+  "table": "app_versions",
+  "total_rows": 1,
+  "columns": {
+    "id": {
+      "sample_value": 1,
+      "inferred_type": "integer"
+    },
+    "version": {
+      "sample_value": "1.2.30",
+      "inferred_type": "text"
+    },
+    "updated_at": {
+      "sample_value": "2026-08-17T03:33:50.281553+00:00",
+      "inferred_type": "timestamp with time zone"
+    }
+  },
+  "sample_row": {
+    "id": 1,
+    "version": "1.2.30",
+    "updated_at": "2026-08-17T03:33:50.281553+00:00"
+  }
+}

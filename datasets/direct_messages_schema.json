@@ -1,0 +1,63 @@
+{
+  "table": "direct_messages",
+  "total_rows": 136,
+  "columns": {
+    "id": {
+      "sample_value": "885510e2-71c0-4a82-be8a-e63e0be0609b",
+      "inferred_type": "uuid"
+    },
+    "sender_id": {
+      "sample_value": "8fa27878-25c5-4a5f-9f1c-b0264b2fa6b1",
+      "inferred_type": "uuid"
+    },
+    "sender_name": {
+      "sample_value": "Phạm Minh Tiên",
+      "inferred_type": "text"
+    },
+    "sender_avatar": {
+      "sample_value": null,
+      "inferred_type": "text/nullable"
+    },
+    "receiver_id": {
+      "sample_value": "c56dafda-cd90-40cc-89c6-cc6fcc7d30bc",
+      "inferred_type": "uuid"
+    },
+    "project_code": {
+      "sample_value": null,
+      "inferred_type": "text/nullable"
+    },
+    "content": {
+      "sample_value": "Helôi",
+      "inferred_type": "text"
+    },
+    "file_url": {
+      "sample_value": null,
+      "inferred_type": "text/nullable"
+    },
+    "file_type": {
+      "sample_value": null,
+      "inferred_type": "text/nullable"
+    },
+    "read_by": {
+      "sample_value": [],
+      "inferred_type": "jsonb"
+    },
+    "created_at": {
+      "sample_value": "2026-09-17T07:37:39.021706+00:00",
+      "inferred_type": "timestamp with time zone"
+    }
+  },
+  "sample_row": {
+    "id": "885510e2-71c0-4a82-be8a-e63e0be0609b",
+    "sender_id": "8fa27878-25c5-4a5f-9f1c-b0264b2fa6b1",
+    "sender_name": "Phạm Minh Tiên",
+    "sender_avatar": null,
+    "receiver_id": "c56dafda-cd90-40cc-89c6-cc6fcc7d30bc",
+    "project_code": null,
+    "content": "Helôi",
+    "file_url": null,
+    "file_type": null,
+    "read_by": [],
+    "created_at": "2026-09-17T07:37:39.021706+00:00"
+  }
+}

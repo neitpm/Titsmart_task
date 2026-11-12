@@ -1,0 +1,43 @@
+{
+  "table": "notifications",
+  "total_rows": 566,
+  "columns": {
+    "id": {
+      "sample_value": "e75ed052-bbbd-4a41-bb2d-39962e822b90",
+      "inferred_type": "uuid"
+    },
+    "title": {
+      "sample_value": "Chấm công",
+      "inferred_type": "text"
+    },
+    "message": {
+      "sample_value": "Phạm Ánh Tuyết đã chấm công lúc 08:01​[[META:%7B%22l%22%3A%22%2Fattendance%3Ftab%3Dattendance%26view%3Dall%22%2C%22s%22%3A%229e48e6d6-4c32-4166-9578-f8710d224bc7%22%2C%22n%22%3A%22Ph%E1%BA%A1m%20%C3%81nh%20Tuy%E1%BA%BFt%22%7D]]",
+      "inferred_type": "text"
+    },
+    "timestamp": {
+      "sample_value": "2026-11-02T01:01:29.663+00:00",
+      "inferred_type": "timestamp with time zone"
+    },
+    "read": {
+      "sample_value": false,
+      "inferred_type": "boolean"
+    },
+    "type": {
+      "sample_value": "attendance:::admin",
+      "inferred_type": "text"
+    },
+    "icon": {
+      "sample_value": "fingerprint",
+      "inferred_type": "text"
+    }
+  },
+  "sample_row": {
+    "id": "e75ed052-bbbd-4a41-bb2d-39962e822b90",
+    "title": "Chấm công",
+    "message": "Phạm Ánh Tuyết đã chấm công lúc 08:01​[[META:%7B%22l%22%3A%22%2Fattendance%3Ftab%3Dattendance%26view%3Dall%22%2C%22s%22%3A%229e48e6d6-4c32-4166-9578-f8710d224bc7%22%2C%22n%22%3A%22Ph%E1%BA%A1m%20%C3%81nh%20Tuy%E1%BA%BFt%22%7D]]",
+    "timestamp": "2026-11-02T01:01:29.663+00:00",
+    "read": false,
+    "type": "attendance:::admin",
+    "icon": "fingerprint"
+  }
+}

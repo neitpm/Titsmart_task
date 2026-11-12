@@ -1,0 +1,157 @@
+{
+  "table": "document_tracks",
+  "total_rows": 68,
+  "columns": {
+    "id": {
+      "sample_value": "c3739a37-e0f5-4546-92bd-ddcd377b9821",
+      "inferred_type": "uuid"
+    },
+    "project_id": {
+      "sample_value": null,
+      "inferred_type": "text/nullable"
+    },
+    "stt": {
+      "sample_value": null,
+      "inferred_type": "text/nullable"
+    },
+    "contract_no": {
+      "sample_value": "1910/2026/HĐMB/TITSMART-THANGLONG",
+      "inferred_type": "text"
+    },
+    "contract_name": {
+      "sample_value": "Hợp đồng mua bán",
+      "inferred_type": "text"
+    },
+    "company": {
+      "sample_value": "Công ty Cổ phần tập đoàn Công nghệ Thăng Long",
+      "inferred_type": "text"
+    },
+    "receiver_name": {
+      "sample_value": "Tuyết",
+      "inferred_type": "text"
+    },
+    "phone": {
+      "sample_value": "",
+      "inferred_type": "text"
+    },
+    "address": {
+      "sample_value": "",
+      "inferred_type": "text"
+    },
+    "send_date": {
+      "sample_value": "2026-10-26",
+      "inferred_type": "text"
+    },
+    "receive_date": {
+      "sample_value": "2026-10-26",
+      "inferred_type": "text"
+    },
+    "doc_status": {
+      "sample_value": "Đã ký",
+      "inferred_type": "text"
+    },
+    "side": {
+      "sample_value": "Bên nhận",
+      "inferred_type": "text"
+    },
+    "contract_value": {
+      "sample_value": 0,
+      "inferred_type": "integer"
+    },
+    "prepay_percent": {
+      "sample_value": 0,
+      "inferred_type": "integer"
+    },
+    "prepay_amount": {
+      "sample_value": 0,
+      "inferred_type": "integer"
+    },
+    "payment_status": {
+      "sample_value": "Chưa thanh toán",
+      "inferred_type": "text"
+    },
+    "is_completed": {
+      "sample_value": false,
+      "inferred_type": "boolean"
+    },
+    "notes": {
+      "sample_value": "[STATUS:Đã ký|PAY:Chưa thanh toán|COMP:0|CREATOR:Phạm Ánh Tuyết|CID:9e48e6d6-4c32-4166-9578-f8710d224bc7|UPD:Phạm Ánh Tuyết]",
+      "inferred_type": "text"
+    },
+    "created_at": {
+      "sample_value": "2026-10-26T03:45:14.175558+00:00",
+      "inferred_type": "timestamp with time zone"
+    },
+    "updated_at": {
+      "sample_value": "2026-10-26T03:53:59.87+00:00",
+      "inferred_type": "timestamp with time zone"
+    },
+    "doc_type": {
+      "sample_value": "Nhận",
+      "inferred_type": "text"
+    },
+    "file_urls": {
+      "sample_value": [
+        "https://nvdonaaxbtqjfmxtlgzb.supabase.co/storage/v1/object/public/titsmart-images/documents/1792986301841_vrohibtx.pdf"
+      ],
+      "inferred_type": "jsonb"
+    },
+    "updated_by": {
+      "sample_value": "Phạm Ánh Tuyết",
+      "inferred_type": "text"
+    },
+    "due_date": {
+      "sample_value": null,
+      "inferred_type": "text/nullable"
+    },
+    "remind_days": {
+      "sample_value": 3,
+      "inferred_type": "integer"
+    },
+    "document_type": {
+      "sample_value": null,
+      "inferred_type": "text/nullable"
+    },
+    "expected_approval_date": {
+      "sample_value": null,
+      "inferred_type": "text/nullable"
+    },
+    "project_code": {
+      "sample_value": null,
+      "inferred_type": "text/nullable"
+    }
+  },
+  "sample_row": {
+    "id": "c3739a37-e0f5-4546-92bd-ddcd377b9821",
+    "project_id": null,
+    "stt": null,
+    "contract_no": "1910/2026/HĐMB/TITSMART-THANGLONG",
+    "contract_name": "Hợp đồng mua bán",
+    "company": "Công ty Cổ phần tập đoàn Công nghệ Thăng Long",
+    "receiver_name": "Tuyết",
+    "phone": "",
+    "address": "",
+    "send_date": "2026-10-26",
+    "receive_date": "2026-10-26",
+    "doc_status": "Đã ký",
+    "side": "Bên nhận",
+    "contract_value": 0,
+    "prepay_percent": 0,
+    "prepay_amount": 0,
+    "payment_status": "Chưa thanh toán",
+    "is_completed": false,
+    "notes": "[STATUS:Đã ký|PAY:Chưa thanh toán|COMP:0|CREATOR:Phạm Ánh Tuyết|CID:9e48e6d6-4c32-4166-9578-f8710d224bc7|UPD:Phạm Ánh Tuyết]",
+    "created_at": "2026-10-26T03:45:14.175558+00:00",
+    "updated_at": "2026-10-26T03:53:59.87+00:00",
+    "doc_type": "Nhận",
+    "file_urls": [
+      "https://nvdonaaxbtqjfmxtlgzb.supabase.co/storage/v1/object/public/titsmart-images/documents/1792986301841_vrohibtx.pdf"
+    ],
+    "updated_by": "Phạm Ánh Tuyết",
+    "due_date": null,
+    "remind_days": 3,
+    "document_type": null,
+    "expected_approval_date": null,
+    "project_code": null
+  }
+}

@@ -1,0 +1,78 @@
+{
+  "table": "inventory_transactions",
+  "total_rows": 99,
+  "columns": {
+    "id": {
+      "sample_value": "27aa29d4-d8b0-4ee1-8ee1-4ff7d417c465",
+      "inferred_type": "uuid"
+    },
+    "type": {
+      "sample_value": "IMPORT",
+      "inferred_type": "text"
+    },
+    "date": {
+      "sample_value": "2026-10-15T00:00:00+00:00",
+      "inferred_type": "timestamp with time zone"
+    },
+    "material_id": {
+      "sample_value": null,
+      "inferred_type": "text/nullable"
+    },
+    "material_code": {
+      "sample_value": "DS-7600",
+      "inferred_type": "text"
+    },
+    "material_name": {
+      "sample_value": "Cảm biến cửa Hikvision",
+      "inferred_type": "text"
+    },
+    "specs": {
+      "sample_value": "(Tủ, đầu thu, khóa điện)",
+      "inferred_type": "text"
+    },
+    "category": {
+      "sample_value": "Thiết bị",
+      "inferred_type": "text"
+    },
+    "unit": {
+      "sample_value": "bộ",
+      "inferred_type": "text"
+    },
+    "quantity": {
+      "sample_value": 1,
+      "inferred_type": "integer"
+    },
+    "source_or_project": {
+      "sample_value": "Nhà cung cấp / Mua mới",
+      "inferred_type": "text"
+    },
+    "receiver_name": {
+      "sample_value": "",
+      "inferred_type": "text"
+    },
+    "notes": {
+      "sample_value": "Nhập kho lần đầu",
+      "inferred_type": "text"
+    },
+    "created_at": {
+      "sample_value": "2026-10-15T04:00:22.854431+00:00",
+      "inferred_type": "timestamp with time zone"
+    }
+  },
+  "sample_row": {
+    "id": "27aa29d4-d8b0-4ee1-8ee1-4ff7d417c465",
+    "type": "IMPORT",
+    "date": "2026-10-15T00:00:00+00:00",
+    "material_id": null,
+    "material_code": "DS-7600",
+    "material_name": "Cảm biến cửa Hikvision",
+    "specs": "(Tủ, đầu thu, khóa điện)",
+    "category": "Thiết bị",
+    "unit": "bộ",
+    "quantity": 1,
+    "source_or_project": "Nhà cung cấp / Mua mới",
+    "receiver_name": "",
+    "notes": "Nhập kho lần đầu",
+    "created_at": "2026-10-15T04:00:22.854431+00:00"
+  }
+}

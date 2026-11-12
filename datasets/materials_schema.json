@@ -1,0 +1,113 @@
+{
+  "table": "materials",
+  "total_rows": 93,
+  "columns": {
+    "id": {
+      "sample_value": "84777b1f-2eb5-48e6-a710-5f47e770d00c",
+      "inferred_type": "uuid"
+    },
+    "code": {
+      "sample_value": "TSM-HOP-DUNG-MODULE-NGOAI-TROI-40X60X20",
+      "inferred_type": "text"
+    },
+    "name": {
+      "sample_value": "Hộp đựng Module ngoài trời",
+      "inferred_type": "text"
+    },
+    "english_name": {
+      "sample_value": "40x60x20",
+      "inferred_type": "text"
+    },
+    "project_code": {
+      "sample_value": "COMPANY",
+      "inferred_type": "text"
+    },
+    "project_name": {
+      "sample_value": "Kho Tổng (Kho Công Ty)",
+      "inferred_type": "text"
+    },
+    "volume": {
+      "sample_value": 1,
+      "inferred_type": "integer"
+    },
+    "unit": {
+      "sample_value": "tủ",
+      "inferred_type": "text"
+    },
+    "unit_price": {
+      "sample_value": 0,
+      "inferred_type": "integer"
+    },
+    "status": {
+      "sample_value": "Chưa đặt hàng",
+      "inferred_type": "text"
+    },
+    "constr_status": {
+      "sample_value": "Chưa thi công",
+      "inferred_type": "text"
+    },
+    "supplier": {
+      "sample_value": "",
+      "inferred_type": "text"
+    },
+    "initial_stock": {
+      "sample_value": 0,
+      "inferred_type": "integer"
+    },
+    "current_stock": {
+      "sample_value": 1,
+      "inferred_type": "integer"
+    },
+    "total_import": {
+      "sample_value": 1,
+      "inferred_type": "integer"
+    },
+    "total_export": {
+      "sample_value": 0,
+      "inferred_type": "integer"
+    },
+    "category": {
+      "sample_value": "Thiết bị",
+      "inferred_type": "text"
+    },
+    "specs": {
+      "sample_value": "40x60x20",
+      "inferred_type": "text"
+    },
+    "notes": {
+      "sample_value": null,
+      "inferred_type": "text/nullable"
+    },
+    "created_at": {
+      "sample_value": "2026-10-15T09:47:01.146996+00:00",
+      "inferred_type": "timestamp with time zone"
+    },
+    "stt": {
+      "sample_value": null,
+      "inferred_type": "text/nullable"
+    }
+  },
+  "sample_row": {
+    "id": "84777b1f-2eb5-48e6-a710-5f47e770d00c",
+    "code": "TSM-HOP-DUNG-MODULE-NGOAI-TROI-40X60X20",
+    "name": "Hộp đựng Module ngoài trời",
+    "english_name": "40x60x20",
+    "project_code": "COMPANY",
+    "project_name": "Kho Tổng (Kho Công Ty)",
+    "volume": 1,
+    "unit": "tủ",
+    "unit_price": 0,
+    "status": "Chưa đặt hàng",
+    "constr_status": "Chưa thi công",
+    "supplier": "",
+    "initial_stock": 0,
+    "current_stock": 1,
+    "total_import": 1,
+    "total_export": 0,
+    "category": "Thiết bị",
+    "specs": "40x60x20",
+    "notes": null,
+    "created_at": "2026-10-15T09:47:01.146996+00:00",
+    "stt": null
+  }
+}

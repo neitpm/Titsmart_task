@@ -1,0 +1,48 @@
+{
+  "table": "activity_logs",
+  "total_rows": 26894,
+  "columns": {
+    "id": {
+      "sample_value": "56d39105-bca7-401c-9f6d-536002e3d988",
+      "inferred_type": "uuid"
+    },
+    "user": {
+      "sample_value": "admin",
+      "inferred_type": "text"
+    },
+    "action": {
+      "sample_value": "Đăng nhập vào hệ thống",
+      "inferred_type": "text"
+    },
+    "project": {
+      "sample_value": "Hệ thống",
+      "inferred_type": "text"
+    },
+    "timestamp": {
+      "sample_value": "2026-09-11T04:10:30.545354+00:00",
+      "inferred_type": "timestamp with time zone"
+    },
+    "icon": {
+      "sample_value": "history",
+      "inferred_type": "text"
+    },
+    "badge_bg": {
+      "sample_value": "bg-slate-50",
+      "inferred_type": "text"
+    },
+    "icon_color": {
+      "sample_value": "text-slate-500",
+      "inferred_type": "text"
+    }
+  },
+  "sample_row": {
+    "id": "56d39105-bca7-401c-9f6d-536002e3d988",
+    "user": "admin",
+    "action": "Đăng nhập vào hệ thống",
+    "project": "Hệ thống",
+    "timestamp": "2026-09-11T04:10:30.545354+00:00",
+    "icon": "history",
+    "badge_bg": "bg-slate-50",
+    "icon_color": "text-slate-500"
+  }
+}

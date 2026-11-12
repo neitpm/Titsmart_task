@@ -1,0 +1,158 @@
+{
+  "table": "material_plans",
+  "total_rows": 2789,
+  "columns": {
+    "id": {
+      "sample_value": "04e60fcd-ffa2-4b8e-b73f-4fb6504dc50a",
+      "inferred_type": "uuid"
+    },
+    "stt": {
+      "sample_value": "33.1",
+      "inferred_type": "text"
+    },
+    "job_content": {
+      "sample_value": "Tủ Thông tin liên lạc, (đặt trong nhà) được trang bị (tủ bao gồm):",
+      "inferred_type": "text"
+    },
+    "unit": {
+      "sample_value": "",
+      "inferred_type": "text"
+    },
+    "contract_volume": {
+      "sample_value": 0,
+      "inferred_type": "integer"
+    },
+    "technical_standards": {
+      "sample_value": null,
+      "inferred_type": "text/nullable"
+    },
+    "status": {
+      "sample_value": null,
+      "inferred_type": "text/nullable"
+    },
+    "progress": {
+      "sample_value": null,
+      "inferred_type": "text/nullable"
+    },
+    "notes": {
+      "sample_value": "",
+      "inferred_type": "text"
+    },
+    "project_code": {
+      "sample_value": "TRAM_BIEN_AP_110KV_PHUOC_DONG_6",
+      "inferred_type": "text"
+    },
+    "created_at": {
+      "sample_value": "2026-09-07T09:09:01.98784+00:00",
+      "inferred_type": "timestamp with time zone"
+    },
+    "tech_spec_model": {
+      "sample_value": "",
+      "inferred_type": "text"
+    },
+    "tech_spec_origin": {
+      "sample_value": "",
+      "inferred_type": "text"
+    },
+    "progress_status": {
+      "sample_value": "Đang thi công",
+      "inferred_type": "text"
+    },
+    "ordered_volume": {
+      "sample_value": 0,
+      "inferred_type": "integer"
+    },
+    "ordered_status": {
+      "sample_value": "Đã có hàng",
+      "inferred_type": "text"
+    },
+    "expected_date": {
+      "sample_value": "",
+      "inferred_type": "text"
+    },
+    "issue_content": {
+      "sample_value": "",
+      "inferred_type": "text"
+    },
+    "issue_status": {
+      "sample_value": "",
+      "inferred_type": "text"
+    },
+    "doc_co": {
+      "sample_value": false,
+      "inferred_type": "boolean"
+    },
+    "doc_cq": {
+      "sample_value": false,
+      "inferred_type": "boolean"
+    },
+    "doc_fire_inspection": {
+      "sample_value": false,
+      "inferred_type": "boolean"
+    },
+    "dispatch_to_site": {
+      "sample_value": false,
+      "inferred_type": "boolean"
+    },
+    "supply_scope": {
+      "sample_value": "contractor",
+      "inferred_type": "text"
+    },
+    "parent_id": {
+      "sample_value": "196627a5-0afc-435d-8f4c-6fdba95cd046",
+      "inferred_type": "uuid"
+    },
+    "tech_spec_status": {
+      "sample_value": "Đáp ứng",
+      "inferred_type": "text"
+    },
+    "dispatch_date": {
+      "sample_value": null,
+      "inferred_type": "text/nullable"
+    },
+    "doc_stamp": {
+      "sample_value": false,
+      "inferred_type": "boolean"
+    },
+    "updated_by": {
+      "sample_value": "Nguyễn Quốc Khánh",
+      "inferred_type": "text"
+    },
+    "updated_at": {
+      "sample_value": "2026-09-10T11:17:56.756+00:00",
+      "inferred_type": "timestamp with time zone"
+    }
+  },
+  "sample_row": {
+    "id": "04e60fcd-ffa2-4b8e-b73f-4fb6504dc50a",
+    "stt": "33.1",
+    "job_content": "Tủ Thông tin liên lạc, (đặt trong nhà) được trang bị (tủ bao gồm):",
+    "unit": "",
+    "contract_volume": 0,
+    "technical_standards": null,
+    "status": null,
+    "progress": null,
+    "notes": "",
+    "project_code": "TRAM_BIEN_AP_110KV_PHUOC_DONG_6",
+    "created_at": "2026-09-07T09:09:01.98784+00:00",
+    "tech_spec_model": "",
+    "tech_spec_origin": "",
+    "progress_status": "Đang thi công",
+    "ordered_volume": 0,
+    "ordered_status": "Đã có hàng",
+    "expected_date": "",
+    "issue_content": "",
+    "issue_status": "",
+    "doc_co": false,
+    "doc_cq": false,
+    "doc_fire_inspection": false,
+    "dispatch_to_site": false,
+    "supply_scope": "contractor",
+    "parent_id": "196627a5-0afc-435d-8f4c-6fdba95cd046",
+    "tech_spec_status": "Đáp ứng",
+    "dispatch_date": null,
+    "doc_stamp": false,
+    "updated_by": "Nguyễn Quốc Khánh",
+    "updated_at": "2026-09-10T11:17:56.756+00:00"
+  }
+}

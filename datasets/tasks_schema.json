@@ -1,0 +1,158 @@
+{
+  "table": "tasks",
+  "total_rows": 1138,
+  "columns": {
+    "id": {
+      "sample_value": "48a5ab29-17ee-48c3-9897-4e44aba15700",
+      "inferred_type": "uuid"
+    },
+    "stt": {
+      "sample_value": "37.7",
+      "inferred_type": "text"
+    },
+    "code": {
+      "sample_value": "48a5ab29-17ee-48c3-9897-4e44aba15700",
+      "inferred_type": "uuid"
+    },
+    "name": {
+      "sample_value": "Dây nhảy Cáp quang singlemode",
+      "inferred_type": "text"
+    },
+    "project_code": {
+      "sample_value": "TRAM_BIEN_AP_110KV_PHUOC_DONG_6",
+      "inferred_type": "text"
+    },
+    "project_name": {
+      "sample_value": "Trạm biến áp 110kV Phước Đông 6",
+      "inferred_type": "text"
+    },
+    "volume": {
+      "sample_value": 4,
+      "inferred_type": "integer"
+    },
+    "unit": {
+      "sample_value": "sợi",
+      "inferred_type": "text"
+    },
+    "progress": {
+      "sample_value": 0.5,
+      "inferred_type": "numeric"
+    },
+    "status": {
+      "sample_value": "Đang làm",
+      "inferred_type": "text"
+    },
+    "purchase_status": {
+      "sample_value": "Đã có hàng",
+      "inferred_type": "text"
+    },
+    "constr_status": {
+      "sample_value": "Chưa thi công",
+      "inferred_type": "text"
+    },
+    "issue": {
+      "sample_value": null,
+      "inferred_type": "text/nullable"
+    },
+    "issue_status": {
+      "sample_value": null,
+      "inferred_type": "text/nullable"
+    },
+    "is_done": {
+      "sample_value": false,
+      "inferred_type": "boolean"
+    },
+    "is_section_header": {
+      "sample_value": false,
+      "inferred_type": "boolean"
+    },
+    "section_name": {
+      "sample_value": "HỆ THỐNG SCADA DO NHÀ THẦU CUNG CẤP, VẬN CHUYỂN VÀ LẮP ĐẶT HOÀN THIỆN TẠI CÔNG TRÌNH",
+      "inferred_type": "text"
+    },
+    "parent_id": {
+      "sample_value": "c93cd419-e68f-4efb-b7d1-5fbc59c3ad8f",
+      "inferred_type": "uuid"
+    },
+    "notes": {
+      "sample_value": "Nhà thầu cung cấp | Import từ phụ lục dự án\n[tech-status:Đáp ứng]",
+      "inferred_type": "text"
+    },
+    "assigner_id": {
+      "sample_value": null,
+      "inferred_type": "text/nullable"
+    },
+    "assigner_name": {
+      "sample_value": null,
+      "inferred_type": "text/nullable"
+    },
+    "assigned_engineer_id": {
+      "sample_value": null,
+      "inferred_type": "text/nullable"
+    },
+    "assigned_engineer_name": {
+      "sample_value": "",
+      "inferred_type": "text"
+    },
+    "reviewer_id": {
+      "sample_value": null,
+      "inferred_type": "text/nullable"
+    },
+    "reviewer_name": {
+      "sample_value": null,
+      "inferred_type": "text/nullable"
+    },
+    "due_date": {
+      "sample_value": null,
+      "inferred_type": "text/nullable"
+    },
+    "priority": {
+      "sample_value": "Medium",
+      "inferred_type": "text"
+    },
+    "created_at": {
+      "sample_value": "2026-09-07T09:09:01.761768+00:00",
+      "inferred_type": "timestamp with time zone"
+    },
+    "updated_by": {
+      "sample_value": "Phan Ngọc Huy",
+      "inferred_type": "text"
+    },
+    "updated_at": {
+      "sample_value": "2026-10-03T01:53:39.552+00:00",
+      "inferred_type": "timestamp with time zone"
+    }
+  },
+  "sample_row": {
+    "id": "48a5ab29-17ee-48c3-9897-4e44aba15700",
+    "stt": "37.7",
+    "code": "48a5ab29-17ee-48c3-9897-4e44aba15700",
+    "name": "Dây nhảy Cáp quang singlemode",
+    "project_code": "TRAM_BIEN_AP_110KV_PHUOC_DONG_6",
+    "project_name": "Trạm biến áp 110kV Phước Đông 6",
+    "volume": 4,
+    "unit": "sợi",
+    "progress": 0.5,
+    "status": "Đang làm",
+    "purchase_status": "Đã có hàng",
+    "constr_status": "Chưa thi công",
+    "issue": null,
+    "issue_status": null,
+    "is_done": false,
+    "is_section_header": false,
+    "section_name": "HỆ THỐNG SCADA DO NHÀ THẦU CUNG CẤP, VẬN CHUYỂN VÀ LẮP ĐẶT HOÀN THIỆN TẠI CÔNG TRÌNH",
+    "parent_id": "c93cd419-e68f-4efb-b7d1-5fbc59c3ad8f",
+    "notes": "Nhà thầu cung cấp | Import từ phụ lục dự án\n[tech-status:Đáp ứng]",
+    "assigner_id": null,
+    "assigner_name": null,
+    "assigned_engineer_id": null,
+    "assigned_engineer_name": "",
+    "reviewer_id": null,
+    "reviewer_name": null,
+    "due_date": null,
+    "priority": "Medium",
+    "created_at": "2026-09-07T09:09:01.761768+00:00",
+    "updated_by": "Phan Ngọc Huy",
+    "updated_at": "2026-10-03T01:53:39.552+00:00"
+  }
+}

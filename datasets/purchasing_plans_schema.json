@@ -1,0 +1,178 @@
+{
+  "table": "purchasing_plans",
+  "total_rows": 1149,
+  "columns": {
+    "id": {
+      "sample_value": "b5494460-f516-49f5-915e-29598fb3f2de",
+      "inferred_type": "uuid"
+    },
+    "stt": {
+      "sample_value": "11",
+      "inferred_type": "text"
+    },
+    "job_content": {
+      "sample_value": null,
+      "inferred_type": "text/nullable"
+    },
+    "unit": {
+      "sample_value": "",
+      "inferred_type": "text"
+    },
+    "contract_volume": {
+      "sample_value": 0,
+      "inferred_type": "integer"
+    },
+    "contractor_volume": {
+      "sample_value": 0,
+      "inferred_type": "integer"
+    },
+    "supplier_quote": {
+      "sample_value": 0,
+      "inferred_type": "integer"
+    },
+    "selected_supplier": {
+      "sample_value": null,
+      "inferred_type": "text/nullable"
+    },
+    "unit_price": {
+      "sample_value": 0,
+      "inferred_type": "integer"
+    },
+    "expected_delivery_date": {
+      "sample_value": null,
+      "inferred_type": "text/nullable"
+    },
+    "actual_delivery_date": {
+      "sample_value": null,
+      "inferred_type": "text/nullable"
+    },
+    "order_status": {
+      "sample_value": "Chưa đặt hàng",
+      "inferred_type": "text"
+    },
+    "issues": {
+      "sample_value": null,
+      "inferred_type": "text/nullable"
+    },
+    "resolution": {
+      "sample_value": null,
+      "inferred_type": "text/nullable"
+    },
+    "resolved": {
+      "sample_value": false,
+      "inferred_type": "boolean"
+    },
+    "notes": {
+      "sample_value": "[order:00028] | [section] | Nhà thầu cung cấp | Đồng bộ từ phụ lục khi tạo dự án",
+      "inferred_type": "text"
+    },
+    "project_code": {
+      "sample_value": "TRAM_BIEN_AP_220KV_LUC_YEN",
+      "inferred_type": "text"
+    },
+    "created_at": {
+      "sample_value": "2026-08-25T10:03:50.341985+00:00",
+      "inferred_type": "timestamp with time zone"
+    },
+    "content": {
+      "sample_value": "TRẠM BIẾN ÁP 220KV LỤC YÊN: HỆ THỐNG PIN NĂNG LƯỢNG MẶT TRỜI (Nhà thầu cung cấp và lắp đặt)",
+      "inferred_type": "text"
+    },
+    "volume_contract": {
+      "sample_value": 0,
+      "inferred_type": "integer"
+    },
+    "volume_order": {
+      "sample_value": 0,
+      "inferred_type": "integer"
+    },
+    "vat_rate": {
+      "sample_value": 10,
+      "inferred_type": "integer"
+    },
+    "vat_amount": {
+      "sample_value": 0,
+      "inferred_type": "integer"
+    },
+    "total_amount": {
+      "sample_value": 0,
+      "inferred_type": "integer"
+    },
+    "prepay_percent": {
+      "sample_value": 0,
+      "inferred_type": "integer"
+    },
+    "prepay_amount": {
+      "sample_value": 0,
+      "inferred_type": "integer"
+    },
+    "remaining_amount": {
+      "sample_value": 0,
+      "inferred_type": "integer"
+    },
+    "contract_status": {
+      "sample_value": "Đã có phụ lục",
+      "inferred_type": "text"
+    },
+    "invoice_status": {
+      "sample_value": "Chưa xuất",
+      "inferred_type": "text"
+    },
+    "parent_id": {
+      "sample_value": null,
+      "inferred_type": "text/nullable"
+    },
+    "material_plan_id": {
+      "sample_value": null,
+      "inferred_type": "text/nullable"
+    },
+    "payment_date": {
+      "sample_value": null,
+      "inferred_type": "text/nullable"
+    },
+    "updated_by": {
+      "sample_value": null,
+      "inferred_type": "text/nullable"
+    },
+    "updated_at": {
+      "sample_value": "2026-09-09T08:22:52.349807+00:00",
+      "inferred_type": "timestamp with time zone"
+    }
+  },
+  "sample_row": {
+    "id": "b5494460-f516-49f5-915e-29598fb3f2de",
+    "stt": "11",
+    "job_content": null,
+    "unit": "",
+    "contract_volume": 0,
+    "contractor_volume": 0,
+    "supplier_quote": 0,
+    "selected_supplier": null,
+    "unit_price": 0,
+    "expected_delivery_date": null,
+    "actual_delivery_date": null,
+    "order_status": "Chưa đặt hàng",
+    "issues": null,
+    "resolution": null,
+    "resolved": false,
+    "notes": "[order:00028] | [section] | Nhà thầu cung cấp | Đồng bộ từ phụ lục khi tạo dự án",
+    "project_code": "TRAM_BIEN_AP_220KV_LUC_YEN",
+    "created_at": "2026-08-25T10:03:50.341985+00:00",
+    "content": "TRẠM BIẾN ÁP 220KV LỤC YÊN: HỆ THỐNG PIN NĂNG LƯỢNG MẶT TRỜI (Nhà thầu cung cấp và lắp đặt)",
+    "volume_contract": 0,
+    "volume_order": 0,
+    "vat_rate": 10,
+    "vat_amount": 0,
+    "total_amount": 0,
+    "prepay_percent": 0,
+    "prepay_amount": 0,
+    "remaining_amount": 0,
+    "contract_status": "Đã có phụ lục",
+    "invoice_status": "Chưa xuất",
+    "parent_id": null,
+    "material_plan_id": null,
+    "payment_date": null,
+    "updated_by": null,
+    "updated_at": "2026-09-09T08:22:52.349807+00:00"
+  }
+}
