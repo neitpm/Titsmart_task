@@ -173,6 +173,8 @@ export interface Issue {
   updatedAt?: string;
 }
 
+export type AccountStatus = 'NOT_CREATED' | 'INVITED' | 'ACTIVE' | 'DISABLED' | 'SYNC_ERROR';
+
 export interface Engineer {
   id: string;
   code?: string;
@@ -182,6 +184,12 @@ export interface Engineer {
   username?: string;
   password?: string;
   isLocked?: boolean;
+  isActive?: boolean;
+  accountStatus?: AccountStatus;
+  syncError?: string;
+  mustChangePassword?: boolean;
+  lastSyncedAt?: string;
+  authUserId?: string;
   avatar: string;
   phone: string;
   emergencyPhone?: string;

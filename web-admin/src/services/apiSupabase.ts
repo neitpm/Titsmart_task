@@ -1167,6 +1167,59 @@ export const api = {
       if (error) throw error;
       return { success: true };
     },
+    syncAuthAccount: async (engineer: any, password?: string) => {
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData?.session?.access_token;
+        if (!token) {
+          throw new Error('Bạn cần đăng nhập với quyền Quản trị viên để thực hiện thao tác này.');
+        }
+
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'http://127.0.0.1:54321';
+        const response = await fetch(`${supabaseUrl}/functions/v1/admin-create-staff-account`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            action: 'sync',
+            engineer_id: engineer.id,
+            username: engineer.username,
+            email: engineer.email,
+            name: engineer.name,
+            role: engineer.role,
+            title: engineer.title,
+            password: password,
+            permissions: engineer.permissions || [],
+            project_codes: engineer.projectCodes || engineer.project_codes || [],
+            phone: engineer.phone,
+            address: engineer.address,
+            identity_number: engineer.identityNumber || engineer.identity_number,
+            emergency_phone: engineer.emergencyPhone || engineer.emergency_phone,
+            emergency_contact_name: engineer.emergencyContactName || engineer.emergency_contact_name,
+          }),
+        });
+
+        const resData = await response.json();
+        if (!response.ok) {
+          throw new Error(resData?.error || 'Lỗi khi kích hoạt tài khoản qua Edge Function');
+        }
+
+        return { success: true, data: resData };
+      } catch (err: any) {
+        console.error('[Engineers] syncAuthAccount error:', err);
+        // Cập nhật trạng thái SYNC_ERROR vào database nếu có id
+        if (engineer.id) {
+          await supabase.from('engineers').update({
+            account_status: 'SYNC_ERROR',
+            sync_error: err?.message || 'Lỗi đồng bộ tài khoản',
+            last_synced_at: new Date().toISOString(),
+          }).eq('id', engineer.id);
+        }
+        return { success: false, error: err?.message || 'Không thể đồng bộ tài khoản' };
+      }
+    },
   },
   activityLogs: {
     getAll: async (projectCode?: string) => {

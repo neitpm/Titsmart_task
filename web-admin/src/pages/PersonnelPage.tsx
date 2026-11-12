@@ -133,6 +133,7 @@ export const PersonnelPage: React.FC = () => {
   const tasks = useRealtimeStore(state => state.tasks);
   const createEngineer = useRealtimeStore(state => state.createEngineer);
   const updateEngineer = useRealtimeStore(state => state.updateEngineer);
+  const syncEngineerAuth = useRealtimeStore(state => state.syncEngineerAuth);
   const deleteEngineer = useRealtimeStore(state => state.deleteEngineer);
   const fetchProjects = useRealtimeStore(state => state.fetchProjects);
   const fetchEngineers = useRealtimeStore(state => state.fetchEngineers);
@@ -146,6 +147,8 @@ export const PersonnelPage: React.FC = () => {
 
   const [lockedIds, setLockedIds] = useState<string[]>([]);
   const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [syncingId, setSyncingId] = useState<string | null>(null);
   const [phone, setPhone] = useState('');
   const [emergencyPhone, setEmergencyPhone] = useState('');
   const [joinDate, setJoinDate] = useState('');
@@ -325,6 +328,7 @@ export const PersonnelPage: React.FC = () => {
   const resetForm = () => {
     setEditingPersonId(null);
     setName('');
+    setEmail('');
     setPhone('');
     setEmergencyPhone('');
     setJoinDate('');
@@ -447,6 +451,7 @@ export const PersonnelPage: React.FC = () => {
   const openEditModal = (person: typeof people[number]) => {
     setEditingPersonId(person.id);
     setName(person.name || '');
+    setEmail((person as any).email || '');
     setPermissions((person.permissions?.length ?? 0) > 0 ? person.permissions! : getDefaultPermissions(person.role || 'Nhân viên'));
     setPhone(person.phone || '');
     setEmergencyPhone((person as any).emergencyPhone || (person as any).emergency_phone || '');
@@ -482,6 +487,7 @@ export const PersonnelPage: React.FC = () => {
       if (editingPersonId) {
         await updateEngineer(editingPersonId, {
           name: name.trim(),
+          email: email.trim(),
           phone,
           emergencyPhone,
           joinDate,
@@ -555,6 +561,7 @@ export const PersonnelPage: React.FC = () => {
 
         const created = await createEngineer({
           name: name.trim(),
+          email: email.trim(),
           phone,
           emergencyPhone,
           joinDate,
@@ -571,6 +578,24 @@ export const PersonnelPage: React.FC = () => {
 
         if (created && created.id) {
           const engId = created.id;
+
+          // TỰ ĐỘNG PROVISION TÀI KHOẢN QUA EDGE FUNCTION NẾU CÓ EMAIL
+          if (email.trim()) {
+            try {
+              const syncRes = await syncEngineerAuth(created, password);
+              if (syncRes.success) {
+                triggerToast(`Đã tạo hồ sơ và kích hoạt tài khoản đăng nhập cho "${name.trim()}"!`, 'success');
+              } else {
+                triggerToast(`Đã tạo hồ sơ "${name.trim()}", nhưng chưa kích hoạt tài khoản Auth: ${syncRes.error}`, 'warning');
+              }
+            } catch (authErr: any) {
+              console.warn('Auto sync auth failed on create:', authErr);
+              triggerToast(`Đã tạo hồ sơ "${name.trim()}", vui lòng bấm "Kích hoạt tài khoản" để cấp quyền đăng nhập.`, 'warning');
+            }
+          } else {
+            triggerToast(`Đã tạo hồ sơ "${name.trim()}". Chưa kích hoạt tài khoản do chưa nhập email.`, 'info');
+          }
+
           const targetCodesUpper = finalProjectCodes.map(c => String(c || '').trim().toUpperCase());
           const projectSyncPromises: Promise<any>[] = [];
           
@@ -804,6 +829,7 @@ export const PersonnelPage: React.FC = () => {
                   <th className="text-left p-2 sm:p-3 bg-slate-50 whitespace-nowrap">Họ tên</th>
                   <th className="text-left p-2 sm:p-3 bg-slate-50 whitespace-nowrap">Mã NV</th>
                   <th className="text-left p-2 sm:p-3 bg-slate-50 whitespace-nowrap">Tài khoản</th>
+                  <th className="text-left p-2 sm:p-3 bg-slate-50 whitespace-nowrap">Tài khoản Auth</th>
                   <th className="text-left p-2 sm:p-3 bg-slate-50 whitespace-nowrap">Vai trò / Chức danh</th>
                   <th className="text-left p-2 sm:p-3 bg-slate-50 whitespace-nowrap">Dự án</th>
                   <th className="text-center p-2 sm:p-3 bg-slate-50 whitespace-nowrap">KPI & Công việc</th>
@@ -827,6 +853,95 @@ export const PersonnelPage: React.FC = () => {
                       </td>
                       <td className="p-2 sm:p-3 font-mono font-bold text-primary max-w-[140px] truncate whitespace-nowrap text-[10px] sm:text-xs" title={person.code}>{person.code}</td>
                       <td className="p-2 sm:p-3 text-slate-700 font-semibold max-w-[110px] truncate whitespace-nowrap text-[10px] sm:text-xs" title={person.username || '-'}>{person.username || '-'}</td>
+                      <td className="p-2 sm:p-3 whitespace-nowrap">
+                        {(() => {
+                          const status = (person as any).accountStatus || (person as any).account_status || ((person as any).auth_user_id || (person as any).authUserId ? 'ACTIVE' : 'NOT_CREATED');
+                          if (status === 'ACTIVE') {
+                            return (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                Đã kích hoạt
+                              </span>
+                            );
+                          }
+                          if (status === 'SYNC_ERROR') {
+                            return (
+                              <div className="flex items-center gap-1.5">
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200" title={(person as any).syncError || (person as any).sync_error || 'Lỗi đồng bộ Auth'}>
+                                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                                  Lỗi Auth
+                                </span>
+                                {(hasPermission(user, 'MANAGE_USERS') || hasPermission(user, 'EDIT_USERS')) && (
+                                  <button
+                                    type="button"
+                                    disabled={syncingId === person.id}
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      setSyncingId(person.id);
+                                      try {
+                                        const res = await syncEngineerAuth(person);
+                                        if (res.success) {
+                                          triggerToast(`Đã đồng bộ lại tài khoản cho "${person.name}" thành công!`, 'success');
+                                        } else {
+                                          triggerToast(`Đồng bộ thất bại: ${res.error}`, 'warning');
+                                        }
+                                      } catch (err: any) {
+                                        triggerToast(`Lỗi: ${err?.message}`, 'warning');
+                                      } finally {
+                                        setSyncingId(null);
+                                      }
+                                    }}
+                                    className="p-1 rounded bg-rose-100 hover:bg-rose-200 text-rose-800 text-[10px] font-bold transition-all cursor-pointer"
+                                    title="Thử lại đồng bộ tài khoản"
+                                  >
+                                    <span className="material-symbols-outlined text-[13px]">{syncingId === person.id ? 'sync' : 'refresh'}</span>
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          }
+                          return (
+                            <div className="flex items-center gap-1.5">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                                Chưa tạo
+                              </span>
+                              {(hasPermission(user, 'MANAGE_USERS') || hasPermission(user, 'EDIT_USERS')) && (
+                                <button
+                                  type="button"
+                                  disabled={syncingId === person.id}
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
+                                    if (!(person as any).email) {
+                                      triggerToast(`Vui lòng chỉnh sửa và bổ sung Email cho "${person.name}" trước khi kích hoạt!`, 'warning');
+                                      openEditModal(person);
+                                      return;
+                                    }
+                                    setSyncingId(person.id);
+                                    try {
+                                      const res = await syncEngineerAuth(person);
+                                      if (res.success) {
+                                        triggerToast(`Đã kích hoạt tài khoản đăng nhập cho "${person.name}" thành công!`, 'success');
+                                      } else {
+                                        triggerToast(`Kích hoạt thất bại: ${res.error}`, 'warning');
+                                      }
+                                    } catch (err: any) {
+                                      triggerToast(`Lỗi: ${err?.message}`, 'warning');
+                                    } finally {
+                                      setSyncingId(null);
+                                    }
+                                  }}
+                                  className="px-2 py-0.5 rounded bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 shadow-2xs"
+                                  title="Kích hoạt tài khoản đăng nhập Supabase Auth"
+                                >
+                                  <span className="material-symbols-outlined text-[12px]">{syncingId === person.id ? 'sync' : 'bolt'}</span>
+                                  <span>{syncingId === person.id ? 'Đang tạo...' : 'Kích hoạt'}</span>
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })()}
+                      </td>
                       <td className="p-2 sm:p-3 whitespace-nowrap">
                         <span className="text-[10px] sm:text-[11px] font-medium text-slate-700">
                           {person.role}
@@ -932,17 +1047,23 @@ export const PersonnelPage: React.FC = () => {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <label className="text-[13px] font-bold text-slate-700">Ngày vào công ty</label>
-              <input type="date" value={joinDate} onChange={(event) => setJoinDate(event.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:outline-none" />
+              <label className="text-[13px] font-bold text-slate-700">Email liên hệ <span className="text-red-500">*</span></label>
+              <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="email@titsmart.vn" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:outline-none" required />
             </div>
             <div className="space-y-1">
               <label className="text-[13px] font-bold text-slate-700">Số điện thoại</label>
               <input value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="Nhập SĐT" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:outline-none" />
             </div>
           </div>
-          <div className="space-y-1">
-            <label className="text-[13px] font-bold text-slate-700">Địa chỉ</label>
-            <input value={address} onChange={(event) => setAddress(event.target.value)} placeholder="Nhập địa chỉ hiện tại" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:outline-none" />
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-[13px] font-bold text-slate-700">Ngày vào công ty</label>
+              <input type="date" value={joinDate} onChange={(event) => setJoinDate(event.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:outline-none" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[13px] font-bold text-slate-700">Địa chỉ</label>
+              <input value={address} onChange={(event) => setAddress(event.target.value)} placeholder="Nhập địa chỉ hiện tại" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:outline-none" />
+            </div>
           </div>
 
           <div className="mt-3 mb-1 text-[11px] font-extrabold uppercase tracking-wide text-slate-400">Thông tin người thân</div>
