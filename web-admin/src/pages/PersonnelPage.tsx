@@ -919,7 +919,7 @@ export const PersonnelPage: React.FC = () => {
                                     }
                                     setSyncingId(person.id);
                                     try {
-                                      const res = await syncEngineerAuth(person);
+                                      const res = await syncEngineerAuth(person, (person as any).password || '123456');
                                       if (res.success) {
                                         triggerToast(`Đã kích hoạt tài khoản đăng nhập cho "${person.name}" thành công!`, 'success');
                                       } else {

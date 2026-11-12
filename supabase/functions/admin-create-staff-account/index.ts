@@ -164,14 +164,19 @@ serve(async (req: Request) => {
     );
 
     if (existingUser) {
-      // Reconcile: User đã tồn tại trong Auth -> Tái sử dụng ID này
+      // Reconcile: User đã tồn tại trong Auth -> Tái sử dụng ID này và cập nhật mật khẩu nếu có truyền vào
       authUserId = existingUser.id;
+      if (password) {
+        await adminClient.auth.admin.updateUserById(authUserId, {
+          password: password,
+        });
+      }
     } else {
       // Tạo user mới trong Auth với Admin API
-      const tempPassword = password || `Tit@${Math.random().toString(36).slice(-8)}A1!`;
+      const initialPassword = password || "123456";
       const { data: newAuthData, error: createAuthError } = await adminClient.auth.admin.createUser({
         email: cleanEmail,
-        password: tempPassword,
+        password: initialPassword,
         email_confirm: true,
         user_metadata: {
           username: cleanUsername,
