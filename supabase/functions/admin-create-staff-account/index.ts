@@ -46,20 +46,52 @@ serve(async (req: Request) => {
 
     // Kiểm tra quyền Admin trong database engineers
     const adminClient = createClient(supabaseUrl, supabaseServiceKey);
-    const { data: callerEng } = await adminClient
+    const callerEmail = String(callerUser.email || '').trim().toLowerCase();
+    const callerId = String(callerUser.id || '').trim();
+
+    const { data: callerEngList } = await adminClient
       .from("engineers")
-      .select("id, role, permissions, auth_user_id, username")
-      .or(`auth_user_id.eq.${callerUser.id},id.eq.${callerUser.id},email.eq.${callerUser.email}`)
-      .maybeSingle();
+      .select("id, role, permissions, auth_user_id, username, email");
 
-    const isSystemAdmin = callerUser.email === "admin@titsmart.vn" || 
-      (callerEng && (callerEng.role === "admin" || callerEng.role === "Quản trị viên" || callerEng.username === "admin"));
+    const callerEng = (callerEngList || []).find((eng: any) => {
+      const eAuthId = String(eng.auth_user_id || '').trim();
+      const eId = String(eng.id || '').trim();
+      const eEmail = String(eng.email || '').trim().toLowerCase();
+      const eUsername = String(eng.username || '').trim().toLowerCase();
 
-    const hasManageUsers = callerEng && Array.isArray(callerEng.permissions) && callerEng.permissions.includes("MANAGE_USERS");
+      return (
+        (callerId && (eAuthId === callerId || eId === callerId)) ||
+        (callerEmail && (eEmail === callerEmail || eUsername === callerEmail.split('@')[0]))
+      );
+    });
 
-    if (!isSystemAdmin && !hasManageUsers) {
+    const isSystemAdmin = 
+      callerEmail === "admin@titsmart.vn" || 
+      callerEmail.startsWith("admin@") ||
+      callerUser.user_metadata?.role === "admin" ||
+      (callerEng && (
+        String(callerEng.role || '').toLowerCase().includes("admin") ||
+        String(callerEng.role || '').toLowerCase().includes("quản trị viên") ||
+        String(callerEng.role || '').toLowerCase().includes("giám đốc") ||
+        String(callerEng.username || '').toLowerCase() === "admin"
+      ));
+
+    const hasManageUsers = Boolean(
+      isSystemAdmin || 
+      (callerEng && Array.isArray(callerEng.permissions) && (
+        callerEng.permissions.includes("MANAGE_USERS") || 
+        callerEng.permissions.includes("EDIT_USERS")
+      ))
+    );
+
+    if (!hasManageUsers) {
       return new Response(
-        JSON.stringify({ error: "Forbidden: Caller does not have permission to manage staff accounts" }),
+        JSON.stringify({ 
+          error: "Forbidden: Caller does not have permission to manage staff accounts",
+          caller_id: callerId,
+          caller_email: callerEmail,
+          found_in_engineers: !!callerEng
+        }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
