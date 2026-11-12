@@ -44,54 +44,52 @@ serve(async (req: Request) => {
       );
     }
 
-    // Kiểm tra quyền Admin trong database engineers
+    // 1.2 Kiểm tra quyền Quản trị viên chặt chẽ theo auth.uid() & permissions
     const adminClient = createClient(supabaseUrl, supabaseServiceKey);
-    const callerEmail = String(callerUser.email || '').trim().toLowerCase();
     const callerId = String(callerUser.id || '').trim();
+    const callerEmail = String(callerUser.email || '').trim().toLowerCase();
 
-    const { data: callerEngList } = await adminClient
+    // Tra cứu bản ghi nhân sự duy nhất ứng với auth_user_id của caller
+    let { data: callerEng } = await adminClient
       .from("engineers")
-      .select("id, role, permissions, auth_user_id, username, email");
+      .select("id, role, permissions, auth_user_id, is_active, email")
+      .eq("auth_user_id", callerId)
+      .maybeSingle();
 
-    const callerEng = (callerEngList || []).find((eng: any) => {
-      const eAuthId = String(eng.auth_user_id || '').trim();
-      const eId = String(eng.id || '').trim();
-      const eEmail = String(eng.email || '').trim().toLowerCase();
-      const eUsername = String(eng.username || '').trim().toLowerCase();
+    // Fallback duy nhất: Nếu tài khoản Admin hệ thống ban đầu chưa kịp mapping auth_user_id
+    if (!callerEng && (callerEmail === "admin@titsmart.vn" || callerUser.user_metadata?.role === "admin")) {
+      const { data: adminFallback } = await adminClient
+        .from("engineers")
+        .select("id, role, permissions, auth_user_id, is_active, email")
+        .eq("email", callerEmail)
+        .maybeSingle();
 
-      return (
-        (callerId && (eAuthId === callerId || eId === callerId)) ||
-        (callerEmail && (eEmail === callerEmail || eUsername === callerEmail.split('@')[0]))
+      if (adminFallback) {
+        callerEng = adminFallback;
+        // Tự động chuẩn hóa mapping auth_user_id cho Admin để không dùng fallback ở các lần sau
+        await adminClient
+          .from("engineers")
+          .update({ auth_user_id: callerId, account_status: "ACTIVE", is_active: true })
+          .eq("id", adminFallback.id);
+      }
+    }
+
+    if (!callerEng || callerEng.is_active === false) {
+      return new Response(
+        JSON.stringify({ error: "Forbidden: Caller account is disabled or not linked to personnel profile." }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
-    });
+    }
 
-    const isSystemAdmin = 
-      callerEmail === "admin@titsmart.vn" || 
-      callerEmail.startsWith("admin@") ||
-      callerUser.user_metadata?.role === "admin" ||
-      (callerEng && (
-        String(callerEng.role || '').toLowerCase().includes("admin") ||
-        String(callerEng.role || '').toLowerCase().includes("quản trị viên") ||
-        String(callerEng.role || '').toLowerCase().includes("giám đốc") ||
-        String(callerEng.username || '').toLowerCase() === "admin"
-      ));
-
-    const hasManageUsers = Boolean(
-      isSystemAdmin || 
-      (callerEng && Array.isArray(callerEng.permissions) && (
-        callerEng.permissions.includes("MANAGE_USERS") || 
-        callerEng.permissions.includes("EDIT_USERS")
-      ))
-    );
+    // Tiêu chuẩn phân quyền: Phải có quyền MANAGE_USERS hoặc là System Admin (admin/Quản trị viên)
+    const permissions: string[] = Array.isArray(callerEng.permissions) ? callerEng.permissions : [];
+    const roleStr = String(callerEng.role || '').toLowerCase();
+    const isSystemAdminRole = roleStr === "admin" || roleStr === "quản trị viên" || callerEmail === "admin@titsmart.vn";
+    const hasManageUsers = isSystemAdminRole || permissions.includes("MANAGE_USERS");
 
     if (!hasManageUsers) {
       return new Response(
-        JSON.stringify({ 
-          error: "Forbidden: Caller does not have permission to manage staff accounts",
-          caller_id: callerId,
-          caller_email: callerEmail,
-          found_in_engineers: !!callerEng
-        }),
+        JSON.stringify({ error: "Forbidden: Caller does not have MANAGE_USERS permission." }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
