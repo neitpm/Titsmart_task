@@ -1175,12 +1175,17 @@ export const api = {
           throw new Error('Bạn cần đăng nhập với quyền Quản trị viên để thực hiện thao tác này.');
         }
 
+        const cleanEmail = (engineer.email || '').trim();
+        if (!cleanEmail) {
+          throw new Error('Nhân viên này chưa có Email. Vui lòng bấm chỉnh sửa để cập nhật Email trước khi kích hoạt.');
+        }
+
         const { data: resData, error: funcError } = await supabase.functions.invoke('admin-create-staff-account', {
           body: {
             action: 'sync',
             engineer_id: engineer.id,
             username: engineer.username,
-            email: engineer.email,
+            email: cleanEmail,
             name: engineer.name,
             role: engineer.role,
             title: engineer.title,
@@ -1196,7 +1201,21 @@ export const api = {
         });
 
         if (funcError) {
-          throw new Error(funcError.message || 'Lỗi khi kích hoạt tài khoản qua Edge Function');
+          let errorDetail = funcError.message || 'Lỗi khi kích hoạt tài khoản qua Edge Function';
+          let httpStatus = (funcError as any).context?.status;
+          try {
+            const bodyText = await (funcError as any).context?.text?.();
+            if (bodyText) {
+              try {
+                const parsed = JSON.parse(bodyText);
+                errorDetail = parsed.error || parsed.message || bodyText;
+              } catch {
+                errorDetail = bodyText;
+              }
+            }
+          } catch (_) {}
+
+          throw new Error(`(HTTP ${httpStatus || 'Error'}): ${errorDetail}`);
         }
 
         return { success: true, data: resData };
