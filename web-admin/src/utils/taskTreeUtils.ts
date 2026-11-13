@@ -90,3 +90,26 @@ export const compareTaskStt = (a?: string, b?: string) => {
   }
   return textA.localeCompare(textB, 'vi', { numeric: true, sensitivity: 'base' });
 };
+
+/**
+ * Chuẩn hóa hiển thị tiêu đề Đầu mục / Hạng mục:
+ * Nếu trong chuỗi name đã chứa sẵn tiền tố STT (ví dụ "5 - ACCESS TOKEN" hoặc "5. ACCESS TOKEN")
+ * thì không nối thêm `${stt} - ` lần nữa để tránh trùng lặp "5 - 5 - ACCESS TOKEN".
+ */
+export const formatSectionTitle = (stt?: string, name?: string): string => {
+  const cleanName = String(name || '').trim();
+  const cleanStt = String(stt || '').trim();
+  if (!cleanStt) return cleanName;
+  if (!cleanName) return cleanStt;
+
+  // Regex kiểm tra xem cleanName đã bắt đầu bằng cleanStt chưa
+  // Ví dụ cleanStt = "5", cleanName = "5 - ACCESS TOKEN..." hoặc "5. ACCESS TOKEN" hoặc "5 ACCESS TOKEN"
+  const escapedStt = cleanStt.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const leadingSttRegex = new RegExp(`^${escapedStt}\\s*([\\.\\-\\:]\\s*|\\s+)`, 'i');
+  if (leadingSttRegex.test(cleanName)) {
+    // Tên đã có tiền tố STT rồi -> bỏ qua không nối thêm
+    return cleanName;
+  }
+
+  return `${cleanStt} - ${cleanName}`;
+};

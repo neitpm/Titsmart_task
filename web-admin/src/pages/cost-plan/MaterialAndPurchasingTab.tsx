@@ -2,7 +2,7 @@ import React, { useMemo, useState, useRef } from 'react';
 import { useRealtimeStore } from '../../services/realtimeStore';
 import { ProjectMaterialPlan, ProjectPurchasing, getStatusColorStyle, getTextColorStyle, PURCHASE_STATUS_OPTIONS, CONSTRUCTION_STATUS_OPTIONS } from '../../types';
 import { CustomSelect } from '@/components/common/CustomSelect';
-import { compareTaskStt } from '../../utils/taskTreeUtils';
+import { compareTaskStt, formatSectionTitle } from '../../utils/taskTreeUtils';
 import { decodeModels, encodeModels, ModelEntry } from './DocumentCertificateTab';
 import { FastDocModal } from './FastDocModal';
 import { DocumentCertificateTab } from './DocumentCertificateTab';
@@ -1650,7 +1650,7 @@ export const MaterialAndPurchasingTab: React.FC<MaterialAndPurchasingTabProps> =
                             </button>
                             <span className="material-symbols-outlined text-[13px] sm:text-[15px] flex-shrink-0">{isCollapsed ? 'folder' : 'folder_open'}</span>
                             <span className="flex-1 min-w-0 cursor-pointer hover:underline truncate md:whitespace-normal md:overflow-visible break-words leading-tight text-[11px] sm:text-xs" onClick={(e) => { e.stopPropagation(); onEditMaterial?.(plan); }} title={plan.jobContent || plan.name || plan.content}>
-                              {plan.stt ? `${plan.stt} - ` : ''}{plan.jobContent || plan.name || plan.content}
+                              {formatSectionTitle(plan.stt, plan.jobContent || plan.name || plan.content)}
                             </span>
                             <div className="hidden group-hover:flex items-center gap-0.5">
                               {onAddSubtask && subTab !== 'FINANCE' && (

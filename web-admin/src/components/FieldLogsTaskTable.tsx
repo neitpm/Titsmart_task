@@ -4,7 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useRealtimeStore } from '../services/realtimeStore';
 import { useAuthStore, canManageItem } from '../services/authStore';
 import { FieldLog, Task } from '../types';
-import { compareTaskStt } from '../utils/taskTreeUtils';
+import { compareTaskStt, formatSectionTitle } from '../utils/taskTreeUtils';
 import { AuditInfoCell, parseAuditTime } from './common/AuditInfoCell';
 
 const CustomLightbox: React.FC<{ images: string[]; index: number; onClose: () => void; onPrev: () => void; onNext: () => void }> = ({
@@ -439,7 +439,7 @@ export const FieldLogsTaskTable: React.FC<FieldLogsTaskTableProps> = ({ selected
                         </button>
                         <span className="material-symbols-outlined text-[15px] flex-shrink-0">{isCollapsed ? 'folder' : 'folder_open'}</span>
                         <span className="flex-1 uppercase truncate min-w-0 leading-tight" title={t.name}>
-                          {t.stt ? `${t.stt} - ` : ''}{t.name}
+                          {formatSectionTitle(t.stt, t.name)}
                         </span>
                       </div>
                     </td>

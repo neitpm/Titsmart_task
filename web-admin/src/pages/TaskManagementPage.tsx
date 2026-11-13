@@ -9,9 +9,9 @@ import { Modal } from '../components/common/Modal';
 import { Toast } from '../components/common/Toast';
 import { OcrUploadPanel } from '../components/common/OcrUploadPanel';
 import { WebOcrExtractedData } from '../services/webOcrService';
-import { Task, getStatusColorStyle , calculateAutoProgressRatio, calculateAutoProgressPercent, normalizeStatusText, purchaseProgressScore, constructionProgressScore, TECH_SPEC_STATUS_OPTIONS, PURCHASE_STATUS_OPTIONS, CONSTRUCTION_STATUS_OPTIONS, ISSUE_STATUS_OPTIONS, getIssueStatusColorStyle } from '../types';
+import { Task, isTaskSectionHeaderItem, getStatusColorStyle , calculateAutoProgressRatio, calculateAutoProgressPercent, normalizeStatusText, purchaseProgressScore, constructionProgressScore, TECH_SPEC_STATUS_OPTIONS, PURCHASE_STATUS_OPTIONS, CONSTRUCTION_STATUS_OPTIONS, ISSUE_STATUS_OPTIONS, getIssueStatusColorStyle } from '../types';
 import { CustomSelect } from '@/components/common/CustomSelect';
-import { compareTaskStt } from '../utils/taskTreeUtils';
+import { compareTaskStt, formatSectionTitle } from '../utils/taskTreeUtils';
 import { AuditInfoCell } from '../components/common/AuditInfoCell';
 import { TaskDiscussionModal } from '../components/tasks/TaskDiscussionModal';
 import { appendTaskDiscussion, getLatestDiscussion, stripDiscussionThread, parseTaskDiscussions } from '../utils/taskDiscussion';
@@ -1111,8 +1111,16 @@ const hasSyncedRef = useRef(false);
     
     // Auto calculate next Section STT (e.g. 1, 2, 3...)
     const projTasks = tasks.filter(t => t.projectCode === activeCode);
-    const existingSectionHeaders = projTasks.filter(t => t.isSectionHeader);
-    const nextSecNum = existingSectionHeaders.length + 1;
+    let maxSecNum = 0;
+    projTasks.forEach(t => {
+      const isSec = isTaskSectionHeaderItem(t) || !t.stt?.includes('.');
+      const cleanStt = String(t.stt || '').trim();
+      if (isSec && /^\d+$/.test(cleanStt)) {
+        const n = parseInt(cleanStt, 10);
+        if (n > maxSecNum) maxSecNum = n;
+      }
+    });
+    const nextSecNum = maxSecNum > 0 ? maxSecNum + 1 : (projTasks.filter(t => isTaskSectionHeaderItem(t)).length + 1);
     setStt(String(nextSecNum));
     
     setOcrIssueDraft('');
@@ -2153,6 +2161,16 @@ const hasSyncedRef = useRef(false);
 
     // Synthesize missing parent section headers if any child items exist (max 30 items)
     const sttSet = new Set(displayTasks.map(t => `${t.projectCode || ''}:::${String(t.stt || '').trim()}`));
+    const coveredSections = new Set<string>();
+
+    // Đăng ký các section name đã có sẵn trong displayTasks
+    displayTasks.forEach(t => {
+      if (isTaskSectionHeader(t)) {
+        if (t.name) coveredSections.add(`${t.projectCode || ''}:::${t.name.trim().toLowerCase()}`);
+        if (t.sectionName) coveredSections.add(`${t.projectCode || ''}:::${t.sectionName.trim().toLowerCase()}`);
+      }
+    });
+
     const missingParents: any[] = [];
     displayTasks.forEach(t => {
       if (missingParents.length >= 30) return;
@@ -2179,6 +2197,13 @@ const hasSyncedRef = useRef(false);
             }
           }
 
+          if (synthName) {
+            coveredSections.add(`${t.projectCode || ''}:::${synthName.trim().toLowerCase()}`);
+          }
+          if (t.sectionName) {
+            coveredSections.add(`${t.projectCode || ''}:::${t.sectionName.trim().toLowerCase()}`);
+          }
+
           missingParents.push({
             id: `synth_sec_${parentStt}`,
             stt: parentStt,
@@ -2202,22 +2227,25 @@ const hasSyncedRef = useRef(false);
     });
 
     // Synthesize section headers for any sectionName that has tasks but no explicit header
-    const existingSectionNames = new Set(
-      displayTasks
-        .filter(t => isTaskSectionHeader(t))
-        .map(t => `${t.projectCode || ''}:::${(t.name || t.sectionName || '').trim().toLowerCase()}`)
-    );
-
     const neededSections = new Map<string, any>();
     displayTasks.forEach(t => {
       if (!isTaskSectionHeader(t) && t.sectionName && t.sectionName.trim().length > 0) {
         const secKey = `${t.projectCode || ''}:::${t.sectionName.trim().toLowerCase()}`;
-        if (!existingSectionNames.has(secKey) && !neededSections.has(secKey)) {
+        if (!coveredSections.has(secKey) && !neededSections.has(secKey)) {
+          // Kiểm tra xem đã có parent header tổng hợp nào cho task này chưa
+          const taskStt = String(t.stt || '').trim();
+          const parentStt = taskStt.includes('.') ? taskStt.split('.')[0] : '';
+          const hasParentSttInMissing = parentStt && missingParents.some(p => p.projectCode === t.projectCode && p.stt === parentStt);
+          if (hasParentSttInMissing) {
+            // Đã có missingParent sinh ra với STT gốc (ví dụ 5) cho nhóm này -> Không sinh thêm header thứ 2
+            return;
+          }
+
           const romanMatch = extractLeadingRomanNumber(t.sectionName);
           const sttVal = romanMatch !== null ? toRoman(romanMatch) : '';
           neededSections.set(secKey, {
             id: `synth_section_${t.projectCode}_${t.sectionName}`,
-            stt: sttVal || t.sectionName.split(/[\.\-\s]/)[0] || '',
+            stt: sttVal,
             name: t.sectionName,
             projectCode: t.projectCode,
             projectName: t.projectName,
@@ -2740,7 +2768,7 @@ const hasSyncedRef = useRef(false);
                             </button>
                             <span className="material-symbols-outlined text-[15px] flex-shrink-0">{isCollapsed ? 'folder' : 'folder_open'}</span>
                             <span onClick={() => handleOpenEditModal(t)} className="cursor-pointer hover:underline flex-1 min-w-0 truncate md:whitespace-normal md:overflow-visible break-words leading-tight" title={t.name}>
-                              {t.stt ? `${t.stt} - ` : ''}{t.name}
+                              {formatSectionTitle(t.stt, t.name)}
                             </span>
                             <div className="hidden group-hover:flex items-center gap-1 flex-shrink-0">
                               {hasPermission(authStore.user, 'ASSIGN_TASKS') && (
