@@ -131,10 +131,21 @@ export const DashboardPage: React.FC = () => {
       }).length;
       const materialProgress = totalMaterials > 0 ? Math.round((completedMaterials / totalMaterials) * 100) : 0;
 
-      const totalPurchasing = purchasingPlans.filter((item) => item.projectCode === project.code).reduce((sum, item) => sum + (item.totalAmount || 0), 0);
-      const totalExp = expenses.filter((item) => item.projectCode === project.code).reduce((sum, item) => sum + (item.totalAmount || 0), 0);
-      const totalLab = laborPayrolls.filter((item) => item.projectCode === project.code).reduce((sum, item) => sum + (item.totalAmount || 0), 0);
-      const totalCost = totalPurchasing + totalExp + totalLab;
+      const totalPaidPurchasing = purchasingPlans
+        .filter((item) => item.projectCode === project.code)
+        .reduce((sum, item) => sum + (item.costPaidAmount || item.prepayAmount || (item.orderStatus === 'Đã thanh toán' ? item.totalAmount : 0) || 0), 0);
+      const totalExp = expenses
+        .filter((item) => {
+          if (item.projectCode !== project.code) return false;
+          const isFundRow = (item.content || '').trim().toLowerCase() === 'quỹ';
+          const isTransfer = (item.content || '').toLowerCase().includes('chuyển quỹ') || (item.description || '').toLowerCase().includes('chuyển quỹ');
+          return !isFundRow && !isTransfer;
+        })
+        .reduce((sum, item) => sum + (item.totalAmount || 0), 0);
+      const totalLab = laborPayrolls
+        .filter((item) => item.projectCode === project.code)
+        .reduce((sum, item) => sum + (item.totalAmount || 0), 0);
+      const totalCost = totalPaidPurchasing + totalExp + totalLab;
 
       return {
         ...project,
@@ -258,12 +269,23 @@ export const DashboardPage: React.FC = () => {
 
   // 4. BIỂU ĐỒ CƠ CẤU CHI PHÍ
   const costStructureData = useMemo(() => {
-    const totalPurchasing = purchasingPlans.filter(i => targetCodes.includes(i.projectCode)).reduce((sum, i) => sum + (i.totalAmount || 0), 0);
-    const totalExp = expenses.filter(i => targetCodes.includes(i.projectCode)).reduce((sum, i) => sum + (i.totalAmount || 0), 0);
-    const totalLab = laborPayrolls.filter(i => targetCodes.includes(i.projectCode)).reduce((sum, i) => sum + (i.totalAmount || 0), 0);
+    const totalPurchasing = purchasingPlans
+      .filter(i => targetCodes.includes(i.projectCode))
+      .reduce((sum, i) => sum + (i.costPaidAmount || i.prepayAmount || (i.orderStatus === 'Đã thanh toán' ? i.totalAmount : 0) || 0), 0);
+    const totalExp = expenses
+      .filter(i => {
+        if (!targetCodes.includes(i.projectCode)) return false;
+        const isFundRow = (i.content || '').trim().toLowerCase() === 'quỹ';
+        const isTransfer = (i.content || '').toLowerCase().includes('chuyển quỹ') || (i.description || '').toLowerCase().includes('chuyển quỹ');
+        return !isFundRow && !isTransfer;
+      })
+      .reduce((sum, i) => sum + (i.totalAmount || 0), 0);
+    const totalLab = laborPayrolls
+      .filter(i => targetCodes.includes(i.projectCode))
+      .reduce((sum, i) => sum + (i.totalAmount || 0), 0);
 
     const data = [
-      { name: 'Vật tư & Mua sắm', value: totalPurchasing, color: '#3b82f6' },
+      { name: 'Vật tư & Mua sắm (Đã chi)', value: totalPurchasing, color: '#3b82f6' },
       { name: 'Chi phí dự án / QL', value: totalExp, color: '#10b981' },
       { name: 'Chi phí nhân công', value: totalLab, color: '#f59e0b' }
     ].filter(d => d.value > 0);
