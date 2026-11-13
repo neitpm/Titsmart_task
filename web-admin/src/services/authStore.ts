@@ -421,10 +421,31 @@ export const useAuthStore = create<AuthStoreState>((set, get) => ({
     }
 
     // 2. BẮT BUỘC ĐĂNG NHẬP BẰNG SUPABASE AUTH (GoTrue) VỚI EMAIL THẬT
-    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+    let authData: any = null;
+    let authError: any = null;
+
+    const authRes = await supabase.auth.signInWithPassword({
       email: resolvedEmail,
       password,
     });
+    authData = authRes.data;
+    authError = authRes.error;
+
+    // Fallback: Nếu đăng nhập bằng email riêng thất bại (hoặc user nhập username), thử fallback qua email hệ thống username@titsmart.vn
+    if ((authError || !authData?.user) && !cleanInput.includes('@')) {
+      const fallbackEmail = `${cleanInput}@titsmart.vn`;
+      if (fallbackEmail !== resolvedEmail) {
+        const retryRes = await supabase.auth.signInWithPassword({
+          email: fallbackEmail,
+          password,
+        });
+        if (!retryRes.error && retryRes.data?.user) {
+          authData = retryRes.data;
+          authError = null;
+          resolvedEmail = fallbackEmail;
+        }
+      }
+    }
 
     if (authError || !authData?.user) {
       console.warn('[Supabase Auth] Login failed with resolved email:', resolvedEmail, authError?.message);
