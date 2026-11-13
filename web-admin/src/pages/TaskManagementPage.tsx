@@ -856,7 +856,7 @@ const hasSyncedRef = useRef(false);
   
   const rawSectionsList = tasks
     .filter((t) => effectiveProjectCode === 'all' || t.projectCode === effectiveProjectCode)
-    .map((t) => t.sectionName)
+    .map((t) => (t.isSectionHeader || !t.stt?.includes('.')) ? (t.sectionName || t.name) : t.sectionName)
     .filter((secName): secName is string => !!secName && secName.trim().length > 0);
 
   const uniqueSectionsForProj = Array.from(new Set(rawSectionsList));
@@ -910,33 +910,39 @@ const hasSyncedRef = useRef(false);
     if (selectedProjectCode !== 'all' && selectedProjectCode !== parentTask.projectCode) {
       setProjectCode(parentTask.projectCode);
     }
+    const isSecHeader = parentTask.isSectionHeader || !parentTask.stt?.includes('.');
+    const parentSttPrefix = parentTask.stt ? parentTask.stt.trim() : '';
+    const targetSecName = parentTask.sectionName || (isSecHeader ? parentTask.name : 'default');
+
     setIsSectionHeader(false);
-    setSectionSelect(parentTask.sectionName || (parentTask.isSectionHeader ? parentTask.name : 'default'));
-    setParentIdSelect(parentTask.isSectionHeader ? 'default' : parentTask.id);
+    setSectionSelect(targetSecName);
+    setParentIdSelect(isSecHeader ? 'default' : parentTask.id);
     setName('');
     
-    const siblingTasks = parentTask.isSectionHeader
-      ? activeTasksForProj.filter(t => !t.isSectionHeader && (t.parentId === parentTask.id || t.sectionName === parentTask.name || t.sectionName === parentTask.sectionName))
+    const siblingTasks = isSecHeader
+      ? activeTasksForProj.filter(t => !t.isSectionHeader && (t.parentId === parentTask.id || (targetSecName !== 'default' && t.sectionName === targetSecName) || (parentSttPrefix && String(t.stt || '').startsWith(`${parentSttPrefix}.`))))
       : activeTasksForProj.filter(t => t.parentId === parentTask.id);
 
-    const parentSttPrefix = parentTask.stt ? parentTask.stt.trim() : '';
     let nextStt = parentSttPrefix ? `${parentSttPrefix}.1` : '1';
 
     if (siblingTasks.length > 0) {
-      let maxPrefix = '';
       let maxNum = 0;
       siblingTasks.forEach(st => {
-        const m = (st.stt?.trim() || '').match(/^(.*?)(\d+)$/);
-        if (m) {
-          const num = parseInt(m[2], 10);
-          if (num > maxNum) {
-            maxNum = num;
-            maxPrefix = m[1];
+        const s = String(st.stt || '').trim();
+        // Nếu cùng prefix (ví dụ "5.") thì lấy số đuôi lớn nhất
+        if (parentSttPrefix && s.startsWith(`${parentSttPrefix}.`)) {
+          const subNum = parseInt(s.substring(parentSttPrefix.length + 1).split('.')[0], 10);
+          if (!isNaN(subNum) && subNum > maxNum) maxNum = subNum;
+        } else {
+          const m = s.match(/^(.*?)(\d+)$/);
+          if (m) {
+            const num = parseInt(m[2], 10);
+            if (num > maxNum) maxNum = num;
           }
         }
       });
       if (maxNum > 0) {
-        nextStt = `${maxPrefix}${maxNum + 1}`;
+        nextStt = parentSttPrefix ? `${parentSttPrefix}.${maxNum + 1}` : String(maxNum + 1);
       } else if (parentSttPrefix) {
         nextStt = `${parentSttPrefix}.${siblingTasks.length + 1}`;
       }
@@ -3703,15 +3709,32 @@ const hasSyncedRef = useRef(false);
                       setSectionSelect(newSec);
                       if (newSec !== 'default') {
                         const activeCode = selectedProjectCode !== 'all' ? selectedProjectCode : projectCode;
-                        const siblingTasks = tasks.filter(t => t.projectCode === activeCode && !t.parentId && t.sectionName === newSec && !t.isSectionHeader);
-                        let nextVal = '1';
+                        const secHeader = tasks.find(t => t.projectCode === activeCode && (t.isSectionHeader || !t.stt?.includes('.')) && (t.name === newSec || t.sectionName === newSec));
+                        const secPrefix = secHeader?.stt ? secHeader.stt.trim() : '';
+                        const siblingTasks = tasks.filter(t => t.projectCode === activeCode && !t.parentId && !t.isSectionHeader && (t.sectionName === newSec || (secPrefix && String(t.stt || '').startsWith(`${secPrefix}.`))));
+                        let nextVal = secPrefix ? `${secPrefix}.1` : '1';
                         if (siblingTasks.length > 0) {
-                          const lastStt = siblingTasks[siblingTasks.length - 1].stt?.trim() || '';
-                          const match = lastStt.match(/^(.*?)(\d+)$/);
-                          if (match) nextVal = `${match[1]}${parseInt(match[2], 10) + 1}`;
-                        } else {
-                          const secHeader = tasks.find(t => t.projectCode === activeCode && t.isSectionHeader && (t.name === newSec || t.sectionName === newSec));
-                          if (secHeader && secHeader.stt) nextVal = `${secHeader.stt.trim()}.1`;
+                          let maxNum = 0;
+                          siblingTasks.forEach(st => {
+                            const s = String(st.stt || '').trim();
+                            if (secPrefix && s.startsWith(`${secPrefix}.`)) {
+                              const sub = parseInt(s.substring(secPrefix.length + 1).split('.')[0], 10);
+                              if (!isNaN(sub) && sub > maxNum) maxNum = sub;
+                            } else {
+                              const m = s.match(/^(.*?)(\d+)$/);
+                              if (m) {
+                                const n = parseInt(m[2], 10);
+                                if (n > maxNum) maxNum = n;
+                              }
+                            }
+                          });
+                          if (maxNum > 0) {
+                            nextVal = secPrefix ? `${secPrefix}.${maxNum + 1}` : String(maxNum + 1);
+                          } else if (secPrefix) {
+                            nextVal = `${secPrefix}.${siblingTasks.length + 1}`;
+                          }
+                        } else if (secPrefix) {
+                          nextVal = `${secPrefix}.1`;
                         }
                         setStt(nextVal);
                       }

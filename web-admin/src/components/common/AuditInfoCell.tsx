@@ -68,7 +68,7 @@ const getActionBadge = (action: string) => {
  * Từ action text + projectCode → tạo URL navigate tới nguồn gốc thông báo.
  * Trả về null nếu không xác định được.
  */
-const getLogNavigatePath = (action: string, projectCode?: string): string | null => {
+export const getLogNavigatePath = (action: string, projectCode?: string): string | null => {
   if (!action) return null;
   const a = action.toLowerCase();
 
@@ -113,7 +113,14 @@ const getLogNavigatePath = (action: string, projectCode?: string): string | null
   if (a.includes('mua hàng nhà thầu') || a.includes('mua hàng') || a.includes('mua sắm') || a.includes('nhà thầu') || a.includes('vật tư') || a.includes('kế hoạch vật tư')) {
     if (projectCode) return `/projects/${encodeURIComponent(projectCode)}/cost-plan?tab=TECH`;
   }
-  if (a.includes('chi phí') || a.includes('phiếu chi') || a.includes('cấp quỹ') || a.includes('thanh toán')) {
+  // Nếu là nhật ký liên quan đến Cấp quỹ / Tạm ứng / Chuyển khoản / UNC / Xác nhận nhận tiền -> Mở thẳng popup danh sách Duyệt cấp quỹ
+  if (a.includes('cấp quỹ') || a.includes('tạm ứng') || a.includes('chuyển khoản') || a.includes('unc') || a.includes('nhận tiền')) {
+    if (projectCode && projectCode !== 'COMPANY' && projectCode !== 'Hệ thống') {
+      return `/projects/${encodeURIComponent(projectCode)}/cost-plan?tab=EXPENSE&openFundRequests=true`;
+    }
+    return `/cost-plan?tab=EXPENSE&openFundRequests=true`;
+  }
+  if (a.includes('chi phí') || a.includes('phiếu chi') || a.includes('thanh toán')) {
     if (projectCode) return `/projects/${encodeURIComponent(projectCode)}/cost-plan?tab=EXPENSE`;
   }
 
@@ -127,8 +134,9 @@ const getLogNavigatePath = (action: string, projectCode?: string): string | null
     if (projectCode) return `/projects/${encodeURIComponent(projectCode)}/field-logs`;
   }
 
-  // Link tới kho dự án
-  if (a.includes('kho') || a.includes('tồn kho') || a.includes('inventory')) {
+  // Link tới kho dự án (Kiểm tra từ riêng biệt để tránh trùng với 'chuyển khoản', 'khóa', 'khoản'...)
+  const isKhoAction = /(?:^|[^\p{L}\p{N}])(kho|tồn\s*kho|nhập\s*kho|xuất\s*kho|inventory)(?:[^\p{L}\p{N}]|$)/iu.test(a);
+  if (isKhoAction) {
     if (projectCode) return `/projects/${encodeURIComponent(projectCode)}/inventory`;
   }
 
@@ -375,11 +383,7 @@ const renderActionText = (text: string, timestamp?: string) => {
             )}
           </div>
         </details>
-      ) : (
-        <div className="text-[10px] text-slate-400 mt-0.5 italic">
-          Cập nhật thông tin và trạng thái hạng mục
-        </div>
-      )}
+      ) : null}
     </div>
   );
 };

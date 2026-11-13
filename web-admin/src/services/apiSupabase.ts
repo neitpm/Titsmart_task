@@ -487,10 +487,11 @@ export const api = {
 
       // Whitelist — chỉ giữ lại các cột thực sự có trong DB (tránh 400 Bad Request khi insert)
       const TASK_DB_COLUMNS = new Set([
-        'id','stt','code','name','project_code','volume','unit','progress','status',
+        'id','stt','code','name','project_code','project_name','volume','unit','progress','status',
         'purchase_status','constr_status','tech_spec_status','issue','issue_status',
         'is_done','parent_id','notes','assigner_id','assigned_engineer_id',
-        'reviewer_id','due_date','priority','created_at','updated_by','updated_at',
+        'reviewer_id','due_date','priority','is_section_header','section_name',
+        'created_at','updated_by','updated_at',
       ]);
       for (const key of Object.keys(payload)) {
         if (!TASK_DB_COLUMNS.has(key)) {
@@ -650,10 +651,11 @@ export const api = {
 
       // Whitelist — chỉ giữ lại các cột thực sự có trong DB (tránh 400 Bad Request)
       const TASK_DB_COLUMNS = new Set([
-        'id','stt','code','name','project_code','volume','unit','progress','status',
+        'id','stt','code','name','project_code','project_name','volume','unit','progress','status',
         'purchase_status','constr_status','tech_spec_status','issue','issue_status',
         'is_done','parent_id','notes','assigner_id','assigned_engineer_id',
-        'reviewer_id','due_date','priority','created_at','updated_by','updated_at',
+        'reviewer_id','due_date','priority','is_section_header','section_name',
+        'created_at','updated_by','updated_at',
       ]);
       for (const key of Object.keys(payload)) {
         if (!TASK_DB_COLUMNS.has(key)) {

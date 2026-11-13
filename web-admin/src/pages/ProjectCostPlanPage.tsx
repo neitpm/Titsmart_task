@@ -7426,6 +7426,25 @@ export const ProjectCostPlanPage: React.FC = () => {
                 );
               }
 
+              const formatAuditActionTitle = (actionStr?: string): string => {
+                if (!actionStr) return 'Cập nhật tiến trình';
+                const upper = String(actionStr).trim().toUpperCase();
+                const dict: Record<string, string> = {
+                  'PENDING_CHECK': 'CHỜ KIỂM TRA',
+                  'PENDING': 'CHỜ DUYỆT',
+                  'CHECKED_WAITING_APPROVAL': 'ĐÃ KIỂM TRA - CHỜ DUYỆT',
+                  'NEED_MORE_INFO': 'YÊU CẦU BỔ SUNG THÔNG TIN',
+                  'REJECTED_BY_CHECKER': 'NGƯỜI KIỂM TRA TỪ CHỐI',
+                  'APPROVED_WAITING_ACCOUNTING': 'LÃNH ĐẠO ĐÃ DUYỆT - CHUYỂN KẾ TOÁN',
+                  'APPROVED': 'LÃNH ĐẠO ĐÃ DUYỆT',
+                  'ACCOUNTING_PROCESSING': 'KẾ TOÁN ĐANG XỬ LÝ',
+                  'TRANSFERRED_WAITING_CONFIRMATION': 'ĐÃ CHUYỂN KHOẢN - CHỜ XÁC NHẬN',
+                  'COMPLETED': 'HOÀN TẤT CẤP QUỸ',
+                  'REJECTED': 'LÃNH ĐẠO TỪ CHỐI'
+                };
+                return dict[upper] || actionStr;
+              };
+
               return (
                 <div className="relative border-l-2 border-slate-200 ml-3 space-y-4 py-2">
                   {hist.map((item, idx) => (
@@ -7433,7 +7452,7 @@ export const ProjectCostPlanPage: React.FC = () => {
                       <div className="absolute -left-2 top-1 w-3.5 h-3.5 rounded-full bg-primary border-2 border-white shadow-xs" />
                       <div className="bg-white border border-slate-200 rounded-xl p-3 text-xs shadow-2xs space-y-1">
                         <div className="flex items-center justify-between font-bold text-slate-800">
-                          <span className="text-primary">{item.action}</span>
+                          <span className="text-primary">{formatAuditActionTitle(item.action)}</span>
                           <span className="font-mono text-[11px] text-slate-500 font-normal">
                             {new Date(item.timestamp).toLocaleString('vi-VN')}
                           </span>
