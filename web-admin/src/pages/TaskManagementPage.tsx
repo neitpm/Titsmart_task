@@ -400,6 +400,59 @@ export const TaskManagementPage: React.FC = () => {
     }
   };
 
+  const handleRejectTask = async (task: Task, reason: string, fileAttachment?: { url: string; type: 'image' | 'file'; name: string }) => {
+    if (!canApproveTask(authStore.user, task)) {
+      triggerToast('Chỉ người giao việc mới có quyền từ chối nghiệm thu!', 'warning');
+      return;
+    }
+
+    const reviewerName = authStore.user?.name || authStore.user?.username || 'Quản lý';
+    const reviewerId = authStore.user?.id || '';
+    const nowIso = new Date().toISOString();
+    const updatedNotes = appendTaskDiscussion(task.notes || '', {
+      type: 'system',
+      content: `Từ chối nghiệm thu. Yêu cầu bổ sung: ${reason || `Vui lòng kiểm tra và thực hiện bổ sung${fileAttachment ? ` (đã đính kèm: ${fileAttachment.name})` : ''}.`}`,
+      senderId: reviewerId,
+      senderName: reviewerName,
+      senderRole: 'Người giao việc',
+      fileUrl: fileAttachment?.url,
+      fileType: fileAttachment?.type,
+      fileName: fileAttachment?.name,
+      createdAt: nowIso
+    });
+
+    handleUpdateTaskSync(task.id, {
+      status: 'Đang làm',
+      progress: calculateTaskProgressFromStatuses(task.purchaseStatus, 'Đang thi công'),
+      constrStatus: 'Đang thi công',
+      isDone: false,
+      reviewerId: undefined,
+      reviewerName: undefined,
+      updatedBy: reviewerName,
+      updatedAt: nowIso,
+      notes: updatedNotes
+    });
+
+    triggerToast(`Đã từ chối nghiệm thu: "${task.name}". Công việc được chuyển lại để thực hiện.`, 'info');
+
+    const store = useRealtimeStore.getState();
+    store.logActivity(`${reviewerName} đã TỪ CHỐI NGHIỆM THU công việc: "${task.name}"`, task.projectCode || task.projectName);
+
+    if (store.addNotification && (task.assignedEngineerId || task.assignedEngineerName)) {
+      const engineerId = task.assignedEngineerId || '';
+      const engineerName = task.assignedEngineerName?.split('|')[0] || '';
+      await store.addNotification({
+        title: 'Công việc bị từ chối nghiệm thu',
+        message: `${reviewerName} đã từ chối nghiệm thu công việc "${task.name}". Vui lòng kiểm tra và thực hiện bổ sung.`,
+        link: `/my-tasks?taskId=${encodeURIComponent(task.id)}&highlight=${encodeURIComponent(task.name || '')}`,
+        type: `task_rejected:::${engineerId}:::${engineerName}`,
+        icon: 'assignment_late',
+        senderId: reviewerId,
+        senderName: reviewerName
+      });
+    }
+  };
+
   const handleSendQuestion = async (task: Task, questionText: string, fileAttachment?: { url: string; type: 'image' | 'file'; name: string }) => {
     const userName = authStore.user?.name || authStore.user?.username || 'Nhân sự';
     const userId = authStore.user?.id || '';
@@ -2724,7 +2777,7 @@ const hasSyncedRef = useRef(false);
               <col style={{ width: 52 }} />
               <col style={{ width: 125 }} />
               <col style={{ width: 125 }} />
-              {hasPermission(authStore.user, 'ASSIGN_TASKS') && (
+               {(hasPermission(authStore.user, 'ASSIGN_TASKS') || tasks.some(task => isUserTaskAssignee(authStore.user, task, engineers))) && (
                 <col style={{ width: 130 }} />
               )}
               <col style={{ width: 90 }} />
@@ -2739,7 +2792,7 @@ const hasSyncedRef = useRef(false);
                 <th className="py-2 px-1 w-[52px] min-w-[52px] text-center border-b border-slate-200 whitespace-nowrap">%</th>
                 <th className="py-2 px-2 w-[125px] min-w-[125px] text-center border-b border-slate-200 whitespace-nowrap">TT ĐẶT HÀNG</th>
                 <th className="py-2 px-2 w-[125px] min-w-[125px] text-center border-b border-slate-200 whitespace-nowrap">TĐ THI CÔNG</th>
-                {hasPermission(authStore.user, 'ASSIGN_TASKS') && (
+                 {(hasPermission(authStore.user, 'ASSIGN_TASKS') || tasks.some(task => isUserTaskAssignee(authStore.user, task, engineers))) && (
                     <th className="py-2 px-1 w-[130px] min-w-[130px] text-center border-b border-slate-200 whitespace-nowrap">GIAO VIỆC</th>
                   )}
                 <th className="bg-slate-50 py-2 px-1 w-[90px] min-w-[85px] border-b border-r border-slate-200 whitespace-nowrap text-center">GHI CHÚ</th>
@@ -2796,7 +2849,7 @@ const hasSyncedRef = useRef(false);
                             </div>
                           </div>
                         </td>
-                        <td colSpan={hasPermission(authStore.user, 'ASSIGN_TASKS') ? 8 : 7} className="bg-blue-50/90 py-2 px-2 text-slate-500 truncate text-[11px]" title={cleanNotes(t.notes)}>
+                         <td colSpan={(hasPermission(authStore.user, 'ASSIGN_TASKS') || tasks.some(task => isUserTaskAssignee(authStore.user, task, engineers))) ? 8 : 7} className="bg-blue-50/90 py-2 px-2 text-slate-500 truncate text-[11px]" title={cleanNotes(t.notes)}>
                           {cleanNotes(t.notes)}
                         </td>
                       </tr>
@@ -2942,9 +2995,9 @@ const hasSyncedRef = useRef(false);
                           {t.constrStatus || t.status || "Chưa thi công"}
                         </span>
                       </td>
-                      {hasPermission(authStore.user, 'ASSIGN_TASKS') && (
+                       {(hasPermission(authStore.user, 'ASSIGN_TASKS') || isUserTaskAssignee(authStore.user, t, engineers)) && (
                           <td 
-                          className="py-1.5 px-1 text-center whitespace-nowrap border-r border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors"
+                           className={`py-1.5 px-1 text-center whitespace-nowrap border-r border-slate-200 transition-colors ${hasPermission(authStore.user, 'ASSIGN_TASKS') ? 'cursor-pointer hover:bg-slate-50' : ''}`}
                           onClick={(e) => {
                             if (hasPermission(authStore.user, 'ASSIGN_TASKS')) {
                               e.stopPropagation();
@@ -3013,14 +3066,16 @@ const hasSyncedRef = useRef(false);
                               <button onClick={(e) => { e.stopPropagation(); handleReportDone(t); }} className="text-[9px] bg-blue-500 pointer-events-auto hover:bg-blue-600 text-white px-1.5 py-0.5 rounded shadow-sm w-full max-w-[120px] font-bold cursor-pointer whitespace-nowrap">Báo cáo hoàn thành</button>
                             )}
                             {canApproveTask(authStore.user, t) && (
-                              <div className="flex items-center gap-1 w-full max-w-[120px] pointer-events-auto">
-                                <button onClick={(e) => { e.stopPropagation(); handleApproveTask(t); }} className="text-[9px] bg-purple-600 hover:bg-purple-700 text-white px-1 py-0.5 rounded shadow-xs flex-1 font-bold flex items-center justify-center gap-0.5 animate-pulse cursor-pointer whitespace-nowrap" title="Nghiệm thu hoàn thành công việc">
-                                  <span className="material-symbols-outlined text-[11px]">verified</span>
+                              <div className="grid grid-cols-2 gap-1 w-full max-w-[150px] pointer-events-auto">
+                                <button onClick={(e) => { e.stopPropagation(); handleApproveTask(t); }} className="text-[9px] bg-purple-600 hover:bg-purple-700 text-white px-1 py-0.5 rounded shadow-xs min-w-0 font-bold flex items-center justify-center gap-0.5 animate-pulse cursor-pointer whitespace-nowrap" title="Nghiệm thu hoàn thành công việc">
                                   Nghiệm thu
                                 </button>
-                                <button onClick={(e) => { e.stopPropagation(); setDiscussionTask(t); }} className="text-[9px] bg-amber-500 hover:bg-amber-600 text-white px-1 py-0.5 rounded shadow-xs flex-1 font-bold flex items-center justify-center gap-0.5 cursor-pointer whitespace-nowrap" title="Gửi thắc mắc hoặc yêu cầu chỉnh sửa">
+                                <button onClick={(e) => { e.stopPropagation(); setDiscussionTask(t); }} className="text-[9px] bg-rose-500 hover:bg-rose-600 text-white px-1 py-0.5 rounded shadow-xs min-w-0 font-bold flex items-center justify-center gap-0.5 cursor-pointer whitespace-nowrap" title="Từ chối nghiệm thu và yêu cầu thực hiện lại">
+                                  Từ chối
+                                </button>
+                                <button onClick={(e) => { e.stopPropagation(); setDiscussionTask(t); }} className="col-span-2 text-[9px] bg-amber-500 hover:bg-amber-600 text-white px-1 py-0.5 rounded shadow-xs font-bold flex items-center justify-center gap-0.5 cursor-pointer whitespace-nowrap" title="Gửi thắc mắc hoặc yêu cầu chỉnh sửa">
                                   <span className="material-symbols-outlined text-[11px]">help</span>
-                                  Thắc mắc
+                                  Gửi thắc mắc / yêu cầu chỉnh sửa
                                 </button>
                               </div>
                             )}
@@ -4081,6 +4136,7 @@ const hasSyncedRef = useRef(false);
         onAcceptTask={handleAcceptTask}
         onApprove={handleApproveTask}
         onApproveTask={handleApproveTask}
+        onRejectTask={handleRejectTask}
       />
 
       <Toast show={toastState.show} message={toastState.message} type={toastState.type} />

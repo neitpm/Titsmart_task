@@ -22,6 +22,7 @@ export interface TaskDiscussionModalProps {
   onSendReply?: (task: Task, reply: string, file?: { url: string; type: 'image' | 'file'; name: string }) => Promise<void> | void;
   onApproveTask?: (task: Task) => Promise<void> | void;
   onApprove?: (task: Task) => Promise<void> | void;
+  onRejectTask?: (task: Task, reason: string, file?: { url: string; type: 'image' | 'file'; name: string }) => Promise<void> | void;
 }
 
 export const TaskDiscussionModal: React.FC<TaskDiscussionModalProps> = ({
@@ -38,6 +39,7 @@ export const TaskDiscussionModal: React.FC<TaskDiscussionModalProps> = ({
   onSendReply,
   onApproveTask: propOnApproveTask,
   onApprove: propOnApprove,
+  onRejectTask,
 }) => {
   const authUser = useAuthStore(s => s.user);
   const engineers = useRealtimeStore(s => s.engineers);
@@ -668,9 +670,23 @@ export const TaskDiscussionModal: React.FC<TaskDiscussionModalProps> = ({
                 }} 
                 className="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-purple-600 hover:bg-purple-700 shadow-sm hover:shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
               >
-                <span className="material-symbols-outlined text-base">verified</span>
                 Nghiệm thu hoàn thành
               </button>
+              {onRejectTask && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!inputText.trim() && !selectedFile) return;
+                    await onRejectTask(task, inputText.trim(), selectedFile || undefined);
+                    onClose();
+                  }}
+                  disabled={isSubmitting || (!inputText.trim() && !selectedFile)}
+                  className="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 disabled:opacity-50 shadow-sm hover:shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
+                  title="Nhập yêu cầu bổ sung trước khi từ chối nghiệm thu"
+                >
+                  {isSubmitting ? 'Đang gửi...' : 'Từ chối nghiệm thu'}
+                </button>
+              )}
             </>
           ) : isCompleted || isWaitingApproval ? (
             <>
