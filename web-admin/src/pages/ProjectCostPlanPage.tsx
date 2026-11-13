@@ -2743,8 +2743,8 @@ export const ProjectCostPlanPage: React.FC = () => {
           <div className="h-full overflow-y-auto overflow-x-hidden custom-scrollbar bg-white flex flex-col pb-16 md:pb-0" id="expense-unified-view">
 
             {/* 1. BỘ LỌC & CÔNG CỤ (TOOLBAR TRÊN CÙNG) */}
-            <div className="flex border-b border-slate-200 bg-slate-50 px-3 md:px-5 py-2 gap-2 md:gap-3 sticky top-0 z-30 items-center justify-between text-xs text-slate-600 overflow-x-auto custom-scrollbar shadow-xs">
-              <div className="hidden md:flex items-center gap-2 md:gap-3 flex-nowrap shrink-0">
+            <div className="flex border-b border-slate-200 bg-slate-50 px-3 md:px-5 py-2 gap-2 md:gap-3 sticky top-0 z-30 items-center justify-between text-xs text-slate-600 shadow-xs">
+              <div className="hidden md:flex items-center gap-2 md:gap-3 flex-nowrap shrink-0 overflow-x-auto custom-scrollbar">
                 <div className="flex items-center gap-2.5 font-bold text-slate-500 whitespace-nowrap">
                   <span className="material-symbols-outlined text-[16px]">filter_list</span>
                 </div>
@@ -2939,10 +2939,16 @@ export const ProjectCostPlanPage: React.FC = () => {
                     <span className="material-symbols-outlined text-[14px]">expand_more</span>
                   </button>
                   {showExpenseActionMenu && (
-                    <div className="absolute right-0 top-full mt-1 z-50 w-48 rounded-lg border border-slate-200 bg-white p-1 shadow-xl">
-                      <button type="button" onClick={() => { setShowExpenseActionMenu(false); setIsNewExpenseOpen(true); }} className="w-full rounded-md px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50">+ Thêm phiếu chi</button>
-                      <button type="button" onClick={() => { setShowExpenseActionMenu(false); setFundRequestOpen(true); }} className="w-full rounded-md px-3 py-2 text-left text-xs font-semibold text-blue-700 hover:bg-blue-50">+ Tạo yêu cầu cấp quỹ</button>
-                    </div>
+                    <>
+                      <div
+                        className="fixed inset-0 z-[9998]"
+                        onClick={() => setShowExpenseActionMenu(false)}
+                      />
+                      <div className="absolute right-0 top-full mt-1 z-[9999] w-48 rounded-lg border border-slate-200 bg-white p-1 shadow-xl animate-in fade-in zoom-in duration-100">
+                        <button type="button" onClick={() => { setShowExpenseActionMenu(false); setIsNewExpenseOpen(true); }} className="w-full rounded-md px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer">+ Thêm phiếu chi</button>
+                        <button type="button" onClick={() => { setShowExpenseActionMenu(false); setFundRequestOpen(true); }} className="w-full rounded-md px-3 py-2 text-left text-xs font-semibold text-blue-700 hover:bg-blue-50 cursor-pointer">+ Tạo yêu cầu cấp quỹ</button>
+                      </div>
+                    </>
                   )}
                 </div>
               </div>
@@ -3044,7 +3050,7 @@ export const ProjectCostPlanPage: React.FC = () => {
                                 );
                               })()}
                             </td>
-                            <td className="px-2 py-1.5 text-[10px] max-w-[100px] truncate" title={exp.notes}>{exp.notes || '-'}</td>
+                            <td className="px-2 py-1.5 text-[10px] max-w-[100px] truncate" title={cleanNotes(exp.notes)}>{cleanNotes(exp.notes) || '-'}</td>
                             <td className="px-2 py-1.5 text-center" onClick={(e) => e.stopPropagation()}>
                               <div className="flex items-center justify-center gap-1">
                                 <button
@@ -5082,7 +5088,7 @@ export const ProjectCostPlanPage: React.FC = () => {
                         <td className="p-2.5 font-bold text-slate-800">{exp.content} <span className="font-normal text-slate-500">{exp.description}</span></td>
                         <td className="p-2.5 text-right text-rose-600 font-bold">{exp.totalAmount ? exp.totalAmount.toLocaleString('vi-VN') + ' đ' : '-'}</td>
                         <td className="p-2.5 text-right text-emerald-600 font-bold">{exp.incomeAmount ? exp.incomeAmount.toLocaleString('vi-VN') + ' đ' : '-'}</td>
-                        <td className="p-2.5 text-slate-500 text-xs">{exp.notes || '-'}</td>
+                        <td className="p-2.5 text-slate-500 text-xs">{cleanNotes(exp.notes) || '-'}</td>
                       </tr>
                     ))}
                 </tbody>
@@ -5167,7 +5173,7 @@ export const ProjectCostPlanPage: React.FC = () => {
 
             await addNotification({
               title: `Yêu cầu cấp quỹ mới: ${pName}`,
-              message: `Mã: #${createdRequest.id}. Người tạo: ${requesterName} lúc ${nowTimeStr}. Số tiền: ${formattedAmount} đ (${fundRequestForm.type}). Trạng thái: ${initialStatus === 'PENDING_CHECK' ? 'Chờ kiểm tra' : 'Chờ duyệt'}. Mục đích: ${fundRequestForm.purpose}`,
+              message: `Người tạo: ${requesterName} lúc ${nowTimeStr}. Số tiền: ${formattedAmount} đ (${fundRequestForm.type}). Trạng thái: ${initialStatus === 'PENDING_CHECK' ? 'Chờ kiểm tra' : 'Chờ duyệt'}. Mục đích: ${fundRequestForm.purpose}`,
               type: `fund_request_pending:::${targetId}:::${targetName}`,
               icon: 'payments',
               link: linkUrl,
@@ -5761,7 +5767,7 @@ export const ProjectCostPlanPage: React.FC = () => {
 
                                       await addNotification({
                                         title: `Yêu cầu cấp quỹ đã kiểm tra: ${pName}`,
-                                        message: `Mã: #${req.id}. Người kiểm tra: ${reviewerName} lúc ${nowTimeStr}. Nội dung: Đã kiểm tra hồ sơ hợp lệ. Số tiền: ${numericAmount.toLocaleString('vi-VN')} đ cho ${req.creatorName}. Trạng thái: Đã kiểm tra - Chờ duyệt. Vui lòng phê duyệt & chỉ định kế toán.`,
+                                        message: `Người kiểm tra: ${reviewerName} lúc ${nowTimeStr}. Nội dung: Đã kiểm tra hồ sơ hợp lệ. Số tiền: ${numericAmount.toLocaleString('vi-VN')} đ cho ${req.creatorName}. Trạng thái: Đã kiểm tra - Chờ duyệt. Vui lòng phê duyệt & chỉ định kế toán.`,
                                         type: `fund_request_pending:::${req.reviewerId}:::${req.reviewerName}`,
                                         icon: 'verified_user',
                                         link: linkBase,
@@ -5920,7 +5926,7 @@ export const ProjectCostPlanPage: React.FC = () => {
                                         for (const recId of targetAccRecipients) {
                                           await addNotification({
                                             title: `Kế toán tiếp nhận xử lý cấp quỹ: ${pName}`,
-                                            message: `Mã: #${req.id}. Kế toán: ${reviewerName} đã tiếp nhận hồ sơ lúc ${nowTimeStr}. Số tiền: ${numericAmount.toLocaleString('vi-VN')} đ cho ${req.creatorName}. Trạng thái: Kế toán đang xử lý thủ tục chuyển khoản.`,
+                                            message: `Kế toán: ${reviewerName} đã tiếp nhận hồ sơ lúc ${nowTimeStr}. Số tiền: ${numericAmount.toLocaleString('vi-VN')} đ cho ${req.creatorName}. Trạng thái: Kế toán đang xử lý thủ tục chuyển khoản.`,
                                             type: `fund_request_processing:::${recId}`,
                                             icon: 'account_balance',
                                             link: linkBase,
@@ -6280,7 +6286,7 @@ export const ProjectCostPlanPage: React.FC = () => {
 
                                   await addNotification({
                                     title: `Yêu cầu cấp quỹ đã kiểm tra: ${pName}`,
-                                    message: `Mã: #${req.id}. Người kiểm tra: ${reviewerName} lúc ${nowTimeStr}. Nội dung: Đã kiểm tra hồ sơ hợp lệ. Số tiền: ${numericAmount.toLocaleString('vi-VN')} đ cho ${req.creatorName}. Trạng thái: Đã kiểm tra - Chờ duyệt. Vui lòng phê duyệt & chỉ định kế toán.`,
+                                    message: `Người kiểm tra: ${reviewerName} lúc ${nowTimeStr}. Nội dung: Đã kiểm tra hồ sơ hợp lệ. Số tiền: ${numericAmount.toLocaleString('vi-VN')} đ cho ${req.creatorName}. Trạng thái: Đã kiểm tra - Chờ duyệt. Vui lòng phê duyệt & chỉ định kế toán.`,
                                     type: `fund_request_pending:::${req.reviewerId}:::${req.reviewerName}`,
                                     icon: 'verified_user',
                                     link: linkBase,
@@ -6603,7 +6609,7 @@ export const ProjectCostPlanPage: React.FC = () => {
               for (const recId of targetRecipients) {
                 await addNotification({
                   title: `${notifTitle}: ${pName}`,
-                  message: `Mã: #${req.id}. Người thực hiện: ${reviewerName} lúc ${nowTimeStr}. Số tiền: ${Number(req.amount || 0).toLocaleString('vi-VN')} đ. Trạng thái: ${nextStatus === 'NEED_MORE_INFO' ? 'Cần bổ sung TT' : 'Từ chối'}. Nội dung: ${reason}`,
+                  message: `Người thực hiện: ${reviewerName} lúc ${nowTimeStr}. Số tiền: ${Number(req.amount || 0).toLocaleString('vi-VN')} đ. Trạng thái: ${nextStatus === 'NEED_MORE_INFO' ? 'Cần bổ sung TT' : 'Từ chối'}. Nội dung: ${reason}`,
                   type: `fund_request_rejected:::${recId}`,
                   icon: fundRequestRejectModal.actionType === 'NEED_MORE_INFO' ? 'help' : 'cancel',
                   link: linkBase,
@@ -6758,7 +6764,7 @@ export const ProjectCostPlanPage: React.FC = () => {
               // Gửi kế toán được chỉ định
               await addNotification({
                 title: `Lãnh đạo đã duyệt cấp quỹ: ${pName}`,
-                message: `Mã: #${req.id}. Lãnh đạo: ${reviewerName} phê duyệt lúc ${nowTimeStr}. Số tiền: ${numericAmount.toLocaleString('vi-VN')} đ cho ${req.creatorName}. Trạng thái: Đã duyệt - Chờ chuyển tiền. Chỉ định bạn xử lý chuyển khoản & đính kèm UNC.`,
+                message: `Lãnh đạo: ${reviewerName} phê duyệt lúc ${nowTimeStr}. Số tiền: ${numericAmount.toLocaleString('vi-VN')} đ cho ${req.creatorName}. Trạng thái: Đã duyệt - Chờ chuyển tiền. Chỉ định bạn xử lý chuyển khoản & đính kèm UNC.`,
                 type: `fund_request_pending:::${fundRequestApproveModal.selectedAccountantId}:::${fundRequestApproveModal.selectedAccountantName}`,
                 icon: 'account_balance',
                 link: linkBase,
@@ -6770,7 +6776,7 @@ export const ProjectCostPlanPage: React.FC = () => {
               if (req.creatorId) {
                 await addNotification({
                   title: `Yêu cầu cấp quỹ đã được Lãnh đạo phê duyệt: ${pName}`,
-                  message: `Mã: #${req.id}. Lãnh đạo: ${reviewerName} phê duyệt lúc ${nowTimeStr}. Số tiền: ${numericAmount.toLocaleString('vi-VN')} đ. Trạng thái: Đã duyệt - Chờ chuyển tiền. Kế toán ${fundRequestApproveModal.selectedAccountantName} đang xử lý chuyển tiền.`,
+                  message: `Lãnh đạo: ${reviewerName} phê duyệt lúc ${nowTimeStr}. Số tiền: ${numericAmount.toLocaleString('vi-VN')} đ. Trạng thái: Đã duyệt - Chờ chuyển tiền. Kế toán ${fundRequestApproveModal.selectedAccountantName} đang xử lý chuyển tiền.`,
                   type: `fund_request_approved:::${req.creatorId}:::${req.creatorName}`,
                   icon: 'check_circle',
                   link: linkBase,
@@ -6961,7 +6967,7 @@ export const ProjectCostPlanPage: React.FC = () => {
                 for (const tId of notifTargets) {
                   await addNotification({
                     title: `Cấp quỹ hoàn tất: ${pName}`,
-                    message: `Mã: #${req.id}. Người tạo: ${req.creatorName} đã xác nhận nhận đủ ${targetAmount.toLocaleString('vi-VN')} đ lúc ${nowTimeStr}. Trạng thái: Đã cấp tiền (Hoàn tất). Đã ghi nhận nạp quỹ dự án thành công.`,
+                    message: `Người tạo: ${req.creatorName} đã xác nhận nhận đủ ${targetAmount.toLocaleString('vi-VN')} đ lúc ${nowTimeStr}. Trạng thái: Đã cấp tiền (Hoàn tất). Đã ghi nhận nạp quỹ dự án thành công.`,
                     type: `fund_request_completed:::${tId}`,
                     icon: 'task_alt',
                     link: linkBase,
@@ -7020,7 +7026,7 @@ export const ProjectCostPlanPage: React.FC = () => {
                 for (const tId of notifTargets) {
                   await addNotification({
                     title: `Cảnh báo đối soát cấp quỹ: ${pName}`,
-                    message: `Mã: #${req.id}. Người tạo: ${req.creatorName} phản hồi lúc ${nowTimeStr}: ${statusDesc}. Lý do/Ghi chú: ${fundRequestConfirmModal.note || 'Chưa ghi rõ'}. Trạng thái: Đã chuyển - Chờ đối soát. Vui lòng kiểm tra lại UNC.`,
+                    message: `Người tạo: ${req.creatorName} phản hồi lúc ${nowTimeStr}: ${statusDesc}. Lý do/Ghi chú: ${fundRequestConfirmModal.note || 'Chưa ghi rõ'}. Trạng thái: Đã chuyển - Chờ đối soát. Vui lòng kiểm tra lại UNC.`,
                     type: `fund_request_issue:::${tId}`,
                     icon: 'warning',
                     link: linkBase,
@@ -7265,7 +7271,7 @@ export const ProjectCostPlanPage: React.FC = () => {
                 const isRecipientCreator = recId === req.creatorId;
                 await addNotification({
                   title: `Kế toán đã chuyển khoản cấp quỹ: ${pName}`,
-                  message: `Mã: #${req.id}. Kế toán: ${reviewerName} đã chuyển ${numericAmount.toLocaleString('vi-VN')} đ (kèm UNC) lúc ${nowTimeStr}. Trạng thái: Đã chuyển - Chờ xác nhận.${isRecipientCreator ? ' Vui lòng kiểm tra tài khoản và nhấn "Xác nhận nhận tiền".' : ''}`,
+                  message: `Kế toán: ${reviewerName} đã chuyển ${numericAmount.toLocaleString('vi-VN')} đ (kèm UNC) lúc ${nowTimeStr}. Trạng thái: Đã chuyển - Chờ xác nhận.${isRecipientCreator ? ' Vui lòng kiểm tra tài khoản và nhấn "Xác nhận nhận tiền".' : ''}`,
                   type: `fund_request_transferred:::${recId}`,
                   icon: 'receipt_long',
                   link: linkBase,

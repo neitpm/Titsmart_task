@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { ProjectExpense } from '../../types';
 import { CustomSelect } from '@/components/common/CustomSelect';
 import { AuditInfoCell } from '../../components/common/AuditInfoCell';
+import { cleanNotes } from '../../utils/cleanNotesUtils';
 
 interface ExpenseTabProps {
   data: ProjectExpense[];
@@ -129,7 +130,7 @@ export const ExpenseTab: React.FC<ExpenseTabProps> = ({
                 <td className="sticky left-0 z-10 w-[160px] bg-white group-hover:bg-blue-50/30 border-r border-slate-100 px-1.5 py-1 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
                   <div className="w-[145px] truncate font-bold text-slate-900">{exp.content}</div>
                   <div className="w-[145px] truncate mt-0.5 text-[11px] leading-relaxed text-slate-500">{exp.description}</div>
-                  {exp.notes && <div className="mt-1 inline-block rounded border border-amber-100 bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700">Ghi chú: {exp.notes}</div>}
+                  {cleanNotes(exp.notes) && <div className="mt-1 inline-block rounded border border-amber-100 bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700">Ghi chú: {cleanNotes(exp.notes)}</div>}
                 </td>
                 <td className="w-[65px] px-1 py-1 text-center font-medium">{exp.unit}</td>
                 <td className="w-[65px] px-1.5 py-1 text-right font-semibold">{exp.quantity}</td>
