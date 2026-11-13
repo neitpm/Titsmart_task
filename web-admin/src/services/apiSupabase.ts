@@ -211,18 +211,35 @@ const parseNotificationMeta = (n: any) => {
 
 let cachedDocTracksSchemaType: 'modern' | 'prisma' | 'legacy' | null = null;
 
-const encodeProjectMembers = (notes: string | undefined, memberIds: string[]): string => {
-  const cleanNotes = String(notes || '').replace(/\[MEMBERS:[^\]]+\]/gi, '').trim();
-  if (!memberIds || memberIds.length === 0) return cleanNotes;
-  const tag = `[MEMBERS:${memberIds.join(',')}]`;
-  return cleanNotes ? `${cleanNotes} ${tag}` : tag;
+const encodeProjectMetadata = (notes: string | undefined, memberIds: string[], category?: string): string => {
+  let cleanNotes = String(notes || '')
+    .replace(/\[MEMBERS:[^\]]+\]/gi, '')
+    .replace(/\[CATEGORY:[^\]]*\]/gi, '')
+    .trim();
+  const tags: string[] = [];
+  if (category && category.trim()) {
+    tags.push(`[CATEGORY:${category.trim()}]`);
+  }
+  if (memberIds && memberIds.length > 0) {
+    tags.push(`[MEMBERS:${memberIds.join(',')}]`);
+  }
+  if (tags.length === 0) return cleanNotes;
+  const tagString = tags.join(' ');
+  return cleanNotes ? `${cleanNotes} ${tagString}` : tagString;
 };
 
-const parseProjectMembers = (proj: any) => {
+const parseProjectMetadata = (proj: any) => {
   if (!proj) return proj;
   const rawNotes = String(proj.notes || '');
   let members = Array.isArray(proj.members) ? proj.members : (Array.isArray(proj.memberIds) ? proj.memberIds : []);
+  let category = proj.category || '';
   let cleanNotes = rawNotes;
+
+  const catMatch = rawNotes.match(/\[CATEGORY:([^\]]*)\]/i);
+  if (catMatch) {
+    category = catMatch[1].trim();
+    cleanNotes = cleanNotes.replace(/\[CATEGORY:[^\]]*\]/gi, '').trim();
+  }
 
   const match = rawNotes.match(/\[MEMBERS:([^\]]+)\]/i);
   if (match) {
@@ -230,11 +247,17 @@ const parseProjectMembers = (proj: any) => {
     if (ids.length > 0) {
       members = Array.from(new Set([...members, ...ids]));
     }
-    cleanNotes = rawNotes.replace(/\[MEMBERS:[^\]]+\]/gi, '').trim();
+    cleanNotes = cleanNotes.replace(/\[MEMBERS:[^\]]+\]/gi, '').trim();
+  }
+
+  // Nếu chưa có category từ tag thì fallback sang cleanNotes nếu nó là chuỗi ngắn dạng phân loại/hạng mục
+  if (!category && cleanNotes && !cleanNotes.includes('\n')) {
+    category = cleanNotes;
   }
 
   return {
     ...proj,
+    category: category || undefined,
     notes: cleanNotes,
     members,
     memberIds: members
@@ -247,7 +270,7 @@ export const api = {
       try {
         const { data, error } = await supabase.from('projects').select('*');
         if (error) throw error;
-        const list = mapArray(data || []).map(parseProjectMembers);
+        const list = mapArray(data || []).map(parseProjectMetadata);
         return list.sort((a: any, b: any) => {
           const timeA = new Date(a.createdAt || a.created_at || a.startDate || 0).getTime();
           const timeB = new Date(b.createdAt || b.created_at || b.startDate || 0).getTime();
@@ -261,16 +284,16 @@ export const api = {
     getById: async (id: string) => {
       const { data, error } = await supabase.from('projects').select('*').eq('id', id).single();
       if (error) throw error;
-      return parseProjectMembers(toCamelCase(data));
+      return parseProjectMetadata(toCamelCase(data));
     },
     create: async (data: any) => {
       const memberIds = Array.isArray(data.members) ? data.members : (Array.isArray(data.memberIds) ? data.memberIds : []);
+      const category = data.category || '';
       const payload = toSnakeCase(data);
       delete payload.members;
       delete payload.member_ids;
-      if (memberIds.length > 0) {
-        payload.notes = encodeProjectMembers(payload.notes, memberIds);
-      }
+      delete payload.category;
+      payload.notes = encodeProjectMetadata(payload.notes, memberIds, category);
       if (!payload.manager_id || typeof payload.manager_id !== 'string' || payload.manager_id.length < 36) {
          payload.manager_id = null;
       }
@@ -293,15 +316,17 @@ export const api = {
         result = res;
       }
 
-      return parseProjectMembers(toCamelCase(result));
+      return parseProjectMetadata(toCamelCase(result));
     },
     update: async (id: string, data: any) => {
       const memberIds = Array.isArray(data.members) ? data.members : (Array.isArray(data.memberIds) ? data.memberIds : undefined);
+      const category = data.category !== undefined ? data.category : undefined;
       const payload = toSnakeCase(data);
       delete payload.members;
       delete payload.member_ids;
-      if (memberIds !== undefined) {
-        payload.notes = encodeProjectMembers(payload.notes, memberIds);
+      delete payload.category;
+      if (memberIds !== undefined || category !== undefined) {
+        payload.notes = encodeProjectMetadata(payload.notes, memberIds || [], category);
       }
       if (!payload.manager_id || typeof payload.manager_id !== 'string' || payload.manager_id.length < 36) {
          payload.manager_id = null;
@@ -312,6 +337,7 @@ export const api = {
         if (error.code === 'PGRST204' || String(error.code).includes('400') || String(error.message).includes('column')) {
           delete payload.updated_by;
           delete payload.updated_at;
+          delete payload.diagram_url;
           const retryPayload = { ...payload };
           if (error.message.includes('diagram_url')) {
             delete retryPayload.diagram_url;
@@ -323,16 +349,16 @@ export const api = {
               const { data: retry2, error: err2 } = await supabase.from('projects').update(retryPayload).eq('id', id).select().single();
               if (err2) throw err2;
               const audit = getCurrentAuditPayload();
-              return parseProjectMembers(toCamelCase({ updated_by: audit.updated_by, updated_at: audit.updated_at, ...data, ...retry2 }));
+              return parseProjectMetadata(toCamelCase({ updated_by: audit.updated_by, updated_at: audit.updated_at, ...data, ...retry2 }));
             }
             throw retryError;
           }
           const audit = getCurrentAuditPayload();
-          return parseProjectMembers(toCamelCase({ updated_by: audit.updated_by, updated_at: audit.updated_at, ...data, ...retryResult }));
+          return parseProjectMetadata(toCamelCase({ updated_by: audit.updated_by, updated_at: audit.updated_at, ...data, ...retryResult }));
         }
         throw error;
       }
-      return parseProjectMembers(toCamelCase(result));
+      return parseProjectMetadata(toCamelCase(result));
     },
     delete: async (id: string, projectCode?: string, projectName?: string) => {
       // 1. Fetch project info if code or id is missing

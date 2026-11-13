@@ -78,6 +78,7 @@ export interface Project {
   name: string;
   client?: string; // Chủ đầu tư
   location: string;
+  category?: string; // Phân loại dự án
   contractValue?: number;
   notes?: string;
   progressPercent: number;

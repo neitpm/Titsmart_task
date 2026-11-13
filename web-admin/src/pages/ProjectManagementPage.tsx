@@ -142,6 +142,7 @@ export const ProjectManagementPage: React.FC = () => {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'completed' | 'on_hold'>('active');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [filterDateFrom, setFilterDateFrom] = useState('');
   const [filterDateTo, setFilterDateTo] = useState('');
 
@@ -344,12 +345,25 @@ export const ProjectManagementPage: React.FC = () => {
     return true;
   };
 
+  const availableCategories = useMemo(() => {
+    const set = new Set<string>();
+    allEnhancedProjects.forEach((p) => {
+      const cat = (p.category || p.notes || '').trim();
+      if (cat) set.add(cat);
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'vi'));
+  }, [allEnhancedProjects]);
+
   const counts = useMemo(() => {
     const q = normalizeLabel(searchQuery.trim());
     const filteredBySearch = allEnhancedProjects.filter((project) => {
       if (!isProjectInDateRange(project, filterDateFrom, filterDateTo)) return false;
+      if (categoryFilter !== 'all') {
+        const pCat = (project.category || project.notes || '').trim().toLowerCase();
+        if (pCat !== categoryFilter.toLowerCase()) return false;
+      }
       if (!q) return true;
-      return [project.name, project.code, project.location, project.client, project.notes, project.managerName, project.memberNames.join(' ')]
+      return [project.name, project.code, project.location, project.client, project.category, project.notes, project.managerName, project.memberNames.join(' ')]
         .some((value) => normalizeLabel(String(value || '')).includes(q));
     });
     return {
@@ -357,7 +371,7 @@ export const ProjectManagementPage: React.FC = () => {
       active: filteredBySearch.filter(p => p.status === 'active').length,
       completed: filteredBySearch.filter(p => p.status === 'completed').length,
     };
-  }, [allEnhancedProjects, searchQuery, filterDateFrom, filterDateTo]);
+  }, [allEnhancedProjects, searchQuery, filterDateFrom, filterDateTo, categoryFilter]);
 
   const enhancedProjects = useMemo(() => {
     const q = normalizeLabel(searchQuery.trim());
@@ -366,9 +380,13 @@ export const ProjectManagementPage: React.FC = () => {
       const matchStatus = statusFilter === 'all' || project.status === statusFilter;
       if (!matchStatus) return false;
       if (!isProjectInDateRange(project, filterDateFrom, filterDateTo)) return false;
+      if (categoryFilter !== 'all') {
+        const pCat = (project.category || project.notes || '').trim().toLowerCase();
+        if (pCat !== categoryFilter.toLowerCase()) return false;
+      }
 
       if (!q) return true;
-      return [project.name, project.code, project.location, project.client, project.notes, project.managerName, project.memberNames.join(' ')]
+      return [project.name, project.code, project.location, project.client, project.category, project.notes, project.managerName, project.memberNames.join(' ')]
         .some((value) => normalizeLabel(String(value || '')).includes(q));
     }).sort((a, b) => {
       const getTimestamp = (p: any) => {
@@ -426,6 +444,7 @@ export const ProjectManagementPage: React.FC = () => {
       name: newProjName.trim(),
       client: newProjClient.trim() || undefined,
       location: newProjLocation.trim(),
+      category: newProjCategory.trim() || undefined,
       notes: newProjCategory.trim() || undefined,
       progressPercent: 0,
       status: 'active',
@@ -730,7 +749,7 @@ export const ProjectManagementPage: React.FC = () => {
     setEditProjName(project.name);
     setEditProjLocation(project.location || '');
     setEditProjClient(project.client || '');
-    setEditProjCategory(project.notes || '');
+    setEditProjCategory(project.category || project.notes || '');
 
     // Resolve engineers from the engineers array by ID, code, or name matching
     const pCodeUpper = (project.code || '').trim().toUpperCase();
@@ -778,6 +797,7 @@ export const ProjectManagementPage: React.FC = () => {
         name: editProjName.trim(),
         location: editProjLocation.trim(),
         client: editProjClient.trim() || undefined,
+        category: editProjCategory.trim() || undefined,
         notes: editProjCategory.trim() || undefined,
         managerId: managerId,
         managerName: managerName,
@@ -1067,6 +1087,21 @@ export const ProjectManagementPage: React.FC = () => {
             <option value="completed">Hoàn thành ({counts.completed})</option>
           </CustomSelect>
 
+          {/* Bộ lọc phân loại dự án */}
+          <CustomSelect
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            className="h-[34px] min-w-[160px] max-w-[220px] rounded-lg border border-slate-200 bg-white px-2 text-xs font-bold text-slate-700 shadow-2xs outline-none focus:border-primary"
+            title="Lọc theo phân loại dự án"
+          >
+            <option value="all">-- Phân loại: Tất cả --</option>
+            {availableCategories.map((cat) => (
+              <option key={cat} value={cat}>
+                {cat}
+              </option>
+            ))}
+          </CustomSelect>
+
           {/* Bộ lọc dải ngày (Từ ngày ... Đến ngày ...) */}
           <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-lg px-2 py-0.5 h-[34px] shadow-2xs text-xs shrink-0">
             <span className="text-slate-400 font-medium whitespace-nowrap text-[11px] ml-0.5">Từ</span>
@@ -1236,10 +1271,12 @@ export const ProjectManagementPage: React.FC = () => {
                       </p>
                     )}
 
-                    {project.notes && (
-                      <p className="text-[11px] text-slate-500 truncate mt-[-4px]" title={project.notes}>
-                        <span className="font-semibold text-slate-400">Hạng mục: </span>
-                        {project.notes}
+                    {(project.category || project.notes) && (
+                      <p className="text-[11px] text-slate-500 truncate mt-[-4px]" title={project.category || project.notes}>
+                        <span className="font-semibold text-slate-400">Phân loại: </span>
+                        <span className="inline-block bg-slate-100 text-slate-700 px-1.5 py-0.2 rounded font-medium text-[10.5px]">
+                          {project.category || project.notes}
+                        </span>
                       </p>
                     )}
 
@@ -1404,8 +1441,13 @@ export const ProjectManagementPage: React.FC = () => {
               <input value={editProjClient} onChange={(e) => setEditProjClient(e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none" />
             </div>
             <div>
-              <label className="block font-bold text-slate-700 mb-1">Hạng mục</label>
-              <input value={editProjCategory} onChange={(e) => setEditProjCategory(e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none" />
+              <label className="block font-bold text-slate-700 mb-1">Phân loại / Hạng mục dự án</label>
+              <input
+                value={editProjCategory}
+                onChange={(e) => setEditProjCategory(e.target.value)}
+                placeholder="VD: Trạm biến áp 110kV, Đường dây, Nhà xưởng..."
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none"
+              />
             </div>
           </div>
           <div>
@@ -1500,7 +1542,15 @@ export const ProjectManagementPage: React.FC = () => {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div><label className="block font-bold text-slate-700 mb-1">Chủ đầu tư</label><input value={newProjClient} onChange={(event) => setNewProjClient(event.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none" /></div>
-            <div><label className="block font-bold text-slate-700 mb-1">Hạng mục</label><input value={newProjCategory} onChange={(event) => setNewProjCategory(event.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none" /></div>
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Phân loại / Hạng mục dự án</label>
+              <input
+                value={newProjCategory}
+                onChange={(event) => setNewProjCategory(event.target.value)}
+                placeholder="VD: Trạm biến áp 110kV, Đường dây, Nhà xưởng..."
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none"
+              />
+            </div>
           </div>
           <div>
             <label className="block font-bold text-slate-700 mb-1">Chỉ huy trưởng / Quản lý dự án</label>
