@@ -13,7 +13,13 @@ import { registerWebDeviceToken } from '../services/notificationDispatchService'
 import { requestSystemNotificationPermission, sendSystemNotification } from '../services/systemNotificationService';
 import { exportToStyledExcel } from '../utils/excelExportUtils';
 
-type SettingsTab = 'general' | 'roles' | 'appearance' | 'notifications' | 'activity_logs' | 'account';
+import { PlatformTenantsTab } from '../components/settings/PlatformTenantsTab';
+import { MasterCategoriesTab } from '../components/settings/MasterCategoriesTab';
+import { SystemSecurityTab } from '../components/settings/SystemSecurityTab';
+import { SystemIntegrationTab } from '../components/settings/SystemIntegrationTab';
+import { usePlatformAdminStore } from '../services/platformAdminStore';
+
+type SettingsTab = 'tenants' | 'categories' | 'security' | 'integrations' | 'general' | 'roles' | 'appearance' | 'notifications' | 'activity_logs' | 'account';
 
 const ALL_PERMISSION_GROUPS: {
   title: string;
@@ -163,7 +169,7 @@ export const SettingsPage: React.FC = () => {
 
   // Nếu không phải Admin hệ thống (nhân sự/giám đốc/kỹ sư), không được xem tab Cấu hình công ty (general) & Phân quyền (roles)
   const isGeneralStaff = !isSysAdmin;
-  const [activeTab, setActiveTab] = useState<SettingsTab>(isSysAdmin ? 'general' : 'appearance');
+  const [activeTab, setActiveTab] = useState<SettingsTab>(isSysAdmin ? 'tenants' : 'appearance');
   const [isConfirmLogoutOpen, setIsConfirmLogoutOpen] = useState(false);
 
   const handleLogout = async () => {
@@ -479,11 +485,73 @@ export const SettingsPage: React.FC = () => {
         {/* Left Settings Sidebar */}
         <aside className="w-56 md:w-64 bg-white border-r border-slate-200 p-3 flex flex-col justify-between shrink-0 overflow-y-auto custom-scrollbar">
           <div className="space-y-4">
-            {/* Cấu hình hệ thống (Dành cho Admin) */}
+            {/* Quản trị nền tảng đa công ty (Chỉ Admin hệ thống TITSMART) */}
             {!isGeneralStaff && (
               <div>
                 <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-3 mb-1.5">
-                  Cấu hình hệ thống
+                  Quản trị nền tảng SaaS
+                </div>
+                <nav className="space-y-1">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('tenants')}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${
+                      activeTab === 'tenants'
+                        ? 'bg-blue-50 text-primary border border-blue-200/80 shadow-2xs'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-lg">corporate_fare</span>
+                    <span>Công ty & Gói dịch vụ</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('categories')}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${
+                      activeTab === 'categories'
+                        ? 'bg-blue-50 text-primary border border-blue-200/80 shadow-2xs'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-lg">category</span>
+                    <span>Danh mục chuẩn hệ thống</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('security')}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${
+                      activeTab === 'security'
+                        ? 'bg-blue-50 text-primary border border-blue-200/80 shadow-2xs'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-lg">security</span>
+                    <span>Chính sách Bảo mật</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('integrations')}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${
+                      activeTab === 'integrations'
+                        ? 'bg-blue-50 text-primary border border-blue-200/80 shadow-2xs'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-lg">hub</span>
+                    <span>Tích hợp & Cảnh báo</span>
+                  </button>
+                </nav>
+              </div>
+            )}
+
+            {/* Cấu hình công ty (Dành cho Admin) */}
+            {!isGeneralStaff && (
+              <div>
+                <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-3 mb-1.5">
+                  Cấu hình công ty & Quy trình
                 </div>
                 <nav className="space-y-1">
                   <button
@@ -507,7 +575,7 @@ export const SettingsPage: React.FC = () => {
                       className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${
                         activeTab === 'roles'
                           ? 'bg-blue-50 text-primary border border-blue-200/80 shadow-2xs'
-                          : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                       }`}
                     >
                       <span className="material-symbols-outlined text-lg">settings_accessibility</span>
@@ -616,6 +684,26 @@ export const SettingsPage: React.FC = () => {
         {/* Right Settings Body */}
         <main className="flex-1 bg-slate-50 overflow-y-auto p-4 md:p-8 custom-scrollbar">
           <div className="max-w-5xl mx-auto space-y-6">
+
+            {/* TAB SaaS 1: CÔNG TY & GÓI DỊCH VỤ */}
+            {activeTab === 'tenants' && isSysAdmin && (
+              <PlatformTenantsTab triggerToast={triggerToast} />
+            )}
+
+            {/* TAB SaaS 2: DANH MỤC CHUẨN HỆ THỐNG */}
+            {activeTab === 'categories' && isSysAdmin && (
+              <MasterCategoriesTab triggerToast={triggerToast} />
+            )}
+
+            {/* TAB SaaS 3: CHÍNH SÁCH BẢO MẬT */}
+            {activeTab === 'security' && isSysAdmin && (
+              <SystemSecurityTab triggerToast={triggerToast} />
+            )}
+
+            {/* TAB SaaS 4: TÍCH HỢP & CẢNH BÁO */}
+            {activeTab === 'integrations' && isSysAdmin && (
+              <SystemIntegrationTab triggerToast={triggerToast} />
+            )}
 
             {/* TAB 1: THÔNG TIN & THƯƠNG HIỆU */}
             {activeTab === 'general' && !isGeneralStaff && (
