@@ -139,7 +139,7 @@ export const ActivityLogPage: React.FC = () => {
   const projects = useRealtimeStore(state => state.projects);
   const fetchActivityLogs = useRealtimeStore(state => state.fetchActivityLogs);
   const user = useAuthStore(state => state.user);
-  const isAdmin = isSystemAdmin(user) || isDirector(user) || hasPermission(user, 'VIEW_ACTIVITY_LOG');
+  const isAdmin = isSystemAdmin(user);
 
   React.useEffect(() => {
     if (isAdmin) {

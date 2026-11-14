@@ -159,7 +159,7 @@ export const SettingsPage: React.FC = () => {
   const isDir = isDirector(user);
   const canManageRoles = isSysAdmin;
   const isAdmin = isSysAdmin;
-  const canViewLogs = isSysAdmin || isDir || hasPermission(user, 'VIEW_ACTIVITY_LOG');
+  const canViewLogs = isSysAdmin;
 
   // Nếu không phải Admin hệ thống (nhân sự/giám đốc/kỹ sư), không được xem tab Cấu hình công ty (general) & Phân quyền (roles)
   const isGeneralStaff = !isSysAdmin;
