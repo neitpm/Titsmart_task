@@ -250,11 +250,7 @@ const parseProjectMetadata = (proj: any) => {
     cleanNotes = cleanNotes.replace(/\[MEMBERS:[^\]]+\]/gi, '').trim();
   }
 
-  // Nếu chưa có category từ tag thì fallback sang cleanNotes nếu nó là chuỗi ngắn dạng phân loại/hạng mục
-  if (!category && cleanNotes && !cleanNotes.includes('\n')) {
-    category = cleanNotes;
-  }
-
+  // Chỉ fallback category sang cleanNotes nếu dự án không có tag [CATEGORY:...] và cleanNotes không phải là hạng mục thuần túy
   return {
     ...proj,
     category: category || undefined,

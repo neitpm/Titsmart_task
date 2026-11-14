@@ -157,6 +157,7 @@ export const ProjectManagementPage: React.FC = () => {
   const [newProjLocation, setNewProjLocation] = useState('');
   const [newProjClient, setNewProjClient] = useState('');
   const [newProjCategory, setNewProjCategory] = useState('');
+  const [newProjNotes, setNewProjNotes] = useState('');
   const [selectedEngineerIds, setSelectedEngineerIds] = useState<string[]>([]);
   const [newProjManagerId, setNewProjManagerId] = useState<string>('');
   const [editProjManagerId, setEditProjManagerId] = useState<string>('');
@@ -348,7 +349,7 @@ export const ProjectManagementPage: React.FC = () => {
   const availableCategories = useMemo(() => {
     const set = new Set<string>();
     allEnhancedProjects.forEach((p) => {
-      const cat = (p.category || p.notes || '').trim();
+      const cat = (p.category || '').trim();
       if (cat) set.add(cat);
     });
     return Array.from(set).sort((a, b) => a.localeCompare(b, 'vi'));
@@ -359,7 +360,7 @@ export const ProjectManagementPage: React.FC = () => {
     const filteredBySearch = allEnhancedProjects.filter((project) => {
       if (!isProjectInDateRange(project, filterDateFrom, filterDateTo)) return false;
       if (categoryFilter !== 'all') {
-        const pCat = (project.category || project.notes || '').trim().toLowerCase();
+        const pCat = (project.category || '').trim().toLowerCase();
         if (pCat !== categoryFilter.toLowerCase()) return false;
       }
       if (!q) return true;
@@ -381,7 +382,7 @@ export const ProjectManagementPage: React.FC = () => {
       if (!matchStatus) return false;
       if (!isProjectInDateRange(project, filterDateFrom, filterDateTo)) return false;
       if (categoryFilter !== 'all') {
-        const pCat = (project.category || project.notes || '').trim().toLowerCase();
+        const pCat = (project.category || '').trim().toLowerCase();
         if (pCat !== categoryFilter.toLowerCase()) return false;
       }
 
@@ -414,12 +415,14 @@ export const ProjectManagementPage: React.FC = () => {
     }
     const location = data.location || getImportedFieldValue(data, ['dia diem cong trinh', 'dia diem xay dung', 'dia diem', 'vi tri', 'dia chi']);
     const client = getImportedFieldValue(data, ['chu dau tu', 'khach hang', 'ben giao thau']);
-    const category = getImportedFieldValue(data, ['hang muc', 'hạng mục', 'loai cong trinh', 'phan loai']);
+    const category = getImportedFieldValue(data, ['phan loai', 'loai cong trinh', 'loai du an']);
+    const notes = getImportedFieldValue(data, ['hang muc', 'hạng mục']);
     setNewProjName(projectName);
     setNewProjCode(slugProjectCode(projectName));
     setNewProjLocation(location);
     setNewProjClient(client);
-    setNewProjCategory(category);
+    setNewProjCategory(category || notes);
+    setNewProjNotes(notes);
     setPendingProjectTasks(data.tableTasks || []);
     setIsNewProjectModalOpen(true);
     triggerToast(data.tableTasks?.length ? `${TEXT.importedToForm} (${data.tableTasks.length} \u0111\u1ea7u m\u1ee5c)` : TEXT.importedToForm, 'info');
@@ -445,7 +448,7 @@ export const ProjectManagementPage: React.FC = () => {
       client: newProjClient.trim() || undefined,
       location: newProjLocation.trim(),
       category: newProjCategory.trim() || undefined,
-      notes: newProjCategory.trim() || undefined,
+      notes: newProjNotes.trim() || undefined,
       progressPercent: 0,
       status: 'active',
       activeTeams: 0,
@@ -705,6 +708,7 @@ export const ProjectManagementPage: React.FC = () => {
     setNewProjLocation('');
     setNewProjClient('');
     setNewProjCategory('');
+    setNewProjNotes('');
     setSelectedEngineerIds([]);
     setPendingProjectTasks([]);
     } finally {
@@ -716,6 +720,7 @@ export const ProjectManagementPage: React.FC = () => {
   const [editProjLocation, setEditProjLocation] = useState('');
   const [editProjClient, setEditProjClient] = useState('');
   const [editProjCategory, setEditProjCategory] = useState('');
+  const [editProjNotes, setEditProjNotes] = useState('');
   const [editSelectedEngineerIds, setEditSelectedEngineerIds] = useState<string[]>([]);
   const [editPendingProjectTasks, setEditPendingProjectTasks] = useState<NonNullable<WebOcrExtractedData['tableTasks']>>([]);
 
@@ -728,8 +733,10 @@ export const ProjectManagementPage: React.FC = () => {
     if (location) setEditProjLocation(location);
     const client = getImportedFieldValue(data, ['chu dau tu', 'khach hang', 'ben giao thau']);
     if (client) setEditProjClient(client);
-    const category = getImportedFieldValue(data, ['hang muc', 'hạng mục', 'loai cong trinh', 'phan loai']);
+    const category = getImportedFieldValue(data, ['phan loai', 'loai cong trinh', 'loai du an']);
     if (category) setEditProjCategory(category);
+    const notes = getImportedFieldValue(data, ['hang muc', 'hạng mục']);
+    if (notes) setEditProjNotes(notes);
 
     if (data.tableTasks && data.tableTasks.length > 0) {
       setEditPendingProjectTasks(data.tableTasks);
@@ -749,7 +756,8 @@ export const ProjectManagementPage: React.FC = () => {
     setEditProjName(project.name);
     setEditProjLocation(project.location || '');
     setEditProjClient(project.client || '');
-    setEditProjCategory(project.category || project.notes || '');
+    setEditProjCategory(project.category || '');
+    setEditProjNotes(project.notes || '');
 
     // Resolve engineers from the engineers array by ID, code, or name matching
     const pCodeUpper = (project.code || '').trim().toUpperCase();
@@ -798,7 +806,7 @@ export const ProjectManagementPage: React.FC = () => {
         location: editProjLocation.trim(),
         client: editProjClient.trim() || undefined,
         category: editProjCategory.trim() || undefined,
-        notes: editProjCategory.trim() || undefined,
+        notes: editProjNotes.trim() || undefined,
         managerId: managerId,
         managerName: managerName,
         members: editSelectedEngineerIds,
@@ -1164,6 +1172,7 @@ export const ProjectManagementPage: React.FC = () => {
                 setNewProjLocation('');
                 setNewProjClient('');
                 setNewProjCategory('');
+                setNewProjNotes('');
                 setNewProjManagerId('');
                 setSelectedEngineerIds([]);
                 setPendingProjectTasks([]);
@@ -1271,12 +1280,19 @@ export const ProjectManagementPage: React.FC = () => {
                       </p>
                     )}
 
-                    {(project.category || project.notes) && (
-                      <p className="text-[11px] text-slate-500 truncate mt-[-4px]" title={project.category || project.notes}>
+                    {project.category && (
+                      <p className="text-[11px] text-slate-500 truncate mt-[-4px]" title={project.category}>
                         <span className="font-semibold text-slate-400">Phân loại: </span>
-                        <span className="inline-block bg-slate-100 text-slate-700 px-1.5 py-0.2 rounded font-medium text-[10.5px]">
-                          {project.category || project.notes}
+                        <span className="inline-block bg-blue-50 text-blue-700 px-1.5 py-0.2 rounded font-medium text-[10.5px] border border-blue-100">
+                          {project.category}
                         </span>
+                      </p>
+                    )}
+
+                    {project.notes && (
+                      <p className="text-[11px] text-slate-500 truncate mt-[-4px]" title={project.notes}>
+                        <span className="font-semibold text-slate-400">Hạng mục: </span>
+                        {project.notes}
                       </p>
                     )}
 
@@ -1441,7 +1457,7 @@ export const ProjectManagementPage: React.FC = () => {
               <input value={editProjClient} onChange={(e) => setEditProjClient(e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none" />
             </div>
             <div>
-              <label className="block font-bold text-slate-700 mb-1">Phân loại / Hạng mục dự án</label>
+              <label className="block font-bold text-slate-700 mb-1">Phân loại dự án</label>
               <input
                 value={editProjCategory}
                 onChange={(e) => setEditProjCategory(e.target.value)}
@@ -1449,6 +1465,15 @@ export const ProjectManagementPage: React.FC = () => {
                 className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none"
               />
             </div>
+          </div>
+          <div>
+            <label className="block font-bold text-slate-700 mb-1">Hạng mục</label>
+            <input
+              value={editProjNotes}
+              onChange={(e) => setEditProjNotes(e.target.value)}
+              placeholder="Nhập hạng mục thực hiện..."
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none"
+            />
           </div>
           <div>
             <label className="block font-bold text-slate-700 mb-1">Chỉ huy trưởng / Quản lý dự án</label>
@@ -1543,7 +1568,7 @@ export const ProjectManagementPage: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div><label className="block font-bold text-slate-700 mb-1">Chủ đầu tư</label><input value={newProjClient} onChange={(event) => setNewProjClient(event.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none" /></div>
             <div>
-              <label className="block font-bold text-slate-700 mb-1">Phân loại / Hạng mục dự án</label>
+              <label className="block font-bold text-slate-700 mb-1">Phân loại dự án</label>
               <input
                 value={newProjCategory}
                 onChange={(event) => setNewProjCategory(event.target.value)}
@@ -1551,6 +1576,15 @@ export const ProjectManagementPage: React.FC = () => {
                 className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none"
               />
             </div>
+          </div>
+          <div>
+            <label className="block font-bold text-slate-700 mb-1">Hạng mục</label>
+            <input
+              value={newProjNotes}
+              onChange={(event) => setNewProjNotes(event.target.value)}
+              placeholder="Nhập hạng mục thực hiện..."
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none"
+            />
           </div>
           <div>
             <label className="block font-bold text-slate-700 mb-1">Chỉ huy trưởng / Quản lý dự án</label>
