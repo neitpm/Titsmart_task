@@ -488,7 +488,7 @@ export const AuditInfoCell: React.FC<{
 
         if (!map.has(u)) {
           const eng = (engineers || []).find(e => e?.name?.toLowerCase() === u.toLowerCase());
-          const title = u === 'Quản trị hệ thống' ? 'Chủ tịch / Admin' : (disc.senderRole || eng?.title);
+          const title = u === 'Quản trị hệ thống' ? 'Ban Giám Đốc' : (disc.senderRole || eng?.title);
           map.set(u, {
             name: u,
             count: 1,
@@ -576,7 +576,7 @@ export const AuditInfoCell: React.FC<{
 
       if (!map.has(u)) {
         const eng = (engineers || []).find(e => e?.name?.toLowerCase() === u.toLowerCase());
-        const title = u === 'Quản trị hệ thống' ? 'Chủ tịch / Admin' : eng?.title;
+        const title = u === 'Quản trị hệ thống' ? 'Ban Giám Đốc' : eng?.title;
         map.set(u, {
           name: u,
           count: 1,
@@ -613,7 +613,7 @@ export const AuditInfoCell: React.FC<{
       const u = normalizeUser(updatedBy);
       if (!map.has(u)) {
         const eng = (engineers || []).find(e => e?.name?.toLowerCase() === u.toLowerCase());
-        const title = u === 'Quản trị hệ thống' ? 'Chủ tịch / Admin' : eng?.title;
+        const title = u === 'Quản trị hệ thống' ? 'Ban Giám Đốc' : eng?.title;
         map.set(u, {
           name: u,
           count: 1,

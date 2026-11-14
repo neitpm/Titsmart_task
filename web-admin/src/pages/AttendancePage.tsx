@@ -761,7 +761,7 @@ export const AttendancePage: React.FC = () => {
       } else {
         await addNotification({
           title: 'Yêu cầu chấm công bù mới',
-          message: `${user.name} vừa gửi yêu cầu ${adjType.toLowerCase()} ngày ${formatDate(adjDate)} (chờ Ban Giám Đốc / Quản trị duyệt)`,
+          message: `${user.name} vừa gửi yêu cầu ${adjType.toLowerCase()} ngày ${formatDate(adjDate)} (chờ Ban Giám Đốc duyệt)`,
           type: 'adj_pending:::admin:::Quản trị viên',
           icon: 'edit_calendar',
           link: '/attendance?tab=adjustment',
@@ -871,7 +871,7 @@ export const AttendancePage: React.FC = () => {
 
       if (finalStatus === 'APPROVED_STEP1') {
         notifTitle = 'Yêu cầu chấm công bù đã được Quản lý duyệt';
-        notifMsg = `Yêu cầu của ${reviewAdj.userName} ngày ${formatDate(reviewAdj.adjustmentDate)} đã được ${user.name} duyệt → Chờ Ban Giám Đốc / Quản trị phê duyệt cuối cùng.`;
+        notifMsg = `Yêu cầu của ${reviewAdj.userName} ngày ${formatDate(reviewAdj.adjustmentDate)} đã được ${user.name} duyệt → Chờ Ban Giám Đốc phê duyệt cuối cùng.`;
         notifType = `adj_step1_approved:::admin,${reviewAdj.userId}:::Quản trị viên,${reviewAdj.userName}`;
       } else if (finalStatus === 'APPROVED') {
         notifTitle = 'Yêu cầu chấm công bù đã được PHÊ DUYỆT';
@@ -1041,7 +1041,7 @@ export const AttendancePage: React.FC = () => {
         // Mặc định thông báo đến Ban Giám Đốc / Admin
         await addNotification({
           title: 'Đơn xin nghỉ phép mới',
-          message: `${user.name} vừa tạo đơn xin ${leaveType.toLowerCase()} (${diffDays} ngày: từ ${formatDate(leaveStartDate)} đến ${formatDate(leaveEndDate)}) (chờ Ban Giám Đốc / Quản trị duyệt)`,
+          message: `${user.name} vừa tạo đơn xin ${leaveType.toLowerCase()} (${diffDays} ngày: từ ${formatDate(leaveStartDate)} đến ${formatDate(leaveEndDate)}) (chờ Ban Giám Đốc duyệt)`,
           type: 'leave_pending:::admin:::Quản trị viên',
           icon: 'event_busy',
           link: '/attendance?tab=leave',
@@ -1102,7 +1102,7 @@ export const AttendancePage: React.FC = () => {
       if (finalStatus === 'APPROVED_STEP1') {
         // Quản lý đã duyệt bước 1 -> Mặc định gửi thông báo đến Admin duyệt bước cuối và nhân viên
         notifTitle = 'Đơn nghỉ phép đã được Quản lý duyệt';
-        notifMsg = `Đơn của ${reviewLeave.userName} đã được ${user.name} duyệt → Chờ Ban Giám Đốc / Quản trị phê duyệt cuối cùng.`;
+        notifMsg = `Đơn của ${reviewLeave.userName} đã được ${user.name} duyệt → Chờ Ban Giám Đốc phê duyệt cuối cùng.`;
         notifType = `leave_step1_approved:::admin,${reviewLeave.userId}:::Quản trị viên,${reviewLeave.userName}`;
       } else if (finalStatus === 'APPROVED') {
         // Phê duyệt hoàn tất -> Gửi đích danh cho nhân viên làm đơn
@@ -2650,7 +2650,7 @@ export const AttendancePage: React.FC = () => {
                   searchable={true}
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-white font-medium"
                 >
-                  <option value="">-- Không qua quản lý (Admin duyệt) --</option>
+                  <option value="">-- Không qua quản lý (Ban Giám Đốc duyệt) --</option>
                   {step1Reviewers.map(r => (
                     <option key={r.id} value={r.id}>
                       {r.name}
@@ -2658,7 +2658,7 @@ export const AttendancePage: React.FC = () => {
                   ))}
                 </CustomSelect>
               </div>
-              <p className="text-[10px] text-slate-400 italic mt-1">* Ban Giám Đốc / Admin mặc định duyệt cuối</p>
+              <p className="text-[10px] text-slate-400 italic mt-1">* Ban Giám Đốc mặc định duyệt cuối</p>
             </div>
 
             {/* Ô Người theo dõi (Follow / CC) */}
@@ -2943,7 +2943,7 @@ export const AttendancePage: React.FC = () => {
                   searchable={true}
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-white font-medium"
                 >
-                  <option value="">-- Không qua quản lý (Admin duyệt) --</option>
+                  <option value="">-- Không qua quản lý (Ban Giám Đốc duyệt) --</option>
                   {step1Reviewers.map(r => (
                     <option key={r.id} value={r.id}>
                       {r.name}
@@ -2951,7 +2951,7 @@ export const AttendancePage: React.FC = () => {
                   ))}
                 </CustomSelect>
               </div>
-              <p className="text-[10px] text-slate-400 italic mt-1">* Ban Giám Đốc / Admin mặc định duyệt cuối</p>
+              <p className="text-[10px] text-slate-400 italic mt-1">* Ban Giám Đốc mặc định duyệt cuối</p>
             </div>
 
             {/* Ô Người theo dõi (Follow / CC) */}

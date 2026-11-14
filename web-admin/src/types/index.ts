@@ -301,7 +301,7 @@ export interface LeaveRequest {
   step1ReviewerName?: string;
   step1ReviewNote?: string;
   step1ReviewedAt?: string;
-  // Cấp 2: Người duyệt cấp cao nhất (Ban Giám Đốc / Admin)
+  // Cấp 2: Người duyệt cấp cao nhất (Ban Giám Đốc)
   step2ReviewerId?: string;
   step2ReviewerName?: string;
   step2ReviewNote?: string;
