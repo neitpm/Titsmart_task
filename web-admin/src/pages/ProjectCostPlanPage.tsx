@@ -4,7 +4,7 @@ import { exportToStyledExcel } from '../utils/excelExportUtils';
 import { cleanNotes } from '../utils/cleanNotesUtils';
 import { useParams, useOutletContext, useSearchParams } from 'react-router-dom';
 import { useRealtimeStore } from '../services/realtimeStore';
-import { useAuthStore, isSystemAdmin, hasPermission } from '../services/authStore';
+import { useAuthStore, isSystemAdmin, isDirector, hasPermission } from '../services/authStore';
 import { useUIStore } from '../services/uiStore';
 import { CostPlanSummaryTable } from './cost-plan/CostPlanSummaryTable';
 import { Modal } from '../components/common/Modal';
@@ -1630,7 +1630,7 @@ export const ProjectCostPlanPage: React.FC = () => {
       // TUYỆT ĐỐI không bao giờ được dựng thành yêu cầu mới.
       const isLegacyCreationNotification =
         tLow.startsWith('yêu cầu cấp quỹ mới:') &&
-        mLow.includes('vừa gửi yêu cầu cấp quỹ') &&
+        (mLow.includes('vừa gửi yêu cầu cấp quỹ') || mLow.includes('người tạo:') || mLow.includes('số tiền:')) &&
         !tLow.includes('đã kiểm tra') &&
         !tLow.includes('đã duyệt') &&
         !tLow.includes('phê duyệt') &&
@@ -1660,7 +1660,7 @@ export const ProjectCostPlanPage: React.FC = () => {
         const notifId = notifFundId || `notif-fund-${notif.id}`;
 
         // Kiểm tra xem đơn đã tồn tại trong list chưa (theo id, hoặc trùng creator + amount + project)
-        const amountMatch = notif.message.match(/cấp quỹ\s+([0-9.,]+)\s*đ/i);
+        const amountMatch = notif.message.match(/(?:cấp quỹ|số tiền:)\s*([0-9.,]+)\s*đ/i);
         const rawAmountStr = amountMatch ? amountMatch[1].replace(/[.,]/g, '') : '0';
         const numericAmount = Number(rawAmountStr) || 0;
 
@@ -1682,9 +1682,9 @@ export const ProjectCostPlanPage: React.FC = () => {
             revName = parts[2] || '';
           }
 
-          const typeMatch = notif.message.match(/\(([^)]+)\)\s*cần (kiểm tra|duyệt)/i);
+          const typeMatch = notif.message.match(/\(([^)]+)\)\s*cần (kiểm tra|duyệt)/i) || notif.message.match(/\(([^)]+)\)\./i);
           const purposeMatch = notif.message.match(/Mục đích:\s*([^]+)/i);
-          const creatorMatch = notif.message.match(/^([^]+?)\s+vừa gửi yêu cầu/i);
+          const creatorMatch = notif.message.match(/Người tạo:\s*([^]+?)\s+lúc/i) || notif.message.match(/^([^]+?)\s+vừa gửi yêu cầu/i);
 
           const titleProjName = notif.title.replace(/^Yêu cầu cấp quỹ mới:\s*/i, '').replace(/^Yêu cầu cấp quỹ đã được duyệt:\s*/i, '').trim();
           const cleanTitleProj = titleProjName.toLowerCase();
@@ -2872,6 +2872,7 @@ export const ProjectCostPlanPage: React.FC = () => {
                   <span className="hidden sm:inline">Duyệt cấp quỹ</span>
                   {(() => {
                     const isSystemAdminUser = isSystemAdmin(user);
+                    const isDirectorUser = isDirector(user);
                     const canCheck = hasPermission(user, 'CHECK_FUND_REQUEST');
                     const canApprove = hasPermission(user, 'APPROVE_FUND_REQUEST');
                     const canTransfer = hasPermission(user, 'PROCESS_FUND_TRANSFER');
@@ -2882,7 +2883,7 @@ export const ProjectCostPlanPage: React.FC = () => {
                       const status = r.status || 'PENDING_CHECK';
                       if (status === 'COMPLETED' || status === 'REJECTED' || status === 'REJECTED_BY_CHECKER') return false;
 
-                      if (isSystemAdminUser) return true;
+                      if (isSystemAdminUser || isDirectorUser) return true;
 
                       const rCreatorId = String(r.creatorId || '').trim().toLowerCase();
                       const rCreatorNorm = normalizeStr(r.creatorName);
@@ -5413,6 +5414,7 @@ export const ProjectCostPlanPage: React.FC = () => {
               <span className="text-xs font-bold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-full">
               {(() => {
                 const isSystemAdminUser = isSystemAdmin(user);
+                const isDirectorUser = isDirector(user);
                 const canCheck = hasPermission(user, 'CHECK_FUND_REQUEST');
                 const canApprove = hasPermission(user, 'APPROVE_FUND_REQUEST');
                 const canTransfer = hasPermission(user, 'PROCESS_FUND_TRANSFER');
@@ -5423,12 +5425,13 @@ export const ProjectCostPlanPage: React.FC = () => {
                 const isAccountantRoleOrPerm = userRoleStr.includes('kế toán') || userTitleStr.includes('kế toán') || canTransfer;
 
                 const reqCount = allFundRequests.filter(r => {
-                  if (selectedProject && r.projectCode && r.projectCode !== selectedProject) {
-                    if (!targetFundId || (r.id !== targetFundId && r.notificationId !== targetFundId)) {
-                      return false;
-                    }
+                  if (targetFundId && (r.id === targetFundId || r.notificationId === targetFundId)) {
+                    return true;
                   }
-                  if (isSystemAdminUser) return true;
+                  if (selectedProject && r.projectCode && r.projectCode !== selectedProject) {
+                    return false;
+                  }
+                  if (isSystemAdminUser || isDirectorUser) return true;
 
                   const rCreatorId = String(r.creatorId || '').trim().toLowerCase();
                   const rCreatorNorm = normalizeStr(r.creatorName);
@@ -5486,6 +5489,7 @@ export const ProjectCostPlanPage: React.FC = () => {
               <tbody className="divide-y divide-slate-100">
                 {(() => {
                   const isSystemAdminUser = isSystemAdmin(user);
+                  const isDirectorUser = isDirector(user);
                   const canCheckPerm = hasPermission(user, 'CHECK_FUND_REQUEST');
                   const canApprovePerm = hasPermission(user, 'APPROVE_FUND_REQUEST');
                   const canTransferPerm = hasPermission(user, 'PROCESS_FUND_TRANSFER');
@@ -5494,13 +5498,13 @@ export const ProjectCostPlanPage: React.FC = () => {
                   const allowDualRole = useUIStore.getState().allowDualCheckerReviewerRole;
 
                   const visibleRequests = allFundRequests.filter(r => {
-                    if (selectedProject && r.projectCode && r.projectCode !== selectedProject) {
-                      // Nếu có targetFundId khớp thì vẫn cho hiển thị đơn này kể cả khi selectedProject chưa đồng bộ
-                      if (!targetFundId || (r.id !== targetFundId && r.notificationId !== targetFundId)) {
-                        return false;
-                      }
+                    if (targetFundId && (r.id === targetFundId || r.notificationId === targetFundId)) {
+                      return true;
                     }
-                    if (isSystemAdminUser) return true;
+                    if (selectedProject && r.projectCode && r.projectCode !== selectedProject) {
+                      return false;
+                    }
+                    if (isSystemAdminUser || isDirectorUser) return true;
 
                     const rCreatorId = String(r.creatorId || '').trim().toLowerCase();
                     const rCreatorNorm = normalizeStr(r.creatorName);
@@ -6005,6 +6009,7 @@ export const ProjectCostPlanPage: React.FC = () => {
           <div className="block md:hidden space-y-3">
             {(() => {
               const isSystemAdminUser = isSystemAdmin(user);
+              const isDirectorUser = isDirector(user);
               const canCheckPerm = hasPermission(user, 'CHECK_FUND_REQUEST');
               const canApprovePerm = hasPermission(user, 'APPROVE_FUND_REQUEST');
               const canTransferPerm = hasPermission(user, 'PROCESS_FUND_TRANSFER');
@@ -6013,12 +6018,13 @@ export const ProjectCostPlanPage: React.FC = () => {
               const allowDualRole = useUIStore.getState().allowDualCheckerReviewerRole;
 
               const visibleRequests = allFundRequests.filter(r => {
-                if (selectedProject && r.projectCode && r.projectCode !== selectedProject) {
-                  if (!targetFundId || (r.id !== targetFundId && r.notificationId !== targetFundId)) {
-                    return false;
-                  }
+                if (targetFundId && (r.id === targetFundId || r.notificationId === targetFundId)) {
+                  return true;
                 }
-                if (isSystemAdminUser) return true;
+                if (selectedProject && r.projectCode && r.projectCode !== selectedProject) {
+                  return false;
+                }
+                if (isSystemAdminUser || isDirectorUser) return true;
 
                 const rCreatorId = String(r.creatorId || '').trim().toLowerCase();
                 const rCreatorNorm = normalizeStr(r.creatorName);

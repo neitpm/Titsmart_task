@@ -80,7 +80,16 @@ export const isSystemAdmin = (user: AuthUser | null | undefined): boolean => {
 export const isDirector = (user: AuthUser | null | undefined): boolean => {
   if (!user) return false;
   const role = String(user.role || '').toLowerCase();
-  return role.includes('giám đốc') || role.includes('ban giám đốc') || role === 'director';
+  const title = String((user as any).title || '').toLowerCase();
+  return (
+    role.includes('giám đốc') ||
+    role.includes('ban giám đốc') ||
+    role === 'director' ||
+    role.includes('lãnh đạo') ||
+    title.includes('giám đốc') ||
+    title.includes('ban giám đốc') ||
+    title.includes('lãnh đạo')
+  );
 };
 
 /**
