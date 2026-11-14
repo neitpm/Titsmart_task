@@ -155,10 +155,15 @@ export const SettingsPage: React.FC = () => {
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
   // Tab Phân quyền & Cấp bậc là chức năng kỹ thuật dành cho Admin hệ thống hoặc người có quyền MANAGE_PERMISSIONS
-  const canManageRoles = isSystemAdmin(user) || hasPermission(user, 'MANAGE_PERMISSIONS');
-  const isAdmin = isSystemAdmin(user) || canManageRoles;
-  const canViewLogs = isSystemAdmin(user) || isDirector(user) || hasPermission(user, 'VIEW_ACTIVITY_LOG');
+  const isSysAdmin = isSystemAdmin(user);
+  const isDir = isDirector(user);
+  const canManageRoles = isSysAdmin || hasPermission(user, 'MANAGE_PERMISSIONS');
+  const isAdmin = isSysAdmin || canManageRoles;
+  const canViewLogs = isSysAdmin || isDir || hasPermission(user, 'VIEW_ACTIVITY_LOG');
 
+  // Nếu là nhân sự thường không có quyền cấu hình hệ thống, mặc định mở tab account
+  const isGeneralStaff = !isSysAdmin && !isDir && !canManageRoles;
+  const [activeTab, setActiveTab] = useState<SettingsTab>(isGeneralStaff ? 'account' : 'general');
   const [isConfirmLogoutOpen, setIsConfirmLogoutOpen] = useState(false);
 
   const handleLogout = async () => {
@@ -166,8 +171,6 @@ export const SettingsPage: React.FC = () => {
     await logout();
     navigate('/login', { replace: true });
   };
-
-  const [activeTab, setActiveTab] = useState<SettingsTab>('general');
   const [toastState, setToastState] = useState({ show: false, message: '', type: 'success' as 'success' | 'info' | 'warning' | 'error' });
 
   const triggerToast = (message: string, type: 'success' | 'info' | 'warning' | 'error' = 'success') => {
@@ -476,67 +479,69 @@ export const SettingsPage: React.FC = () => {
         {/* Left Settings Sidebar */}
         <aside className="w-56 md:w-64 bg-white border-r border-slate-200 p-3 flex flex-col justify-between shrink-0 overflow-y-auto custom-scrollbar">
           <div className="space-y-4">
-            <div>
-              <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-3 mb-1.5">
-                Cấu hình hệ thống
-              </div>
-              <nav className="space-y-1">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('general')}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${
-                    activeTab === 'general'
-                      ? 'bg-blue-50 text-primary border border-blue-200/80 shadow-2xs'
-                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                  }`}
-                >
-                  <span className="material-symbols-outlined text-lg">domain</span>
-                  <span>Thông tin & Thương hiệu</span>
-                </button>
-
-                {/* Tab Phân quyền & Cấp bậc: Chỉ hiển thị cho Admin / Ban Giám đốc */}
-                {canManageRoles && (
+            {!isGeneralStaff && (
+              <div>
+                <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-3 mb-1.5">
+                  Cấu hình hệ thống
+                </div>
+                <nav className="space-y-1">
                   <button
                     type="button"
-                    onClick={() => setActiveTab('roles')}
+                    onClick={() => setActiveTab('general')}
                     className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${
-                      activeTab === 'roles'
+                      activeTab === 'general'
                         ? 'bg-blue-50 text-primary border border-blue-200/80 shadow-2xs'
                         : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                     }`}
                   >
-                    <span className="material-symbols-outlined text-lg">settings_accessibility</span>
-                    <span>Phân quyền & Cấp bậc</span>
+                    <span className="material-symbols-outlined text-lg">domain</span>
+                    <span>Thông tin & Thương hiệu</span>
                   </button>
-                )}
 
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('appearance')}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${
-                    activeTab === 'appearance'
-                      ? 'bg-blue-50 text-primary border border-blue-200/80 shadow-2xs'
-                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                  }`}
-                >
-                  <span className="material-symbols-outlined text-lg">palette</span>
-                  <span>Giao diện thanh điều hướng</span>
-                </button>
+                  {/* Tab Phân quyền & Cấp bậc: Chỉ hiển thị cho Admin hệ thống hoặc người có quyền MANAGE_PERMISSIONS */}
+                  {canManageRoles && (
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('roles')}
+                      className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${
+                        activeTab === 'roles'
+                          ? 'bg-blue-50 text-primary border border-blue-200/80 shadow-2xs'
+                          : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                      }`}
+                    >
+                      <span className="material-symbols-outlined text-lg">settings_accessibility</span>
+                      <span>Phân quyền & Cấp bậc</span>
+                    </button>
+                  )}
 
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('notifications')}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${
-                    activeTab === 'notifications'
-                      ? 'bg-blue-50 text-primary border border-blue-200/80 shadow-2xs'
-                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                  }`}
-                >
-                  <span className="material-symbols-outlined text-lg">notifications</span>
-                  <span>Thông báo & Chuông</span>
-                </button>
-              </nav>
-            </div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('appearance')}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${
+                      activeTab === 'appearance'
+                        ? 'bg-blue-50 text-primary border border-blue-200/80 shadow-2xs'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-lg">palette</span>
+                    <span>Giao diện thanh điều hướng</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('notifications')}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${
+                      activeTab === 'notifications'
+                        ? 'bg-blue-50 text-primary border border-blue-200/80 shadow-2xs'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-lg">notifications</span>
+                    <span>Thông báo & Chuông</span>
+                  </button>
+                </nav>
+              </div>
+            )}
 
             {/* Dữ liệu & Nhật ký */}
             {canViewLogs && (
@@ -604,7 +609,7 @@ export const SettingsPage: React.FC = () => {
           <div className="max-w-5xl mx-auto space-y-6">
 
             {/* TAB 1: THÔNG TIN & THƯƠNG HIỆU */}
-            {activeTab === 'general' && (
+            {activeTab === 'general' && !isGeneralStaff && (
               <div className="space-y-6 animate-in fade-in duration-150">
                 <div>
                   <h1 className="text-xl font-extrabold text-slate-900">Thông tin chung & Thương hiệu</h1>

@@ -41,7 +41,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
     : (isSidebarExpanded || isSidebarHovered);
   const toggleSidebar = toggleSidebarProp || toggleSidebarExpanded;
   const navigate = useNavigate();
-  const isAdmin = isDirector(user) || isSystemAdmin(user) || user?.role === 'pm' || hasPermission(user, 'ASSIGN_TASKS');
+  const isSystemAdminUser = isSystemAdmin(user);
+  const isDirectorUser = isDirector(user);
+  const canAccessSystemSettings = isSystemAdminUser || isDirectorUser || hasPermission(user, 'MANAGE_PERMISSIONS');
+  const isAdmin = isDirectorUser || isSystemAdminUser || user?.role === 'pm' || hasPermission(user, 'ASSIGN_TASKS');
   const defaultTaskPath = isAdmin ? '/task-assignment?tab=unassigned' : '/my-tasks';
   const sidebarRef = useRef<HTMLElement>(null);
 
@@ -232,22 +235,22 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
             {/* User Profile */}
             <button
               type="button"
-              onClick={() => navigate('/settings')}
-              title={!isExpanded ? "Cài đặt & Tài khoản" : undefined}
-              className="flex items-center rounded-lg transition-all overflow-hidden h-10 w-full px-1 gap-2 hover:bg-slate-100"
+              onClick={() => navigate(canAccessSystemSettings ? '/settings' : '/account')}
+              title={!isExpanded ? (canAccessSystemSettings ? "Cài đặt & Tài khoản" : "Tài khoản cá nhân") : undefined}
+              className="flex items-center rounded-lg transition-all overflow-hidden h-10 w-full px-1 gap-2 hover:bg-slate-100 cursor-pointer"
             >
               <div className="w-8 h-8 flex-shrink-0 flex items-center justify-center text-slate-500">
                 <span className="material-symbols-outlined text-[20px]">person</span>
               </div>
               <div className={`text-left leading-tight flex-1 min-w-0 transition-opacity duration-200 ${isExpanded ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
                 <span className="block font-bold text-xs text-slate-800 truncate" title={user?.name}>
-                  {user?.name ? user.name.trim().split(' ').pop() : 'Admin'}
+                  {user?.name ? user.name.trim().split(' ').pop() : (isSystemAdminUser ? 'Admin' : 'Nhân sự')}
                 </span>
-                <span className="block text-[10px] text-slate-500 truncate" title={user?.title}>{user?.title || 'Quản trị viên'}</span>
+                <span className="block text-[10px] text-slate-500 truncate" title={user?.title}>{user?.title || (isSystemAdminUser ? 'Quản trị hệ thống' : 'Nhân viên')}</span>
               </div>
               {isExpanded && (
                 <span className="material-symbols-outlined text-base text-slate-400 hover:text-primary shrink-0 mr-1">
-                  settings
+                  {canAccessSystemSettings ? 'settings' : 'account_circle'}
                 </span>
               )}
             </button>
@@ -376,13 +379,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
                   <button
                     onClick={() => {
                       setIsMobileDrawerOpen(false);
-                      navigate('/settings');
+                      navigate(canAccessSystemSettings ? '/settings' : '/account');
                     }}
                     className="flex items-center gap-1.5 text-xs font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-100 px-3 py-1.5 rounded-xl transition-colors shadow-2xs cursor-pointer"
-                    title="Cài đặt hệ thống"
+                    title={canAccessSystemSettings ? "Cài đặt hệ thống" : "Tài khoản cá nhân"}
                   >
-                    <span className="material-symbols-outlined text-base text-slate-600">settings</span>
-                    Cài đặt
+                    <span className="material-symbols-outlined text-base text-slate-600">
+                      {canAccessSystemSettings ? 'settings' : 'account_circle'}
+                    </span>
+                    {canAccessSystemSettings ? 'Cài đặt' : 'Tài khoản'}
                   </button>
                 </div>
               </div>
