@@ -2987,6 +2987,25 @@ export const api = {
   branding: {
     get: async (): Promise<{ companyName?: string; companySlogan?: string; companyLogo?: string | null; updatedAt?: string } | null> => {
       try {
+        // Ưu tiên đọc từ Cloud Storage công khai (hoạt động cho mọi client và cả khi chưa login)
+        const storageUrl = `${supabase.storage.from('titsmart-images').getPublicUrl('branding/config.json').data.publicUrl}?t=${Date.now()}`;
+        const res = await fetch(storageUrl, { cache: 'no-store' });
+        if (res.ok) {
+          const cfg = await res.json();
+          if (cfg && (cfg.companyName || cfg.companySlogan || cfg.companyLogo !== undefined)) {
+            return {
+              companyName: cfg.companyName,
+              companySlogan: cfg.companySlogan,
+              companyLogo: cfg.companyLogo,
+              updatedAt: cfg.updatedAt
+            };
+          }
+        }
+      } catch (e) {
+        // Fallback sang activity_logs nếu có
+      }
+
+      try {
         const { data, error } = await supabase
           .from('activity_logs')
           .select('id, action, timestamp')
@@ -3019,24 +3038,31 @@ export const api = {
           updatedAt: new Date().toISOString()
         };
 
-        const payload: any = {
-          user: input.updatedBy || 'Admin',
-          project: 'SYSTEM_SETTINGS',
-          icon: 'BRANDING_CONFIG',
-          action: JSON.stringify(payloadData),
-          timestamp: payloadData.updatedAt
-        };
-
-        let { error } = await supabase.from('activity_logs').insert(payload);
-        if (error) {
-          if (error.code === 'PGRST204' || String(error.message).includes('created_at') || String(error.message).includes('timestamp')) {
-            delete payload.timestamp;
-            payload.created_at = payloadData.updatedAt;
-            await supabase.from('activity_logs').insert(payload);
-          } else {
-            throw error;
-          }
+        // 1. Lưu vào Cloud Storage công khai (mọi thiết bị, trang login, mobile app đều đọc được ngay)
+        try {
+          await supabase.storage.from('titsmart-images').upload(
+            'branding/config.json',
+            JSON.stringify(payloadData),
+            { contentType: 'application/json', upsert: true }
+          );
+        } catch (stErr) {
+          console.warn('[Branding] Upload to storage failed, trying activity_logs:', stErr);
         }
+
+        // 2. Ghi nhận log nếu có quyền
+        try {
+          const payload: any = {
+            user: input.updatedBy || 'Admin',
+            project: 'SYSTEM_SETTINGS',
+            icon: 'BRANDING_CONFIG',
+            action: JSON.stringify(payloadData),
+            timestamp: payloadData.updatedAt
+          };
+          await supabase.from('activity_logs').insert(payload);
+        } catch (lErr) {
+          // Bỏ qua nếu dính RLS activity_logs
+        }
+
         return payloadData;
       } catch (err) {
         console.error('[Branding] Failed to save branding config to cloud:', err);

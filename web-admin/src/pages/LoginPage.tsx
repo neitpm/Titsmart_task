@@ -21,6 +21,7 @@ export const LoginPage: React.FC<{ onSwitchStyle?: () => void }> = ({ onSwitchSt
   useEffect(() => {
     setMounted(true);
     useAuthStore.getState().setIsLoggingOut(false);
+    useUIStore.getState().fetchBrandingFromCloud();
   }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -160,7 +161,7 @@ export const LoginPage: React.FC<{ onSwitchStyle?: () => void }> = ({ onSwitchSt
             </div>
             
             <p className="text-center text-slate-400 font-medium text-xs mt-8">
-              &copy; {new Date().getFullYear()} TITSMART Project Manager.
+              &copy; {new Date().getFullYear()} {companyName} {companySlogan ? `- ${companySlogan}` : 'Project Manager'}.
             </p>
           </div>
         </div>

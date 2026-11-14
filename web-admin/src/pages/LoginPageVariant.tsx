@@ -18,6 +18,7 @@ export const LoginPageVariant: React.FC<{ onSwitchStyle?: () => void }> = ({ onS
 
   useEffect(() => {
     useAuthStore.getState().setIsLoggingOut(false);
+    useUIStore.getState().fetchBrandingFromCloud();
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -148,7 +149,7 @@ export const LoginPageVariant: React.FC<{ onSwitchStyle?: () => void }> = ({ onS
           </div>
 
           <div className="px-8 py-4 border-t border-slate-100 bg-slate-50/60 text-center">
-            <p className="text-[11px] text-slate-400">© {new Date().getFullYear()} TITSMART Project Manager</p>
+            <p className="text-[11px] text-slate-400">© {new Date().getFullYear()} {companyName} {companySlogan ? `- ${companySlogan}` : 'Project Manager'}</p>
           </div>
         </div>
 
