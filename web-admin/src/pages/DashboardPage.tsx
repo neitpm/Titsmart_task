@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useRealtimeStore } from '../services/realtimeStore';
-import { useAuthStore } from '../services/authStore';
+import { useAuthStore, isDirector } from '../services/authStore';
 import { api } from '../services/apiSupabase';
 import { isUserMemberOfProject } from '../utils/projectMemberUtils';
 import { isTaskSectionHeaderItem, isTaskActuallyDone, getTaskEffectiveProgress } from '../types';
@@ -53,6 +53,8 @@ export const DashboardPage: React.FC = () => {
   const fieldLogs = useRealtimeStore(s => s.fieldLogs);
   const fetchAccounting = useRealtimeStore(s => s.fetchAccounting);
 
+  const user = useAuthStore(s => s.user);
+  const isDirectorUser = isDirector(user);
   const [selectedProjects, setSelectedProjects] = useState<string[]>([]);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [projectSearchQuery, setProjectSearchQuery] = useState('');
@@ -651,8 +653,15 @@ export const DashboardPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Card 6: Nhân sự */}
-          <div onClick={() => navigate('/personnel')} className="bg-white rounded-xl p-3.5 sm:p-4 border border-slate-200 shadow-xs hover:shadow-md hover:border-indigo-300 transition-all cursor-pointer flex flex-col justify-between min-w-0 group">
+          {/* Card 6: Nhân sự (Chỉ Giám Đốc mới có quyền click chuyển trang) */}
+          <div 
+            onClick={() => {
+              if (isDirectorUser) {
+                navigate('/personnel');
+              }
+            }} 
+            className={`bg-white rounded-xl p-3.5 sm:p-4 border border-slate-200 shadow-xs transition-all flex flex-col justify-between min-w-0 group ${isDirectorUser ? 'hover:shadow-md hover:border-indigo-300 cursor-pointer' : 'cursor-default'}`}
+          >
             <div className="flex items-center gap-2.5 mb-2">
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 shrink-0 group-hover:scale-105 transition-transform">
                 <span className="material-symbols-outlined text-[20px]">groups</span>

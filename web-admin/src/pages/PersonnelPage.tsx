@@ -1,6 +1,7 @@
 import { Permission } from '../types';
-import { getDefaultPermissions, hasPermission } from '../services/authStore';
+import { getDefaultPermissions, hasPermission, isDirector } from '../services/authStore';
 import React, { useMemo, useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 import { exportToStyledExcel } from '../utils/excelExportUtils';
 import { useRealtimeStore } from '../services/realtimeStore';
@@ -156,6 +157,15 @@ export const PersonnelPage: React.FC = () => {
   const [identityNumber, setIdentityNumber] = useState('');
   const [emergencyContactName, setEmergencyContactName] = useState('');
   const user = useAuthStore(state => state.user);
+  const navigate = useNavigate();
+  const isDirectorUser = isDirector(user);
+
+  // CHẶN BẢO MẬT: Ngoài Giám Đốc ra không có bất kỳ ai có quyền vào trang Nhân sự
+  useEffect(() => {
+    if (user && !isDirectorUser) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [user, isDirectorUser, navigate]);
   const [role, setRole] = useState(user?.role || 'Nhân viên');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -660,7 +670,7 @@ export const PersonnelPage: React.FC = () => {
       <section className="border-b border-slate-200 bg-white pl-3 pr-16 md:pr-20 py-2.5 md:py-0 md:h-12 shadow-sm">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between h-full">
           <div className="flex items-center justify-between w-full md:w-auto h-8 md:h-auto mb-1 md:mb-0">
-            <h2 className="page-title text-base md:text-lg font-extrabold text-slate-900 border-l-4 border-primary pl-2">Tài khoản & Nhân sự</h2>
+            <h2 className="page-title text-base md:text-lg font-extrabold text-slate-900 border-l-4 border-primary pl-2">Nhân sự</h2>
           </div>
 
           <div className="flex items-center gap-2 justify-between md:justify-end w-full md:w-auto pt-0.5 md:pt-0 flex-wrap">

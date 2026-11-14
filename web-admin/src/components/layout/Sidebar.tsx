@@ -131,7 +131,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
       { label: 'Quản lý hồ sơ', path: '/document-tracking', icon: 'folder_managed', req: 'VIEW_DOCUMENTS' },
       { label: 'Tổng kho', path: '/materials', icon: 'warehouse', req: 'VIEW_MATERIALS' },
       { label: 'Chấm công', path: '/attendance', icon: 'schedule', req: 'VIEW_TASKS' },
-      { label: 'Nhân sự', path: '/personnel', icon: 'groups', req: 'VIEW_USERS' }
+      ...(isDirectorUser ? [{ label: 'Nhân sự', path: '/personnel', icon: 'groups', req: 'VIEW_USERS' }] : [])
     ];
 
     return [{
@@ -139,7 +139,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
       collapsible: false,
       items: mainItems.filter(item => hasPermission(user, item.req as any))
     }].filter(group => group.items.length > 0);
-  }, [currentProject?.id, currentProject?.name, user, defaultTaskPath]);
+  }, [currentProject?.id, currentProject?.name, user, defaultTaskPath, isDirectorUser]);
 
   return (
     <>
