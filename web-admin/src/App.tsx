@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Routes, Route, Navigate, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useRealtimeStore, setupRealtimeSync } from './services/realtimeStore';
-import { useAuthStore } from './services/authStore';
+import { useAuthStore, isSystemAdmin } from './services/authStore';
 import { Layout } from './components/layout/Layout';
 import { LoginPage } from './pages/LoginPage';
 import { LoginPageVariant } from './pages/LoginPageVariant';
@@ -286,12 +286,12 @@ export const App: React.FC = () => {
       <Routes>
         <Route path="/login" element={user ? <Navigate to="/" replace /> : renderLogin()} />
         <Route element={<ProtectedLayout />}>
-          <Route path="/" element={<Navigate to="/projects" replace />} />
-          <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/task-assignment" element={<TaskAssignmentPage />} />
-          <Route path="/my-tasks" element={<MyTasksPage />} />
-          <Route path="/projects" element={<ProjectManagementPage />} />
-          <Route path="/projects/:projectId" element={<ProjectDetailPage />}>
+          <Route path="/" element={<Navigate to={isSystemAdmin(user) ? "/settings" : "/projects"} replace />} />
+          <Route path="/dashboard" element={isSystemAdmin(user) ? <Navigate to="/settings" replace /> : <DashboardPage />} />
+          <Route path="/task-assignment" element={isSystemAdmin(user) ? <Navigate to="/settings" replace /> : <TaskAssignmentPage />} />
+          <Route path="/my-tasks" element={isSystemAdmin(user) ? <Navigate to="/settings" replace /> : <MyTasksPage />} />
+          <Route path="/projects" element={isSystemAdmin(user) ? <Navigate to="/settings" replace /> : <ProjectManagementPage />} />
+          <Route path="/projects/:projectId" element={isSystemAdmin(user) ? <Navigate to="/settings" replace /> : <ProjectDetailPage />}>
             <Route index element={<ProjectOverviewTab />} />
             <Route path="overview" element={<ProjectOverviewTab />} />
             <Route path="tasks" element={<TaskManagementPage />} />
@@ -301,15 +301,15 @@ export const App: React.FC = () => {
             <Route path="documents" element={<DocumentTrackingPage />} />
             <Route path="diagram" element={<ProjectDiagramTab />} />
           </Route>
-          <Route path="/tasks" element={<TaskManagementPage />} />
-          <Route path="/document-tracking" element={<DocumentTrackingPage />} />
-          <Route path="/field-logs" element={<FieldLogsPage />} />
-          <Route path="/materials" element={<MaterialTrackingPage />} />
-          <Route path="/cost-plan" element={<ProjectCostPlanPage />} />
+          <Route path="/tasks" element={isSystemAdmin(user) ? <Navigate to="/settings" replace /> : <TaskManagementPage />} />
+          <Route path="/document-tracking" element={isSystemAdmin(user) ? <Navigate to="/settings" replace /> : <DocumentTrackingPage />} />
+          <Route path="/field-logs" element={isSystemAdmin(user) ? <Navigate to="/settings" replace /> : <FieldLogsPage />} />
+          <Route path="/materials" element={isSystemAdmin(user) ? <Navigate to="/settings" replace /> : <MaterialTrackingPage />} />
+          <Route path="/cost-plan" element={isSystemAdmin(user) ? <Navigate to="/settings" replace /> : <ProjectCostPlanPage />} />
           <Route path="/issues" element={<IssueResolutionPage />} />
           <Route path="/personnel" element={<PersonnelPage />} />
           <Route path="/activity-log" element={<ActivityLogPage />} />
-          <Route path="/attendance" element={<AttendancePage />} />
+          <Route path="/attendance" element={isSystemAdmin(user) ? <Navigate to="/settings" replace /> : <AttendancePage />} />
           <Route path="/account" element={<AccountPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>

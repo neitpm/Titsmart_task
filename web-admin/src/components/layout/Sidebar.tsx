@@ -122,6 +122,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
       ].filter(group => group.items.length > 0);
     }
 
+    // Đối với Admin hệ thống kỹ thuật: Không hiển thị các module nghiệp vụ dự án, chỉ hiển thị menu Quản trị & Nhật ký
+    if (isSystemAdminUser) {
+      return [{
+        title: '',
+        collapsible: false,
+        items: [
+          { label: 'Cài đặt hệ thống', path: '/settings', icon: 'settings' },
+          { label: 'Nhật ký kỹ thuật', path: '/activity-log', icon: 'history' }
+        ]
+      }];
+    }
+
     const mainItems = [
       { label: 'Tổng quan', path: '/dashboard', icon: 'analytics', req: 'VIEW_PROJECTS' },
       { label: 'Tất cả dự án', path: '/projects', icon: 'cell_tower', req: 'VIEW_PROJECTS' },

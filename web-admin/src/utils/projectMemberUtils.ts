@@ -121,14 +121,24 @@ export const isUserMemberOfProject = (
 
   const role = String(user.role || '').toLowerCase();
   const username = String(user.username || '').toLowerCase();
-  // Admin & PM always have full access to all projects
+
+  // Admin hệ thống (Kỹ thuật/Nền tảng): Không tham gia trực tiếp điều hành dự án nghiệp vụ
+  if (username === 'admin' || role === 'admin' || role === 'system_admin' || role === 'quản trị viên' || role.includes('quản trị hệ thống')) {
+    return false;
+  }
+
+  // Ban Giám Đốc (Director): Toàn quyền xem và điều hành tất cả dự án trong công ty
   if (
-    username === 'admin' ||
-    role === 'admin' ||
-    role === 'pm' ||
-    role === 'quản trị viên' ||
-    role === 'quản lý dự án'
+    role.includes('giám đốc') ||
+    role.includes('ban giám đốc') ||
+    role === 'director' ||
+    role.includes('lãnh đạo')
   ) {
+    return true;
+  }
+
+  // Quản lý dự án / PM: Toàn quyền truy cập danh sách dự án
+  if (role === 'pm' || role === 'quản lý dự án' || role === 'project_manager') {
     return true;
   }
 
