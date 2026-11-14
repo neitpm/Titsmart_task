@@ -14,17 +14,6 @@ export interface CustomRoleLevel {
 
 export const DEFAULT_ROLE_LEVELS: CustomRoleLevel[] = [
   {
-    id: 'admin_sys',
-    name: 'Admin hệ thống (Kỹ thuật)',
-    description: 'Quản trị kỹ thuật, phân quyền, quản lý tài khoản nhân sự, sao lưu và cấu hình hệ thống',
-    defaultRoleName: 'Admin hệ thống',
-    isBuiltin: true,
-    permissions: [
-      'VIEW_USERS', 'EDIT_USERS', 'MANAGE_USERS', 'MANAGE_PERMISSIONS', 'VIEW_ACTIVITY_LOG',
-      'VIEW_PROJECTS', 'VIEW_TASKS', 'VIEW_MATERIALS', 'VIEW_DOCUMENTS', 'EXPORT_DATA'
-    ]
-  },
-  {
     id: 'level1',
     name: 'Cấp 1 - Ban Giám Đốc (Điều hành)',
     description: 'Thẩm quyền tối cao về nghiệp vụ, điều hành toàn diện, duyệt cấp cao, duyệt quỹ, phê duyệt dự án',

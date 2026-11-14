@@ -1106,7 +1106,7 @@ export const PersonnelPage: React.FC = () => {
               </div>
               
               <div className="space-y-1.5 bg-slate-50 border border-slate-200 rounded-lg p-2.5 max-h-48 overflow-y-auto custom-scrollbar">
-                {roleLevels.map((lvl) => {
+                {roleLevels.filter(lvl => lvl.id !== 'admin_sys' && !lvl.name.toLowerCase().includes('admin')).map((lvl) => {
                   const isChecked = selectedLevel === lvl.id || (
                     lvl.id === 'level1' && permissions.includes('APPROVE_LEAVE_FINAL') && permissions.includes('DELETE_PROJECTS')
                   ) || (
