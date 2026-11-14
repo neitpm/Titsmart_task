@@ -432,10 +432,25 @@ export const ProjectManagementPage: React.FC = () => {
     event.preventDefault();
     if (!newProjName.trim()) return;
 
+    const code = newProjCode.trim() ? sanitizeProjectCode(newProjCode) : slugProjectCode(newProjName);
+
+    // Kiểm tra cảnh báo trùng lặp Tên dự án hoặc Mã dự án
+    const normNewCode = code.toUpperCase().replace(/[-_]/g, '');
+    const normNewName = normalizeLabel(newProjName.trim()).replace(/\s+/g, '');
+    const duplicateProject = projects.find((p) => {
+      const pCode = (p.code || '').toUpperCase().replace(/[-_]/g, '');
+      const pName = normalizeLabel(p.name || '').replace(/\s+/g, '');
+      return (normNewCode && pCode === normNewCode) || (normNewName && pName === normNewName);
+    });
+
+    if (duplicateProject) {
+      triggerToast(`Cảnh báo: Dự án hoặc Mã dự án "${code}" đã tồn tại trong hệ thống (${duplicateProject.name})! Vui lòng kiểm tra lại để tránh trùng lặp.`, 'warning');
+      return;
+    }
+
     setLoading(true);
     setLoadingMessage('Đang tạo dự án...');
     try {
-    const code = newProjCode.trim() ? sanitizeProjectCode(newProjCode) : slugProjectCode(newProjName);
 
     const selectedEngineers = engineers.filter(eng => selectedEngineerIds.includes(eng.id));
     const managerEng = engineers.find(eng => eng.id === newProjManagerId);

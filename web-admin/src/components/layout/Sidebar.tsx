@@ -43,8 +43,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
   const navigate = useNavigate();
   const isSystemAdminUser = isSystemAdmin(user);
   const isDirectorUser = isDirector(user);
-  // Chỉ DUY NHẤT Admin hệ thống (kỹ thuật phần mềm) mới được truy cập và nhìn thấy Cài đặt hệ thống
-  const canAccessSystemSettings = isSystemAdminUser;
   const isAdmin = isDirectorUser || isSystemAdminUser || user?.role === 'pm' || hasPermission(user, 'ASSIGN_TASKS');
   const defaultTaskPath = isAdmin ? '/task-assignment?tab=unassigned' : '/my-tasks';
   const sidebarRef = useRef<HTMLElement>(null);
@@ -236,8 +234,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
             {/* User Profile */}
             <button
               type="button"
-              onClick={() => navigate(canAccessSystemSettings ? '/settings' : '/account')}
-              title={!isExpanded ? (canAccessSystemSettings ? "Cài đặt & Tài khoản" : "Tài khoản cá nhân") : undefined}
+              onClick={() => navigate('/settings')}
+              title={!isExpanded ? (isSystemAdminUser ? "Cài đặt & Quản trị" : "Cài đặt & Tài khoản") : undefined}
               className="flex items-center rounded-lg transition-all overflow-hidden h-10 w-full px-1 gap-2 hover:bg-slate-100 cursor-pointer"
             >
               <div className="w-8 h-8 flex-shrink-0 flex items-center justify-center text-slate-500">
@@ -251,7 +249,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
               </div>
               {isExpanded && (
                 <span className="material-symbols-outlined text-base text-slate-400 hover:text-primary shrink-0 mr-1">
-                  {canAccessSystemSettings ? 'settings' : 'account_circle'}
+                  settings
                 </span>
               )}
             </button>
@@ -380,15 +378,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
                   <button
                     onClick={() => {
                       setIsMobileDrawerOpen(false);
-                      navigate(canAccessSystemSettings ? '/settings' : '/account');
+                      navigate('/settings');
                     }}
                     className="flex items-center gap-1.5 text-xs font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-100 px-3 py-1.5 rounded-xl transition-colors shadow-2xs cursor-pointer"
-                    title={canAccessSystemSettings ? "Cài đặt hệ thống" : "Tài khoản cá nhân"}
+                    title="Cài đặt hệ thống"
                   >
                     <span className="material-symbols-outlined text-base text-slate-600">
-                      {canAccessSystemSettings ? 'settings' : 'account_circle'}
+                      settings
                     </span>
-                    {canAccessSystemSettings ? 'Cài đặt' : 'Tài khoản'}
+                    Cài đặt
                   </button>
                 </div>
               </div>

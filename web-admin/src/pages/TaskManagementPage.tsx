@@ -2067,6 +2067,21 @@ const hasSyncedRef = useRef(false);
     if (!newProjName.trim()) return;
 
     const code = newProjCode.trim() ? newProjCode.trim().toUpperCase() : 'PROJ-' + Math.floor(Math.random() * 1000);
+
+    // Kiểm tra trùng lặp Tên dự án hoặc Mã dự án
+    const normNewCode = code.toUpperCase().replace(/[-_]/g, '');
+    const normNewName = newProjName.trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[\u0111\u0110]/g, 'd').toLowerCase().replace(/\s+/g, '');
+    const duplicateProject = projects.find((p) => {
+      const pCode = (p.code || '').toUpperCase().replace(/[-_]/g, '');
+      const pName = (p.name || '').trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[\u0111\u0110]/g, 'd').toLowerCase().replace(/\s+/g, '');
+      return (normNewCode && pCode === normNewCode) || (normNewName && pName === normNewName);
+    });
+
+    if (duplicateProject) {
+      triggerToast(`Cảnh báo: Dự án hoặc Mã dự án "${code}" đã tồn tại (${duplicateProject.name})! Vui lòng kiểm tra lại.`, 'warning');
+      return;
+    }
+
     const selectedManager = engineers.find((eng) => eng.id === newProjManagerId);
     const createdManager =
       newProjManagerId === '__NEW__' && newManagerName.trim()
