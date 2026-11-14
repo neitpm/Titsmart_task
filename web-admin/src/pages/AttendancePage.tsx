@@ -198,18 +198,18 @@ export const AttendancePage: React.FC = () => {
     });
   }, [engineers, user]);
 
-  // Danh sách Người duyệt Cấp 1 (Những người có quyền Cấp 1 / APPROVE_LEAVE_FINAL hoặc Admin)
+  // Danh sách Người duyệt Cấp 1 (Ban Giám Đốc có quyền APPROVE_LEAVE_FINAL hoặc vai trò Giám đốc, loại trừ tài khoản admin kỹ thuật)
   const step2Reviewers = React.useMemo(() => {
     return engineers.filter(eng => {
       const perms = eng.permissions || [];
       const roleStr = String(eng.role || eng.title || '').toLowerCase();
       const userStr = String((eng as any).username || '').toLowerCase();
+      // Loại trừ tài khoản kỹ thuật admin
+      if (userStr === 'admin') return false;
       return perms.includes('APPROVE_LEAVE_FINAL' as any) ||
-        userStr === 'admin' ||
         roleStr.includes('giám đốc') ||
-        roleStr.includes('admin') ||
-        roleStr.includes('quản trị viên') ||
-        roleStr.includes('chủ tịch');
+        roleStr.includes('chủ tịch') ||
+        roleStr.includes('lãnh đạo');
     });
   }, [engineers]);
 

@@ -303,6 +303,14 @@ const renderActionText = (text: string, timestamp?: string) => {
   }
 
   let mainText = text;
+  // Làm sạch các tham chiếu legacy gán "Duyệt: admin" hoặc "Người duyệt: admin" thành "Ban Giám Đốc"
+  if (mainText) {
+    mainText = mainText
+      .replace(/- Duyệt:\s*admin\b/gi, '- Duyệt: Ban Giám Đốc')
+      .replace(/- Người duyệt:\s*admin\b/gi, '- Người duyệt: Ban Giám Đốc')
+      .replace(/\(Duyệt:\s*admin\)/gi, '(Duyệt: Ban Giám Đốc)')
+      .replace(/\bAdmin duyệt\b/gi, 'Ban Giám Đốc duyệt');
+  }
   let detailText = '';
   const detailIndex = text.indexOf(' |Detail:');
   if (detailIndex !== -1) {

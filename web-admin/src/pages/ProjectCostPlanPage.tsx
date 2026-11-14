@@ -5288,7 +5288,7 @@ export const ProjectCostPlanPage: React.FC = () => {
                     if (user?.id && eng.id === user.id) return false;
                     const perms = eng.permissions || [];
                     const hasPerm = perms.includes('CHECK_FUND_REQUEST');
-                    const isMgr = String(eng.role || '').toLowerCase().includes('quản lý') || String(eng.title || '').toLowerCase().includes('chỉ huy') || String(eng.title || '').toLowerCase().includes('giám sát') || String(eng.role || '').toLowerCase().includes('admin');
+                    const isMgr = (String(eng.role || '').toLowerCase().includes('quản lý') || String(eng.title || '').toLowerCase().includes('chỉ huy') || String(eng.title || '').toLowerCase().includes('giám sát')) && eng.username !== 'admin';
                     return hasPerm || isMgr;
                   })
                   .map(eng => (
@@ -5333,11 +5333,13 @@ export const ProjectCostPlanPage: React.FC = () => {
                     // Loại trừ kế toán thuần túy (PROCESS_FUND_TRANSFER mà không có APPROVE_FUND_REQUEST)
                     const perms = eng.permissions || [];
                     const hasApprovePerm = perms.includes('APPROVE_FUND_REQUEST');
-                    const isExec = String(eng.role || '').toLowerCase().includes('giám đốc') || String(eng.role || '').toLowerCase().includes('lãnh đạo');
+                    const isExec = String(eng.role || '').toLowerCase().includes('giám đốc') || String(eng.role || '').toLowerCase().includes('lãnh đạo') || String(eng.title || '').toLowerCase().includes('giám đốc');
                     const isPureAccountant = String(eng.role || '').toLowerCase().includes('kế toán') || String(eng.title || '').toLowerCase().includes('kế toán');
                     if (isPureAccountant && !hasApprovePerm) return false;
-                    const isAdminUser = String(eng.role || '').toLowerCase().includes('admin') || eng.username === 'admin';
-                    return hasApprovePerm || isExec || isAdminUser;
+                    // Loại trừ tài khoản admin kỹ thuật thuần túy khỏi danh sách người duyệt kinh doanh
+                    const isTechAdmin = String(eng.role || '').toLowerCase().includes('quản trị hệ thống') || eng.username === 'admin';
+                    if (isTechAdmin && !hasApprovePerm && !isExec) return false;
+                    return hasApprovePerm || isExec;
                   })
                   .map(eng => (
                     <option key={eng.id} value={eng.id}>
