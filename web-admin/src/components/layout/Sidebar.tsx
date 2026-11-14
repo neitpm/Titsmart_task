@@ -43,7 +43,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
   const navigate = useNavigate();
   const isSystemAdminUser = isSystemAdmin(user);
   const isDirectorUser = isDirector(user);
-  const canAccessSystemSettings = isSystemAdminUser || isDirectorUser || hasPermission(user, 'MANAGE_PERMISSIONS');
+  // Chỉ DUY NHẤT Admin hệ thống (kỹ thuật phần mềm) mới được truy cập và nhìn thấy Cài đặt hệ thống
+  const canAccessSystemSettings = isSystemAdminUser;
   const isAdmin = isDirectorUser || isSystemAdminUser || user?.role === 'pm' || hasPermission(user, 'ASSIGN_TASKS');
   const defaultTaskPath = isAdmin ? '/task-assignment?tab=unassigned' : '/my-tasks';
   const sidebarRef = useRef<HTMLElement>(null);

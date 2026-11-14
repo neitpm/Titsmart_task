@@ -157,13 +157,20 @@ export const SettingsPage: React.FC = () => {
   // Tab Phân quyền & Cấp bậc là chức năng kỹ thuật dành cho Admin hệ thống hoặc người có quyền MANAGE_PERMISSIONS
   const isSysAdmin = isSystemAdmin(user);
   const isDir = isDirector(user);
-  const canManageRoles = isSysAdmin || hasPermission(user, 'MANAGE_PERMISSIONS');
-  const isAdmin = isSysAdmin || canManageRoles;
+  const canManageRoles = isSysAdmin;
+  const isAdmin = isSysAdmin;
   const canViewLogs = isSysAdmin || isDir || hasPermission(user, 'VIEW_ACTIVITY_LOG');
 
-  // Nếu là nhân sự thường không có quyền cấu hình hệ thống, mặc định mở tab account
-  const isGeneralStaff = !isSysAdmin && !isDir && !canManageRoles;
-  const [activeTab, setActiveTab] = useState<SettingsTab>(isGeneralStaff ? 'account' : 'general');
+  // Chặn nghiêm ngặt: Nếu không phải Admin hệ thống, đá ngay về trang /account
+  useEffect(() => {
+    if (user && !isSysAdmin) {
+      navigate('/account', { replace: true });
+    }
+  }, [user, isSysAdmin, navigate]);
+
+  // Nếu không phải Admin hệ thống
+  const isGeneralStaff = !isSysAdmin;
+  const [activeTab, setActiveTab] = useState<SettingsTab>('general');
   const [isConfirmLogoutOpen, setIsConfirmLogoutOpen] = useState(false);
 
   const handleLogout = async () => {
