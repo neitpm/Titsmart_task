@@ -497,6 +497,34 @@ export const useAuthStore = create<AuthStoreState>((set, get) => ({
       }
     }
 
+    // 2.2 FALLBACK ĐĂNG NHẬP THEO BẢNG NHÂN SỰ (ENGINEERS)
+    // Nếu Supabase Auth trả về lỗi xác thực nhưng tài khoản tồn tại trong bảng engineers và khớp mật khẩu quản trị viên cấp:
+    if ((authError || !authData?.user) && preEngineer && preEngineer.password && preEngineer.password === password) {
+      const isSystemAdmin = cleanInput.toLowerCase() === 'admin' || resolvedEmail.toLowerCase() === 'admin@titsmart.vn';
+      let rawRole = preEngineer?.role || (isSystemAdmin ? 'Quản trị viên' : 'staff');
+      let englishRole = rawRole;
+      if (rawRole === 'Quản trị viên' || isSystemAdmin) englishRole = 'admin';
+      if (rawRole === 'Quản lý dự án') englishRole = 'pm';
+      if (rawRole === 'Kỹ sư hiện trường') englishRole = 'engineer';
+      if (rawRole === 'Nhân viên') englishRole = 'staff';
+
+      const user: AuthUser = {
+        id: preEngineer.id,
+        username: preEngineer.username || cleanInput,
+        name: preEngineer.name || cleanInput,
+        role: englishRole,
+        title: preEngineer.title || preEngineer.role || 'Nhân sự',
+        email: preEngineer.email || resolvedEmail,
+        phone: preEngineer.phone || '',
+        projectCodes: preEngineer.project_codes || preEngineer.projectCodes || [],
+        permissions: preEngineer.permissions || getDefaultPermissions(englishRole),
+      };
+
+      saveSession(user);
+      set({ user });
+      return { ok: true };
+    }
+
     if (authError || !authData?.user) {
       console.warn('[Supabase Auth] Login failed with resolved email:', resolvedEmail, authError?.message);
 
