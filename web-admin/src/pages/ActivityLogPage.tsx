@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 import { exportToStyledExcel } from '../utils/excelExportUtils';
 import { useRealtimeStore } from '../services/realtimeStore';
-import { useAuthStore, isExecutiveOrAdmin, hasPermission } from '../services/authStore';
+import { useAuthStore, isSystemAdmin, isDirector, hasPermission } from '../services/authStore';
 import { Modal } from '../components/common/Modal';
 import { PullToRefresh } from '../components/common/PullToRefresh';
 import { getLogNavigatePath } from '../components/common/AuditInfoCell';
@@ -139,7 +139,7 @@ export const ActivityLogPage: React.FC = () => {
   const projects = useRealtimeStore(state => state.projects);
   const fetchActivityLogs = useRealtimeStore(state => state.fetchActivityLogs);
   const user = useAuthStore(state => state.user);
-  const isAdmin = isExecutiveOrAdmin(user) || hasPermission(user, 'VIEW_ACTIVITY_LOG');
+  const isAdmin = isSystemAdmin(user) || isDirector(user) || hasPermission(user, 'VIEW_ACTIVITY_LOG');
 
   React.useEffect(() => {
     if (isAdmin) {

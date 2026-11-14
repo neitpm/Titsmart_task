@@ -8,6 +8,64 @@ export type Permission = 'VIEW_PROJECT_DIAGRAM' | 'MANAGE_PROJECT_DIAGRAM'
   | 'VIEW_USERS' | 'EDIT_USERS' | 'MANAGE_USERS' | 'MANAGE_PERMISSIONS' | 'MANAGE_PAYROLL' | 'APPROVE_LEAVE_STEP1' | 'APPROVE_LEAVE_FINAL'
   | 'EXPORT_DATA' | 'MANAGE_INVENTORY' | 'VIEW_FIELD_LOGS' | 'MANAGE_FIELD_LOGS' | 'VIEW_ACTIVITY_LOG';
 
+export type UserRole = 
+  | 'SYSTEM_ADMIN'     // Quản trị viên hệ thống (Kỹ thuật phần mềm)
+  | 'DIRECTOR'         // Ban Giám Đốc / Điều hành & Phê duyệt
+  | 'PROJECT_MANAGER'  // Quản lý dự án / Chỉ huy trưởng
+  | 'ACCOUNTANT'       // Kế toán / Tài chính
+  | 'HR_MANAGER'       // Quản lý nhân sự / Chấm công
+  | 'ENGINEER'         // Kỹ sư công trình
+  | 'STAFF';           // Nhân viên
+
+export const SYSTEM_PERMISSIONS: Permission[] = [
+  'VIEW_USERS',
+  'EDIT_USERS',
+  'MANAGE_USERS',
+  'MANAGE_PERMISSIONS',
+  'VIEW_ACTIVITY_LOG',
+  'MANAGE_INVENTORY'
+];
+
+export const BUSINESS_PERMISSIONS: Permission[] = [
+  'VIEW_PROJECTS',
+  'CREATE_PROJECTS',
+  'EDIT_PROJECTS',
+  'DELETE_PROJECTS',
+  'VIEW_TASKS',
+  'IMPORT_TASKS',
+  'EDIT_TASKS',
+  'ASSIGN_TASKS',
+  'UPDATE_TASK_PROGRESS',
+  'APPROVE_TASKS',
+  'VIEW_FIELD_LOGS',
+  'MANAGE_FIELD_LOGS',
+  'VIEW_MATERIALS',
+  'IMPORT_MATERIALS',
+  'EDIT_MATERIALS',
+  'UPDATE_MATERIAL_STATUS',
+  'VIEW_FINANCE',
+  'EDIT_PRICES',
+  'VIEW_PAYMENTS',
+  'EDIT_PAYMENTS',
+  'VIEW_EXPENSES',
+  'EDIT_EXPENSES',
+  'CHECK_FUND_REQUEST',
+  'APPROVE_FUND_REQUEST',
+  'PROCESS_FUND_TRANSFER',
+  'CONFIRM_FUND_RECEIPT',
+  'VIEW_DOCUMENTS',
+  'CREATE_DOCUMENTS',
+  'EDIT_DOCUMENTS',
+  'DELETE_DOCUMENTS',
+  'MANAGE_DOCUMENTS',
+  'VIEW_PROJECT_DIAGRAM',
+  'MANAGE_PROJECT_DIAGRAM',
+  'MANAGE_PAYROLL',
+  'APPROVE_LEAVE_STEP1',
+  'APPROVE_LEAVE_FINAL',
+  'EXPORT_DATA'
+];
+
 export type TaskStatus = 'Chưa làm' | 'Đang làm' | 'Chờ vật tư' | 'Chờ khách hàng' | 'Chờ nghiệm thu' | 'Hoàn thành' | 'Tạm dừng' | 'Chờ nhận việc' | 'Có thắc mắc';
 export type TaskPriority = 'Low' | 'Medium' | 'High';
 

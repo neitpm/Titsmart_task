@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useRealtimeStore } from '../../services/realtimeStore';
-import { useAuthStore, hasPermission, isExecutiveOrAdmin } from '../../services/authStore';
+import { useAuthStore, hasPermission, isSystemAdmin, isDirector } from '../../services/authStore';
 import { useUIStore } from '../../services/uiStore';
 
 import { NotificationBell } from '../common/NotificationBell';
@@ -41,7 +41,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
     : (isSidebarExpanded || isSidebarHovered);
   const toggleSidebar = toggleSidebarProp || toggleSidebarExpanded;
   const navigate = useNavigate();
-  const isAdmin = isExecutiveOrAdmin(user) || user?.role === 'pm';
+  const isAdmin = isDirector(user) || isSystemAdmin(user) || user?.role === 'pm' || hasPermission(user, 'ASSIGN_TASKS');
   const defaultTaskPath = isAdmin ? '/task-assignment?tab=unassigned' : '/my-tasks';
   const sidebarRef = useRef<HTMLElement>(null);
 
@@ -119,8 +119,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
         }
       ].filter(group => group.items.length > 0);
     }
-
-    const isAdminAccount = isExecutiveOrAdmin(user);
 
     const mainItems = [
       { label: 'Tổng quan', path: '/dashboard', icon: 'analytics', req: 'VIEW_PROJECTS' },

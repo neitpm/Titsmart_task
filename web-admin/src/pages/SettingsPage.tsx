@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuthStore, isSystemAdmin, isExecutiveOrAdmin, hasPermission } from '../services/authStore';
+import { useAuthStore, isSystemAdmin, isDirector, hasPermission } from '../services/authStore';
 import { useUIStore } from '../services/uiStore';
 import { useRoleLevelStore, CustomRoleLevel, DEFAULT_ROLE_LEVELS } from '../services/roleLevelStore';
 import { useRealtimeStore } from '../services/realtimeStore';
@@ -154,10 +154,10 @@ export const SettingsPage: React.FC = () => {
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
-  // Cho phép Admin kỹ thuật, Ban Giám đốc hoặc tài khoản có quyền phân quyền truy cập tab Phân quyền & Cấp bậc
-  const canManageRoles = isExecutiveOrAdmin(user) || hasPermission(user, 'MANAGE_PERMISSIONS');
+  // Tab Phân quyền & Cấp bậc là chức năng kỹ thuật dành cho Admin hệ thống hoặc người có quyền MANAGE_PERMISSIONS
+  const canManageRoles = isSystemAdmin(user) || hasPermission(user, 'MANAGE_PERMISSIONS');
   const isAdmin = isSystemAdmin(user) || canManageRoles;
-  const canViewLogs = isExecutiveOrAdmin(user) || hasPermission(user, 'VIEW_ACTIVITY_LOG');
+  const canViewLogs = isSystemAdmin(user) || isDirector(user) || hasPermission(user, 'VIEW_ACTIVITY_LOG');
 
   const [isConfirmLogoutOpen, setIsConfirmLogoutOpen] = useState(false);
 

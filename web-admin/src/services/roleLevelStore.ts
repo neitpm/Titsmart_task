@@ -14,9 +14,20 @@ export interface CustomRoleLevel {
 
 export const DEFAULT_ROLE_LEVELS: CustomRoleLevel[] = [
   {
+    id: 'admin_sys',
+    name: 'Admin hệ thống (Kỹ thuật)',
+    description: 'Quản trị kỹ thuật, phân quyền, quản lý tài khoản nhân sự, sao lưu và cấu hình hệ thống',
+    defaultRoleName: 'Admin hệ thống',
+    isBuiltin: true,
+    permissions: [
+      'VIEW_USERS', 'EDIT_USERS', 'MANAGE_USERS', 'MANAGE_PERMISSIONS', 'VIEW_ACTIVITY_LOG',
+      'VIEW_PROJECTS', 'VIEW_TASKS', 'VIEW_MATERIALS', 'VIEW_DOCUMENTS', 'EXPORT_DATA'
+    ]
+  },
+  {
     id: 'level1',
-    name: 'Cấp 1 - Ban Giám Đốc / Toàn quyền',
-    description: 'Thẩm quyền tối cao về nghiệp vụ, duyệt cấp cao, xem nhật ký, duyệt quỹ, xóa dự án',
+    name: 'Cấp 1 - Ban Giám Đốc (Điều hành)',
+    description: 'Thẩm quyền tối cao về nghiệp vụ, điều hành toàn diện, duyệt cấp cao, duyệt quỹ, phê duyệt dự án',
     defaultRoleName: 'Giám đốc',
     isBuiltin: true,
     permissions: [
@@ -25,7 +36,7 @@ export const DEFAULT_ROLE_LEVELS: CustomRoleLevel[] = [
       'VIEW_MATERIALS', 'IMPORT_MATERIALS', 'EDIT_MATERIALS', 'UPDATE_MATERIAL_STATUS', 'MANAGE_INVENTORY',
       'VIEW_FINANCE', 'EDIT_PRICES', 'VIEW_PAYMENTS', 'EDIT_PAYMENTS', 'VIEW_EXPENSES', 'EDIT_EXPENSES',
       'CHECK_FUND_REQUEST', 'APPROVE_FUND_REQUEST', 'PROCESS_FUND_TRANSFER', 'CONFIRM_FUND_RECEIPT',
-      'VIEW_USERS', 'EDIT_USERS', 'MANAGE_USERS', 'MANAGE_PERMISSIONS', 'MANAGE_PAYROLL', 'APPROVE_LEAVE_STEP1', 'APPROVE_LEAVE_FINAL', 'EXPORT_DATA', 'VIEW_ACTIVITY_LOG',
+      'VIEW_USERS', 'MANAGE_PAYROLL', 'APPROVE_LEAVE_STEP1', 'APPROVE_LEAVE_FINAL', 'EXPORT_DATA', 'VIEW_ACTIVITY_LOG',
       'VIEW_PROJECT_DIAGRAM', 'MANAGE_PROJECT_DIAGRAM', 'VIEW_DOCUMENTS', 'CREATE_DOCUMENTS', 'EDIT_DOCUMENTS', 'DELETE_DOCUMENTS', 'MANAGE_DOCUMENTS'
     ]
   },
@@ -41,7 +52,7 @@ export const DEFAULT_ROLE_LEVELS: CustomRoleLevel[] = [
       'VIEW_MATERIALS', 'IMPORT_MATERIALS', 'EDIT_MATERIALS', 'UPDATE_MATERIAL_STATUS', 'MANAGE_INVENTORY',
       'VIEW_FINANCE', 'VIEW_PAYMENTS', 'VIEW_EXPENSES', 'EDIT_EXPENSES',
       'CHECK_FUND_REQUEST', 'CONFIRM_FUND_RECEIPT',
-      'VIEW_USERS', 'EDIT_USERS', 'MANAGE_PAYROLL', 'EXPORT_DATA', 'VIEW_ACTIVITY_LOG',
+      'VIEW_USERS', 'MANAGE_PAYROLL', 'EXPORT_DATA', 'VIEW_ACTIVITY_LOG',
       'APPROVE_LEAVE_STEP1',
       'VIEW_PROJECT_DIAGRAM', 'VIEW_DOCUMENTS', 'MANAGE_DOCUMENTS'
     ]

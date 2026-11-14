@@ -1,22 +1,35 @@
 import { create } from 'zustand';
-import { Permission } from '../types';
+import { Permission, SYSTEM_PERMISSIONS, BUSINESS_PERMISSIONS } from '../types';
 
 export const getDefaultPermissions = (role: string): Permission[] => {
-  if (role === 'admin' || role === 'Quản trị viên') {
+  const normRole = String(role || '').toLowerCase();
+
+  // 1. Admin hệ thống: Mặc định sở hữu toàn quyền quản trị kỹ thuật, tài khoản & hệ thống
+  if (normRole === 'admin' || normRole === 'quản trị viên' || normRole === 'system_admin' || normRole.includes('quản trị hệ thống')) {
     return [
-      'VIEW_PROJECTS', 'CREATE_PROJECTS', 'EDIT_PROJECTS', 'DELETE_PROJECTS',
-      'VIEW_TASKS', 'IMPORT_TASKS', 'EDIT_TASKS', 'ASSIGN_TASKS', 'UPDATE_TASK_PROGRESS', 'APPROVE_TASKS',
-      'VIEW_MATERIALS', 'IMPORT_MATERIALS', 'EDIT_MATERIALS', 'UPDATE_MATERIAL_STATUS',
-      'VIEW_FINANCE', 'EDIT_PRICES', 'VIEW_PAYMENTS', 'EDIT_PAYMENTS', 'VIEW_EXPENSES', 'EDIT_EXPENSES',
-      'VIEW_DOCUMENTS', 'CREATE_DOCUMENTS', 'EDIT_DOCUMENTS', 'DELETE_DOCUMENTS', 'MANAGE_DOCUMENTS', 'VIEW_PROJECT_DIAGRAM', 'MANAGE_PROJECT_DIAGRAM',
-      'VIEW_USERS', 'EDIT_USERS', 'MANAGE_USERS', 'MANAGE_PERMISSIONS', 'MANAGE_PAYROLL', 'APPROVE_LEAVE_STEP1', 'APPROVE_LEAVE_FINAL',
-      'EXPORT_DATA'
+      'VIEW_USERS', 'EDIT_USERS', 'MANAGE_USERS', 'MANAGE_PERMISSIONS', 'VIEW_ACTIVITY_LOG',
+      'VIEW_PROJECTS', 'VIEW_TASKS', 'VIEW_MATERIALS', 'VIEW_DOCUMENTS', 'EXPORT_DATA'
     ];
   }
-  if (role === 'pm' || role === 'Quản lý dự án') {
+
+  // 2. Giám đốc / Ban Lãnh đạo: Sở hữu toàn quyền điều hành nghiệp vụ, phê duyệt tài chính, dự án, nhân sự
+  if (normRole.includes('giám đốc') || normRole === 'director' || normRole.includes('lãnh đạo')) {
+    return [
+      'VIEW_PROJECTS', 'CREATE_PROJECTS', 'EDIT_PROJECTS', 'DELETE_PROJECTS',
+      'VIEW_TASKS', 'IMPORT_TASKS', 'EDIT_TASKS', 'ASSIGN_TASKS', 'UPDATE_TASK_PROGRESS', 'APPROVE_TASKS', 'VIEW_FIELD_LOGS', 'MANAGE_FIELD_LOGS',
+      'VIEW_MATERIALS', 'IMPORT_MATERIALS', 'EDIT_MATERIALS', 'UPDATE_MATERIAL_STATUS', 'MANAGE_INVENTORY',
+      'VIEW_FINANCE', 'EDIT_PRICES', 'VIEW_PAYMENTS', 'EDIT_PAYMENTS', 'VIEW_EXPENSES', 'EDIT_EXPENSES',
+      'CHECK_FUND_REQUEST', 'APPROVE_FUND_REQUEST', 'PROCESS_FUND_TRANSFER', 'CONFIRM_FUND_RECEIPT',
+      'VIEW_DOCUMENTS', 'CREATE_DOCUMENTS', 'EDIT_DOCUMENTS', 'DELETE_DOCUMENTS', 'MANAGE_DOCUMENTS', 'VIEW_PROJECT_DIAGRAM', 'MANAGE_PROJECT_DIAGRAM',
+      'VIEW_USERS', 'MANAGE_PAYROLL', 'APPROVE_LEAVE_STEP1', 'APPROVE_LEAVE_FINAL', 'EXPORT_DATA'
+    ];
+  }
+
+  // 3. Quản lý dự án / Chỉ huy trưởng (PM)
+  if (normRole === 'pm' || normRole === 'quản lý dự án' || normRole === 'project_manager') {
     return [
       'VIEW_PROJECTS', 'CREATE_PROJECTS', 'EDIT_PROJECTS',
-      'VIEW_TASKS', 'IMPORT_TASKS', 'EDIT_TASKS', 'ASSIGN_TASKS', 'UPDATE_TASK_PROGRESS', 'APPROVE_TASKS',
+      'VIEW_TASKS', 'IMPORT_TASKS', 'EDIT_TASKS', 'ASSIGN_TASKS', 'UPDATE_TASK_PROGRESS', 'APPROVE_TASKS', 'VIEW_FIELD_LOGS', 'MANAGE_FIELD_LOGS',
       'VIEW_MATERIALS', 'IMPORT_MATERIALS', 'EDIT_MATERIALS', 'UPDATE_MATERIAL_STATUS',
       'VIEW_FINANCE', 'VIEW_PAYMENTS', 'VIEW_EXPENSES', 'EDIT_EXPENSES',
       'VIEW_DOCUMENTS', 'CREATE_DOCUMENTS', 'EDIT_DOCUMENTS', 'MANAGE_DOCUMENTS', 'VIEW_PROJECT_DIAGRAM', 'MANAGE_PROJECT_DIAGRAM',
@@ -24,16 +37,19 @@ export const getDefaultPermissions = (role: string): Permission[] => {
       'EXPORT_DATA'
     ];
   }
-  if (role === 'engineer' || role === 'Kỹ sư hiện trường') {
+
+  // 4. Kỹ sư hiện trường
+  if (normRole === 'engineer' || normRole === 'kỹ sư hiện trường' || normRole === 'kỹ sư') {
     return [
       'VIEW_PROJECTS',
-      'VIEW_TASKS', 'UPDATE_TASK_PROGRESS',
+      'VIEW_TASKS', 'UPDATE_TASK_PROGRESS', 'VIEW_FIELD_LOGS', 'MANAGE_FIELD_LOGS',
       'VIEW_MATERIALS', 'UPDATE_MATERIAL_STATUS',
       'VIEW_DOCUMENTS', 'CREATE_DOCUMENTS', 'EDIT_DOCUMENTS', 'MANAGE_DOCUMENTS', 'VIEW_PROJECT_DIAGRAM',
       'VIEW_USERS'
     ];
   }
-  // staff
+
+  // 5. Nhân viên chung (staff)
   return [
     'VIEW_PROJECTS',
     'VIEW_TASKS',
@@ -44,45 +60,63 @@ export const getDefaultPermissions = (role: string): Permission[] => {
 };
 
 /**
- * Kiểm tra xem người dùng có phải là Admin kỹ thuật (System Admin) hay không
- * Quyền kỹ thuật tối cao: cấu hình app, phân quyền nhân sự, thiết lập hệ thống
+ * Kiểm tra xem người dùng có phải là Admin kỹ thuật (System Admin) hay không.
+ * Quyền kỹ thuật: Cấu hình hệ thống, quản lý tài khoản nhân sự, phân quyền, xử lý lỗi.
+ * Không mặc định có quyền phê duyệt nghiệp vụ (duyệt chi quỹ, duyệt nghỉ phép, nghiệm thu).
  */
 export const isSystemAdmin = (user: AuthUser | null | undefined): boolean => {
   if (!user) return false;
   const username = String(user.username || '').toLowerCase();
   const name = String(user.name || '').toLowerCase();
   const role = String(user.role || '').toLowerCase();
-  return username === 'admin' || name === 'admin' || role === 'admin' || role === 'quản trị viên' || role.includes('quản trị hệ thống');
+  return username === 'admin' || name === 'admin' || role === 'admin' || role === 'system_admin' || role === 'quản trị viên' || role.includes('quản trị hệ thống');
 };
 
 /**
- * Kiểm tra xem người dùng có phải là Lãnh đạo hoặc Admin (Ban Quản trị Cấp 1) hay không:
- * - Admin kỹ thuật (admin)
- * - Ban Giám Đốc / Lãnh đạo cấp cao
- * - Nhân sự được phân Cấp 1 (sở hữu các quyền hạt nhân của Cấp 1)
+ * Kiểm tra xem người dùng có phải là Giám đốc / Ban Lãnh đạo hay không.
+ * Quyền điều hành: Toàn quyền xem bức tranh tổng quan, phê duyệt tài chính/quỹ, duyệt nghỉ phép cấp cao, chỉ đạo dự án.
+ * Không can thiệp vào cấu hình hạ tầng kỹ thuật phần mềm.
+ */
+export const isDirector = (user: AuthUser | null | undefined): boolean => {
+  if (!user) return false;
+  const role = String(user.role || '').toLowerCase();
+  return role.includes('giám đốc') || role.includes('ban giám đốc') || role === 'director';
+};
+
+/**
+ * Kiểm tra quyền thao tác trên hệ thống:
+ * 1. Admin hệ thống: Tự động có toàn quyền đối với các quyền thuộc SYSTEM_PERMISSIONS (kỹ thuật, tài khoản, audit logs).
+ *    Đối với các quyền nghiệp vụ (BUSINESS_PERMISSIONS), Admin chỉ có nếu được phân quyền rõ ràng trong mảng permissions.
+ * 2. Giám đốc: Tự động có toàn quyền đối với các quyền thuộc BUSINESS_PERMISSIONS (điều hành, tài chính, phê duyệt, dự án).
+ *    Giám đốc không tự động có quyền can thiệp vào các quyền cấu hình hạ tầng kỹ thuật.
+ * 3. Các vị trí khác: Tuân thủ đúng mảng permissions được cấp phát.
+ */
+export const hasPermission = (user: AuthUser | null | undefined, perm: Permission): boolean => {
+  if (!user) return false;
+
+  // 1. Phân quyền kỹ thuật (System Admin)
+  if (isSystemAdmin(user)) {
+    if (SYSTEM_PERMISSIONS.includes(perm)) return true;
+    return user.permissions?.includes(perm) || false;
+  }
+
+  // 2. Phân quyền điều hành nghiệp vụ (Director)
+  if (isDirector(user)) {
+    if (BUSINESS_PERMISSIONS.includes(perm)) return true;
+    return user.permissions?.includes(perm) || false;
+  }
+
+  // 3. Người dùng thông thường
+  return user.permissions?.includes(perm) || false;
+};
+
+/**
+ * @deprecated Dùng isDirector(user) hoặc isSystemAdmin(user) tùy theo ngữ cảnh nghiệp vụ vs kỹ thuật.
+ * Giữ lại tạm thời để đảm bảo tương thích ngược, chỉ trả về true nếu là Giám đốc hoặc được cấp quyền tương đương.
  */
 export const isExecutiveOrAdmin = (user: AuthUser | null | undefined): boolean => {
   if (!user) return false;
-  if (isSystemAdmin(user)) return true;
-
-  const role = String(user.role || '').toLowerCase();
-  if (role.includes('giám đốc') || role.includes('ban giám đốc') || role.includes('lãnh đạo')) return true;
-
-  // Kiểm tra quyền Cấp 1: Có quyền duyệt cấp cao, quản lý dự án & xóa/quản lý nhân sự
-  const perms = user.permissions || [];
-  const hasLevel1Perms = 
-    (perms.includes('APPROVE_LEAVE_FINAL') && perms.includes('DELETE_PROJECTS')) ||
-    (perms.includes('MANAGE_PAYROLL') && perms.includes('VIEW_FINANCE')) ||
-    perms.includes('MANAGE_PERMISSIONS');
-
-  return Boolean(hasLevel1Perms);
-};
-
-export const hasPermission = (user: AuthUser | null | undefined, perm: Permission): boolean => {
-  if (!user) return false;
-  // If user is technical admin or Cấp 1 executive
-  if (isExecutiveOrAdmin(user)) return true;
-  return user.permissions?.includes(perm) || false;
+  return isDirector(user) || isSystemAdmin(user);
 };
 
 /**
@@ -94,7 +128,14 @@ export const hasPermission = (user: AuthUser | null | undefined, perm: Permissio
 export const canManageItem = (user: AuthUser | null | undefined, item: any, requiredPerm: Permission = 'MANAGE_DOCUMENTS'): boolean => {
   if (!user) return false;
   
-  if (isExecutiveOrAdmin(user)) return true;
+  // Giám đốc có quyền quản lý mọi hạng mục nghiệp vụ
+  if (isDirector(user)) return true;
+
+  // Admin hệ thống chỉ có quyền quản lý nếu là quyền thuộc hệ thống hoặc được phân quyền
+  if (isSystemAdmin(user)) {
+    if (SYSTEM_PERMISSIONS.includes(requiredPerm)) return true;
+    if (user.permissions?.includes(requiredPerm)) return true;
+  }
 
   const role = String(user.role || '').toLowerCase();
   const isPM = role === 'pm' || role === 'quản lý dự án' || role === 'manager';
