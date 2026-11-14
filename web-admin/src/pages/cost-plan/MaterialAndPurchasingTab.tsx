@@ -1390,8 +1390,8 @@ export const MaterialAndPurchasingTab: React.FC<MaterialAndPurchasingTabProps> =
             )}
           </div>
 
-          <div className="flex items-center gap-1.5 ml-auto w-full md:w-auto">
-            <div className="relative flex-1 md:w-40 h-8 flex items-center">
+          <div className="flex items-center gap-1.5 ml-auto w-full md:w-auto shrink-0 flex-nowrap overflow-x-auto custom-scrollbar">
+            <div className="relative flex-1 md:w-36 lg:w-44 h-8 flex items-center shrink-0">
               <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-[16px]">
                 search
               </span>
@@ -1407,11 +1407,11 @@ export const MaterialAndPurchasingTab: React.FC<MaterialAndPurchasingTabProps> =
             {onAddSection && subTab !== 'FINANCE' && (
               <button
                 onClick={onAddSection}
-                className="flex items-center justify-center gap-1.5 bg-primary text-white rounded text-[11px] font-bold hover:opacity-90 active:scale-95 shadow-xs whitespace-nowrap h-8 px-2 min-w-[32px]"
+                className="flex items-center justify-center gap-1.5 bg-primary text-white rounded text-[11px] font-bold hover:opacity-90 active:scale-95 shadow-xs whitespace-nowrap h-8 px-2.5 shrink-0"
                 title="Thêm đầu mục"
               >
                 <span className="material-symbols-outlined text-sm">add</span>
-                <span className="hidden md:inline">Thêm đầu mục</span>
+                <span className="inline">Thêm đầu mục</span>
               </button>
             )}
 
@@ -1420,11 +1420,11 @@ export const MaterialAndPurchasingTab: React.FC<MaterialAndPurchasingTabProps> =
                 <button
                   onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
                   title="Xuất file"
-                  className="flex items-center justify-center gap-1 border border-emerald-200 bg-emerald-50 text-emerald-800 rounded-lg text-[11px] font-bold hover:bg-emerald-100 active:scale-95 shadow-xs whitespace-nowrap h-8 px-2.5 min-w-[32px]"
+                  className="flex items-center justify-center gap-1 border border-emerald-200 bg-emerald-50 text-emerald-800 rounded-lg text-[11px] font-bold hover:bg-emerald-100 active:scale-95 shadow-xs whitespace-nowrap h-8 px-2.5 shrink-0"
                 >
                   <span className="material-symbols-outlined text-sm text-emerald-700">download</span>
-                  <span className="hidden md:inline">Xuất file</span>
-                  <span className="material-symbols-outlined text-xs text-emerald-700 hidden md:inline">expand_more</span>
+                  <span className="inline">Xuất file</span>
+                  <span className="material-symbols-outlined text-xs text-emerald-700 inline">expand_more</span>
                 </button>
 
                 {isExportMenuOpen && (
