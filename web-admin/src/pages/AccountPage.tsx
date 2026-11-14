@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useRealtimeStore } from '../services/realtimeStore';
 import { useAuthStore } from '../services/authStore';
 import { ChangePasswordModal } from '../components/common/ChangePasswordModal';
+import { Modal } from '../components/common/Modal';
 import { Toast } from '../components/common/Toast';
 
 export const AccountPage: React.FC = () => {
@@ -13,6 +14,7 @@ export const AccountPage: React.FC = () => {
   const navigate = useNavigate();
 
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+  const [isConfirmLogoutOpen, setIsConfirmLogoutOpen] = useState(false);
   const [toastState, setToastState] = useState({ show: false, message: '', type: 'success' as 'success' | 'info' | 'warning' | 'error' });
 
   const triggerToast = (message: string, type: 'success' | 'info' | 'warning' | 'error' = 'success') => {
@@ -22,6 +24,7 @@ export const AccountPage: React.FC = () => {
 
   const handleLogout = async () => {
     if (isLoggingOut) return;
+    setIsConfirmLogoutOpen(false);
     try {
       await logout();
     } finally {
@@ -74,9 +77,9 @@ export const AccountPage: React.FC = () => {
               </button>
               <button 
                 type="button"
-                onClick={handleLogout} 
+                onClick={() => setIsConfirmLogoutOpen(true)} 
                 disabled={isLoggingOut}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-red-600 text-white text-sm font-bold hover:bg-red-700 transition-colors shadow-sm disabled:opacity-50"
+                className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-red-600 text-white text-sm font-bold hover:bg-red-700 transition-colors shadow-sm disabled:opacity-50 cursor-pointer"
               >
                 {isLoggingOut ? (
                   <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
@@ -96,6 +99,44 @@ export const AccountPage: React.FC = () => {
         onClose={() => setIsChangePasswordOpen(false)}
         onSuccess={() => triggerToast('Đổi mật khẩu tài khoản thành công!', 'success')}
       />
+
+      {/* Confirm Logout Modal */}
+      <Modal
+        isOpen={isConfirmLogoutOpen}
+        onClose={() => setIsConfirmLogoutOpen(false)}
+        title="Xác nhận đăng xuất"
+        icon="logout"
+        size="md"
+      >
+        <div className="p-5 space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-red-100 text-red-600 flex items-center justify-center shrink-0">
+              <span className="material-symbols-outlined text-xl">warning</span>
+            </div>
+            <div>
+              <p className="text-sm font-bold text-slate-800">Bạn có chắc chắn muốn đăng xuất?</p>
+              <p className="text-xs text-slate-500 mt-0.5">Phiên làm việc hiện tại của bạn sẽ kết thúc.</p>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2.5 pt-2 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={() => setIsConfirmLogoutOpen(false)}
+              className="px-4 py-2 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
+            >
+              Hủy bỏ
+            </button>
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="px-4 py-2 rounded-xl text-xs font-bold bg-red-600 hover:bg-red-700 text-white transition-colors shadow-2xs cursor-pointer flex items-center gap-1.5"
+            >
+              <span className="material-symbols-outlined text-sm">logout</span>
+              <span>Đăng xuất</span>
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       {/* In-app Toast */}
       <Toast

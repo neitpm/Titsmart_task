@@ -221,7 +221,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     }
   };
 
+  const [isConfirmLogoutOpen, setIsConfirmLogoutOpen] = useState(false);
+
   const handleLogout = async () => {
+    setIsConfirmLogoutOpen(false);
     onClose();
     await logout();
     navigate('/login', { replace: true });
@@ -571,8 +574,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
           {user && (
             <button
               type="button"
-              onClick={handleLogout}
-              className="w-full flex items-center justify-between p-3 rounded-xl bg-red-50/70 border border-red-200/70 hover:bg-red-100/80 text-red-600 transition-colors"
+              onClick={() => setIsConfirmLogoutOpen(true)}
+              className="w-full flex items-center justify-between p-3 rounded-xl bg-red-50/70 border border-red-200/70 hover:bg-red-100/80 text-red-600 transition-colors cursor-pointer"
             >
               <div className="flex items-center gap-2.5">
                 <span className="material-symbols-outlined text-lg">logout</span>
@@ -587,6 +590,44 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
             <span className="text-[11px] font-mono text-slate-400 font-medium">
               Phiên bản v{import.meta.env.VITE_APP_VERSION || '1.0.0'}
             </span>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Confirm Logout Modal */}
+      <Modal
+        isOpen={isConfirmLogoutOpen}
+        onClose={() => setIsConfirmLogoutOpen(false)}
+        title="Xác nhận đăng xuất"
+        icon="logout"
+        size="md"
+      >
+        <div className="p-5 space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-red-100 text-red-600 flex items-center justify-center shrink-0">
+              <span className="material-symbols-outlined text-xl">warning</span>
+            </div>
+            <div>
+              <p className="text-sm font-bold text-slate-800">Bạn có chắc chắn muốn đăng xuất?</p>
+              <p className="text-xs text-slate-500 mt-0.5">Phiên làm việc hiện tại của bạn sẽ kết thúc.</p>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2.5 pt-2 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={() => setIsConfirmLogoutOpen(false)}
+              className="px-4 py-2 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
+            >
+              Hủy bỏ
+            </button>
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="px-4 py-2 rounded-xl text-xs font-bold bg-red-600 hover:bg-red-700 text-white transition-colors shadow-2xs cursor-pointer flex items-center gap-1.5"
+            >
+              <span className="material-symbols-outlined text-sm">logout</span>
+              <span>Đăng xuất</span>
+            </button>
           </div>
         </div>
       </Modal>
