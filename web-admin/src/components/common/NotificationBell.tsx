@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useRealtimeStore } from '../../services/realtimeStore';
-import { useAuthStore } from '../../services/authStore';
+import { useAuthStore, isSystemAdmin, isDirector } from '../../services/authStore';
 import { useUIStore } from '../../services/uiStore';
 import { sendSystemNotification, requestSystemNotificationPermission } from '../../services/systemNotificationService';
 import { sendExpoPushNotification, registerWebDeviceToken } from '../../services/notificationDispatchService';
@@ -32,7 +32,18 @@ export const isNotificationForUser = (notification: any, user: any, engineers: a
   const userEmail = String(user.email || '').trim().toLowerCase();
   const userPhone = String(user.phone || '').trim();
 
-  const isAdmin = role === 'admin' || role === 'quản trị viên' || role === 'pm' || role === 'quản lý dự án' || role === 'manager' || role === 'quản lý' || role === 'giám sát' || username === 'admin';
+  // Admin hệ thống (kỹ thuật) KHÔNG nhận thông báo nghiệp vụ dự án (tiến độ, cấp quỹ, nghỉ phép, vật tư)
+  // Chỉ Ban Giám Đốc, PM, Quản lý dự án mới nhận thông báo điều hành & nghiệp vụ
+  const isSysAdmin = isSystemAdmin(user);
+  if (isSysAdmin) {
+    // Admin kỹ thuật chỉ nhận thông báo về cập nhật phần mềm hoặc bảo trì hệ thống
+    const typeStr = String(notification?.type || '');
+    const tLow = String(notification?.title || '').toLowerCase();
+    return typeStr.startsWith('system_') || typeStr.startsWith('app_update') || tLow.includes('cập nhật phần mềm');
+  }
+
+  const isDirectorUser = isDirector(user);
+  const isAdmin = isDirectorUser || role === 'pm' || role === 'quản lý dự án' || role === 'manager' || role === 'quản lý' || role === 'giám sát';
 
   // Find engineer object(s) corresponding to current user
   const myEngs = (engineers || []).filter(e => {
@@ -764,7 +775,8 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ isSidebar = 
     }
 
     const role = String(user?.role || '').toLowerCase();
-    const isAdmin = role === 'admin' || role === 'quản trị viên' || role === 'pm' || role === 'quản lý dự án' || role === 'manager' || role === 'quản lý' || role === 'giám sát' || user?.username === 'admin';
+    const isDirectorUser = isDirector(user);
+    const isAdmin = isDirectorUser || role === 'pm' || role === 'quản lý dự án' || role === 'manager' || role === 'quản lý' || role === 'giám sát';
 
     const title = (notification.title || '');
     const message = (notification.message || '');
@@ -1009,8 +1021,8 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ isSidebar = 
       (notification.type && notification.type.startsWith('task_approved'))
     ) {
       const role = String(user?.role || '').toLowerCase();
-      const isAdmin = role === 'admin' || role === 'quản trị viên' || role === 'pm' || role === 'quản lý dự án' || role === 'manager' || user?.username === 'admin';
-      if (isAdmin && finalProjectCode) {
+      const isManagerOrDirector = isDirector(user) || role === 'pm' || role === 'quản lý dự án' || role === 'manager' || role === 'phó giám đốc' || role === 'giám đốc';
+      if (isManagerOrDirector && finalProjectCode) {
         const taskIdParam = targetTask?.id ? `taskId=${encodeURIComponent(targetTask.id)}&` : '';
         navigate(`/projects/${encodeURIComponent(finalProjectCode)}/tasks?${taskIdParam}highlight=${encodeURIComponent(taskName || '')}`);
       } else {
@@ -1063,9 +1075,9 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ isSidebar = 
       (notification.type && notification.type.startsWith('task_assigned'))
     ) {
       const role = String(user?.role || '').toLowerCase();
-      const isAdmin = role === 'admin' || role === 'quản trị viên' || role === 'pm' || role === 'quản lý dự án' || role === 'manager' || user?.username === 'admin';
+      const isManagerOrDirector = isDirector(user) || role === 'pm' || role === 'quản lý dự án' || role === 'manager' || role === 'phó giám đốc' || role === 'giám đốc';
 
-      if (isAdmin) {
+      if (isManagerOrDirector) {
         if (finalProjectCode) {
           const taskIdParam = targetTask?.id ? `taskId=${encodeURIComponent(targetTask.id)}&` : '';
           navigate(`/projects/${encodeURIComponent(finalProjectCode)}/tasks?${taskIdParam}highlight=${encodeURIComponent(taskName || '')}`);
