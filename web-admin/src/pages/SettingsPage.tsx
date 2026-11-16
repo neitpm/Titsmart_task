@@ -475,7 +475,7 @@ export const SettingsPage: React.FC = () => {
         </h2>
       </section>
 
-      {/* Main SaaS Settings Layout (Left Nav + Right Content) */}
+      {/* Main Settings Layout (Left Nav + Right Content) */}
       <div className="flex-1 flex overflow-hidden">
         {/* Left Settings Sidebar */}
         <aside className="w-56 md:w-64 bg-white border-r border-slate-200 p-3 flex flex-col justify-between shrink-0 overflow-y-auto custom-scrollbar">
