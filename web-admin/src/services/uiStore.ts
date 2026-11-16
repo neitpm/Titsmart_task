@@ -99,11 +99,11 @@ export const useUIStore = create<UIStoreState>()(
           if (config) {
             set({
               companyName: config.companyName?.trim() || get().companyName,
-              companySlogan: config.companySlogan?.trim() || get().companySlogan,
-              companyLogo: config.companyLogo !== undefined ? config.companyLogo : get().companyLogo,
-              companyHotline: config.hotline || get().companyHotline,
-              companyAddress: config.address || get().companyAddress,
-              companyEmail: config.adminEmail || get().companyEmail,
+              companySlogan: config.companySlogan !== undefined ? config.companySlogan : get().companySlogan,
+              companyLogo: config.companyLogo !== undefined ? config.companyLogo : null,
+              companyHotline: config.hotline || '',
+              companyAddress: config.address || '',
+              companyEmail: config.adminEmail || '',
             });
           }
         } catch (err) {

@@ -267,6 +267,8 @@ export const DocumentTrackingPage: React.FC = () => {
   const [filterDateFrom, setFilterDateFrom] = useState('');
   const [filterDateTo, setFilterDateTo] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [documentPage, setDocumentPage] = useState(1);
+  const [documentPageSize, setDocumentPageSize] = useState(50);
 
   // Helper for due date calculation
   const getDueInfo = (track: DocumentTrack) => {
@@ -393,6 +395,20 @@ export const DocumentTrackingPage: React.FC = () => {
       return String(b.contractNo || '').localeCompare(String(a.contractNo || ''), 'vi');
     });
   }, [documentTracks, filterProjectCode, filterDocStatus, filterPaymentStatus, filterDueStatus, filterDateFrom, filterDateTo, searchQuery, projects]);
+
+  const documentTotalPages = Math.max(1, Math.ceil(filteredTracks.length / documentPageSize));
+  const paginatedTracks = useMemo(() => {
+    const start = (documentPage - 1) * documentPageSize;
+    return filteredTracks.slice(start, start + documentPageSize);
+  }, [filteredTracks, documentPage, documentPageSize]);
+
+  useEffect(() => {
+    setDocumentPage(1);
+  }, [filterProjectCode, filterDocStatus, filterPaymentStatus, filterDueStatus, filterDateFrom, filterDateTo, searchQuery, documentPageSize]);
+
+  useEffect(() => {
+    if (documentPage > documentTotalPages) setDocumentPage(documentTotalPages);
+  }, [documentPage, documentTotalPages]);
 
   useEffect(() => {
     if (isHighlightActive && (highlightId || highlightKeyword)) {
@@ -977,6 +993,7 @@ export const DocumentTrackingPage: React.FC = () => {
           <div className="w-full flex-1 overflow-x-auto overflow-y-auto always-visible-scrollbar min-w-0 select-text">
             <table className="w-full text-left border-collapse text-[11px] table-fixed min-w-[1950px]">
               <colgroup>
+                <col style={{ width: 115 }} />
                 <col style={{ width: 75 }} />
                 {!projectId && <col style={{ width: 180 }} />}
                 <col style={{ width: 150 }} />
@@ -991,12 +1008,14 @@ export const DocumentTrackingPage: React.FC = () => {
                 <col style={{ width: 110 }} />
                 <col style={{ width: 45 }} />
                 <col style={{ width: 90 }} />
+                <col style={{ width: 145 }} />
                 <col style={{ width: 130 }} />
                 <col style={{ width: 45 }} />
               </colgroup>
               
               <thead className="bg-slate-50 border-b border-slate-200 text-[11px] font-extrabold text-slate-600 uppercase tracking-tight sticky top-0 z-10 leading-tight shadow-xs">
                 <tr>
+                  <th className="px-1 py-1.5 text-center whitespace-nowrap bg-slate-50">Ngày lập hồ sơ</th>
                   <th className="px-1 py-1.5 text-center whitespace-nowrap bg-slate-50">Bên</th>
                   {!projectId && <th className="px-1.5 py-1.5 whitespace-nowrap bg-slate-50">Dự án</th>}
                   <th className="px-1.5 py-1.5 whitespace-nowrap bg-slate-50">Số HĐ</th>
@@ -1011,14 +1030,13 @@ export const DocumentTrackingPage: React.FC = () => {
                   <th className="px-1 py-1.5 text-center whitespace-nowrap bg-slate-50">Thanh toán</th>
                   <th className="px-1 py-1.5 text-center whitespace-nowrap bg-slate-50">File</th>
                   <th className="px-1 py-1.5 text-center whitespace-nowrap bg-slate-50">Hồ sơ</th>
-                  <th className="px-1 py-1.5 text-center whitespace-nowrap bg-slate-50">Ngày lập hồ sơ</th>
                   <th className="px-1.5 py-1.5 text-center whitespace-nowrap bg-slate-50">Người lập hồ sơ</th>
                   <th className="px-1.5 py-1.5 text-center whitespace-nowrap bg-slate-50">Người cập nhật</th>
                   <th className="px-1 py-1.5 text-center whitespace-nowrap bg-slate-50">TT</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-[11px] text-slate-700 leading-tight">
-                {filteredTracks.map((track) => {
+                {paginatedTracks.map((track) => {
                   const isMatch = isHighlightActive && Boolean(
                     (highlightId && track.id === highlightId) ||
                     (highlightKeyword && (
@@ -1052,6 +1070,11 @@ export const DocumentTrackingPage: React.FC = () => {
                       });
                     }}
                   >
+                    <td className="px-1 py-1 text-center">
+                      <span className={`px-1 py-0.5 rounded text-[10px] font-mono inline-block whitespace-nowrap ${track.createdAt ? 'bg-slate-100 text-slate-700' : 'text-slate-300'}`}>
+                        {track.createdAt ? new Date(track.createdAt).toLocaleDateString('vi-VN') : '-'}
+                      </span>
+                    </td>
                     <td className="px-1 py-1 text-center whitespace-nowrap">
                       <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold whitespace-nowrap shrink-0 ${
                         track.side === 'Bên nhận' ? 'bg-emerald-50 text-emerald-600 border border-emerald-200/60' :
@@ -1176,15 +1199,10 @@ export const DocumentTrackingPage: React.FC = () => {
                         {track.docStatus || 'Chưa ký'}
                       </span>
                     </td>
-                    <td className="px-1 py-1 text-center">
-                      <span className={`px-1 py-0.5 rounded text-[10px] font-mono inline-block whitespace-nowrap ${track.createdAt ? 'bg-slate-100 text-slate-700' : 'text-slate-300'}`}>
-                        {track.createdAt ? new Date(track.createdAt).toLocaleDateString('vi-VN') : '-'}
-                      </span>
+                    <td className="px-1.5 py-1 text-center overflow-hidden">
+                      <span className="block truncate font-medium text-slate-700" title={track.createdByName || '-'}>{track.createdByName || '-'}</span>
                     </td>
-                    <td className="px-1.5 py-1 text-center">
-                      <span className="font-medium text-slate-700 whitespace-nowrap">{track.createdByName || '-'}</span>
-                    </td>
-                    <td className="px-1.5 py-1">
+                    <td className="px-1.5 py-1 overflow-hidden">
                       <AuditInfoCell 
                         updatedBy={track.updatedBy || track.createdByName} 
                         updatedAt={track.updatedAt} 
@@ -1226,6 +1244,27 @@ export const DocumentTrackingPage: React.FC = () => {
               })}
               </tbody>
             </table>
+            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 bg-white px-3 py-2 text-xs text-slate-600">
+              <div className="flex items-center gap-2">
+                <span>Hiển thị {filteredTracks.length === 0 ? 0 : (documentPage - 1) * documentPageSize + 1}-{Math.min(documentPage * documentPageSize, filteredTracks.length)} / {filteredTracks.length} hồ sơ</span>
+                <CustomSelect
+                  value={String(documentPageSize)}
+                  onChange={(e) => setDocumentPageSize(Number(e.target.value))}
+                  className="rounded border border-slate-300 bg-white px-2 py-1 text-xs"
+                >
+                  <option value="25">25 / trang</option>
+                  <option value="50">50 / trang</option>
+                  <option value="100">100 / trang</option>
+                </CustomSelect>
+              </div>
+              <div className="flex items-center gap-1">
+                <button type="button" disabled={documentPage <= 1} onClick={() => setDocumentPage(1)} className="rounded border border-slate-300 px-2 py-1 disabled:cursor-not-allowed disabled:opacity-40">Đầu</button>
+                <button type="button" disabled={documentPage <= 1} onClick={() => setDocumentPage(page => Math.max(1, page - 1))} className="rounded border border-slate-300 px-2 py-1 disabled:cursor-not-allowed disabled:opacity-40">Trước</button>
+                <span className="px-2 font-semibold">Trang {documentPage} / {documentTotalPages}</span>
+                <button type="button" disabled={documentPage >= documentTotalPages} onClick={() => setDocumentPage(page => Math.min(documentTotalPages, page + 1))} className="rounded border border-slate-300 px-2 py-1 disabled:cursor-not-allowed disabled:opacity-40">Sau</button>
+                <button type="button" disabled={documentPage >= documentTotalPages} onClick={() => setDocumentPage(documentTotalPages)} className="rounded border border-slate-300 px-2 py-1 disabled:cursor-not-allowed disabled:opacity-40">Cuối</button>
+              </div>
+            </div>
           </div>
         </PullToRefresh>
 

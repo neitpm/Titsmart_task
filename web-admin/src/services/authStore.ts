@@ -630,6 +630,12 @@ export const useAuthStore = create<AuthStoreState>((set, get) => ({
 
     saveSession(user);
     set({ user });
+
+    // Tự động làm mới nhận diện thương hiệu công ty (Branding) và danh sách dữ liệu theo tenant
+    import('./uiStore').then(({ useUIStore }) => {
+      useUIStore.getState().fetchBrandingFromCloud();
+    }).catch(() => {});
+
     return { ok: true };
   },
   logout: async () => {

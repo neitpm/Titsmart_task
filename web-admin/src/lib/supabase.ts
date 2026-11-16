@@ -36,6 +36,8 @@ if (import.meta.env.DEV || import.meta.env.MODE === 'development') {
     : CLOUD_SUPABASE_ANON_KEY;
 }
 
+export const isCloudSupabase = supabaseUrl.includes('supabase.co');
+
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   realtime: {
     timeout: 20000,

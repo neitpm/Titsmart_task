@@ -2912,9 +2912,14 @@ const hasSyncedRef = useRef(false);
                   ).split(',').map((id: string) => id.trim()).filter(Boolean);
                   const assignedNames = (assignmentParts[0] || '')
                     .split(',').map((name: string) => name.trim()).filter(Boolean);
+                  const resolveEngineerLabel = (value: string) => {
+                    const engineer = engineers.find((item) => item.id === value);
+                    const looksLikeUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+                    return engineer?.name || (looksLikeUuid ? 'Chưa xác định nhân sự' : value);
+                  };
                   const resolvedAssignedNames = assignedNames.length > 0
-                    ? assignedNames
-                    : assignedIds.map((id: string) => engineers.find((engineer) => engineer.id === id)?.name || id);
+                    ? assignedNames.map(resolveEngineerLabel)
+                    : assignedIds.map(resolveEngineerLabel);
                   const hasAssignment = assignedIds.length > 0 || resolvedAssignedNames.length > 0;
 
                   const rowClass = `group hover:bg-slate-100 transition-colors border-b border-slate-50 ${isHighlighted ? 'highlighted-task-row system-row-highlighted' : rowBg}`;

@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase';
+import { supabase, isCloudSupabase } from '../lib/supabase';
 import { v4 as uuidv4 } from 'uuid';
 import { NotificationItem } from '../types';
 
@@ -25,6 +25,21 @@ const generateMaterialCode = (name: string, suffix?: string) => {
 const cleanUuid = (value: unknown) => (typeof value === 'string' && UUID_RE.test(value) ? value : null);
 
 const getCurrentAuditPayload = () => {
+  if (isCloudSupabase) {
+    try {
+      const raw = localStorage.getItem('titsmart_auth_session');
+      const user = raw ? JSON.parse(raw) : null;
+      return {
+        updated_by: user?.name || user?.username || 'Hệ thống',
+        updated_at: new Date().toISOString(),
+      };
+    } catch {
+      return {
+        updated_by: 'Hệ thống',
+        updated_at: new Date().toISOString(),
+      };
+    }
+  }
   try {
     const raw = localStorage.getItem('titsmart_auth_session');
     const user = raw ? JSON.parse(raw) : null;
@@ -43,6 +58,9 @@ const getCurrentAuditPayload = () => {
 };
 
 export const getCurrentCompanyId = (): string => {
+  if (isCloudSupabase) {
+    return '';
+  }
   try {
     const raw = localStorage.getItem('titsmart_auth_session');
     const user = raw ? JSON.parse(raw) : null;
@@ -180,14 +198,19 @@ const mapArray = (arr: any[]) => arr.map(toCamelCase);
 
 // Supabase REST API mặc định giới hạn tối đa 1000 bản ghi mỗi request.
 // Hàm fetchAllRows dùng range pagination để tải đầy đủ tất cả các bản ghi khi dữ liệu vượt quá 1000.
+// Hỗ trợ multi-tenant: tự động lọc theo company_id nếu không chạy trên Cloud cũ chưa có cột company_id.
 const fetchAllRows = async (table: string, selectCols: string = '*', filter?: { column: string; value: any }): Promise<any[]> => {
   let allRows: any[] = [];
   let from = 0;
   const pageSize = 1000;
+  const companyId = !isCloudSupabase ? getCurrentCompanyId() : null;
   while (true) {
     let query = supabase.from(table).select(selectCols).range(from, from + pageSize - 1);
     if (filter) {
       query = query.eq(filter.column, filter.value);
+    }
+    if (companyId) {
+      query = query.eq('company_id', companyId);
     }
     const { data, error } = await query;
     if (error) throw error;
@@ -276,7 +299,12 @@ export const api = {
   projects: {
     getAll: async () => {
       try {
-        const { data, error } = await supabase.from('projects').select('*');
+        const companyId = getCurrentCompanyId();
+        let query = supabase.from('projects').select('*');
+        if (companyId) {
+          query = query.eq('company_id', companyId);
+        }
+        const { data, error } = await query;
         if (error) throw error;
         const list = mapArray(data || []).map(parseProjectMetadata);
         return list.sort((a: any, b: any) => {
@@ -767,14 +795,19 @@ export const api = {
   },
   materials: {
     getAll: async (projectId?: string) => {
+      const companyId = getCurrentCompanyId();
       let query = supabase.from('materials').select('*');
       if (projectId) query = query.eq('project_code', projectId);
+      if (companyId) query = query.eq('company_id', companyId);
       const { data, error } = await query;
       if (error) throw error;
       return mapArray(data || []);
     },
     getTransactions: async () => {
-      const { data, error } = await supabase.from('inventory_transactions').select('*');
+      const companyId = getCurrentCompanyId();
+      let query = supabase.from('inventory_transactions').select('*');
+      if (companyId) query = query.eq('company_id', companyId);
+      const { data, error } = await query;
       if (error) throw error;
       return mapArray(data || []);
     },
@@ -1060,8 +1093,10 @@ export const api = {
   },
   issues: {
     getAll: async (projectId?: string) => {
+      const companyId = getCurrentCompanyId();
       let query = supabase.from('issues').select('*');
       if (projectId) query = query.eq('project_code', projectId);
+      if (companyId) query = query.eq('company_id', companyId);
       const { data, error } = await query;
       if (error) throw error;
       return mapArray(data || []);
@@ -1086,11 +1121,11 @@ export const api = {
     getAll: async () => {
       try {
         const companyId = getCurrentCompanyId();
-        const { data, error } = await supabase
-          .from('engineers')
-          .select('*')
-          .eq('company_id', companyId)
-          .order('created_at', { ascending: true });
+        let query = supabase.from('engineers').select('*');
+        if (companyId) {
+          query = query.eq('company_id', companyId);
+        }
+        const { data, error } = await query.order('created_at', { ascending: true });
         if (error) {
           console.warn('[Engineers] Supabase error:', error);
           return [];
@@ -1280,16 +1315,24 @@ export const api = {
   activityLogs: {
     getAll: async (projectCode?: string) => {
       try {
+        const companyId = getCurrentCompanyId();
         // Màn hình tổng quan chỉ tải một trang; lịch sử của một dự án được lọc tại DB.
         let query: any = supabase.from('activity_logs').select('*').order('timestamp', { ascending: false }).limit(300);
         if (projectCode) {
           query = query.eq('project', projectCode);
         }
+        if (companyId) {
+          query = query.eq('company_id', companyId);
+        }
         let { data, error } = await query;
 
         // Nếu lọc theo projectCode bị lỗi hoặc rỗng (do log có thể lưu theo tên dự án), lấy 300 log mới nhất để client lọc
         if (error || !data || data.length === 0) {
-          const fbRes = await supabase.from('activity_logs').select('*').order('timestamp', { ascending: false }).limit(300);
+          let fbQuery: any = supabase.from('activity_logs').select('*').order('timestamp', { ascending: false }).limit(300);
+          if (companyId) {
+            fbQuery = fbQuery.eq('company_id', companyId);
+          }
+          const fbRes = await fbQuery;
           if (!fbRes.error && fbRes.data) {
             data = fbRes.data;
             error = null;
@@ -1531,6 +1574,7 @@ export const api = {
 
     getExpenses: async (projectCode?: string) => {
       try {
+        const companyId = getCurrentCompanyId();
         const queryCols = 'id,date,content,amount,category,payment_method,requester,status,notes,project_code,created_at,stt,description,unit,quantity,unit_price,tax_amount,total_amount,income_amount,balance_fund,invoice_url,spender_name,updated_by,updated_at';
         let query = supabase.from('expenses').select(queryCols);
         if (projectCode) {
@@ -1538,12 +1582,16 @@ export const api = {
         } else {
           query = query.order('created_at', { ascending: false }).limit(2000);
         }
+        if (companyId) {
+          query = query.eq('company_id', companyId);
+        }
         const { data, error } = await query;
         if (error) {
           console.warn('[Accounting] Primary query for expenses failed, trying fast fallback:', error.message || error);
           const fallbackCols = 'id,date,content,amount,category,payment_method,requester,status,notes,project_code,created_at,stt,description,unit,quantity,unit_price,tax_amount,total_amount,income_amount,balance_fund';
           let fbQuery = supabase.from('expenses').select(fallbackCols);
           if (projectCode) fbQuery = fbQuery.eq('project_code', projectCode);
+          if (companyId) fbQuery = fbQuery.eq('company_id', companyId);
           const { data: fbData, error: fbErr } = await fbQuery.limit(2000);
           if (!fbErr && Array.isArray(fbData)) {
             return fbData.map((row: any) => {
@@ -1735,7 +1783,12 @@ export const api = {
     getDocumentTracks: async () => {
       // In local mode, fallback to empty array so local storage takes precedence
       try {
-        const { data, error } = await supabase.from('document_tracks').select('*').order('created_at', { ascending: false });
+        const companyId = getCurrentCompanyId();
+        let query = supabase.from('document_tracks').select('*').order('created_at', { ascending: false });
+        if (companyId) {
+          query = query.eq('company_id', companyId);
+        }
+        const { data, error } = await query;
         if (error) return [];
         
         if (data && data.length > 0) {
@@ -2041,7 +2094,12 @@ export const api = {
   },
   fieldLogs: {
     getAll: async () => {
-      const { data, error } = await supabase.from('field_logs').select('*').order('created_at', { ascending: false }).limit(500);
+      const companyId = getCurrentCompanyId();
+      let query = supabase.from('field_logs').select('*').order('created_at', { ascending: false }).limit(500);
+      if (companyId) {
+        query = query.eq('company_id', companyId);
+      }
+      const { data, error } = await query;
       if (error) throw error;
       return (data || []).map((d: any) => ({
         id: d.id,
@@ -2217,10 +2275,19 @@ export const api = {
     },
     getAll: async () => {
       try {
-        const { data, error } = await supabase.from('notifications').select('*').order('timestamp', { ascending: false }).limit(50);
+        const companyId = getCurrentCompanyId();
+        let query = supabase.from('notifications').select('*').order('timestamp', { ascending: false }).limit(50);
+        if (companyId) {
+          query = query.eq('company_id', companyId);
+        }
+        const { data, error } = await query;
         if (!error && data) return mapArray(data).map(parseNotificationMeta);
         if (error) {
-          const { data: fbData, error: fbError } = await supabase.from('notifications').select('*').limit(50);
+          let fbQuery = supabase.from('notifications').select('*').limit(50);
+          if (companyId) {
+            fbQuery = fbQuery.eq('company_id', companyId);
+          }
+          const { data: fbData, error: fbError } = await fbQuery;
           if (!fbError && fbData) return mapArray(fbData).map(parseNotificationMeta);
         }
       } catch (err) {
@@ -2849,9 +2916,12 @@ export const api = {
   directMessages: {
     getAll: async () => {
       try {
-        const { data, error } = await supabase
-          .from('direct_messages')
-          .select('*');
+        const companyId = getCurrentCompanyId();
+        let query = supabase.from('direct_messages').select('*');
+        if (companyId) {
+          query = query.eq('company_id', companyId);
+        }
+        const { data, error } = await query;
         if (error) {
           console.warn('[DirectMessages] Table public.direct_messages query info:', error.message);
           return [];
@@ -3010,13 +3080,33 @@ export const api = {
     get: async (): Promise<{ companyName?: string; companySlogan?: string; companyLogo?: string | null; hotline?: string; address?: string; adminEmail?: string; internalCategories?: any; updatedAt?: string } | null> => {
       try {
         const companyId = getCurrentCompanyId();
+        // 1. Thử lấy từ bảng company_branding theo companyId
+        const { data: brandingData, error: brandingError } = await supabase
+          .from('company_branding')
+          .select('company_name, company_slogan, company_logo, hotline, address, email, updated_at')
+          .eq('company_id', companyId)
+          .maybeSingle();
+
+        if (!brandingError && brandingData && (brandingData.company_name || brandingData.company_logo)) {
+          return {
+            companyName: brandingData.company_name,
+            companySlogan: brandingData.company_slogan,
+            companyLogo: brandingData.company_logo,
+            hotline: brandingData.hotline,
+            address: brandingData.address,
+            adminEmail: brandingData.email,
+            updatedAt: brandingData.updated_at
+          };
+        }
+
+        // 2. Thử lấy từ bảng companies theo companyId
         const { data, error } = await supabase
           .from('companies')
           .select('name, slogan, logo_url, hotline, address, admin_email, internal_categories, updated_at')
           .eq('id', companyId)
           .maybeSingle();
 
-        if (!error && data) {
+        if (!error && data && (data.name || data.logo_url)) {
           return {
             companyName: data.name,
             companySlogan: data.slogan,
@@ -3029,49 +3119,32 @@ export const api = {
           };
         }
       } catch (err) {
-        console.warn('[Branding] Failed to fetch company profile from companies table:', err);
+        console.warn('[Branding] Failed to fetch company profile from companies/company_branding table:', err);
       }
 
-      try {
-        // Ưu tiên đọc từ Cloud Storage công khai (hoạt động cho mọi client và cả khi chưa login)
-        const storageUrl = `${supabase.storage.from('titsmart-images').getPublicUrl('branding/config.json').data.publicUrl}?t=${Date.now()}`;
-        const res = await fetch(storageUrl, { cache: 'no-store' });
-        if (res.ok) {
-          const cfg = await res.json();
-          if (cfg && (cfg.companyName || cfg.companySlogan || cfg.companyLogo !== undefined)) {
-            return {
-              companyName: cfg.companyName,
-              companySlogan: cfg.companySlogan,
-              companyLogo: cfg.companyLogo,
-              updatedAt: cfg.updatedAt
-            };
+      // Chỉ đọc từ fallback config.json nếu đang ở default company TITSMART
+      const activeCompanyId = getCurrentCompanyId();
+      if (activeCompanyId === '00000000-0000-0000-0000-000000000001') {
+        try {
+          const storageUrl = `${supabase.storage.from('titsmart-images').getPublicUrl('branding/config.json').data.publicUrl}?t=${Date.now()}`;
+          const res = await fetch(storageUrl, { cache: 'no-store' });
+          if (res.ok) {
+            const cfg = await res.json();
+            if (cfg && (cfg.companyName || cfg.companySlogan || cfg.companyLogo !== undefined)) {
+              return {
+                companyName: cfg.companyName,
+                companySlogan: cfg.companySlogan,
+                companyLogo: cfg.companyLogo,
+                updatedAt: cfg.updatedAt
+              };
+            }
           }
+        } catch (e) {
+          // Fallback sang activity_logs nếu có
         }
-      } catch (e) {
-        // Fallback sang activity_logs nếu có
       }
 
-      try {
-        const { data, error } = await supabase
-          .from('activity_logs')
-          .select('id, action, timestamp')
-          .eq('icon', 'BRANDING_CONFIG')
-          .order('timestamp', { ascending: false })
-          .limit(1);
-
-        if (error || !data || data.length === 0) return null;
-        const row = data[0];
-        const payload = typeof row.action === 'string' ? JSON.parse(row.action) : row.action;
-        return {
-          companyName: payload?.companyName,
-          companySlogan: payload?.companySlogan,
-          companyLogo: payload?.companyLogo,
-          updatedAt: payload?.updatedAt || row.timestamp
-        };
-      } catch (err) {
-        console.warn('[Branding] Could not fetch branding config:', err);
-        return null;
-      }
+      return null;
     },
 
     save: async (input: { companyName: string; companySlogan: string; companyLogo: string | null; hotline?: string; address?: string; adminEmail?: string; internalCategories?: any; updatedBy?: string }) => {
@@ -3126,8 +3199,10 @@ export const api = {
             icon: 'BRANDING_CONFIG',
             action: JSON.stringify(payloadData),
             timestamp: payloadData.updatedAt,
-            company_id: companyId
           };
+          if (companyId) {
+            payload.company_id = companyId;
+          }
           await supabase.from('activity_logs').insert(payload);
         } catch (lErr) {
           // Bỏ qua nếu dính RLS activity_logs
