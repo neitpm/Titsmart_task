@@ -1,7 +1,15 @@
 {
   "dependencies": {
     "@supabase/supabase-js": "^2.112.4",
-    "dotenv": "^17.4.2"
+    "bcryptjs": "^3.0.3",
+    "dotenv": "^17.4.2",
+    "jsonwebtoken": "^9.0.3",
+    "pg": "^8.23.1"
   },
-  "version": "3.8.374"
+  "version": "3.8.374",
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/pg": "^8.23.1"
+  }
 }

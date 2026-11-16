@@ -1,0 +1,263 @@
+name: workcore-microservices-local
+
+networks:
+  workcore-internal-net:
+    driver: bridge
+    internal: false
+
+volumes:
+  workcore_local_pgdata:
+    name: workcore_local_pgdata
+
+services:
+  # ==============================================================================
+  # 1. DATABASE LOCAL (POSTGRESQL MULTI-TENANT)
+  # ==============================================================================
+  db:
+    image: public.ecr.aws/supabase/postgres:17.11.0.011
+    container_name: workcore-ms-db
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:54322:5432"
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-postgres}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - workcore_local_pgdata:/var/lib/postgresql/data
+      - ./supabase/migrations:/docker-entrypoint-initdb.d:ro
+    networks:
+      - workcore-internal-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ==============================================================================
+  # 2. API GATEWAY (DUY NHẤT ĐƯỢC EXPOSE PORT CHO CLIENT APP TRUY CẬP)
+  # ==============================================================================
+  api-gateway:
+    image: node:20-alpine
+    container_name: workcore-ms-api-gateway
+    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - .:/app
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-postgres}
+      JWT_SECRET: ${JWT_SECRET}
+      INTERNAL_GATEWAY_SECRET: ${INTERNAL_GATEWAY_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-8h}
+    command: ["sh", "-c", "npx -y tsx services/api-gateway/index.ts"]
+    ports:
+      - "127.0.0.1:9000:9000"
+    networks:
+      - workcore-internal-net
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:9000/health || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ==============================================================================
+  # 3. AUTH & IDENTITY SERVICE (NỘI BỘ - KHÔNG EXPOSE RA NGOÀI)
+  # ==============================================================================
+  auth-service:
+    image: node:20-alpine
+    container_name: workcore-ms-auth
+    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - .:/app
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-postgres}
+      JWT_SECRET: ${JWT_SECRET}
+      INTERNAL_GATEWAY_SECRET: ${INTERNAL_GATEWAY_SECRET}
+    command: ["sh", "-c", "npx -y tsx services/auth-service/index.ts"]
+    expose:
+      - "9001"
+    networks:
+      - workcore-internal-net
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # ==============================================================================
+  # 4. TENANT SERVICE (NỘI BỘ - KHÔNG EXPOSE RA NGOÀI)
+  # ==============================================================================
+  tenant-service:
+    image: node:20-alpine
+    container_name: workcore-ms-tenant
+    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - .:/app
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-postgres}
+      INTERNAL_GATEWAY_SECRET: ${INTERNAL_GATEWAY_SECRET}
+    command: ["sh", "-c", "npx -y tsx services/tenant-service/index.ts"]
+    expose:
+      - "9002"
+    networks:
+      - workcore-internal-net
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # ==============================================================================
+  # 5. ENTITLEMENT SERVICE (NỘI BỘ - KHÔNG EXPOSE RA NGOÀI)
+  # ==============================================================================
+  entitlement-service:
+    image: node:20-alpine
+    container_name: workcore-ms-entitlement
+    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - .:/app
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-postgres}
+      INTERNAL_GATEWAY_SECRET: ${INTERNAL_GATEWAY_SECRET}
+    command: ["sh", "-c", "npx -y tsx services/entitlement-service/index.ts"]
+    expose:
+      - "9003"
+    networks:
+      - workcore-internal-net
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # ==============================================================================
+  # 6. PROJECT SERVICE (NỘI BỘ - KHÔNG EXPOSE RA NGOÀI)
+  # ==============================================================================
+  project-service:
+    image: node:20-alpine
+    container_name: workcore-ms-project
+    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - .:/app
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-postgres}
+      INTERNAL_GATEWAY_SECRET: ${INTERNAL_GATEWAY_SECRET}
+    command: ["sh", "-c", "npx -y tsx services/project-service/index.ts"]
+    expose:
+      - "9004"
+    networks:
+      - workcore-internal-net
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # ==============================================================================
+  # 7. TASK SERVICE (NỘI BỘ - KHÔNG EXPOSE RA NGOÀI)
+  # ==============================================================================
+  task-service:
+    image: node:20-alpine
+    container_name: workcore-ms-task
+    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - .:/app
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-postgres}
+      INTERNAL_GATEWAY_SECRET: ${INTERNAL_GATEWAY_SECRET}
+    command: ["sh", "-c", "npx -y tsx services/task-service/index.ts"]
+    expose:
+      - "9005"
+    networks:
+      - workcore-internal-net
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # ==============================================================================
+  # 8. FINANCE SERVICE (NỘI BỘ - KHÔNG EXPOSE RA NGOÀI)
+  # ==============================================================================
+  finance-service:
+    image: node:20-alpine
+    container_name: workcore-ms-finance
+    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - .:/app
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-postgres}
+      INTERNAL_GATEWAY_SECRET: ${INTERNAL_GATEWAY_SECRET}
+    command: ["sh", "-c", "npx -y tsx services/finance-service/index.ts"]
+    expose:
+      - "9006"
+    networks:
+      - workcore-internal-net
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # ==============================================================================
+  # 9. HR SERVICE (NỘI BỘ - KHÔNG EXPOSE RA NGOÀI)
+  # ==============================================================================
+  hr-service:
+    image: node:20-alpine
+    container_name: workcore-ms-hr
+    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - .:/app
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-postgres}
+      INTERNAL_GATEWAY_SECRET: ${INTERNAL_GATEWAY_SECRET}
+    command: ["sh", "-c", "npx -y tsx services/hr-service/index.ts"]
+    expose:
+      - "9007"
+    networks:
+      - workcore-internal-net
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # ==============================================================================
+  # 10. DOCUMENT & STORAGE SERVICE (NỘI BỘ - KHÔNG EXPOSE RA NGOÀI)
+  # ==============================================================================
+  document-service:
+    image: node:20-alpine
+    container_name: workcore-ms-document
+    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - .:/app
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-postgres}
+      INTERNAL_GATEWAY_SECRET: ${INTERNAL_GATEWAY_SECRET}
+    command: ["sh", "-c", "npx -y tsx services/document-service/index.ts"]
+    expose:
+      - "9008"
+    networks:
+      - workcore-internal-net
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # ==============================================================================
+  # 11. NOTIFICATION SERVICE (NỘI BỘ - KHÔNG EXPOSE RA NGOÀI)
+  # ==============================================================================
+  notification-service:
+    image: node:20-alpine
+    container_name: workcore-ms-notification
+    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - .:/app
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-postgres}
+      INTERNAL_GATEWAY_SECRET: ${INTERNAL_GATEWAY_SECRET}
+    command: ["sh", "-c", "npx -y tsx services/notification-service/index.ts"]
+    expose:
+      - "9009"
+    networks:
+      - workcore-internal-net
+    depends_on:
+      db:
+        condition: service_healthy
