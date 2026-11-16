@@ -1763,6 +1763,23 @@ export const ProjectCostPlanPage: React.FC = () => {
     });
   }, [fundRequests, notifications, projects, selectedProject, reviewedFundActions, expenses]);
   const [showExpenseActionMenu, setShowExpenseActionMenu] = useState(false);
+  const expenseActionMenuRef = useRef<HTMLDivElement>(null);
+  const expenseExportMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (expenseActionMenuRef.current && !expenseActionMenuRef.current.contains(e.target as Node)) {
+        setShowExpenseActionMenu(false);
+      }
+      if (expenseExportMenuRef.current && !expenseExportMenuRef.current.contains(e.target as Node)) {
+        setShowExpenseExportMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+    };
+  }, []);
   const [fundRequestForm, setFundRequestForm] = useState({
     amount: '',
     type: 'Tạm ứng',
@@ -2799,10 +2816,14 @@ export const ProjectCostPlanPage: React.FC = () => {
                   <span className="hidden xl:inline">Nhập file</span>
                 </button>
 
-                <div className="relative shrink-0">
+                <div className="relative shrink-0 no-drag-region electron-no-drag" ref={expenseExportMenuRef}>
                   <button
-                    onClick={() => setShowExpenseExportMenu(!showExpenseExportMenu)}
-                    className="flex items-center justify-center gap-1 border border-emerald-200 bg-emerald-50 text-emerald-700 px-2 sm:px-2.5 h-8 rounded-lg text-xs font-bold hover:bg-emerald-100 active:scale-95 transition-all shadow-xs whitespace-nowrap cursor-pointer shrink-0"
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowExpenseExportMenu(!showExpenseExportMenu);
+                    }}
+                    className="flex items-center justify-center gap-1 border border-emerald-200 bg-emerald-50 text-emerald-700 px-2 sm:px-2.5 h-8 rounded-lg text-xs font-bold hover:bg-emerald-100 active:scale-95 transition-all shadow-xs whitespace-nowrap cursor-pointer shrink-0 no-drag-region electron-no-drag"
                     title="Xuất file (Excel, CSV, PDF, Word)"
                   >
                     <span className="material-symbols-outlined text-[16px]">file_download</span>
@@ -2810,54 +2831,56 @@ export const ProjectCostPlanPage: React.FC = () => {
                     <span className="material-symbols-outlined text-xs hidden xl:inline">expand_more</span>
                   </button>
                   {showExpenseExportMenu && (
-                    <>
-                      <div 
-                        className="fixed inset-0 z-[9998]" 
-                        onClick={() => setShowExpenseExportMenu(false)}
-                      />
-                      <div className="absolute right-0 top-full mt-1 w-44 bg-white rounded-xl shadow-2xl border border-slate-200 py-1.5 z-[9999] animate-in fade-in zoom-in duration-100">
-                        <button
-                          onClick={() => {
-                            setShowExpenseExportMenu(false);
-                            handleExportExcel();
-                          }}
-                          className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
-                        >
-                          <span className="material-symbols-outlined text-base text-green-600">grid_on</span>
-                          Excel (.xlsx)
-                        </button>
-                        <button
-                          onClick={() => {
-                            setShowExpenseExportMenu(false);
-                            handleExportExcel();
-                          }}
-                          className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
-                        >
-                          <span className="material-symbols-outlined text-base text-teal-600">csv</span>
-                          CSV (.csv)
-                        </button>
-                        <button
-                          onClick={() => {
-                            setShowExpenseExportMenu(false);
-                            window.print();
-                          }}
-                          className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
-                        >
-                          <span className="material-symbols-outlined text-base text-red-600">picture_as_pdf</span>
-                          PDF (.pdf)
-                        </button>
-                        <button
-                          onClick={() => {
-                            setShowExpenseExportMenu(false);
-                            handleExportExcel();
-                          }}
-                          className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
-                        >
-                          <span className="material-symbols-outlined text-base text-blue-600">description</span>
-                          Word (.docx)
-                        </button>
-                      </div>
-                    </>
+                    <div className="absolute right-0 top-full mt-1.5 w-48 bg-white rounded-xl shadow-2xl border border-slate-200 py-1.5 z-[99999] animate-in fade-in zoom-in duration-100 no-drag-region electron-no-drag">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowExpenseExportMenu(false);
+                          handleExportExcel();
+                        }}
+                        className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer transition-colors"
+                      >
+                        <span className="material-symbols-outlined text-base text-green-600">grid_on</span>
+                        Excel (.xlsx)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowExpenseExportMenu(false);
+                          handleExportExcel();
+                        }}
+                        className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer transition-colors"
+                      >
+                        <span className="material-symbols-outlined text-base text-teal-600">csv</span>
+                        CSV (.csv)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowExpenseExportMenu(false);
+                          window.print();
+                        }}
+                        className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer transition-colors"
+                      >
+                        <span className="material-symbols-outlined text-base text-red-600">picture_as_pdf</span>
+                        PDF (.pdf)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowExpenseExportMenu(false);
+                          handleExportExcel();
+                        }}
+                        className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer transition-colors"
+                      >
+                        <span className="material-symbols-outlined text-base text-blue-600">description</span>
+                        Word (.docx)
+                      </button>
+                    </div>
                   )}
                 </div>
 
@@ -2929,10 +2952,14 @@ export const ProjectCostPlanPage: React.FC = () => {
                   })()}
                 </button>
 
-                <div className="relative shrink-0">
+                <div className="relative shrink-0 no-drag-region electron-no-drag" ref={expenseActionMenuRef}>
                   <button
-                    onClick={() => setShowExpenseActionMenu(v => !v)}
-                    className="flex items-center justify-center gap-1 bg-primary text-white px-2.5 sm:px-3 h-8 rounded-lg text-xs font-bold hover:bg-primary-dark transition-colors shadow-xs whitespace-nowrap cursor-pointer shrink-0"
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowExpenseActionMenu(v => !v);
+                    }}
+                    className="flex items-center justify-center gap-1 bg-primary text-white px-2.5 sm:px-3 h-8 rounded-lg text-xs font-bold hover:bg-primary-dark active:scale-95 transition-all shadow-xs whitespace-nowrap cursor-pointer shrink-0 no-drag-region electron-no-drag"
                     title="Thêm chi phí hoặc yêu cầu cấp quỹ"
                   >
                     <span className="material-symbols-outlined text-[16px]">add</span>
@@ -2940,16 +2967,32 @@ export const ProjectCostPlanPage: React.FC = () => {
                     <span className="material-symbols-outlined text-[14px]">expand_more</span>
                   </button>
                   {showExpenseActionMenu && (
-                    <>
-                      <div
-                        className="fixed inset-0 z-[9998]"
-                        onClick={() => setShowExpenseActionMenu(false)}
-                      />
-                      <div className="absolute right-0 top-full mt-1 z-[9999] w-48 rounded-lg border border-slate-200 bg-white p-1 shadow-xl animate-in fade-in zoom-in duration-100">
-                        <button type="button" onClick={() => { setShowExpenseActionMenu(false); setIsNewExpenseOpen(true); }} className="w-full rounded-md px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer">+ Thêm phiếu chi</button>
-                        <button type="button" onClick={() => { setShowExpenseActionMenu(false); setFundRequestOpen(true); }} className="w-full rounded-md px-3 py-2 text-left text-xs font-semibold text-blue-700 hover:bg-blue-50 cursor-pointer">+ Tạo yêu cầu cấp quỹ</button>
-                      </div>
-                    </>
+                    <div className="absolute right-0 top-full mt-1.5 z-[99999] w-52 rounded-xl border border-slate-200 bg-white p-1.5 shadow-2xl animate-in fade-in zoom-in duration-100 no-drag-region electron-no-drag">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowExpenseActionMenu(false);
+                          setIsNewExpenseOpen(true);
+                        }}
+                        className="w-full flex items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-bold text-slate-700 hover:bg-blue-50 hover:text-primary cursor-pointer transition-colors"
+                      >
+                        <span className="material-symbols-outlined text-[18px] text-primary">receipt_long</span>
+                        <span>Thêm phiếu chi</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowExpenseActionMenu(false);
+                          setFundRequestOpen(true);
+                        }}
+                        className="w-full flex items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-bold text-blue-700 hover:bg-blue-50 cursor-pointer transition-colors border-t border-slate-100 mt-1 pt-1.5"
+                      >
+                        <span className="material-symbols-outlined text-[18px] text-blue-600">account_balance_wallet</span>
+                        <span>Tạo yêu cầu cấp quỹ</span>
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>
