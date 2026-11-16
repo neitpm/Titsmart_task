@@ -232,6 +232,9 @@ export interface AuthUser {
   avatar?: string;
   projectCodes?: string[];
   permissions?: import('../types').Permission[];
+  companyId?: string;
+  companyRole?: 'company_admin' | 'staff' | string;
+  platformRole?: 'super_admin' | 'user' | string;
 }
 
 export interface DemoAccount {
@@ -518,6 +521,9 @@ export const useAuthStore = create<AuthStoreState>((set, get) => ({
         phone: preEngineer.phone || '',
         projectCodes: preEngineer.project_codes || preEngineer.projectCodes || [],
         permissions: preEngineer.permissions || getDefaultPermissions(englishRole),
+        companyId: preEngineer.company_id || preEngineer.companyId || '00000000-0000-0000-0000-000000000001',
+        companyRole: preEngineer.company_role || preEngineer.companyRole || (isSystemAdmin ? 'company_admin' : 'staff'),
+        platformRole: preEngineer.platform_role || preEngineer.platformRole || (isSystemAdmin ? 'super_admin' : 'user'),
       };
 
       saveSession(user);
@@ -617,6 +623,9 @@ export const useAuthStore = create<AuthStoreState>((set, get) => ({
       phone: engineerData?.phone || '',
       projectCodes: engineerData?.project_codes || engineerData?.projectCodes || [],
       permissions: engineerData?.permissions || getDefaultPermissions(englishRole),
+      companyId: engineerData?.company_id || engineerData?.companyId || '00000000-0000-0000-0000-000000000001',
+      companyRole: engineerData?.company_role || engineerData?.companyRole || (isSystemAdmin ? 'company_admin' : 'staff'),
+      platformRole: engineerData?.platform_role || engineerData?.platformRole || (isSystemAdmin ? 'super_admin' : 'user'),
     };
 
     saveSession(user);
