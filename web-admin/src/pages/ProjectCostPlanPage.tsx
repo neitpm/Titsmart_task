@@ -2760,8 +2760,8 @@ export const ProjectCostPlanPage: React.FC = () => {
           <div className="h-full overflow-y-auto overflow-x-hidden custom-scrollbar bg-white flex flex-col pb-16 md:pb-0" id="expense-unified-view">
 
             {/* 1. BỘ LỌC & CÔNG CỤ (TOOLBAR TRÊN CÙNG) */}
-            <div className="flex border-b border-slate-200 bg-slate-50 px-2 sm:px-3 md:px-5 py-2 gap-2 md:gap-3 sticky top-0 z-30 items-center justify-between text-xs text-slate-600 shadow-xs overflow-x-auto custom-scrollbar flex-nowrap">
-              <div className="hidden md:flex items-center gap-2 md:gap-3 flex-nowrap shrink-0">
+            <div className="flex border-b border-slate-200 bg-slate-50 px-2 sm:px-3 md:px-5 py-2 gap-2 md:gap-3 sticky top-0 z-30 items-center justify-between text-xs text-slate-600 shadow-xs overflow-visible flex-nowrap">
+              <div className="hidden md:flex items-center gap-2 md:gap-3 flex-nowrap shrink-0 overflow-x-auto custom-scrollbar">
                 <div className="flex items-center gap-2.5 font-bold text-slate-500 whitespace-nowrap">
                   <span className="material-symbols-outlined text-[16px]">filter_list</span>
                 </div>
