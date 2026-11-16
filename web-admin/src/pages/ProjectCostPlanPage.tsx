@@ -1806,6 +1806,8 @@ export const ProjectCostPlanPage: React.FC = () => {
   const [expenseFilterContent, setExpenseFilterContent] = useState('all');
   const [expenseFilterSpender, setExpenseFilterSpender] = useState('all');
   const [expenseFilterUnit, setExpenseFilterUnit] = useState('all');
+  const [expensePage, setExpensePage] = useState(1);
+  const [expensePageSize, setExpensePageSize] = useState(50);
 
   // Labor Tab Filters
   const [laborFilterDateFrom, setLaborFilterDateFrom] = useState('');
@@ -2330,6 +2332,20 @@ export const ProjectCostPlanPage: React.FC = () => {
     });
     return computed.reverse(); // Đảo ngược để hiển thị mới nhất lên đầu
   }, [filteredProjExpenses, filteredProjLabor]);
+
+  const expenseTotalPages = Math.max(1, Math.ceil(combinedCashFlow.length / expensePageSize));
+  const paginatedCashFlow = useMemo(() => {
+    const start = (expensePage - 1) * expensePageSize;
+    return combinedCashFlow.slice(start, start + expensePageSize);
+  }, [combinedCashFlow, expensePage, expensePageSize]);
+
+  useEffect(() => {
+    setExpensePage(1);
+  }, [selectedProject, expenseFilterSpender, expenseFilterContent, expenseFilterUnit, expenseFilterDateFrom, expenseFilterDateTo, searchQuery, expensePageSize]);
+
+  useEffect(() => {
+    if (expensePage > expenseTotalPages) setExpensePage(expenseTotalPages);
+  }, [expensePage, expenseTotalPages]);
 
   const expenseContentTypes = useMemo(() => {
     const contents = new Set<string>();
@@ -3038,7 +3054,7 @@ export const ProjectCostPlanPage: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-[12px] text-slate-700 leading-tight">
-                    {combinedCashFlow.map((record) => {
+                    {paginatedCashFlow.map((record) => {
                       if (!record.isLabor) {
                         const exp = record as any;
                         return (
@@ -3196,6 +3212,62 @@ export const ProjectCostPlanPage: React.FC = () => {
             </table>
             </div>
 
+            {/* Pagination Controls for Cash Flow / Expenses */}
+            <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 bg-slate-50 border-t border-slate-200 text-xs text-slate-600 rounded-b-xl select-none">
+              <div className="flex items-center gap-2">
+                <span>Hiển thị {combinedCashFlow.length === 0 ? 0 : (expensePage - 1) * expensePageSize + 1}-{Math.min(expensePage * expensePageSize, combinedCashFlow.length)} / {combinedCashFlow.length} khoản mục</span>
+                <select
+                  value={String(expensePageSize)}
+                  onChange={(e) => {
+                    setExpensePageSize(Number(e.target.value));
+                    setExpensePage(1);
+                  }}
+                  className="rounded border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 outline-none focus:border-sky-500 cursor-pointer"
+                >
+                  <option value="25">25 / trang</option>
+                  <option value="50">50 / trang</option>
+                  <option value="100">100 / trang</option>
+                  <option value="200">200 / trang</option>
+                </select>
+              </div>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  disabled={expensePage <= 1}
+                  onClick={() => setExpensePage(1)}
+                  className="rounded border border-slate-300 bg-white px-2 py-1 disabled:cursor-not-allowed disabled:opacity-40 hover:bg-slate-50 font-medium"
+                >
+                  Đầu
+                </button>
+                <button
+                  type="button"
+                  disabled={expensePage <= 1}
+                  onClick={() => setExpensePage(p => Math.max(1, p - 1))}
+                  className="rounded border border-slate-300 bg-white px-2 py-1 disabled:cursor-not-allowed disabled:opacity-40 hover:bg-slate-50 font-medium"
+                >
+                  Trước
+                </button>
+                <span className="px-2 font-semibold text-slate-700">
+                  Trang {expensePage} / {expenseTotalPages}
+                </span>
+                <button
+                  type="button"
+                  disabled={expensePage >= expenseTotalPages}
+                  onClick={() => setExpensePage(p => Math.min(expenseTotalPages, p + 1))}
+                  className="rounded border border-slate-300 bg-white px-2 py-1 disabled:cursor-not-allowed disabled:opacity-40 hover:bg-slate-50 font-medium"
+                >
+                  Sau
+                </button>
+                <button
+                  type="button"
+                  disabled={expensePage >= expenseTotalPages}
+                  onClick={() => setExpensePage(expenseTotalPages)}
+                  className="rounded border border-slate-300 bg-white px-2 py-1 disabled:cursor-not-allowed disabled:opacity-40 hover:bg-slate-50 font-medium"
+                >
+                  Cuối
+                </button>
+              </div>
+            </div>
 
             </div>
             </div>
