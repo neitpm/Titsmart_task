@@ -15,6 +15,9 @@ interface UIStoreState {
   companyName: string;
   companySlogan: string;
   companyLogo: string | null;
+  companyHotline?: string;
+  companyAddress?: string;
+  companyEmail?: string;
   allowDirectFundApproval: boolean;
   allowDualCheckerReviewerRole: boolean;
   defaultAccountantId?: string;
@@ -36,9 +39,12 @@ interface UIStoreState {
   setCompanyName: (val: string) => void;
   setCompanySlogan: (val: string) => void;
   setCompanyLogo: (val: string | null) => void;
+  setCompanyHotline: (val: string) => void;
+  setCompanyAddress: (val: string) => void;
+  setCompanyEmail: (val: string) => void;
   setIsApplyingBranding: (val: boolean) => void;
   fetchBrandingFromCloud: () => Promise<void>;
-  saveBrandingToCloud: (branding: { companyName: string; companySlogan: string; companyLogo: string | null; updatedBy?: string }) => Promise<void>;
+  saveBrandingToCloud: (branding: { companyName: string; companySlogan: string; companyLogo: string | null; hotline?: string; address?: string; adminEmail?: string; updatedBy?: string }) => Promise<void>;
 }
 
 export const useUIStore = create<UIStoreState>()(
@@ -56,6 +62,9 @@ export const useUIStore = create<UIStoreState>()(
       companyName: 'TITSMART',
       companySlogan: 'Project Manager',
       companyLogo: null,
+      companyHotline: '',
+      companyAddress: '',
+      companyEmail: '',
       allowDirectFundApproval: false,
       allowDualCheckerReviewerRole: false,
       defaultAccountantId: '',
@@ -79,28 +88,23 @@ export const useUIStore = create<UIStoreState>()(
       setCompanyName: (val) => set({ companyName: val }),
       setCompanySlogan: (val) => set({ companySlogan: val }),
       setCompanyLogo: (val) => set({ companyLogo: val }),
+      setCompanyHotline: (val) => set({ companyHotline: val }),
+      setCompanyAddress: (val) => set({ companyAddress: val }),
+      setCompanyEmail: (val) => set({ companyEmail: val }),
       setIsApplyingBranding: (val) => set({ isApplyingBranding: val }),
 
       fetchBrandingFromCloud: async () => {
         try {
           const config = await api.branding.get();
-          if (config && (config.companyName || config.companySlogan || config.companyLogo !== undefined)) {
-            const current = get();
-            const nextName = config.companyName?.trim() || 'TITSMART';
-            const nextSlogan = config.companySlogan?.trim() || 'Project Manager';
-            const nextLogo = config.companyLogo || null;
-
-            if (
-              current.companyName !== nextName ||
-              current.companySlogan !== nextSlogan ||
-              current.companyLogo !== nextLogo
-            ) {
-              set({
-                companyName: nextName,
-                companySlogan: nextSlogan,
-                companyLogo: nextLogo,
-              });
-            }
+          if (config) {
+            set({
+              companyName: config.companyName?.trim() || get().companyName,
+              companySlogan: config.companySlogan?.trim() || get().companySlogan,
+              companyLogo: config.companyLogo !== undefined ? config.companyLogo : get().companyLogo,
+              companyHotline: config.hotline || get().companyHotline,
+              companyAddress: config.address || get().companyAddress,
+              companyEmail: config.adminEmail || get().companyEmail,
+            });
           }
         } catch (err) {
           console.warn('[Branding] fetchBrandingFromCloud error:', err);
@@ -117,6 +121,9 @@ export const useUIStore = create<UIStoreState>()(
           companyName: nextName,
           companySlogan: nextSlogan,
           companyLogo: nextLogo,
+          companyHotline: branding.hotline || get().companyHotline,
+          companyAddress: branding.address || get().companyAddress,
+          companyEmail: branding.adminEmail || get().companyEmail,
         });
 
         // Đẩy lên Supabase Cloud
@@ -124,6 +131,9 @@ export const useUIStore = create<UIStoreState>()(
           companyName: nextName,
           companySlogan: nextSlogan,
           companyLogo: nextLogo,
+          hotline: branding.hotline,
+          address: branding.address,
+          adminEmail: branding.adminEmail,
           updatedBy: branding.updatedBy,
         });
       },

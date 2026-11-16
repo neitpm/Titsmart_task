@@ -13,7 +13,7 @@ import { registerWebDeviceToken } from '../services/notificationDispatchService'
 import { requestSystemNotificationPermission, sendSystemNotification } from '../services/systemNotificationService';
 import { exportToStyledExcel } from '../utils/excelExportUtils';
 
-type SettingsTab = 'general' | 'roles' | 'appearance' | 'notifications' | 'activity_logs' | 'account';
+type SettingsTab = 'general' | 'roles' | 'categories' | 'appearance' | 'notifications' | 'activity_logs' | 'account';
 
 const ALL_PERMISSION_GROUPS: {
   title: string;
@@ -184,6 +184,9 @@ export const SettingsPage: React.FC = () => {
     companyName,
     companySlogan,
     companyLogo,
+    companyHotline,
+    companyAddress,
+    companyEmail,
     allowDirectFundApproval,
     setAllowDirectFundApproval,
     allowDualCheckerReviewerRole,
@@ -207,8 +210,75 @@ export const SettingsPage: React.FC = () => {
   const [inputCompanyName, setInputCompanyName] = useState(companyName || 'TITSMART');
   const [inputCompanySlogan, setInputCompanySlogan] = useState(companySlogan || 'Project Manager');
   const [inputCompanyLogo, setInputCompanyLogo] = useState<string | null>(companyLogo || null);
+  const [inputCompanyHotline, setInputCompanyHotline] = useState(companyHotline || '');
+  const [inputCompanyAddress, setInputCompanyAddress] = useState(companyAddress || '');
+  const [inputCompanyEmail, setInputCompanyEmail] = useState(companyEmail || '');
   const [savingBranding, setSavingBranding] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Danh mục nội bộ công ty
+  const [internalProjectTypes, setInternalProjectTypes] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem(`titsmart_company_project_types_${user?.companyId || 'default'}`);
+      return saved ? JSON.parse(saved) : ['Xây dựng Dân dụng', 'Cơ điện M&E', 'Hạ tầng Giao thông', 'Nội thất & Hoàn thiện', 'Bảo trì Nhà máy'];
+    } catch {
+      return ['Xây dựng Dân dụng', 'Cơ điện M&E', 'Hạ tầng Giao thông', 'Nội thất & Hoàn thiện', 'Bảo trì Nhà máy'];
+    }
+  });
+
+  const [internalExpenseCats, setInternalExpenseCats] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem(`titsmart_company_expense_cats_${user?.companyId || 'default'}`);
+      return saved ? JSON.parse(saved) : ['Vật tư / Thiết bị', 'TT Tiền công thợ', 'Ăn uống / Tiếp khách', 'Xăng xe / Đi lại', 'Văn phòng phẩm', 'Chi phí khác'];
+    } catch {
+      return ['Vật tư / Thiết bị', 'TT Tiền công thợ', 'Ăn uống / Tiếp khách', 'Xăng xe / Đi lại', 'Văn phòng phẩm', 'Chi phí khác'];
+    }
+  });
+
+  const [newProjectTypeInput, setNewProjectTypeInput] = useState('');
+  const [newExpenseCatInput, setNewExpenseCatInput] = useState('');
+
+  const handleAddProjectType = () => {
+    const val = newProjectTypeInput.trim();
+    if (!val) return;
+    if (internalProjectTypes.includes(val)) {
+      triggerToast('Loại dự án này đã tồn tại trong danh mục!', 'warning');
+      return;
+    }
+    const updated = [...internalProjectTypes, val];
+    setInternalProjectTypes(updated);
+    setNewProjectTypeInput('');
+    localStorage.setItem(`titsmart_company_project_types_${user?.companyId || 'default'}`, JSON.stringify(updated));
+    triggerToast(`Đã thêm loại dự án "${val}"`, 'success');
+  };
+
+  const handleRemoveProjectType = (idx: number) => {
+    const updated = internalProjectTypes.filter((_, i) => i !== idx);
+    setInternalProjectTypes(updated);
+    localStorage.setItem(`titsmart_company_project_types_${user?.companyId || 'default'}`, JSON.stringify(updated));
+    triggerToast('Đã xóa loại dự án khỏi danh mục!', 'info');
+  };
+
+  const handleAddExpenseCat = () => {
+    const val = newExpenseCatInput.trim();
+    if (!val) return;
+    if (internalExpenseCats.includes(val)) {
+      triggerToast('Danh mục chi phí này đã tồn tại!', 'warning');
+      return;
+    }
+    const updated = [...internalExpenseCats, val];
+    setInternalExpenseCats(updated);
+    setNewExpenseCatInput('');
+    localStorage.setItem(`titsmart_company_expense_cats_${user?.companyId || 'default'}`, JSON.stringify(updated));
+    triggerToast(`Đã thêm danh mục chi phí "${val}"`, 'success');
+  };
+
+  const handleRemoveExpenseCat = (idx: number) => {
+    const updated = internalExpenseCats.filter((_, i) => i !== idx);
+    setInternalExpenseCats(updated);
+    localStorage.setItem(`titsmart_company_expense_cats_${user?.companyId || 'default'}`, JSON.stringify(updated));
+    triggerToast('Đã xóa mục chi phí khỏi danh mục!', 'info');
+  };
 
   // Role Level Store
   const { levels, fetchLevelsFromCloud, addLevel, updateLevel, deleteLevel } = useRoleLevelStore();
@@ -268,7 +338,10 @@ export const SettingsPage: React.FC = () => {
     setInputCompanyName(companyName || 'TITSMART');
     setInputCompanySlogan(companySlogan || 'Project Manager');
     setInputCompanyLogo(companyLogo || null);
-  }, [companyName, companySlogan, companyLogo]);
+    setInputCompanyHotline(companyHotline || '');
+    setInputCompanyAddress(companyAddress || '');
+    setInputCompanyEmail(companyEmail || '');
+  }, [companyName, companySlogan, companyLogo, companyHotline, companyAddress, companyEmail]);
 
   const currentLevel = levels.find((l) => l.id === activeLevelId) || levels[0] || DEFAULT_ROLE_LEVELS[0];
 
@@ -312,6 +385,9 @@ export const SettingsPage: React.FC = () => {
         companyName: inputCompanyName.trim() || 'TITSMART',
         companySlogan: inputCompanySlogan.trim() || 'Project Manager',
         companyLogo: inputCompanyLogo,
+        hotline: inputCompanyHotline.trim(),
+        address: inputCompanyAddress.trim(),
+        adminEmail: inputCompanyEmail.trim(),
         updatedBy: user?.username || 'Admin',
       });
       triggerToast('Đã lưu thông tin thương hiệu công ty thành công!', 'success');
@@ -515,6 +591,22 @@ export const SettingsPage: React.FC = () => {
                       <span>Phân quyền & Cấp bậc</span>
                     </button>
                   )}
+
+                  {/* Tab Danh mục nội bộ công ty */}
+                  {isAdmin && (
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('categories')}
+                      className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${
+                        activeTab === 'categories'
+                          ? 'bg-blue-50 text-primary border border-blue-200/80 shadow-2xs'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                      }`}
+                    >
+                      <span className="material-symbols-outlined text-lg">category</span>
+                      <span>Danh mục nội bộ công ty</span>
+                    </button>
+                  )}
                 </nav>
               </div>
             )}
@@ -659,7 +751,68 @@ export const SettingsPage: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Logo Preview and Upload */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2 border-t border-slate-100">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                        Hotline liên hệ
+                      </label>
+                      <input
+                        type="text"
+                        disabled={!isAdmin}
+                        value={inputCompanyHotline}
+                        onChange={(e) => setInputCompanyHotline(e.target.value)}
+                        placeholder="VD: 0979.888.643"
+                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary disabled:opacity-60"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                        Email đại diện công ty
+                      </label>
+                      <input
+                        type="email"
+                        disabled={!isAdmin}
+                        value={inputCompanyEmail}
+                        onChange={(e) => setInputCompanyEmail(e.target.value)}
+                        placeholder="VD: contact@doanhnghiep.vn"
+                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary disabled:opacity-60"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                        Địa chỉ trụ sở
+                      </label>
+                      <input
+                        type="text"
+                        disabled={!isAdmin}
+                        value={inputCompanyAddress}
+                        onChange={(e) => setInputCompanyAddress(e.target.value)}
+                        placeholder="VD: Số 123 Đường Điện Biên..."
+                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary disabled:opacity-60"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Khối Xem trước thương hiệu (Live Preview) */}
+                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/80">
+                    <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Xem trước thương hiệu hiển thị</div>
+                    <div className="flex items-center gap-3 bg-white p-3 rounded-xl border border-slate-200 shadow-2xs">
+                      <div className="w-10 h-10 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center p-1 overflow-hidden shrink-0">
+                        <img src={inputCompanyLogo || './logo.png'} alt="Logo" className="w-full h-full object-contain" />
+                      </div>
+                      <div>
+                        <div className="text-sm font-extrabold text-slate-900">{inputCompanyName || 'TÊN CÔNG TY'}</div>
+                        <div className="text-xs text-slate-500 font-medium">{inputCompanySlogan || 'Slogan công ty'}</div>
+                        {(inputCompanyHotline || inputCompanyEmail) && (
+                          <div className="text-[11px] text-primary mt-0.5">
+                            {inputCompanyHotline && `Hotline: ${inputCompanyHotline}`}
+                            {inputCompanyHotline && inputCompanyEmail && ' • '}
+                            {inputCompanyEmail && `Email: ${inputCompanyEmail}`}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                   <div className="pt-2 border-t border-slate-100">
                     <label className="block text-xs font-bold text-slate-700 mb-2">
                       Logo thương hiệu
@@ -731,8 +884,8 @@ export const SettingsPage: React.FC = () => {
                   )}
                 </div>
 
-                {/* Cấu hình Quy trình Cấp Quỹ (Chỉ System Admin) */}
-                {isSystemAdmin(user) && (
+                {/* Cấu hình Quy trình Cấp Quỹ (Company Admin) */}
+                {isAdmin && (
                   <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs p-6 space-y-4">
                     <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100">
                       <span className="material-symbols-outlined text-xl text-primary">account_balance_wallet</span>
@@ -1143,6 +1296,128 @@ export const SettingsPage: React.FC = () => {
                         </div>
                       )
                     )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB DANH MỤC NỘI BỘ CÔNG TY */}
+            {activeTab === 'categories' && isAdmin && (
+              <div className="space-y-6 animate-in fade-in duration-150">
+                <div>
+                  <h1 className="text-xl font-extrabold text-slate-900">Danh mục nội bộ doanh nghiệp</h1>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Tùy chỉnh các phân loại dự án, quy trình và danh mục chi phí phục vụ quản trị nội bộ công ty.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Cột 1: Phân loại loại dự án */}
+                  <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs p-5 space-y-4">
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                      <div>
+                        <h2 className="text-sm font-extrabold text-slate-800 flex items-center gap-2">
+                          <span className="material-symbols-outlined text-base text-primary">domain</span>
+                          Phân loại Loại dự án
+                        </h2>
+                        <span className="text-[11px] text-slate-400">Danh mục dùng khi tạo mới hoặc lọc dự án</span>
+                      </div>
+                      <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                        {internalProjectTypes.length} mục
+                      </span>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={newProjectTypeInput}
+                        onChange={(e) => setNewProjectTypeInput(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddProjectType())}
+                        placeholder="Thêm loại dự án mới..."
+                        className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddProjectType}
+                        className="px-3.5 py-2 bg-primary hover:bg-blue-800 text-white rounded-xl text-xs font-bold transition-all shadow-xs shrink-0 cursor-pointer flex items-center gap-1"
+                      >
+                        <span className="material-symbols-outlined text-sm">add</span>
+                        <span>Thêm</span>
+                      </button>
+                    </div>
+
+                    <div className="space-y-1.5 max-h-[350px] overflow-y-auto custom-scrollbar">
+                      {internalProjectTypes.map((item, idx) => (
+                        <div
+                          key={idx}
+                          className="flex items-center justify-between p-2.5 rounded-xl border border-slate-100 bg-slate-50/60 hover:bg-slate-100/70 transition-colors"
+                        >
+                          <span className="text-xs font-bold text-slate-700">{item}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveProjectType(idx)}
+                            className="p-1 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-white transition-colors cursor-pointer"
+                            title="Xóa mục này"
+                          >
+                            <span className="material-symbols-outlined text-sm">delete</span>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Cột 2: Danh mục chi phí nội bộ */}
+                  <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs p-5 space-y-4">
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                      <div>
+                        <h2 className="text-sm font-extrabold text-slate-800 flex items-center gap-2">
+                          <span className="material-symbols-outlined text-base text-emerald-600">receipt_long</span>
+                          Danh mục Chi phí nội bộ
+                        </h2>
+                        <span className="text-[11px] text-slate-400">Dùng cho phiếu chi và yêu cầu cấp quỹ</span>
+                      </div>
+                      <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                        {internalExpenseCats.length} mục
+                      </span>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={newExpenseCatInput}
+                        onChange={(e) => setNewExpenseCatInput(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddExpenseCat())}
+                        placeholder="Thêm nhóm chi phí mới..."
+                        className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddExpenseCat}
+                        className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs shrink-0 cursor-pointer flex items-center gap-1"
+                      >
+                        <span className="material-symbols-outlined text-sm">add</span>
+                        <span>Thêm</span>
+                      </button>
+                    </div>
+
+                    <div className="space-y-1.5 max-h-[350px] overflow-y-auto custom-scrollbar">
+                      {internalExpenseCats.map((item, idx) => (
+                        <div
+                          key={idx}
+                          className="flex items-center justify-between p-2.5 rounded-xl border border-slate-100 bg-slate-50/60 hover:bg-slate-100/70 transition-colors"
+                        >
+                          <span className="text-xs font-bold text-slate-700">{item}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveExpenseCat(idx)}
+                            className="p-1 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-white transition-colors cursor-pointer"
+                            title="Xóa mục này"
+                          >
+                            <span className="material-symbols-outlined text-sm">delete</span>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>

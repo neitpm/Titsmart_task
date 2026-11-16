@@ -31,12 +31,24 @@ const getCurrentAuditPayload = () => {
     return {
       updated_by: user?.name || user?.username || 'Hệ thống',
       updated_at: new Date().toISOString(),
+      company_id: user?.companyId || user?.company_id || '00000000-0000-0000-0000-000000000001',
     };
   } catch {
     return {
       updated_by: 'Hệ thống',
       updated_at: new Date().toISOString(),
+      company_id: '00000000-0000-0000-0000-000000000001',
     };
+  }
+};
+
+export const getCurrentCompanyId = (): string => {
+  try {
+    const raw = localStorage.getItem('titsmart_auth_session');
+    const user = raw ? JSON.parse(raw) : null;
+    return user?.companyId || user?.company_id || '00000000-0000-0000-0000-000000000001';
+  } catch {
+    return '00000000-0000-0000-0000-000000000001';
   }
 };
 
@@ -1073,7 +1085,12 @@ export const api = {
   engineers: {
     getAll: async () => {
       try {
-        const { data, error } = await supabase.from('engineers').select('*').order('created_at', { ascending: true });
+        const companyId = getCurrentCompanyId();
+        const { data, error } = await supabase
+          .from('engineers')
+          .select('*')
+          .eq('company_id', companyId)
+          .order('created_at', { ascending: true });
         if (error) {
           console.warn('[Engineers] Supabase error:', error);
           return [];
@@ -1089,6 +1106,9 @@ export const api = {
     },
     create: async (data: any) => {
       const payload = toSnakeCase(data);
+      if (!payload.company_id) {
+        payload.company_id = getCurrentCompanyId();
+      }
       if (payload.is_locked !== undefined) {
         payload.is_active = !payload.is_locked;
         delete payload.is_locked;
@@ -2985,7 +3005,31 @@ export const api = {
   },
 
   branding: {
-    get: async (): Promise<{ companyName?: string; companySlogan?: string; companyLogo?: string | null; updatedAt?: string } | null> => {
+    get: async (): Promise<{ companyName?: string; companySlogan?: string; companyLogo?: string | null; hotline?: string; address?: string; adminEmail?: string; internalCategories?: any; updatedAt?: string } | null> => {
+      try {
+        const companyId = getCurrentCompanyId();
+        const { data, error } = await supabase
+          .from('companies')
+          .select('name, slogan, logo_url, hotline, address, admin_email, internal_categories, updated_at')
+          .eq('id', companyId)
+          .maybeSingle();
+
+        if (!error && data) {
+          return {
+            companyName: data.name,
+            companySlogan: data.slogan,
+            companyLogo: data.logo_url,
+            hotline: data.hotline,
+            address: data.address,
+            adminEmail: data.admin_email,
+            internalCategories: data.internal_categories || {},
+            updatedAt: data.updated_at
+          };
+        }
+      } catch (err) {
+        console.warn('[Branding] Failed to fetch company profile from companies table:', err);
+      }
+
       try {
         // Ưu tiên đọc từ Cloud Storage công khai (hoạt động cho mọi client và cả khi chưa login)
         const storageUrl = `${supabase.storage.from('titsmart-images').getPublicUrl('branding/config.json').data.publicUrl}?t=${Date.now()}`;
@@ -3028,17 +3072,40 @@ export const api = {
       }
     },
 
-    save: async (input: { companyName: string; companySlogan: string; companyLogo: string | null; updatedBy?: string }) => {
+    save: async (input: { companyName: string; companySlogan: string; companyLogo: string | null; hotline?: string; address?: string; adminEmail?: string; internalCategories?: any; updatedBy?: string }) => {
       try {
+        const companyId = getCurrentCompanyId();
         const payloadData = {
           companyName: input.companyName,
           companySlogan: input.companySlogan,
           companyLogo: input.companyLogo,
+          hotline: input.hotline,
+          address: input.address,
+          adminEmail: input.adminEmail,
+          internalCategories: input.internalCategories,
           updatedBy: input.updatedBy || 'Admin',
           updatedAt: new Date().toISOString()
         };
 
-        // 1. Lưu vào Cloud Storage công khai (mọi thiết bị, trang login, mobile app đều đọc được ngay)
+        // 1. Cập nhật trực tiếp vào bảng companies theo đúng companyId hiện tại
+        try {
+          const updatePatch: any = {
+            name: input.companyName.trim(),
+            slogan: input.companySlogan.trim(),
+            logo_url: input.companyLogo,
+            updated_at: payloadData.updatedAt
+          };
+          if (input.hotline !== undefined) updatePatch.hotline = input.hotline;
+          if (input.address !== undefined) updatePatch.address = input.address;
+          if (input.adminEmail !== undefined) updatePatch.admin_email = input.adminEmail;
+          if (input.internalCategories !== undefined) updatePatch.internal_categories = input.internalCategories;
+
+          await supabase.from('companies').update(updatePatch).eq('id', companyId);
+        } catch (dbErr) {
+          console.warn('[Branding] Update companies table failed:', dbErr);
+        }
+
+        // 2. Lưu vào Cloud Storage công khai
         try {
           await supabase.storage.from('titsmart-images').upload(
             'branding/config.json',
@@ -3046,17 +3113,18 @@ export const api = {
             { contentType: 'application/json', upsert: true }
           );
         } catch (stErr) {
-          console.warn('[Branding] Upload to storage failed, trying activity_logs:', stErr);
+          console.warn('[Branding] Upload to storage failed:', stErr);
         }
 
-        // 2. Ghi nhận log nếu có quyền
+        // 3. Ghi nhận log nội bộ
         try {
           const payload: any = {
             user: input.updatedBy || 'Admin',
             project: 'SYSTEM_SETTINGS',
             icon: 'BRANDING_CONFIG',
             action: JSON.stringify(payloadData),
-            timestamp: payloadData.updatedAt
+            timestamp: payloadData.updatedAt,
+            company_id: companyId
           };
           await supabase.from('activity_logs').insert(payload);
         } catch (lErr) {
