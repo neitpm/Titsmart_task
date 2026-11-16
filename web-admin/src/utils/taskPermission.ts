@@ -330,10 +330,8 @@ export const getTaskPurchaseStatus = (task: Task | null | undefined, materialPla
 };
 
 /**
- * Checks if a task meets the mandatory prerequisites to be assigned:
- * - Tình trạng: phải là 'Đáp ứng'
- * - TT Đặt hàng: phải là 'Đã có hàng' hoặc 'Có hàng'
- * Direct / internal tasks without material tracking are exempt.
+ * Checks whether a task can be assigned.
+ * TT Đặt hàng and Tình trạng are informational fields, not prerequisites.
  */
 export const isTaskReadyForAssignment = (
   task: Task | null | undefined,
@@ -343,44 +341,7 @@ export const isTaskReadyForAssignment = (
 
   if (task.isSectionHeader) return { ready: false, reason: 'Không thể giao đầu mục nhóm' };
 
-  // Direct / Company internal tasks without material tracking can be assigned directly
-  const isDirectTask = task.sectionName === 'Giao việc trực tiếp' || 
-                       task.projectCode === 'COMPANY' || 
-                       task.code?.startsWith('TASK-DIRECT') ||
-                       (!task.projectCode && !task.stt);
-  if (isDirectTask) {
-    return { ready: true };
-  }
-
-  const rawTech = getTaskTechSpecStatus(task, materialPlans);
-  const rawPurchase = getTaskPurchaseStatus(task, materialPlans);
-
-  const techStatus = normalizeText(rawTech);
-  const purchaseStatus = normalizeText(rawPurchase);
-
-  const isTechOk = techStatus === 'đáp ứng' || techStatus === 'dap ung';
-  const isPurchaseOk = purchaseStatus === 'đã có hàng' || purchaseStatus === 'da co hang' || purchaseStatus === 'có hàng' || purchaseStatus === 'co hang';
-
-  if (!isTechOk && !isPurchaseOk) {
-    return {
-      ready: false,
-      reason: `Hạng mục "${task.name}" chưa đủ điều kiện giao việc: Tình trạng cần là "Đáp ứng" (hiện tại: ${rawTech || 'Chưa xác định'}) và TT Đặt hàng cần là "Đã có hàng" (hiện tại: ${rawPurchase || 'Chưa đặt hàng'}).`
-    };
-  }
-
-  if (!isTechOk) {
-    return {
-      ready: false,
-      reason: `Hạng mục "${task.name}" chưa đủ điều kiện giao việc: Tình trạng cần là "Đáp ứng" (hiện tại: ${rawTech || 'Chưa xác định'}).`
-    };
-  }
-
-  if (!isPurchaseOk) {
-    return {
-      ready: false,
-      reason: `Hạng mục "${task.name}" chưa đủ điều kiện giao việc: TT Đặt hàng cần là "Đã có hàng" (hiện tại: ${rawPurchase || 'Chưa đặt hàng'}).`
-    };
-  }
-
+  // Có thể giao việc ngay cả khi vật tư chưa đặt hoặc chưa về kho.
+  // TT Đặt hàng chỉ còn là thông tin theo dõi, không phải điều kiện phân công.
   return { ready: true };
 };

@@ -1797,6 +1797,7 @@ export const api = {
             dueDate: row.due_date || row.expected_approval_date || '',
             remindDays: row.remind_days || 3,
             fileUrls: (row.file_urls && row.file_urls.length > 0) ? row.file_urls : (row.soft_copy_link ? [row.soft_copy_link] : []),
+            createdAt: row.created_at || '',
             createdById: parsedCreatorId,
             createdByName: finalCreatorName,
             updatedBy: finalUpdatedBy,
@@ -1925,7 +1926,8 @@ export const api = {
         createdById: data.createdById || '',
         createdByName: data.createdByName || '',
         updatedBy: data.updatedBy || data.createdByName || '',
-        updatedAt: finalRow.updated_at || finalRow.created_at || new Date().toISOString()
+        updatedAt: finalRow.updated_at || finalRow.created_at || new Date().toISOString(),
+        createdAt: finalRow.created_at || ''
       };
     },
     updateDocumentTrack: async (id: string, data: any) => {

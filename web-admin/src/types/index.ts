@@ -591,6 +591,8 @@ export interface DocumentTrack {
   dueDate?: string; // Ngày hẹn trả / hạn nộp hồ sơ
   remindDays?: number; // Số ngày nhắc trước hạn (VD: 3, 5, 7)
   fileUrls?: string[];
+  /** Thời điểm hồ sơ được tạo, không thay đổi khi hồ sơ được chỉnh sửa. */
+  createdAt?: string;
   createdById?: string;
   createdByName?: string;
   updatedBy?: string;

@@ -1805,17 +1805,7 @@ const hasSyncedRef = useRef(false);
     const assignerName = authStore.user?.name || authStore.user?.username || 'Quản lý';
     const assignerId = authStore.user?.id || '';
 
-    // Điều kiện giao việc: Tình trạng phải là "Đáp ứng" và TT Đặt hàng phải là "Đã có hàng" / "Có hàng"
-    const isTechOk = (techSpecStatus?.trim().toLowerCase() === 'đáp ứng' || techSpecStatus?.trim().toLowerCase() === 'dap ung');
-    const isPurchaseOk = (purchaseStatus === 'Đã có hàng' || purchaseStatus === 'Có hàng');
-    const isReadyToAssign = isTechOk && isPurchaseOk;
-
-    if (!isSectionHeader && engineerId && !isReadyToAssign) {
-      triggerToast('Chưa đủ điều kiện giao việc: Tình trạng cần là "Đáp ứng" và TT Đặt hàng cần là "Đã có hàng"!', 'warning');
-      return;
-    }
-
-    const assignedEngId = (!isSectionHeader && isReadyToAssign) ? engineerId : '';
+    const assignedEngId = (!isSectionHeader && engineerId) ? engineerId : '';
     const initialStatus = (!isSectionHeader && assignedEngId) 
       ? 'Chờ nhận việc' 
       : taskStatusFromProgress(isSectionHeader ? 0 : nextProgress, 'Chưa làm');
@@ -3016,11 +3006,6 @@ const hasSyncedRef = useRef(false);
                           onClick={(e) => {
                             if (hasPermission(authStore.user, 'ASSIGN_TASKS')) {
                               e.stopPropagation();
-                              const readiness = isTaskReadyForAssignment(t, materialPlans);
-                              if (!readiness.ready) {
-                                triggerToast(readiness.reason || 'Hạng mục chưa đủ điều kiện giao việc (cần Tình trạng "Đáp ứng" và TT Đặt hàng "Đã có hàng")!', 'warning');
-                                return;
-                              }
                               setAssigningTask(t);
                               setAssignNote('');
                               const parts = t.assignedEngineerName?.split('|') || [];
@@ -3926,13 +3911,7 @@ const hasSyncedRef = useRef(false);
                   <CustomSelect 
                     value={techSpecStatus} 
                     onChange={(e) => {
-                      const nextTech = e.target.value;
-                      setTechSpecStatus(nextTech);
-                      const isTechOk = (nextTech?.trim().toLowerCase() === 'đáp ứng' || nextTech?.trim().toLowerCase() === 'dap ung');
-                      const isPurchaseOk = (purchaseStatus === 'Đã có hàng' || purchaseStatus === 'Có hàng');
-                      if (!(isTechOk && isPurchaseOk)) {
-                        setEngineerId('');
-                      }
+                      setTechSpecStatus(e.target.value);
                     }} 
                     className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none bg-white font-medium"
                   >
@@ -3944,13 +3923,7 @@ const hasSyncedRef = useRef(false);
                   <CustomSelect 
                     value={purchaseStatus} 
                     onChange={(e) => {
-                      const nextPurch = e.target.value;
-                      setPurchaseStatus(nextPurch);
-                      const isTechOk = (techSpecStatus?.trim().toLowerCase() === 'đáp ứng' || techSpecStatus?.trim().toLowerCase() === 'dap ung');
-                      const isPurchaseOk = (nextPurch === 'Đã có hàng' || nextPurch === 'Có hàng');
-                      if (!(isTechOk && isPurchaseOk)) {
-                        setEngineerId('');
-                      }
+                      setPurchaseStatus(e.target.value);
                     }} 
                     className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none bg-white font-medium"
                   >
@@ -3961,41 +3934,22 @@ const hasSyncedRef = useRef(false);
 
               {/* Kỹ sư phụ trách & Tiến độ */}
               {(() => {
-                const isTechOk = (techSpecStatus?.trim().toLowerCase() === 'đáp ứng' || techSpecStatus?.trim().toLowerCase() === 'dap ung');
-                const isPurchaseOk = (purchaseStatus === 'Đã có hàng' || purchaseStatus === 'Có hàng');
-                const isReadyToAssign = isTechOk && isPurchaseOk;
-
                 return (
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <div className="flex items-center justify-between mb-1">
                         <label className="block font-bold text-slate-700">Kỹ sư Phụ trách</label>
-                        {!isReadyToAssign && (
-                          <span className="text-[10px] text-amber-600 font-semibold bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
-                            Cần "Đáp ứng" & "Đã có hàng"
-                          </span>
-                        )}
                       </div>
                       <CustomSelect 
                         value={engineerId} 
-                        disabled={!isReadyToAssign}
                         onChange={(e) => {
-                          if (!isReadyToAssign && e.target.value) {
-                            triggerToast('Chỉ được giao việc khi Tình trạng là "Đáp ứng" và TT Đặt hàng là "Đã có hàng"!', 'warning');
-                            return;
-                          }
                           setEngineerId(e.target.value);
                         }} 
-                        className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:outline-none ${!isReadyToAssign ? 'bg-slate-100 text-slate-400 cursor-not-allowed border-slate-200' : 'bg-white border-slate-200 font-medium'}`}
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:outline-none bg-white border-slate-200 font-medium"
                       >
                         <option value="">-- Chưa giao --</option>
                         {projectEngineers.map((eng) => (<option key={eng.id} value={eng.id}>{eng.name} ({eng.title})</option>))}
                       </CustomSelect>
-                      {!isReadyToAssign && (
-                        <p className="text-[11px] text-amber-600 mt-1">
-                          * Hạng mục chỉ được giao việc khi đạt <b>Đáp ứng</b> và <b>Đã có hàng</b>.
-                        </p>
-                      )}
                     </div>
                     <div>
                       <label className="block font-bold text-slate-700 mb-1">Tiến độ tự tính (%)</label>

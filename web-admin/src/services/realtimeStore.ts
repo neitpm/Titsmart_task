@@ -2571,6 +2571,7 @@ export const useRealtimeStore = create<RealtimeStoreState>((set, get) => {
       const optimisticDoc: DocumentTrack = {
         ...trackData,
         ...audit,
+        createdAt: new Date().toISOString(),
         id: tempId,
         stt: trackData.stt || '',
         contractNo: trackData.contractNo || '',

@@ -361,12 +361,10 @@ export const DocumentTrackingPage: React.FC = () => {
     }
 
     const getTrackTimestamp = (t: DocumentTrack): number => {
-      if (t.updatedAt) {
-        const ms = new Date(t.updatedAt).getTime();
-        if (!isNaN(ms) && ms > 0) return ms;
-      }
-      if ((t as any).createdAt || (t as any).created_at) {
-        const ms = new Date((t as any).createdAt || (t as any).created_at).getTime();
+      // Thứ tự hồ sơ phải dựa trên ngày lập, không dựa vào lần chỉnh sửa cuối.
+      // Nếu dữ liệu cũ chưa có created_at thì dùng ngày gửi làm phương án tương thích.
+      if (t.createdAt) {
+        const ms = new Date(t.createdAt).getTime();
         if (!isNaN(ms) && ms > 0) return ms;
       }
       if (t.id && String(t.id).startsWith('doc-')) {
@@ -1013,6 +1011,8 @@ export const DocumentTrackingPage: React.FC = () => {
                   <th className="px-1 py-1.5 text-center whitespace-nowrap bg-slate-50">Thanh toán</th>
                   <th className="px-1 py-1.5 text-center whitespace-nowrap bg-slate-50">File</th>
                   <th className="px-1 py-1.5 text-center whitespace-nowrap bg-slate-50">Hồ sơ</th>
+                  <th className="px-1 py-1.5 text-center whitespace-nowrap bg-slate-50">Ngày lập hồ sơ</th>
+                  <th className="px-1.5 py-1.5 text-center whitespace-nowrap bg-slate-50">Người lập hồ sơ</th>
                   <th className="px-1.5 py-1.5 text-center whitespace-nowrap bg-slate-50">Người cập nhật</th>
                   <th className="px-1 py-1.5 text-center whitespace-nowrap bg-slate-50">TT</th>
                 </tr>
@@ -1176,6 +1176,14 @@ export const DocumentTrackingPage: React.FC = () => {
                         {track.docStatus || 'Chưa ký'}
                       </span>
                     </td>
+                    <td className="px-1 py-1 text-center">
+                      <span className={`px-1 py-0.5 rounded text-[10px] font-mono inline-block whitespace-nowrap ${track.createdAt ? 'bg-slate-100 text-slate-700' : 'text-slate-300'}`}>
+                        {track.createdAt ? new Date(track.createdAt).toLocaleDateString('vi-VN') : '-'}
+                      </span>
+                    </td>
+                    <td className="px-1.5 py-1 text-center">
+                      <span className="font-medium text-slate-700 whitespace-nowrap">{track.createdByName || '-'}</span>
+                    </td>
                     <td className="px-1.5 py-1">
                       <AuditInfoCell 
                         updatedBy={track.updatedBy || track.createdByName} 
@@ -1315,7 +1323,7 @@ export const DocumentTrackingPage: React.FC = () => {
           <div><label className="block font-bold mb-1">Địa chỉ nhận hồ sơ</label><input type="text" value={newDoc.address || ''} onChange={(e) => setNewDoc({...newDoc, address: e.target.value})} className="w-full border rounded-lg p-2 bg-white" /></div>
           <div className="grid grid-cols-3 gapx-1 py-1 bg-amber-50/50 p-2 rounded-lg border border-amber-200">
             <div><label className="block font-bold mb-1 text-slate-800">Ngày gửi đi</label><input type="date" value={newDoc.sendDate || ''} onChange={(e) => setNewDoc({...newDoc, sendDate: e.target.value})} className="w-full border rounded-lg p-2 bg-white" /></div>
-            <div><label className="block font-bold mb-1 text-slate-800">Ngày nhận thực tế</label><input type="date" value={newDoc.receiveDate || ''} onChange={(e) => setNewDoc({...newDoc, receiveDate: e.target.value})} className="w-full border rounded-lg p-2 bg-white" /></div>
+            <div><label className="block font-bold mb-1 text-slate-800">Ngày nhận thực tế</label><input type="date" value={newDoc.receiveDate || ''} onChange={(e) => setNewDoc(prev => ({...prev, receiveDate: e.target.value, ...(e.target.value ? { docStatus: prev.docStatus === 'Chưa ký' || prev.docStatus === 'Chưa nhận' ? 'Đã nhận đủ' : prev.docStatus } : {})}))} className="w-full border rounded-lg p-2 bg-white" /></div>
             <div><label className="block font-bold mb-1 text-amber-900">Hạn nộp / Hẹn trả 🔔</label><input type="date" value={newDoc.dueDate || ''} onChange={(e) => setNewDoc({...newDoc, dueDate: e.target.value})} className="w-full border border-amber-300 rounded-lg p-2 bg-white font-bold text-amber-900" /></div>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 py-1 bg-slate-50 p-2.5 rounded-lg border border-slate-200">
@@ -1393,14 +1401,14 @@ export const DocumentTrackingPage: React.FC = () => {
           <div className="grid grid-cols-2 gapx-1 py-1">
             <div>
               <label className="block font-bold mb-1">Trạng thái hồ sơ</label>
-              <CustomSelect value={newDoc.docStatus || 'Chưa ký'} onChange={(e) => setNewDoc({...newDoc, docStatus: e.target.value})} className="w-full border rounded-lg p-2 bg-white">
+              <CustomSelect value={newDoc.docStatus || 'Chưa ký'} onChange={(e) => setNewDoc(prev => ({...prev, docStatus: e.target.value, ...(e.target.value === 'Đã nhận đủ' || e.target.value === 'Đã ký') && !prev.receiveDate ? { receiveDate: new Date().toISOString().split('T')[0] } : {}}))} className="w-full border rounded-lg p-2 bg-white">
                 <option value="Chưa nhận">Chưa nhận</option>
                 <option value="Đã nhận đủ">Đã nhận đủ</option>
                 <option value="Đã ký">Đã ký</option>
                 <option value="Đã đổi gửi lại">Đã đổi gửi lại</option>
               </CustomSelect>
             </div>
-            <div className="flex items-center pt-5 gap-2"><input type="checkbox" checked={Boolean(newDoc.isCompleted)} onChange={(e) => setNewDoc({...newDoc, isCompleted: e.target.checked})} className="w-4 h-4" /> <span className="font-bold">Đã hoàn tất hồ sơ</span></div>
+              <div className="flex items-center pt-5 gap-2"><input type="checkbox" checked={Boolean(newDoc.isCompleted)} onChange={(e) => setNewDoc(prev => ({...prev, isCompleted: e.target.checked, ...(e.target.checked ? { docStatus: 'Đã ký' } : {})}))} className="w-4 h-4" /> <span className="font-bold">Đã hoàn tất hồ sơ</span></div>
           </div>
           <div><label className="block font-bold mb-1">Ghi chú</label><input type="text" value={newDoc.notes || ''} onChange={(e) => setNewDoc({...newDoc, notes: e.target.value})} className="w-full border rounded-lg p-2 bg-white" /></div>
           <FileUpload multiple label="File đính kèm" value={newDoc.fileUrls} onChange={(urls) => setNewDoc({...newDoc, fileUrls: Array.isArray(urls) ? urls : [urls]})} onUploadStateChange={setIsFileUploading} />
@@ -1434,7 +1442,26 @@ export const DocumentTrackingPage: React.FC = () => {
               const prepayAmt = Number(editingDoc.prepayAmount ?? (val > 0 && prepayPct > 0 ? Math.round(val * prepayPct) : 0));
 
               await updateDocumentTrack(editingDoc.id, {
-                ...editingDoc,
+                // Chỉ gửi các trường nghiệp vụ. Thông tin người lập/người cập nhật
+                // do store/API quản lý, tránh thao tác xem làm ghi đè audit fields.
+                projectCode: editingDoc.projectCode,
+                contractNo: editingDoc.contractNo,
+                contractName: editingDoc.contractName,
+                company: editingDoc.company,
+                receiverName: editingDoc.receiverName,
+                phone: editingDoc.phone,
+                address: editingDoc.address,
+                sendDate: editingDoc.sendDate,
+                receiveDate: editingDoc.receiveDate,
+                dueDate: editingDoc.dueDate,
+                docStatus: editingDoc.docStatus,
+                docType: editingDoc.docType,
+                side: editingDoc.side,
+                contractValue: editingDoc.contractValue,
+                paymentStatus: editingDoc.paymentStatus,
+                isCompleted: editingDoc.isCompleted,
+                fileUrls: editingDoc.fileUrls,
+                remindDays: editingDoc.remindDays,
                 prepayPercent: prepayPct,
                 notes: (editingDoc.notes || '').replace(/\[STATUS:[^\]]+\]/g, '').trim(),
                 prepayAmount: prepayAmt
@@ -1492,7 +1519,7 @@ export const DocumentTrackingPage: React.FC = () => {
               <div><label className="block font-bold mb-1">Địa chỉ</label><input type="text" value={editingDoc.address || ''} onChange={(e) => setEditingDoc({...editingDoc, address: e.target.value})} className="w-full border rounded-lg p-2 bg-white" /></div>
               <div className="grid grid-cols-3 gapx-1 py-1 bg-amber-50/50 p-2 rounded-lg border border-amber-200">
                 <div><label className="block font-bold mb-1 text-slate-800">Ngày gửi đi</label><input type="date" value={editingDoc.sendDate || ''} onChange={(e) => setEditingDoc({...editingDoc, sendDate: e.target.value})} className="w-full border rounded-lg p-2 bg-white" /></div>
-                <div><label className="block font-bold mb-1 text-slate-800">Ngày nhận thực tế</label><input type="date" value={editingDoc.receiveDate || ''} onChange={(e) => setEditingDoc({...editingDoc, receiveDate: e.target.value})} className="w-full border rounded-lg p-2 bg-white" /></div>
+                <div><label className="block font-bold mb-1 text-slate-800">Ngày nhận thực tế</label><input type="date" value={editingDoc.receiveDate || ''} onChange={(e) => setEditingDoc(prev => prev ? ({...prev, receiveDate: e.target.value, ...(e.target.value ? { docStatus: prev.docStatus === 'Chưa ký' || prev.docStatus === 'Chưa nhận' ? 'Đã nhận đủ' : prev.docStatus } : {})}) : null)} className="w-full border rounded-lg p-2 bg-white" /></div>
                 <div><label className="block font-bold mb-1 text-amber-900">Hạn nộp / Hẹn trả 🔔</label><input type="date" value={editingDoc.dueDate || ''} onChange={(e) => setEditingDoc({...editingDoc, dueDate: e.target.value})} className="w-full border border-amber-300 rounded-lg p-2 bg-white font-bold text-amber-900" /></div>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 py-1 bg-slate-50 p-2.5 rounded-lg border border-slate-200">
@@ -1570,14 +1597,14 @@ export const DocumentTrackingPage: React.FC = () => {
               <div className="grid grid-cols-2 gapx-1 py-1">
                 <div>
                   <label className="block font-bold mb-1">Trạng thái hồ sơ</label>
-                  <CustomSelect value={editingDoc.docStatus || 'Chưa ký'} onChange={(e) => setEditingDoc({...editingDoc, docStatus: e.target.value})} className="w-full border rounded-lg p-2 bg-white">
+                  <CustomSelect value={editingDoc.docStatus || 'Chưa ký'} onChange={(e) => setEditingDoc(prev => prev ? ({...prev, docStatus: e.target.value, ...(e.target.value === 'Đã nhận đủ' || e.target.value === 'Đã ký') && !prev.receiveDate ? { receiveDate: new Date().toISOString().split('T')[0] } : {}}) : null)} className="w-full border rounded-lg p-2 bg-white">
                     <option value="Chưa nhận">Chưa nhận</option>
                     <option value="Đã nhận đủ">Đã nhận đủ</option>
                     <option value="Đã ký">Đã ký</option>
                     <option value="Đã đổi gửi lại">Đã đổi gửi lại</option>
                   </CustomSelect>
                 </div>
-                <div className="flex items-center pt-5 gap-2"><input type="checkbox" checked={Boolean(editingDoc.isCompleted)} onChange={(e) => setEditingDoc({...editingDoc, isCompleted: e.target.checked})} className="w-4 h-4" /> <span className="font-bold">Đã hoàn tất hồ sơ</span></div>
+                <div className="flex items-center pt-5 gap-2"><input type="checkbox" checked={Boolean(editingDoc.isCompleted)} onChange={(e) => setEditingDoc(prev => prev ? ({...prev, isCompleted: e.target.checked, ...(e.target.checked ? { docStatus: 'Đã ký' } : {})}) : null)} className="w-4 h-4" /> <span className="font-bold">Đã hoàn tất hồ sơ</span></div>
               </div>
               <div><label className="block font-bold mb-1">Ghi chú</label><input type="text" value={(editingDoc.notes || '').replace(/\[STATUS:[^\]]+\]/g, '').trim()} onChange={(e) => setEditingDoc({...editingDoc, notes: e.target.value})} className="w-full border rounded-lg p-2 bg-white" /></div>
               <FileUpload multiple label="File đính kèm" value={editingDoc.fileUrls} onChange={(urls) => setEditingDoc({...editingDoc, fileUrls: Array.isArray(urls) ? urls : [urls]})} onUploadStateChange={setIsFileUploading} />
