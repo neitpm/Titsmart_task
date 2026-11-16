@@ -1574,35 +1574,12 @@ export const api = {
 
     getExpenses: async (projectCode?: string) => {
       try {
-        const companyId = getCurrentCompanyId();
         const queryCols = 'id,date,content,amount,category,payment_method,requester,status,notes,project_code,created_at,stt,description,unit,quantity,unit_price,tax_amount,total_amount,income_amount,balance_fund,invoice_url,spender_name,updated_by,updated_at';
-        let query = supabase.from('expenses').select(queryCols);
-        if (projectCode) {
-          query = query.eq('project_code', projectCode);
-        } else {
-          query = query.order('created_at', { ascending: false }).limit(2000);
-        }
-        if (companyId) {
-          query = query.eq('company_id', companyId);
-        }
-        const { data, error } = await query;
-        if (error) {
-          console.warn('[Accounting] Primary query for expenses failed, trying fast fallback:', error.message || error);
-          const fallbackCols = 'id,date,content,amount,category,payment_method,requester,status,notes,project_code,created_at,stt,description,unit,quantity,unit_price,tax_amount,total_amount,income_amount,balance_fund';
-          let fbQuery = supabase.from('expenses').select(fallbackCols);
-          if (projectCode) fbQuery = fbQuery.eq('project_code', projectCode);
-          if (companyId) fbQuery = fbQuery.eq('company_id', companyId);
-          const { data: fbData, error: fbErr } = await fbQuery.limit(2000);
-          if (!fbErr && Array.isArray(fbData)) {
-            return fbData.map((row: any) => {
-              const item = toCamelCase(row);
-              if (item.expenseDate && !item.date) item.date = item.expenseDate;
-              if (item.date && !item.expenseDate) item.expenseDate = item.date;
-              return item;
-            });
-          }
-          return [];
-        }
+        const data = await fetchAllRows(
+          'expenses',
+          queryCols,
+          projectCode ? { column: 'project_code', value: projectCode } : undefined
+        );
         return (data || []).map((row: any) => {
           const item = toCamelCase(row);
           if (item.expenseDate && !item.date) item.date = item.expenseDate;
@@ -1610,8 +1587,24 @@ export const api = {
           return item;
         });
       } catch (err) {
-        console.warn('[Accounting] Error fetching expenses:', err);
-        return [];
+        console.warn('[Accounting] Error fetching expenses, trying fallback cols:', err);
+        try {
+          const fallbackCols = 'id,date,content,amount,category,payment_method,requester,status,notes,project_code,created_at,stt,description,unit,quantity,unit_price,tax_amount,total_amount,income_amount,balance_fund';
+          const fbData = await fetchAllRows(
+            'expenses',
+            fallbackCols,
+            projectCode ? { column: 'project_code', value: projectCode } : undefined
+          );
+          return (fbData || []).map((row: any) => {
+            const item = toCamelCase(row);
+            if (item.expenseDate && !item.date) item.date = item.expenseDate;
+            if (item.date && !item.expenseDate) item.expenseDate = item.date;
+            return item;
+          });
+        } catch (fbErr) {
+          console.error('[Accounting] Failed to fetch expenses:', fbErr);
+          return [];
+        }
       }
     },
     createExpense: async (data: any) => {
