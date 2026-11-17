@@ -9,7 +9,7 @@ import { Modal } from '../components/common/Modal';
 import { Toast } from '../components/common/Toast';
 import { OcrUploadPanel } from '../components/common/OcrUploadPanel';
 import { WebOcrExtractedData } from '../services/webOcrService';
-import { Task, isTaskSectionHeaderItem, getStatusColorStyle , calculateAutoProgressRatio, calculateAutoProgressPercent, normalizeStatusText, purchaseProgressScore, constructionProgressScore, TECH_SPEC_STATUS_OPTIONS, PURCHASE_STATUS_OPTIONS, CONSTRUCTION_STATUS_OPTIONS, ISSUE_STATUS_OPTIONS, getIssueStatusColorStyle } from '../types';
+import { Task, isTaskActuallyDone, isTaskSectionHeaderItem, getStatusColorStyle , calculateAutoProgressRatio, calculateAutoProgressPercent, normalizeStatusText, purchaseProgressScore, constructionProgressScore, TECH_SPEC_STATUS_OPTIONS, PURCHASE_STATUS_OPTIONS, CONSTRUCTION_STATUS_OPTIONS, ISSUE_STATUS_OPTIONS, getIssueStatusColorStyle } from '../types';
 import { CustomSelect } from '@/components/common/CustomSelect';
 import { compareTaskStt, formatSectionTitle } from '../utils/taskTreeUtils';
 import { AuditInfoCell } from '../components/common/AuditInfoCell';
@@ -19,6 +19,7 @@ import { getEngineersForProject } from '../utils/projectMemberUtils';
 import { uploadAttachment } from '../utils/fileUploadHelper';
 import { PullToRefresh } from '../components/common/PullToRefresh';
 import { isUserTaskAssignee, isUserTaskAssigner, isUserTaskFollower, isTaskReadyForAssignment } from '../utils/taskPermission';
+import { getTaskTimeBounds } from '../utils/taskPeriodFilter';
 
 // Convert integer to Roman numeral
 const toRoman = (num: number): string => {
@@ -275,6 +276,7 @@ export const TaskManagementPage: React.FC = () => {
       status: 'Đang làm', 
       progress: nextProgress, 
       constrStatus: constrStatus,
+      startDate: task.startDate || nowIso.split('T')[0],
       updatedBy: userName,
       updatedAt: nowIso,
       notes: updatedNotes
@@ -374,6 +376,7 @@ export const TaskManagementPage: React.FC = () => {
       progress: 1, 
       constrStatus: 'Đã hoàn thành', 
       isDone: true,
+      completedAt: nowIso.split('T')[0],
       reviewerId: adminId,
       reviewerName: adminName,
       updatedBy: adminName,
@@ -2796,7 +2799,11 @@ const hasSyncedRef = useRef(false);
               <col style={{ width: 125 }} />
               <col style={{ width: 125 }} />
                {(hasPermission(authStore.user, 'ASSIGN_TASKS') || tasks.some(task => isUserTaskAssignee(authStore.user, task, engineers))) && (
-                <col style={{ width: 130 }} />
+                <>
+                  <col style={{ width: 130 }} />
+                  <col style={{ width: 100 }} />
+                  <col style={{ width: 100 }} />
+                </>
               )}
               <col style={{ width: 90 }} />
               <col style={{ width: 135 }} />
@@ -2811,7 +2818,11 @@ const hasSyncedRef = useRef(false);
                 <th className="py-2 px-2 w-[125px] min-w-[125px] text-center border-b border-slate-200 whitespace-nowrap">TT ĐẶT HÀNG</th>
                 <th className="py-2 px-2 w-[125px] min-w-[125px] text-center border-b border-slate-200 whitespace-nowrap">TĐ THI CÔNG</th>
                  {(hasPermission(authStore.user, 'ASSIGN_TASKS') || tasks.some(task => isUserTaskAssignee(authStore.user, task, engineers))) && (
-                    <th className="py-2 px-1 w-[130px] min-w-[130px] text-center border-b border-slate-200 whitespace-nowrap">GIAO VIỆC</th>
+                    <>
+                      <th className="py-2 px-1 w-[130px] min-w-[130px] text-center border-b border-slate-200 whitespace-nowrap">GIAO VIỆC</th>
+                      <th className="py-2 px-1 w-[100px] min-w-[100px] text-center border-b border-slate-200 whitespace-nowrap">BẮT ĐẦU NHẬN VIỆC</th>
+                      <th className="py-2 px-1 w-[100px] min-w-[100px] text-center border-b border-slate-200 whitespace-nowrap">HOÀN THÀNH</th>
+                    </>
                   )}
                 <th className="bg-slate-50 py-2 px-1 w-[90px] min-w-[85px] border-b border-r border-slate-200 whitespace-nowrap text-center">GHI CHÚ</th>
                 <th className="py-2 px-1 w-[135px] border-b border-slate-200 whitespace-nowrap text-center">NGƯỜI CẬP NHẬT</th>
@@ -2871,7 +2882,7 @@ const hasSyncedRef = useRef(false);
                             </div>
                           </div>
                         </td>
-                         <td colSpan={(hasPermission(authStore.user, 'ASSIGN_TASKS') || tasks.some(task => isUserTaskAssignee(authStore.user, task, engineers))) ? 8 : 7} className="bg-blue-50/90 py-2 px-2 text-slate-500 truncate text-[11px]" title={cleanNotes(t.notes)}>
+                         <td colSpan={(hasPermission(authStore.user, 'ASSIGN_TASKS') || tasks.some(task => isUserTaskAssignee(authStore.user, task, engineers))) ? 10 : 7} className="bg-blue-50/90 py-2 px-2 text-slate-500 truncate text-[11px]" title={cleanNotes(t.notes)}>
                           {cleanNotes(t.notes)}
                         </td>
                       </tr>
@@ -3105,6 +3116,42 @@ const hasSyncedRef = useRef(false);
 
                           </div>
                         </td>
+                      )}
+                      {(hasPermission(authStore.user, 'ASSIGN_TASKS') || isUserTaskAssignee(authStore.user, t, engineers)) && (
+                        <>
+                          {/* Cột Ngày bắt đầu nhận việc */}
+                          <td className="py-1.5 px-1 text-center whitespace-nowrap border-r border-slate-200 font-mono text-[10px] text-slate-700">
+                            {(() => {
+                              const bounds = getTaskTimeBounds(t);
+                              const startDateStr = t.startDate || bounds.acceptedDate;
+                              if (!startDateStr) return <span className="text-slate-300">—</span>;
+                              const parts = String(startDateStr).slice(0, 10).split('-');
+                              const formatted = parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : startDateStr;
+                              return (
+                                <span className="font-semibold text-slate-700" title={`Bắt đầu nhận việc: ${formatted}`}>
+                                  {formatted}
+                                </span>
+                              );
+                            })()}
+                          </td>
+
+                          {/* Cột Thời gian hoàn thành */}
+                          <td className="py-1.5 px-1 text-center whitespace-nowrap border-r border-slate-200 font-mono text-[10px]">
+                            {(() => {
+                              const isDone = isTaskActuallyDone(t);
+                              const bounds = getTaskTimeBounds(t);
+                              const finishDateStr = t.completedAt || (isDone ? (bounds.completedDate || bounds.updatedDate) : null);
+                              if (!finishDateStr) return <span className="text-slate-300">—</span>;
+                              const parts = String(finishDateStr).slice(0, 10).split('-');
+                              const formatted = parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : finishDateStr;
+                              return (
+                                <span className="font-semibold text-emerald-700" title={`Thời gian hoàn thành: ${formatted}`}>
+                                  {formatted}
+                                </span>
+                              );
+                            })()}
+                          </td>
+                        </>
                       )}
                       <td className="py-1.5 px-1 group-hover:bg-slate-100 border-r border-slate-200 text-slate-500 whitespace-normal break-words leading-tight" title={cleanNotes(t.notes)}>
                         {editingCell?.id === t.id && editingCell?.field === 'notes' ? (

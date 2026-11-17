@@ -98,6 +98,12 @@ export function getTaskTimeBounds(task: Task): TaskTimeBounds {
   if (task.dueDate) {
     result.dueDate = String(task.dueDate).slice(0, 10);
   }
+  if (task.startDate) {
+    result.acceptedDate = String(task.startDate).slice(0, 10);
+  }
+  if (task.completedAt) {
+    result.completedDate = String(task.completedAt).slice(0, 10);
+  }
   if (task.createdAt) {
     result.createdDate = String(task.createdAt).slice(0, 10);
   }

@@ -121,6 +121,8 @@ export interface Task {
   reviewerId?: string;
   reviewerName?: string;
   dueDate?: string;
+  startDate?: string;
+  completedAt?: string;
   priority?: TaskPriority;
   followerIds?: string[];
   followerNames?: string[];

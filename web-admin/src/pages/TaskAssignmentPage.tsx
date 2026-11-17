@@ -1623,6 +1623,8 @@ export const TaskAssignmentPage: React.FC = () => {
                   <th className="py-2.5 px-3 w-36 border-r border-slate-200">Người phụ trách</th>
                   <th className="py-2.5 px-3 w-36 border-r border-slate-200">Người theo dõi</th>
                   <th className="py-2.5 px-3 w-28 text-center border-r border-slate-200">Thời hạn / Hạn</th>
+                  <th className="py-2.5 px-3 w-28 text-center border-r border-slate-200">Ngày nhận việc</th>
+                  <th className="py-2.5 px-3 w-28 text-center border-r border-slate-200">Hoàn thành</th>
                   <th className="py-2.5 px-3 w-24 text-center border-r border-slate-200">Khối lượng</th>
                   <th className="py-2.5 px-3 w-28 text-center border-r border-slate-200">Trạng thái</th>
                   <th className="py-2.5 px-4 w-36 border-r border-slate-200 text-center">Người cập nhật</th>
@@ -1632,7 +1634,7 @@ export const TaskAssignmentPage: React.FC = () => {
               <tbody className="divide-y divide-slate-200 font-medium">
                 {projectDisplayedTasks.length === 0 ? (
                   <tr>
-                    <td colSpan={projectFilterStatus === 'unassigned' ? 9 : 8} className="py-8 text-center text-slate-400 italic">
+                    <td colSpan={projectFilterStatus === 'unassigned' ? 11 : 10} className="py-8 text-center text-slate-400 italic">
                       Không có công việc dự án nào phù hợp.
                     </td>
                   </tr>
@@ -1657,7 +1659,7 @@ export const TaskAssignmentPage: React.FC = () => {
                               />
                             </td>
                           )}
-                          <td colSpan={8} className="py-2 px-3">
+                          <td colSpan={10} className="py-2 px-3">
                             <div className="flex items-center justify-between gap-2">
                               <button
                                 type="button"
@@ -1820,6 +1822,35 @@ export const TaskAssignmentPage: React.FC = () => {
                                       title={isOverdue ? 'Đã quá hạn hoàn thành!' : 'Hạn hoàn thành'}
                                     >
                                       {formatDateStr(t.dueDate)}
+                                    </span>
+                                  );
+                                })()}
+                              </td>
+                              <td className="py-2.5 px-3 text-center border-r border-slate-200 font-mono text-xs">
+                                {(() => {
+                                  const bounds = getTaskTimeBounds(t);
+                                  const startDateStr = t.startDate || bounds.acceptedDate;
+                                  if (!startDateStr) return <span className="text-slate-400 font-normal">—</span>;
+                                  const parts = String(startDateStr).slice(0, 10).split('-');
+                                  const formatted = parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : startDateStr;
+                                  return (
+                                    <span className="font-semibold text-slate-700" title={`Ngày bắt đầu nhận việc: ${formatted}`}>
+                                      {formatted}
+                                    </span>
+                                  );
+                                })()}
+                              </td>
+                              <td className="py-2.5 px-3 text-center border-r border-slate-200 font-mono text-xs">
+                                {(() => {
+                                  const isDone = isTaskActuallyDone(t);
+                                  const bounds = getTaskTimeBounds(t);
+                                  const finishDateStr = t.completedAt || (isDone ? (bounds.completedDate || bounds.updatedDate) : null);
+                                  if (!finishDateStr) return <span className="text-slate-400 font-normal">—</span>;
+                                  const parts = String(finishDateStr).slice(0, 10).split('-');
+                                  const formatted = parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : finishDateStr;
+                                  return (
+                                    <span className="font-semibold text-emerald-700" title={`Thời gian hoàn thành: ${formatted}`}>
+                                      {formatted}
                                     </span>
                                   );
                                 })()}
