@@ -306,6 +306,9 @@ export const TaskAssignmentPage: React.FC = () => {
     return 'unassigned';
   });
   const [projectSearch, setProjectSearch] = useState('');
+  const [projectTaskPage, setProjectTaskPage] = useState(1);
+  const [directTaskPage, setDirectTaskPage] = useState(1);
+  const ASSIGNMENT_PAGE_SIZE = 25;
 
   // Bộ lọc Nhân sự & Thời gian (Ngày / Tháng / Quý)
   const [filterEmployeeId, setFilterEmployeeId] = useState<string>('all');
@@ -838,6 +841,51 @@ export const TaskAssignmentPage: React.FC = () => {
     });
   }, [directAllTasks, filterEmployeeId, filterPeriodType, filterCustomStart, filterCustomEnd, engineers, directFilterStatus, directSearch]);
 
+  const paginatedDirectTasks = useMemo(() => {
+    const start = (directTaskPage - 1) * ASSIGNMENT_PAGE_SIZE;
+    return directDisplayedTasks.slice(start, start + ASSIGNMENT_PAGE_SIZE);
+  }, [directDisplayedTasks, directTaskPage]);
+
+  const directTotalPages = Math.max(1, Math.ceil(directDisplayedTasks.length / ASSIGNMENT_PAGE_SIZE));
+
+  useEffect(() => {
+    setDirectTaskPage(1);
+  }, [filterEmployeeId, filterPeriodType, filterCustomStart, filterCustomEnd, directFilterStatus, directSearch]);
+
+  const paginatedProjectTasks = useMemo(() => {
+    const start = (projectTaskPage - 1) * ASSIGNMENT_PAGE_SIZE;
+    return projectDisplayedTasks.slice(start, start + ASSIGNMENT_PAGE_SIZE);
+  }, [projectDisplayedTasks, projectTaskPage]);
+
+  const projectTotalPages = Math.max(1, Math.ceil(projectDisplayedTasks.length / ASSIGNMENT_PAGE_SIZE));
+
+  useEffect(() => {
+    setProjectTaskPage(1);
+  }, [filterProjectCode, projectFilterStatus, filterEmployeeId, filterPeriodType, filterCustomStart, filterCustomEnd, projectSearch]);
+
+  // Group paginated project tasks by project
+  const paginatedGroupedProjectTasks = useMemo(() => {
+    const map = new Map<string, typeof paginatedProjectTasks>();
+    paginatedProjectTasks.forEach(t => {
+      const pCode = t.projectCode || t.projectName || 'KHAC';
+      if (!map.has(pCode)) {
+        map.set(pCode, []);
+      }
+      map.get(pCode)!.push(t);
+    });
+
+    const groups: { project: { code: string; name: string }; tasks: typeof paginatedProjectTasks }[] = [];
+    map.forEach((tList, pCode) => {
+      const proj = projects.find(p => p.code === pCode || p.name === pCode);
+      groups.push({
+        project: { code: pCode, name: proj?.name || pCode },
+        tasks: tList
+      });
+    });
+
+    return groups;
+  }, [paginatedProjectTasks, projects]);
+
   // Lọc danh sách kỹ sư / nhân viên thuộc các dự án của những task đang được chọn giao việc
   const assignableEngineers = useMemo(() => {
     if (selectedTaskIds.length === 0) {
@@ -1201,7 +1249,7 @@ export const TaskAssignmentPage: React.FC = () => {
                     </td>
                   </tr>
                 ) : (
-                  directDisplayedTasks.map((t) => {
+                  paginatedDirectTasks.map((t) => {
                     const todayStr = new Date().toISOString().split('T')[0];
                     const isOverdue = t.dueDate && String(t.dueDate).split('T')[0] < todayStr && !isTaskActuallyDone(t);
 
@@ -1371,6 +1419,52 @@ export const TaskAssignmentPage: React.FC = () => {
             </table>
           </div>
 
+          {/* Pagination Controls for Direct Tasks */}
+          {directDisplayedTasks.length > 0 && (
+            <div className="flex flex-wrap items-center justify-center gap-4 border-t border-slate-200 bg-white px-4 py-2.5 text-xs text-slate-600 shrink-0 select-none shadow-xs">
+              <div className="flex items-center gap-2">
+                <span className="font-medium whitespace-nowrap">Hiển thị {(directTaskPage - 1) * ASSIGNMENT_PAGE_SIZE + 1}-{Math.min(directTaskPage * ASSIGNMENT_PAGE_SIZE, directDisplayedTasks.length)} / {directDisplayedTasks.length} công việc phát sinh (Cố định 25 / trang)</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  disabled={directTaskPage <= 1}
+                  onClick={() => setDirectTaskPage(1)}
+                  className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 font-medium hover:bg-slate-50 transition-colors disabled:cursor-not-allowed disabled:opacity-40 shadow-xs"
+                >
+                  Đầu
+                </button>
+                <button
+                  type="button"
+                  disabled={directTaskPage <= 1}
+                  onClick={() => setDirectTaskPage(p => Math.max(1, p - 1))}
+                  className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 font-medium hover:bg-slate-50 transition-colors disabled:cursor-not-allowed disabled:opacity-40 shadow-xs"
+                >
+                  Trước
+                </button>
+                <span className="px-3 font-semibold text-slate-700 whitespace-nowrap">
+                  Trang {directTaskPage} / {directTotalPages}
+                </span>
+                <button
+                  type="button"
+                  disabled={directTaskPage >= directTotalPages}
+                  onClick={() => setDirectTaskPage(p => Math.min(directTotalPages, p + 1))}
+                  className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 font-medium hover:bg-slate-50 transition-colors disabled:cursor-not-allowed disabled:opacity-40 shadow-xs"
+                >
+                  Sau
+                </button>
+                <button
+                  type="button"
+                  disabled={directTaskPage >= directTotalPages}
+                  onClick={() => setDirectTaskPage(directTotalPages)}
+                  className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 font-medium hover:bg-slate-50 transition-colors disabled:cursor-not-allowed disabled:opacity-40 shadow-xs"
+                >
+                  Cuối
+                </button>
+              </div>
+            </div>
+          )}
+
         </div>
       ) : (
         /* GIAO DIỆN BẢNG CÔNG VIỆC DỰ ÁN (SUB-TABS & EDGE-TO-EDGE) */
@@ -1531,14 +1625,14 @@ export const TaskAssignmentPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 font-medium">
-                {groupedProjectTasks.length === 0 ? (
+                {projectDisplayedTasks.length === 0 ? (
                   <tr>
                     <td colSpan={projectFilterStatus === 'unassigned' ? 8 : 7} className="py-8 text-center text-slate-400 italic">
                       Không có công việc dự án nào phù hợp.
                     </td>
                   </tr>
                 ) : (
-                  groupedProjectTasks.map((group) => {
+                  paginatedGroupedProjectTasks.map((group) => {
                     const isCollapsed = Boolean(collapsedProjects[group.project.code]);
                     const completedCount = group.tasks.filter(t => isTaskActuallyDone(t)).length;
                     const inProgressCount = group.tasks.filter(t => t.status === 'Đang làm').length;
@@ -1746,6 +1840,51 @@ export const TaskAssignmentPage: React.FC = () => {
             </table>
           </div>
 
+          {/* Pagination Controls for Project Tasks */}
+          {projectDisplayedTasks.length > 0 && (
+            <div className="flex flex-wrap items-center justify-center gap-4 border-t border-slate-200 bg-white px-4 py-2.5 text-xs text-slate-600 shrink-0 select-none shadow-xs">
+              <div className="flex items-center gap-2">
+                <span className="font-medium whitespace-nowrap">Hiển thị {(projectTaskPage - 1) * ASSIGNMENT_PAGE_SIZE + 1}-{Math.min(projectTaskPage * ASSIGNMENT_PAGE_SIZE, projectDisplayedTasks.length)} / {projectDisplayedTasks.length} công việc dự án (Cố định 25 / trang)</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  disabled={projectTaskPage <= 1}
+                  onClick={() => setProjectTaskPage(1)}
+                  className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 font-medium hover:bg-slate-50 transition-colors disabled:cursor-not-allowed disabled:opacity-40 shadow-xs"
+                >
+                  Đầu
+                </button>
+                <button
+                  type="button"
+                  disabled={projectTaskPage <= 1}
+                  onClick={() => setProjectTaskPage(p => Math.max(1, p - 1))}
+                  className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 font-medium hover:bg-slate-50 transition-colors disabled:cursor-not-allowed disabled:opacity-40 shadow-xs"
+                >
+                  Trước
+                </button>
+                <span className="px-3 font-semibold text-slate-700 whitespace-nowrap">
+                  Trang {projectTaskPage} / {projectTotalPages}
+                </span>
+                <button
+                  type="button"
+                  disabled={projectTaskPage >= projectTotalPages}
+                  onClick={() => setProjectTaskPage(p => Math.min(projectTotalPages, p + 1))}
+                  className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 font-medium hover:bg-slate-50 transition-colors disabled:cursor-not-allowed disabled:opacity-40 shadow-xs"
+                >
+                  Sau
+                </button>
+                <button
+                  type="button"
+                  disabled={projectTaskPage >= projectTotalPages}
+                  onClick={() => setProjectTaskPage(projectTotalPages)}
+                  className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 font-medium hover:bg-slate-50 transition-colors disabled:cursor-not-allowed disabled:opacity-40 shadow-xs"
+                >
+                  Cuối
+                </button>
+              </div>
+            </div>
+          )}
 
         </div>
       )}

@@ -3122,64 +3122,63 @@ const hasSyncedRef = useRef(false);
           </table>
         </div>
 
-        {/* Pagination Controls */}
-        {(() => {
-          const uncollapsedTasks = groupedTasks.filter((t) => {
-            if (t.isSectionHeader) return true;
-            return !collapsedSections.has(t._sectionKey || '');
-          });
-          const totalRows = uncollapsedTasks.length;
-          const totalPages = Math.max(1, Math.ceil(totalRows / TASK_PAGE_SIZE));
-          if (totalRows === 0) return null;
-          return (
-            <div className="flex flex-wrap items-center justify-center gap-4 border-t border-slate-200 bg-white px-4 py-2.5 text-xs text-slate-600 shrink-0 select-none">
-              <div className="flex items-center gap-2">
-                <span className="font-medium whitespace-nowrap">Hiển thị {(taskPage - 1) * TASK_PAGE_SIZE + 1}-{Math.min(taskPage * TASK_PAGE_SIZE, totalRows)} / {totalRows} công việc (Cố định 25 / trang)</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  disabled={taskPage <= 1}
-                  onClick={() => setTaskPage(1)}
-                  className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 font-medium hover:bg-slate-50 transition-colors disabled:cursor-not-allowed disabled:opacity-40 shadow-xs"
-                >
-                  Đầu
-                </button>
-                <button
-                  type="button"
-                  disabled={taskPage <= 1}
-                  onClick={() => setTaskPage(p => Math.max(1, p - 1))}
-                  className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 font-medium hover:bg-slate-50 transition-colors disabled:cursor-not-allowed disabled:opacity-40 shadow-xs"
-                >
-                  Trước
-                </button>
-                <span className="px-3 font-semibold text-slate-700 whitespace-nowrap">
-                  Trang {taskPage} / {totalPages}
-                </span>
-                <button
-                  type="button"
-                  disabled={taskPage >= totalPages}
-                  onClick={() => setTaskPage(p => Math.min(totalPages, p + 1))}
-                  className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 font-medium hover:bg-slate-50 transition-colors disabled:cursor-not-allowed disabled:opacity-40 shadow-xs"
-                >
-                  Sau
-                </button>
-                <button
-                  type="button"
-                  disabled={taskPage >= totalPages}
-                  onClick={() => setTaskPage(totalPages)}
-                  className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 font-medium hover:bg-slate-50 transition-colors disabled:cursor-not-allowed disabled:opacity-40 shadow-xs"
-                >
-                  Cuối
-                </button>
-              </div>
-            </div>
-          );
-        })()}
-
         {/* Clean Footer */}
       </PullToRefresh>
 
+      {/* Pagination Controls */}
+      {(() => {
+        const uncollapsedTasks = groupedTasks.filter((t) => {
+          if (t.isSectionHeader) return true;
+          return !collapsedSections.has(t._sectionKey || '');
+        });
+        const totalRows = uncollapsedTasks.length;
+        const totalPages = Math.max(1, Math.ceil(totalRows / TASK_PAGE_SIZE));
+        if (totalRows === 0) return null;
+        return (
+          <div className="flex flex-wrap items-center justify-center gap-4 border-t border-slate-200 bg-white px-4 py-2.5 text-xs text-slate-600 shrink-0 select-none z-20 shadow-xs">
+            <div className="flex items-center gap-2">
+              <span className="font-medium whitespace-nowrap">Hiển thị {(taskPage - 1) * TASK_PAGE_SIZE + 1}-{Math.min(taskPage * TASK_PAGE_SIZE, totalRows)} / {totalRows} công việc (Cố định 25 / trang)</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                disabled={taskPage <= 1}
+                onClick={() => setTaskPage(1)}
+                className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 font-medium hover:bg-slate-50 transition-colors disabled:cursor-not-allowed disabled:opacity-40 shadow-xs"
+              >
+                Đầu
+              </button>
+              <button
+                type="button"
+                disabled={taskPage <= 1}
+                onClick={() => setTaskPage(p => Math.max(1, p - 1))}
+                className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 font-medium hover:bg-slate-50 transition-colors disabled:cursor-not-allowed disabled:opacity-40 shadow-xs"
+              >
+                Trước
+              </button>
+              <span className="px-3 font-semibold text-slate-700 whitespace-nowrap">
+                Trang {taskPage} / {totalPages}
+              </span>
+              <button
+                type="button"
+                disabled={taskPage >= totalPages}
+                onClick={() => setTaskPage(p => Math.min(totalPages, p + 1))}
+                className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 font-medium hover:bg-slate-50 transition-colors disabled:cursor-not-allowed disabled:opacity-40 shadow-xs"
+              >
+                Sau
+              </button>
+              <button
+                type="button"
+                disabled={taskPage >= totalPages}
+                onClick={() => setTaskPage(totalPages)}
+                className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 font-medium hover:bg-slate-50 transition-colors disabled:cursor-not-allowed disabled:opacity-40 shadow-xs"
+              >
+                Cuối
+              </button>
+            </div>
+          </div>
+        );
+      })()}
 
       </section>
       {/* end-task-management-screen */}
