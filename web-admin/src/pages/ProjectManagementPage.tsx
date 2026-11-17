@@ -1123,16 +1123,16 @@ export const ProjectManagementPage: React.FC = () => {
       <LoadingSpinner loading={loading} message={loadingMessage} />
       <Toast show={toastState.show} message={toastState.message} type={toastState.type} />
 
-      <section className="border-b border-slate-200 bg-white shadow-xs px-3 pr-14 md:px-6 md:pr-20 py-2 md:py-0 md:h-12 flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-2 relative z-10 shrink-0 no-drag-region electron-no-drag" style={{ WebkitAppRegion: 'no-drag' } as any}>
-        <div className="flex items-center gap-2 md:gap-3 shrink-0">
-          <div className="border-l-4 border-primary pl-2 flex items-center">
+      <section className="border-b border-slate-200 bg-white shadow-xs px-3 pr-14 md:px-6 md:pr-14 py-2 md:py-0 md:h-12 flex flex-col xl:flex-row justify-between items-stretch xl:items-center gap-2 relative z-10 shrink-0 no-drag-region electron-no-drag" style={{ WebkitAppRegion: 'no-drag' } as any}>
+        <div className="flex items-center gap-2 md:gap-2.5 flex-1 min-w-0 flex-wrap sm:flex-nowrap">
+          <div className="border-l-4 border-primary pl-2 flex items-center shrink-0">
             <h1 className="page-title text-sm md:text-base font-extrabold text-slate-900 shrink-0">{TEXT.projectManagement}</h1>
           </div>
 
           <CustomSelect
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as 'all' | 'active' | 'completed' | 'on_hold')}
-            className="h-[34px] min-w-[150px] rounded-lg border border-slate-200 bg-white px-2 text-xs font-bold text-slate-700 shadow-2xs outline-none focus:border-primary"
+            className="h-[34px] min-w-[130px] sm:min-w-[145px] rounded-lg border border-slate-200 bg-white px-2 text-xs font-bold text-slate-700 shadow-2xs outline-none focus:border-primary shrink-0"
           >
             <option value="all">Tất cả ({counts.all})</option>
             <option value="active">Đang triển khai ({counts.active})</option>
@@ -1143,7 +1143,7 @@ export const ProjectManagementPage: React.FC = () => {
           <CustomSelect
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
-            className="h-[34px] min-w-[160px] max-w-[220px] rounded-lg border border-slate-200 bg-white px-2 text-xs font-bold text-slate-700 shadow-2xs outline-none focus:border-primary"
+            className="h-[34px] min-w-[140px] max-w-[190px] rounded-lg border border-slate-200 bg-white px-2 text-xs font-bold text-slate-700 shadow-2xs outline-none focus:border-primary shrink-0"
             title="Lọc theo phân loại dự án"
           >
             <option value="all">-- Phân loại: Tất cả --</option>
@@ -1190,7 +1190,7 @@ export const ProjectManagementPage: React.FC = () => {
           <CustomSelect
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as any)}
-            className="h-[34px] min-w-[145px] rounded-lg border border-slate-200 bg-white px-2 text-xs font-bold text-slate-700 shadow-2xs outline-none focus:border-primary"
+            className="h-[34px] min-w-[130px] rounded-lg border border-slate-200 bg-white px-2 text-xs font-bold text-slate-700 shadow-2xs outline-none focus:border-primary shrink-0"
             title="Sắp xếp dự án"
           >
             <option value="latest">Mới nhất trước</option>
@@ -1202,8 +1202,8 @@ export const ProjectManagementPage: React.FC = () => {
           </CustomSelect>
         </div>
 
-        <div className="flex items-center gap-2 w-full md:w-auto shrink-0 flex-wrap sm:flex-nowrap">
-          <div className="relative flex-1 sm:w-56 md:w-64 flex items-center min-w-0">
+        <div className="flex items-center gap-2 w-full xl:w-auto shrink-0 flex-wrap sm:flex-nowrap">
+          <div className="relative flex-1 sm:w-48 md:w-56 flex items-center min-w-0">
             <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-base">search</span>
             <input
               type="text"
@@ -1339,13 +1339,13 @@ export const ProjectManagementPage: React.FC = () => {
                           <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0 text-slate-500 font-extrabold text-xs mt-0.5">
                             {String(globalIdx + 1).padStart(2, '0')}
                           </div>
-                          <div className="flex-1 bg-blue-50 rounded-lg px-2.5 py-1.5 sm:px-3 sm:py-2 flex items-center justify-between gap-2 min-w-0 transition-[padding] pr-20 sm:pr-2 sm:group-hover:pr-24">
+                          <div className="flex-1 bg-blue-50 rounded-lg px-2.5 py-1.5 sm:px-3 sm:py-2 flex items-center justify-between gap-2 min-w-0 transition-[padding] pr-2 sm:pr-2">
                             <p className="font-bold text-primary text-sm leading-snug line-clamp-2" title={project.name}>
                               {project.name}
                             </p>
                             {Boolean((project as any).unreadNotifCount && (project as any).unreadNotifCount > 0) && (
                               <div 
-                                className="inline-flex items-center gap-1 bg-rose-50 text-rose-600 border border-rose-200/80 font-extrabold text-[11px] px-2 py-0.5 rounded-full shadow-2xs shrink-0 self-start mt-0.5 group-hover:hidden"
+                                className="inline-flex items-center gap-1 bg-rose-50 text-rose-600 border border-rose-200/80 font-extrabold text-[11px] px-2 py-0.5 rounded-full shadow-2xs shrink-0 self-start mt-0.5"
                                 title={`Có ${(project as any).unreadNotifCount} cập nhật mới trong dự án`}
                               >
                                 <span className="material-symbols-outlined text-[13px] text-rose-500">notifications</span>
@@ -1437,7 +1437,7 @@ export const ProjectManagementPage: React.FC = () => {
 
                       {/* Nút sửa/xóa/thông báo — hiện khi hover trên desktop, luôn hiện trên mobile */}
                       <div
-                        className="absolute top-[18px] right-3 flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity z-20 bg-white/95 backdrop-blur-xs px-1 py-0.5 rounded-lg border border-slate-200 shadow-xs"
+                        className="absolute bottom-2.5 right-3 flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity z-20 bg-white/95 backdrop-blur-xs px-1 py-0.5 rounded-lg border border-slate-200 shadow-xs"
                         onClick={(e) => e.stopPropagation()}
                         onMouseDown={(e) => e.stopPropagation()}
                       >
