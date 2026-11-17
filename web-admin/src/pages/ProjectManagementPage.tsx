@@ -1,6 +1,6 @@
 
 
-import React, { useMemo, useState, useRef } from 'react';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useRealtimeStore } from '../services/realtimeStore';
 import { useAuthStore, hasPermission, canManageItem } from '../services/authStore';
@@ -145,6 +145,12 @@ export const ProjectManagementPage: React.FC = () => {
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [filterDateFrom, setFilterDateFrom] = useState('');
   const [filterDateTo, setFilterDateTo] = useState('');
+
+  // Chế độ xem (Dạng thẻ lưới vs Dạng bảng danh sách) & Phân trang cho 500+ dự án
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number>(24);
+  const [sortBy, setSortBy] = useState<'latest' | 'oldest' | 'name_asc' | 'name_desc' | 'progress_desc' | 'progress_asc'>('latest');
 
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
   const [projectToEdit, setProjectToEdit] = useState<Project | null>(null);
@@ -390,6 +396,11 @@ export const ProjectManagementPage: React.FC = () => {
       return [project.name, project.code, project.location, project.client, project.category, project.notes, project.managerName, project.memberNames.join(' ')]
         .some((value) => normalizeLabel(String(value || '')).includes(q));
     }).sort((a, b) => {
+      if (sortBy === 'progress_desc') return (b.progress || 0) - (a.progress || 0);
+      if (sortBy === 'progress_asc') return (a.progress || 0) - (b.progress || 0);
+      if (sortBy === 'name_asc') return (a.name || '').localeCompare(b.name || '', 'vi', { numeric: true });
+      if (sortBy === 'name_desc') return (b.name || '').localeCompare(a.name || '', 'vi', { numeric: true });
+
       const getTimestamp = (p: any) => {
         const time = new Date(p.createdAt || p.created_at || p.updatedAt || p.updated_at || p.startDate || 0).getTime();
         return isNaN(time) ? 0 : time;
@@ -397,13 +408,31 @@ export const ProjectManagementPage: React.FC = () => {
       const timeA = getTimestamp(a);
       const timeB = getTimestamp(b);
 
+      if (sortBy === 'oldest') {
+        if (timeA !== timeB) return timeA - timeB;
+        return (a.name || '').localeCompare(b.name || '', 'vi', { numeric: true });
+      }
+
       // Ưu tiên dự án mới nhất (thời gian tạo / cập nhật lớn nhất) lên đầu
       if (timeB !== timeA) {
         return timeB - timeA;
       }
       return (a.name || '').localeCompare(b.name || '', 'vi', { numeric: true });
     });
-  }, [allEnhancedProjects, searchQuery, statusFilter, filterDateFrom, filterDateTo]);
+  }, [allEnhancedProjects, searchQuery, statusFilter, categoryFilter, filterDateFrom, filterDateTo, sortBy]);
+
+  // Reset về trang 1 khi thay đổi bất kỳ bộ lọc hoặc chế độ sắp xếp nào
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter, categoryFilter, filterDateFrom, filterDateTo, sortBy, pageSize]);
+
+  const totalPages = Math.max(1, Math.ceil(enhancedProjects.length / pageSize));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+
+  const paginatedProjects = useMemo(() => {
+    const startIndex = (safeCurrentPage - 1) * pageSize;
+    return enhancedProjects.slice(startIndex, startIndex + pageSize);
+  }, [enhancedProjects, safeCurrentPage, pageSize]);
 
   const openProjectTasks = (project: Project) => navigate(`/projects/${project.id}`);
 
@@ -1159,9 +1188,39 @@ export const ProjectManagementPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Nhóm thao tác bên phải: Ô tìm kiếm + Nút Tạo dự án mới */}
+        {/* Nhóm thao tác bên phải: Chuyển dạng Thẻ / Bảng + Ô tìm kiếm + Nút Tạo dự án mới */}
         <div className="flex items-center gap-2 shrink-0 ml-auto">
-          <div className="relative w-44 sm:w-56 md:w-64 flex items-center min-w-0">
+          {/* Chuyển chế độ xem Thẻ (Grid) / Bảng gọn (Table) */}
+          <div className="inline-flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200 h-[34px] shrink-0">
+            <button
+              type="button"
+              onClick={() => setViewMode('grid')}
+              className={`flex items-center gap-1 px-2.5 h-full rounded-md text-xs font-semibold transition-all cursor-pointer ${
+                viewMode === 'grid'
+                  ? 'bg-white text-primary shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+              title="Xem dạng thẻ (Grid trực quan)"
+            >
+              <span className="material-symbols-outlined text-[16px]">grid_view</span>
+              <span className="hidden xl:inline text-[11px]">Thẻ</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('table')}
+              className={`flex items-center gap-1 px-2.5 h-full rounded-md text-xs font-semibold transition-all cursor-pointer ${
+                viewMode === 'table'
+                  ? 'bg-white text-primary shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+              title="Xem dạng bảng thu gọn (Tối ưu quét nhanh 500+ dự án)"
+            >
+              <span className="material-symbols-outlined text-[16px]">view_list</span>
+              <span className="hidden xl:inline text-[11px]">Bảng gọn</span>
+            </button>
+          </div>
+
+          <div className="relative w-44 sm:w-52 md:w-60 flex items-center min-w-0">
             <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-base">search</span>
             <input
               type="text"
@@ -1223,203 +1282,423 @@ export const ProjectManagementPage: React.FC = () => {
             <h3 className="mt-3 font-bold text-slate-700">{searchQuery ? TEXT.noProjectFound : TEXT.noProject}</h3>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3 sm:gap-4">
-            {enhancedProjects.map((project, idx) => {
-              const barColor = project.progress >= 100 ? 'bg-emerald-500'
-                : project.progress >= 60 ? 'bg-blue-500'
-                : project.progress >= 30 ? 'bg-amber-400' : 'bg-slate-300';
-              const statusCfg = project.status === 'completed'
-                ? { dot: 'bg-emerald-500', text: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200' }
-                : project.status === 'on_hold'
-                  ? { dot: 'bg-amber-500', text: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-200' }
-                  : { dot: 'bg-blue-500', text: 'text-blue-700', bg: 'bg-blue-50', border: 'border-blue-200' };
-              return (
-                <div
-                  key={project.id}
-                  onClick={(e) => {
-                    const target = e.target as HTMLElement;
-                    if (
-                      suppressProjectCardNavigationRef.current ||
-                      target.closest('button') ||
-                      target.closest('[data-modal-root="true"]')
-                    ) {
-                      suppressProjectCardNavigationRef.current = false;
-                      return;
-                    }
-                    openProjectTasks(project);
-                  }}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => { if (e.key === 'Enter') openProjectTasks(project); }}
-                  className="group relative flex flex-col bg-white rounded-xl border border-slate-200 shadow-xs hover:shadow-md hover:border-blue-300 cursor-pointer transition-all duration-200 overflow-hidden"
-                >
-                  {/* Top accent bar */}
-                  <div className={`h-1 w-full ${barColor}`} />
+          <div className="flex flex-col gap-4">
+            {/* Chế độ xem 1: Lưới Thẻ (Grid Cards) */}
+            {viewMode === 'grid' && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3 sm:gap-4">
+                {paginatedProjects.map((project, idx) => {
+                  const globalIdx = (safeCurrentPage - 1) * pageSize + idx;
+                  const barColor = project.progress >= 100 ? 'bg-emerald-500'
+                    : project.progress >= 60 ? 'bg-blue-500'
+                    : project.progress >= 30 ? 'bg-amber-400' : 'bg-slate-300';
+                  const statusCfg = project.status === 'completed'
+                    ? { dot: 'bg-emerald-500', text: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200' }
+                    : project.status === 'on_hold'
+                      ? { dot: 'bg-amber-500', text: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-200' }
+                      : { dot: 'bg-blue-500', text: 'text-blue-700', bg: 'bg-blue-50', border: 'border-blue-200' };
+                  return (
+                    <div
+                      key={project.id}
+                      onClick={(e) => {
+                        const target = e.target as HTMLElement;
+                        if (
+                          suppressProjectCardNavigationRef.current ||
+                          target.closest('button') ||
+                          target.closest('[data-modal-root="true"]')
+                        ) {
+                          suppressProjectCardNavigationRef.current = false;
+                          return;
+                        }
+                        openProjectTasks(project);
+                      }}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => { if (e.key === 'Enter') openProjectTasks(project); }}
+                      className="group relative flex flex-col bg-white rounded-xl border border-slate-200 shadow-xs hover:shadow-md hover:border-blue-300 cursor-pointer transition-all duration-200 overflow-hidden"
+                    >
+                      {/* Top accent bar */}
+                      <div className={`h-1 w-full ${barColor}`} />
 
-                  <div className="flex flex-col gap-2.5 sm:gap-3 p-3.5 sm:p-4 flex-1">
-                    {/* Header: số + tên */}
-                    <div className="flex items-start gap-2.5 sm:gap-3">
-                      <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0 text-slate-500 font-extrabold text-xs mt-0.5">
-                        {String(idx + 1).padStart(2, '0')}
-                      </div>
-                      <div className="flex-1 bg-blue-50 rounded-lg px-2.5 py-1.5 sm:px-3 sm:py-2 flex items-center justify-between gap-2 min-w-0 transition-[padding] pr-20 sm:pr-2 sm:group-hover:pr-24">
-                        <p className="font-bold text-primary text-sm leading-snug line-clamp-2" title={project.name}>
-                          {project.name}
-                        </p>
-                        {Boolean((project as any).unreadNotifCount && (project as any).unreadNotifCount > 0) && (
-                          <div 
-                            className="inline-flex items-center gap-1 bg-rose-50 text-rose-600 border border-rose-200/80 font-extrabold text-[11px] px-2 py-0.5 rounded-full shadow-2xs shrink-0 self-start mt-0.5 group-hover:hidden"
-                            title={`Có ${(project as any).unreadNotifCount} cập nhật mới trong dự án`}
-                          >
-                            <span className="material-symbols-outlined text-[13px] text-rose-500">notifications</span>
-                            <span>{(project as any).unreadNotifCount}</span>
+                      <div className="flex flex-col gap-2.5 sm:gap-3 p-3.5 sm:p-4 flex-1">
+                        {/* Header: số + tên */}
+                        <div className="flex items-start gap-2.5 sm:gap-3">
+                          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0 text-slate-500 font-extrabold text-xs mt-0.5">
+                            {String(globalIdx + 1).padStart(2, '0')}
                           </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Badge trạng thái */}
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-bold border ${statusCfg.bg} ${statusCfg.text} ${statusCfg.border}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${statusCfg.dot}`} />
-                        {statusLabel[project.status]}
-                      </span>
-                      {project.location && (
-                        <span className="text-[11px] text-slate-400 truncate max-w-[180px]">{project.location}</span>
-                      )}
-                    </div>
-
-                    {/* Chủ đầu tư */}
-                    {(project as any).client && (
-                      <p className="text-[11px] text-slate-500 truncate">
-                        <span className="font-semibold text-slate-400">CĐT: </span>
-                        {(project as any).client}
-                      </p>
-                    )}
-
-                    {project.category && (
-                      <p className="text-[11px] text-slate-500 truncate mt-[-4px]" title={project.category}>
-                        <span className="font-semibold text-slate-400">Phân loại: </span>
-                        <span className="inline-block bg-blue-50 text-blue-700 px-1.5 py-0.2 rounded font-medium text-[10.5px] border border-blue-100">
-                          {project.category}
-                        </span>
-                      </p>
-                    )}
-
-                    {project.notes && (
-                      <p className="text-[11px] text-slate-500 truncate mt-[-4px]" title={project.notes}>
-                        <span className="font-semibold text-slate-400">Hạng mục: </span>
-                        {project.notes}
-                      </p>
-                    )}
-
-                    {/* Nhân sự dự án */}
-                    <div className="mt-1 pt-1 border-t border-slate-100/50">
-                      <div className="flex flex-wrap items-center gap-1 sm:gap-1.5">
-                        <span className="text-[11px] font-semibold text-slate-400 mr-0.5">Nhân sự:</span>
-                        {project.memberNames?.length ? (
-                          <>
-                            {project.memberNames.slice(0, 3).map((name, i) => (
-                              <div key={i} className="inline-flex items-center gap-1 bg-sky-50/70 border border-sky-100 rounded-full pr-2 pl-0.5 py-0.5 max-w-[130px]">
-                                <span className="w-3.5 h-3.5 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center shrink-0">
-                                  <span className="material-symbols-outlined text-[10px]">person</span>
-                                </span>
-                                <span className="text-[10px] font-semibold text-sky-700 truncate">
-                                  {name}
-                                </span>
+                          <div className="flex-1 bg-blue-50 rounded-lg px-2.5 py-1.5 sm:px-3 sm:py-2 flex items-center justify-between gap-2 min-w-0 transition-[padding] pr-20 sm:pr-2 sm:group-hover:pr-24">
+                            <p className="font-bold text-primary text-sm leading-snug line-clamp-2" title={project.name}>
+                              {project.name}
+                            </p>
+                            {Boolean((project as any).unreadNotifCount && (project as any).unreadNotifCount > 0) && (
+                              <div 
+                                className="inline-flex items-center gap-1 bg-rose-50 text-rose-600 border border-rose-200/80 font-extrabold text-[11px] px-2 py-0.5 rounded-full shadow-2xs shrink-0 self-start mt-0.5 group-hover:hidden"
+                                title={`Có ${(project as any).unreadNotifCount} cập nhật mới trong dự án`}
+                              >
+                                <span className="material-symbols-outlined text-[13px] text-rose-500">notifications</span>
+                                <span>{(project as any).unreadNotifCount}</span>
                               </div>
-                            ))}
-                            {project.memberNames.length > 3 && (
-                              <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-[10px] font-semibold text-slate-600">
-                                +{project.memberNames.length - 3}
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Badge trạng thái */}
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-bold border ${statusCfg.bg} ${statusCfg.text} ${statusCfg.border}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${statusCfg.dot}`} />
+                            {statusLabel[project.status]}
+                          </span>
+                          {project.location && (
+                            <span className="text-[11px] text-slate-400 truncate max-w-[180px]">{project.location}</span>
+                          )}
+                        </div>
+
+                        {/* Chủ đầu tư */}
+                        {(project as any).client && (
+                          <p className="text-[11px] text-slate-500 truncate">
+                            <span className="font-semibold text-slate-400">CĐT: </span>
+                            {(project as any).client}
+                          </p>
+                        )}
+
+                        {project.category && (
+                          <p className="text-[11px] text-slate-500 truncate mt-[-4px]" title={project.category}>
+                            <span className="font-semibold text-slate-400">Phân loại: </span>
+                            <span className="inline-block bg-blue-50 text-blue-700 px-1.5 py-0.2 rounded font-medium text-[10.5px] border border-blue-100">
+                              {project.category}
+                            </span>
+                          </p>
+                        )}
+
+                        {project.notes && (
+                          <p className="text-[11px] text-slate-500 truncate mt-[-4px]" title={project.notes}>
+                            <span className="font-semibold text-slate-400">Hạng mục: </span>
+                            {project.notes}
+                          </p>
+                        )}
+
+                        {/* Nhân sự dự án */}
+                        <div className="mt-1 pt-1 border-t border-slate-100/50">
+                          <div className="flex flex-wrap items-center gap-1 sm:gap-1.5">
+                            <span className="text-[11px] font-semibold text-slate-400 mr-0.5">Nhân sự:</span>
+                            {project.memberNames?.length ? (
+                              <>
+                                {project.memberNames.slice(0, 3).map((name, i) => (
+                                  <div key={i} className="inline-flex items-center gap-1 bg-sky-50/70 border border-sky-100 rounded-full pr-2 pl-0.5 py-0.5 max-w-[130px]">
+                                    <span className="w-3.5 h-3.5 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center shrink-0">
+                                      <span className="material-symbols-outlined text-[10px]">person</span>
+                                    </span>
+                                    <span className="text-[10px] font-semibold text-sky-700 truncate">
+                                      {name}
+                                    </span>
+                                  </div>
+                                ))}
+                                {project.memberNames.length > 3 && (
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-[10px] font-semibold text-slate-600">
+                                    +{project.memberNames.length - 3}
+                                  </span>
+                                )}
+                              </>
+                            ) : (
+                              <span className="italic text-[11px] text-slate-400">Chưa có</span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Tiến độ */}
+                        <div className="mt-auto pt-1">
+                          <div className="flex items-center justify-between mb-1.5">
+                            <span className="text-[11px] text-slate-400">Tiến độ</span>
+                            <span className={`text-xs font-extrabold ${
+                              project.progress >= 100 ? 'text-emerald-600'
+                              : project.progress >= 60 ? 'text-blue-600'
+                              : project.progress > 0 ? 'text-amber-600' : 'text-slate-400'
+                            }`}>{project.progress}%</span>
+                          </div>
+                          <div className="h-1.5 w-full rounded-full bg-slate-100 overflow-hidden">
+                            <div className={`h-full rounded-full transition-all duration-700 ${barColor}`}
+                              style={{ width: `${project.progress}%` }} />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Nút sửa/xóa/thông báo — hiện khi hover trên desktop, luôn hiện trên mobile */}
+                      <div
+                        className="absolute top-[18px] right-3 flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity z-20 bg-white/95 backdrop-blur-xs px-1 py-0.5 rounded-lg border border-slate-200 shadow-xs"
+                        onClick={(e) => e.stopPropagation()}
+                        onMouseDown={(e) => e.stopPropagation()}
+                      >
+                          {/* Nút chuông thông báo */}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              suppressProjectCardNavigationRef.current = true;
+                              window.setTimeout(() => {
+                                suppressProjectCardNavigationRef.current = false;
+                              }, 0);
+                              setNotifOpenProjectId(project.id);
+                            }}
+                            onMouseDown={(e) => e.stopPropagation()}
+                            title="Xem toàn bộ thay đổi của dự án"
+                            className="relative rounded p-1 text-slate-400 hover:text-amber-500 hover:bg-amber-50 transition cursor-pointer"
+                          >
+                            <span className="material-symbols-outlined text-[16px]">notifications</span>
+                            {Boolean((project as any).unreadNotifCount && (project as any).unreadNotifCount > 0) && (
+                              <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-rose-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center leading-none">
+                                {(project as any).unreadNotifCount > 9 ? '9+' : (project as any).unreadNotifCount}
                               </span>
                             )}
-                          </>
-                        ) : (
-                          <span className="italic text-[11px] text-slate-400">Chưa có</span>
-                        )}
+                          </button>
+                          {canManageItem(user, project, "EDIT_PROJECTS") && (<button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); openEditModal(project); }}
+                            onMouseDown={(e) => e.stopPropagation()}
+                            title="Sửa tên dự án"
+                            className="rounded p-1 text-slate-400 hover:text-blue-500 hover:bg-blue-50 transition cursor-pointer"
+                          >
+                            <span className="material-symbols-outlined text-[16px]">edit</span>
+                          </button>)}
+                          {canManageItem(user, project, "DELETE_PROJECTS") && (<button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); setProjectToDelete(project); }}
+                            onMouseDown={(e) => e.stopPropagation()}
+                            title={TEXT.deleteProject}
+                            aria-label="Xóa dự án"
+                            className="rounded p-1 text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition cursor-pointer"
+                          >
+                            <span className="material-symbols-outlined text-[16px]">delete</span>
+                          </button>)}
                       </div>
+                      {/* Bộ điều khiển modal cho nút chuông; không ẩn bằng display:none vì modal cần được render */}
+                      <AuditInfoCell
+                          updatedBy={project.updatedBy}
+                          updatedAt={project.updatedAt}
+                          projectCode={project.code}
+                          forceOpen={notifOpenProjectId === project.id}
+                          onForceOpenHandled={() => setNotifOpenProjectId(null)}
+                          hideTrigger
+                      />
                     </div>
+                  );
+                })}
+              </div>
+            )}
 
-                    {/* Tiến độ */}
-                    <div className="mt-auto pt-1">
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-[11px] text-slate-400">Tiến độ</span>
-                        <span className={`text-xs font-extrabold ${
-                          project.progress >= 100 ? 'text-emerald-600'
-                          : project.progress >= 60 ? 'text-blue-600'
-                          : project.progress > 0 ? 'text-amber-600' : 'text-slate-400'
-                        }`}>{project.progress}%</span>
-                      </div>
-                      <div className="h-1.5 w-full rounded-full bg-slate-100 overflow-hidden">
-                        <div className={`h-full rounded-full transition-all duration-700 ${barColor}`}
-                          style={{ width: `${project.progress}%` }} />
-                      </div>
-                    </div>
-                  </div>
+            {/* Chế độ xem 2: Bảng Danh Sách Gọn (Compact Table View) - Tối ưu 500+ dự án */}
+            {viewMode === 'table' && (
+              <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs">
+                <div className="overflow-x-auto custom-scrollbar">
+                  <table className="w-full text-left border-collapse text-xs min-w-[950px]">
+                    <thead className="bg-slate-50 text-slate-600 font-bold text-[11px] uppercase border-b border-slate-200 sticky top-0 z-10">
+                      <tr>
+                        <th className="py-2.5 px-3 w-12 text-center border-r border-slate-200">STT</th>
+                        <th className="py-2.5 px-3 w-32 border-r border-slate-200">Mã dự án</th>
+                        <th className="py-2.5 px-4 min-w-[200px] border-r border-slate-200">Tên dự án</th>
+                        <th className="py-2.5 px-3 w-36 border-r border-slate-200">Phân loại / CĐT</th>
+                        <th className="py-2.5 px-3 w-48 border-r border-slate-200">Nhân sự</th>
+                        <th className="py-2.5 px-3 w-32 text-center border-r border-slate-200">Tiến độ</th>
+                        <th className="py-2.5 px-3 w-28 text-center border-r border-slate-200">Trạng thái</th>
+                        <th className="py-2.5 px-3 w-28 text-center">Thao tác</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200 font-medium">
+                      {paginatedProjects.map((project, idx) => {
+                        const globalIdx = (safeCurrentPage - 1) * pageSize + idx;
+                        const statusCfg = project.status === 'completed'
+                          ? { dot: 'bg-emerald-500', text: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200' }
+                          : project.status === 'on_hold'
+                            ? { dot: 'bg-amber-500', text: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-200' }
+                            : { dot: 'bg-blue-500', text: 'text-blue-700', bg: 'bg-blue-50', border: 'border-blue-200' };
 
-                  {/* Nút sửa/xóa/thông báo — hiện khi hover trên desktop, luôn hiện trên mobile */}
-                  <div
-                    className="absolute top-[18px] right-3 flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity z-20 bg-white/95 backdrop-blur-xs px-1 py-0.5 rounded-lg border border-slate-200 shadow-xs"
-                    onClick={(e) => e.stopPropagation()}
-                    onMouseDown={(e) => e.stopPropagation()}
-                  >
-                      {/* Nút chuông thông báo */}
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          suppressProjectCardNavigationRef.current = true;
-                          window.setTimeout(() => {
-                            suppressProjectCardNavigationRef.current = false;
-                          }, 0);
-                          // Chuông của dự án mở toàn bộ lịch sử thay đổi của
-                          // dự án, không điều hướng tới riêng bản ghi mới nhất.
-                          setNotifOpenProjectId(project.id);
-                        }}
-                        onMouseDown={(e) => e.stopPropagation()}
-                        title="Xem toàn bộ thay đổi của dự án"
-                        className="relative rounded p-1 text-slate-400 hover:text-amber-500 hover:bg-amber-50 transition"
-                      >
-                        <span className="material-symbols-outlined text-[16px]">notifications</span>
-                        {Boolean((project as any).unreadNotifCount && (project as any).unreadNotifCount > 0) && (
-                          <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-rose-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center leading-none">
-                            {(project as any).unreadNotifCount > 9 ? '9+' : (project as any).unreadNotifCount}
-                          </span>
-                        )}
-                      </button>
-                      {canManageItem(user, project, "EDIT_PROJECTS") && (<button
-                        type="button"
-                        onClick={(e) => { e.stopPropagation(); openEditModal(project); }}
-                        onMouseDown={(e) => e.stopPropagation()}
-                        title="Sửa tên dự án"
-                        className="rounded p-1 text-slate-400 hover:text-blue-500 hover:bg-blue-50 transition"
-                      >
-                        <span className="material-symbols-outlined text-[16px]">edit</span>
-                      </button>)}
-                      {canManageItem(user, project, "DELETE_PROJECTS") && (<button
-                        type="button"
-                        onClick={(e) => { e.stopPropagation(); setProjectToDelete(project); }}
-                        onMouseDown={(e) => e.stopPropagation()}
-                        title={TEXT.deleteProject}
-                        aria-label="Xóa dự án"
-                        className="rounded p-1 text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition"
-                      >
-                        <span className="material-symbols-outlined text-[16px]">delete</span>
-                      </button>)}
-                  </div>
-                  {/* Bộ điều khiển modal cho nút chuông; không ẩn bằng display:none vì modal cần được render */}
-                  <AuditInfoCell
-                      updatedBy={project.updatedBy}
-                      updatedAt={project.updatedAt}
-                      projectCode={project.code}
-                      forceOpen={notifOpenProjectId === project.id}
-                      onForceOpenHandled={() => setNotifOpenProjectId(null)}
-                      hideTrigger
-                  />
+                        const barColor = project.progress >= 100 ? 'bg-emerald-500'
+                          : project.progress >= 60 ? 'bg-blue-500'
+                          : project.progress >= 30 ? 'bg-amber-400' : 'bg-slate-300';
+
+                        return (
+                          <tr
+                            key={project.id}
+                            onClick={() => openProjectTasks(project)}
+                            className="hover:bg-blue-50/50 cursor-pointer transition-colors group"
+                          >
+                            <td className="py-2.5 px-3 text-center font-mono font-bold text-slate-500 border-r border-slate-200">
+                              {String(globalIdx + 1).padStart(2, '0')}
+                            </td>
+                            <td className="py-2.5 px-3 border-r border-slate-200 font-mono text-[11px] font-bold text-slate-600 truncate max-w-[130px]">
+                              {project.code || '—'}
+                            </td>
+                            <td className="py-2.5 px-4 border-r border-slate-200">
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-primary hover:underline leading-snug line-clamp-1" title={project.name}>
+                                  {project.name}
+                                </span>
+                                {Boolean((project as any).unreadNotifCount && (project as any).unreadNotifCount > 0) && (
+                                  <span className="inline-flex items-center px-1.5 py-0.2 text-[10px] font-bold bg-rose-50 text-rose-600 rounded-full border border-rose-200 shrink-0">
+                                    {(project as any).unreadNotifCount}
+                                  </span>
+                                )}
+                              </div>
+                              {project.location && (
+                                <div className="text-[11px] text-slate-400 truncate max-w-[280px]">
+                                  {project.location}
+                                </div>
+                              )}
+                            </td>
+                            <td className="py-2.5 px-3 border-r border-slate-200">
+                              {project.category ? (
+                                <span className="inline-block bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded font-semibold text-[10px] border border-blue-100 max-w-[130px] truncate" title={project.category}>
+                                  {project.category}
+                                </span>
+                              ) : (project as any).client ? (
+                                <span className="text-[11px] text-slate-600 truncate block" title={(project as any).client}>
+                                  {(project as any).client}
+                                </span>
+                              ) : (
+                                <span className="text-slate-400 italic font-normal text-[11px]">—</span>
+                              )}
+                            </td>
+                            <td className="py-2.5 px-3 border-r border-slate-200">
+                              {project.memberNames?.length ? (
+                                <div className="flex items-center gap-1 truncate max-w-[180px]" title={project.memberNames.join(', ')}>
+                                  <span className="font-semibold text-slate-700 truncate text-[11px]">
+                                    {project.memberNames[0]}
+                                  </span>
+                                  {project.memberNames.length > 1 && (
+                                    <span className="text-[10px] px-1 py-0.2 bg-slate-100 text-slate-600 rounded-full font-bold shrink-0">
+                                      +{project.memberNames.length - 1}
+                                    </span>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-slate-400 italic text-[11px] font-normal">Chưa có</span>
+                              )}
+                            </td>
+                            <td className="py-2.5 px-3 text-center border-r border-slate-200">
+                              <div className="flex flex-col items-center gap-1 w-24 mx-auto">
+                                <span className={`text-[11px] font-extrabold ${
+                                  project.progress >= 100 ? 'text-emerald-600'
+                                  : project.progress >= 60 ? 'text-blue-600'
+                                  : project.progress > 0 ? 'text-amber-600' : 'text-slate-400'
+                                }`}>
+                                  {project.progress}%
+                                </span>
+                                <div className="h-1.5 w-full rounded-full bg-slate-100 overflow-hidden">
+                                  <div className={`h-full rounded-full ${barColor}`} style={{ width: `${project.progress}%` }} />
+                                </div>
+                              </div>
+                            </td>
+                            <td className="py-2.5 px-3 text-center border-r border-slate-200 whitespace-nowrap">
+                              <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold border ${statusCfg.bg} ${statusCfg.text} ${statusCfg.border}`}>
+                                <span className={`w-1.5 h-1.5 rounded-full ${statusCfg.dot}`} />
+                                {statusLabel[project.status]}
+                              </span>
+                            </td>
+                            <td className="py-2.5 px-3 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                              <div className="flex items-center justify-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setNotifOpenProjectId(project.id);
+                                  }}
+                                  title="Xem toàn bộ thay đổi của dự án"
+                                  className="p-1 rounded text-slate-400 hover:text-amber-500 hover:bg-amber-50 transition cursor-pointer"
+                                >
+                                  <span className="material-symbols-outlined text-[16px]">notifications</span>
+                                </button>
+                                {canManageItem(user, project, "EDIT_PROJECTS") && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); openEditModal(project); }}
+                                    title="Sửa tên dự án"
+                                    className="p-1 rounded text-slate-400 hover:text-blue-500 hover:bg-blue-50 transition cursor-pointer"
+                                  >
+                                    <span className="material-symbols-outlined text-[16px]">edit</span>
+                                  </button>
+                                )}
+                                {canManageItem(user, project, "DELETE_PROJECTS") && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); setProjectToDelete(project); }}
+                                    title="Xóa dự án"
+                                    className="p-1 rounded text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition cursor-pointer"
+                                  >
+                                    <span className="material-symbols-outlined text-[16px]">delete</span>
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
-              );
-            })}
+              </div>
+            )}
+
+            {/* Thanh Phân Trang Tinh Gọn (Pagination Toolbar) */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white border border-slate-200 px-4 py-2.5 rounded-xl shadow-xs text-xs font-semibold text-slate-600 mt-2">
+              <div className="flex items-center gap-2">
+                <span>
+                  Hiển thị <strong className="text-slate-800">{enhancedProjects.length === 0 ? 0 : (safeCurrentPage - 1) * pageSize + 1} - {Math.min(safeCurrentPage * pageSize, enhancedProjects.length)}</strong> / <strong className="text-slate-800">{enhancedProjects.length}</strong> dự án
+                </span>
+                <span className="text-slate-300">|</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-slate-500 text-[11px] font-normal">Số lượng:</span>
+                  <select
+                    value={pageSize}
+                    onChange={(e) => {
+                      setPageSize(Number(e.target.value));
+                      setCurrentPage(1);
+                    }}
+                    className="border border-slate-200 rounded-lg px-2 py-1 bg-white text-xs font-bold text-slate-700 outline-none focus:border-primary cursor-pointer shadow-2xs"
+                  >
+                    <option value={12}>12 / trang</option>
+                    <option value={24}>24 / trang</option>
+                    <option value={48}>48 / trang</option>
+                    <option value={96}>96 / trang</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  disabled={safeCurrentPage <= 1}
+                  onClick={() => setCurrentPage(1)}
+                  className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 font-medium hover:bg-slate-50 transition-colors disabled:cursor-not-allowed disabled:opacity-40 shadow-xs cursor-pointer"
+                >
+                  Đầu
+                </button>
+                <button
+                  type="button"
+                  disabled={safeCurrentPage <= 1}
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 font-medium hover:bg-slate-50 transition-colors disabled:cursor-not-allowed disabled:opacity-40 shadow-xs cursor-pointer"
+                >
+                  Trước
+                </button>
+                <span className="px-2.5 font-bold text-slate-700 whitespace-nowrap">
+                  Trang {safeCurrentPage} / {totalPages}
+                </span>
+                <button
+                  type="button"
+                  disabled={safeCurrentPage >= totalPages}
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 font-medium hover:bg-slate-50 transition-colors disabled:cursor-not-allowed disabled:opacity-40 shadow-xs cursor-pointer"
+                >
+                  Sau
+                </button>
+                <button
+                  type="button"
+                  disabled={safeCurrentPage >= totalPages}
+                  onClick={() => setCurrentPage(totalPages)}
+                  className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 font-medium hover:bg-slate-50 transition-colors disabled:cursor-not-allowed disabled:opacity-40 shadow-xs cursor-pointer"
+                >
+                  Cuối
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </PullToRefresh>
