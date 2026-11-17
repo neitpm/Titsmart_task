@@ -1642,23 +1642,6 @@ export const ProjectManagementPage: React.FC = () => {
                 <span>
                   Hiển thị <strong className="text-slate-800">{enhancedProjects.length === 0 ? 0 : (safeCurrentPage - 1) * pageSize + 1} - {Math.min(safeCurrentPage * pageSize, enhancedProjects.length)}</strong> / <strong className="text-slate-800">{enhancedProjects.length}</strong> dự án
                 </span>
-                <span className="text-slate-300">|</span>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-slate-500 text-[11px] font-normal">Số lượng:</span>
-                  <select
-                    value={pageSize}
-                    onChange={(e) => {
-                      setPageSize(Number(e.target.value));
-                      setCurrentPage(1);
-                    }}
-                    className="border border-slate-200 rounded-lg px-2 py-1 bg-white text-xs font-bold text-slate-700 outline-none focus:border-primary cursor-pointer shadow-2xs"
-                  >
-                    <option value={12}>12 / trang</option>
-                    <option value={24}>24 / trang</option>
-                    <option value={48}>48 / trang</option>
-                    <option value={96}>96 / trang</option>
-                  </select>
-                </div>
               </div>
 
               <div className="flex items-center gap-1.5">
