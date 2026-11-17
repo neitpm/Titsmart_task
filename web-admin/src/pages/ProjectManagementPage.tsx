@@ -1123,7 +1123,7 @@ export const ProjectManagementPage: React.FC = () => {
       <LoadingSpinner loading={loading} message={loadingMessage} />
       <Toast show={toastState.show} message={toastState.message} type={toastState.type} />
 
-      <section className="border-b border-slate-200 bg-white shadow-xs px-3 sm:px-4 md:px-6 py-2.5 flex flex-wrap items-center justify-between gap-2.5 relative z-10 shrink-0 no-drag-region electron-no-drag" style={{ WebkitAppRegion: 'no-drag' } as any}>
+      <section className="border-b border-slate-200 bg-white shadow-xs px-2 sm:px-3 py-2 flex flex-wrap items-center justify-between gap-2.5 relative z-10 shrink-0 no-drag-region electron-no-drag" style={{ WebkitAppRegion: 'no-drag' } as any}>
         {/* Nhóm bộ lọc bên trái: Tiêu đề + Trạng thái + Phân loại + Ngày */}
         <div className="flex items-center gap-2 flex-wrap min-w-0">
           <div className="border-l-4 border-primary pl-2 flex items-center shrink-0">
@@ -1268,21 +1268,21 @@ export const ProjectManagementPage: React.FC = () => {
         onRefresh={async () => {
           await fetchProjects();
         }}
-        className="flex-1 p-3 sm:p-4 pb-6 md:p-6 md:pb-6"
+        className={`flex-1 ${viewMode === 'table' ? 'p-0 sm:p-2 md:p-3' : 'p-2 sm:p-3 pb-6 md:p-4 md:pb-6'}`}
       >
         {(isFetchingProjects && projects.length === 0 && tasks.length === 0) ? (
-          <div className="text-center py-16 bg-white border border-dashed border-slate-300 rounded-xl flex flex-col items-center justify-center">
+          <div className="text-center py-16 m-2 bg-white border border-dashed border-slate-300 rounded-xl flex flex-col items-center justify-center">
             <div className="w-10 h-10 border-3 border-primary/20 border-t-primary rounded-full animate-spin" />
             <h3 className="mt-3 font-bold text-slate-700">Đang tải dữ liệu...</h3>
             <p className="text-slate-500 text-sm mt-1">Vui lòng chờ trong giây lát</p>
           </div>
         ) : enhancedProjects.length === 0 ? (
-          <div className="text-center py-16 bg-white border border-dashed border-slate-300 rounded-xl">
+          <div className="text-center py-16 m-2 bg-white border border-dashed border-slate-300 rounded-xl">
             <span className="material-symbols-outlined text-5xl text-slate-300">folder_open</span>
             <h3 className="mt-3 font-bold text-slate-700">{searchQuery ? TEXT.noProjectFound : TEXT.noProject}</h3>
           </div>
         ) : (
-          <div className="flex flex-col gap-4">
+          <div className={`flex flex-col ${viewMode === 'table' ? 'gap-2' : 'gap-4'}`}>
             {/* Chế độ xem 1: Lưới Thẻ (Grid Cards) */}
             {viewMode === 'grid' && (
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3 sm:gap-4">
@@ -1486,7 +1486,7 @@ export const ProjectManagementPage: React.FC = () => {
 
             {/* Chế độ xem 2: Bảng Danh Sách Gọn (Compact Table View) - Tối ưu 500+ dự án */}
             {viewMode === 'table' && (
-              <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs">
+              <div className="bg-white border-y sm:border sm:rounded-xl border-slate-200 overflow-hidden shadow-xs">
                 <div className="overflow-x-auto custom-scrollbar">
                   <table className="w-full text-left border-collapse text-xs min-w-[950px]">
                     <thead className="bg-slate-50 text-slate-600 font-bold text-[11px] uppercase border-b border-slate-200 sticky top-0 z-10">
@@ -1637,7 +1637,7 @@ export const ProjectManagementPage: React.FC = () => {
             )}
 
             {/* Thanh Phân Trang Tinh Gọn (Pagination Toolbar) */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white border border-slate-200 px-4 py-2.5 rounded-xl shadow-xs text-xs font-semibold text-slate-600 mt-2">
+            <div className={`flex flex-col sm:flex-row items-center justify-between gap-3 bg-white border border-slate-200 px-3 sm:px-4 py-2 sm:py-2.5 ${viewMode === 'table' ? 'rounded-none sm:rounded-xl mx-0 sm:mx-1' : 'rounded-xl'} shadow-xs text-xs font-semibold text-slate-600 mt-1 sm:mt-2`}>
               <div className="flex items-center gap-2">
                 <span>
                   Hiển thị <strong className="text-slate-800">{enhancedProjects.length === 0 ? 0 : (safeCurrentPage - 1) * pageSize + 1} - {Math.min(safeCurrentPage * pageSize, enhancedProjects.length)}</strong> / <strong className="text-slate-800">{enhancedProjects.length}</strong> dự án
