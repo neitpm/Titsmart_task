@@ -279,10 +279,12 @@ export const MyTasksPage: React.FC = () => {
 
     const constrStatus = task.constrStatus && task.constrStatus !== 'Chưa thi công' ? task.constrStatus : 'Đang thi công';
     const nextProgress = calculateTaskProgressFromStatuses(task.purchaseStatus, constrStatus);
+    const todayStr = new Date().toISOString().split('T')[0];
     updateTask(task.id, { 
       status: 'Đang làm', 
       progress: nextProgress, 
-      constrStatus: constrStatus 
+      constrStatus: constrStatus,
+      startDate: task.startDate || todayStr
     });
     triggerToast('Đã xác nhận nhận việc!', 'success');
     
@@ -465,11 +467,13 @@ export const MyTasksPage: React.FC = () => {
       triggerToast('Chỉ người giao việc mới có quyền nghiệm thu!', 'warning');
       return;
     }
+    const todayStr = new Date().toISOString().split('T')[0];
     updateTask(task.id, { 
       status: 'Hoàn thành', 
       progress: 1, 
       constrStatus: 'Đã hoàn thành', 
-      isDone: true 
+      isDone: true,
+      completedAt: task.completedAt || todayStr
     });
     triggerToast(`Đã nghiệm thu hoàn thành: "${task.name}"!`, 'success');
 

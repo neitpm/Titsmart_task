@@ -137,17 +137,18 @@ export function getTaskTimeBounds(task: Task): TaskTimeBounds {
     // fallback an toàn nếu notes không theo format JSON thread
   }
 
-  // 2. Nếu task đã hoàn thành mà chưa có completedDate -> lấy updatedAt hoặc createdAt
+  // 2. Nếu task đã hoàn thành mà chưa có completedDate -> lấy completedAt nếu có, không tự gán bừa từ createdAt hay updatedAt
   if (isDone) {
-    if (!result.completedDate) {
-      result.completedDate = result.updatedDate || result.createdDate;
+    if (!result.completedDate && task.completedAt) {
+      result.completedDate = String(task.completedAt).slice(0, 10);
     }
   }
 
-  // 3. Nếu chưa có acceptedDate:
-  // Nếu task đang làm hoặc đã hoàn thành, mốc nhận việc mặc định là createdAt (ngày được giao/nhận) hoặc updatedAt nếu tạo trước đó
-  if (!result.acceptedDate) {
-    result.acceptedDate = result.createdDate || result.updatedDate;
+  // 3. Thời điểm nhận việc (acceptedDate):
+  // Chỉ ghi nhận khi nhân sự thực sự xác nhận nhận việc (startDate đã được cập nhật hoặc có bản ghi trao đổi "nhận việc").
+  // TUYỆT ĐỐI không lấy createdAt (ngày tạo công việc) gán vào ngày bắt đầu nhận việc!
+  if (!result.acceptedDate && task.startDate) {
+    result.acceptedDate = String(task.startDate).slice(0, 10);
   }
 
   return result;

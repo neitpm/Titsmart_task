@@ -144,10 +144,12 @@ export const TaskAssignmentPage: React.FC = () => {
       const nextStatus = 'Đang làm';
       const constrStatus = taskToAccept.constrStatus && taskToAccept.constrStatus !== 'Chưa thi công' ? taskToAccept.constrStatus : 'Đang thi công';
       const nextProgress = calculateTaskProgressFromStatuses(taskToAccept.purchaseStatus, constrStatus);
+      const todayStr = new Date().toISOString().split('T')[0];
       await updateTask(taskToAccept.id, {
         status: nextStatus,
         constrStatus: constrStatus,
-        progress: nextProgress
+        progress: nextProgress,
+        startDate: taskToAccept.startDate || todayStr
       });
 
       triggerToast(`Đã nhận việc thành công: "${taskToAccept.name}"!`, 'success');
@@ -179,7 +181,14 @@ export const TaskAssignmentPage: React.FC = () => {
       triggerToast('Chỉ người giao việc mới có quyền nghiệm thu!', 'warning');
       return;
     }
-    updateTask(task.id, { status: 'Hoàn thành', progress: 1, constrStatus: 'Đã hoàn thành', isDone: true });
+    const todayStr = new Date().toISOString().split('T')[0];
+    updateTask(task.id, {
+      status: 'Hoàn thành',
+      progress: 1,
+      constrStatus: 'Đã hoàn thành',
+      isDone: true,
+      completedAt: task.completedAt || todayStr
+    });
     triggerToast(`Đã nghiệm thu hoàn thành: "${task.name}"!`, 'success');
 
     const store = useRealtimeStore.getState();
