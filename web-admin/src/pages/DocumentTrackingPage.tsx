@@ -268,7 +268,7 @@ export const DocumentTrackingPage: React.FC = () => {
   const [filterDateTo, setFilterDateTo] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [documentPage, setDocumentPage] = useState(1);
-  const [documentPageSize, setDocumentPageSize] = useState(50);
+  const [documentPageSize, setDocumentPageSize] = useState(25);
 
   // Helper for due date calculation
   const getDueInfo = (track: DocumentTrack) => {

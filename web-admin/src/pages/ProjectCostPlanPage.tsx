@@ -1807,7 +1807,7 @@ export const ProjectCostPlanPage: React.FC = () => {
   const [expenseFilterSpender, setExpenseFilterSpender] = useState('all');
   const [expenseFilterUnit, setExpenseFilterUnit] = useState('all');
   const [expensePage, setExpensePage] = useState(1);
-  const [expensePageSize, setExpensePageSize] = useState(50);
+  const [expensePageSize, setExpensePageSize] = useState(25);
 
   // Labor Tab Filters
   const [laborFilterDateFrom, setLaborFilterDateFrom] = useState('');

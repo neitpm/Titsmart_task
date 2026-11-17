@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useRef } from 'react';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { useRealtimeStore } from '../../services/realtimeStore';
 import { ProjectMaterialPlan, ProjectPurchasing, getStatusColorStyle, getTextColorStyle, PURCHASE_STATUS_OPTIONS, CONSTRUCTION_STATUS_OPTIONS } from '../../types';
 import { CustomSelect } from '@/components/common/CustomSelect';
@@ -465,6 +465,12 @@ export const MaterialAndPurchasingTab: React.FC<MaterialAndPurchasingTabProps> =
   };
 
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
+  const [tablePage, setTablePage] = useState(1);
+  const TABLE_PAGE_SIZE = 25;
+
+  useEffect(() => {
+    setTablePage(1);
+  }, [data, purchasingData, activeSubTab, statusFilter, searchQuery]);
   const toggleSection = (sectionKey: string) => {
     setCollapsedSections(prev => {
       const next = new Set(prev);
@@ -1624,8 +1630,11 @@ export const MaterialAndPurchasingTab: React.FC<MaterialAndPurchasingTabProps> =
             {groupedData.length === 0 ? (
               <tr><td colSpan={colSpanCount + 2} className="p-8 text-center text-slate-400 whitespace-nowrap">{TEXT.empty}</td></tr>
             ) : (
-              groupedData
-                .filter(plan => plan.isSec || !collapsedSections.has(plan._sectionKey || ''))
+              (() => {
+                const uncollapsedRows = groupedData.filter(plan => plan.isSec || !collapsedSections.has(plan._sectionKey || ''));
+                const start = (tablePage - 1) * TABLE_PAGE_SIZE;
+                return uncollapsedRows.slice(start, start + TABLE_PAGE_SIZE);
+              })()
                 .map((plan, index) => {
                   const parent = plan.isSec || isParentRow(plan);
                   const depth = plan.depth || 0;
@@ -2306,6 +2315,59 @@ export const MaterialAndPurchasingTab: React.FC<MaterialAndPurchasingTabProps> =
           )}
         </table>
       </div>
+
+      {/* Pagination Controls */}
+      {(() => {
+        const uncollapsedRows = groupedData.filter(plan => plan.isSec || !collapsedSections.has(plan._sectionKey || ''));
+        const totalRows = uncollapsedRows.length;
+        const totalPages = Math.max(1, Math.ceil(totalRows / TABLE_PAGE_SIZE));
+        if (totalRows === 0) return null;
+        return (
+          <div className="flex flex-wrap items-center justify-center gap-4 border-t border-slate-200 bg-white px-4 py-2.5 text-xs text-slate-600 shrink-0 select-none">
+            <div className="flex items-center gap-2">
+              <span className="font-medium whitespace-nowrap">Hiển thị {(tablePage - 1) * TABLE_PAGE_SIZE + 1}-{Math.min(tablePage * TABLE_PAGE_SIZE, totalRows)} / {totalRows} mục (Cố định 25 / trang)</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                disabled={tablePage <= 1}
+                onClick={() => setTablePage(1)}
+                className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 font-medium hover:bg-slate-50 transition-colors disabled:cursor-not-allowed disabled:opacity-40 shadow-xs"
+              >
+                Đầu
+              </button>
+              <button
+                type="button"
+                disabled={tablePage <= 1}
+                onClick={() => setTablePage(p => Math.max(1, p - 1))}
+                className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 font-medium hover:bg-slate-50 transition-colors disabled:cursor-not-allowed disabled:opacity-40 shadow-xs"
+              >
+                Trước
+              </button>
+              <span className="px-3 font-semibold text-slate-700 whitespace-nowrap">
+                Trang {tablePage} / {totalPages}
+              </span>
+              <button
+                type="button"
+                disabled={tablePage >= totalPages}
+                onClick={() => setTablePage(p => Math.min(totalPages, p + 1))}
+                className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 font-medium hover:bg-slate-50 transition-colors disabled:cursor-not-allowed disabled:opacity-40 shadow-xs"
+              >
+                Sau
+              </button>
+              <button
+                type="button"
+                disabled={tablePage >= totalPages}
+                onClick={() => setTablePage(totalPages)}
+                className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 font-medium hover:bg-slate-50 transition-colors disabled:cursor-not-allowed disabled:opacity-40 shadow-xs"
+              >
+                Cuối
+              </button>
+            </div>
+          </div>
+        );
+      })()}
+
       <Toast
         show={toast.show}
         message={toast.message}

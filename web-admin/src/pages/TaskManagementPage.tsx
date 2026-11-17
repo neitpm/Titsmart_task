@@ -676,6 +676,12 @@ const hasSyncedRef = useRef(false);
 
   // Collapsed sections state: Set of sectionName strings that are collapsed
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
+  const [taskPage, setTaskPage] = useState(1);
+  const TASK_PAGE_SIZE = 25;
+
+  useEffect(() => {
+    setTaskPage(1);
+  }, [projectId, selectedProjectCode, filterPurchase, filterConstr, assignFilter, searchTerm]);
 
   const toggleSection = (sectionKey: string) => {
     setCollapsedSections(prev => {
@@ -2806,10 +2812,14 @@ const hasSyncedRef = useRef(false);
             </thead>
             <tbody className="divide-y divide-slate-200 font-medium text-slate-700">
               {groupedTasks.length === 0 ? (<tr><td colSpan={8} className="p-8 text-center text-slate-400 whitespace-nowrap">Không có hạng mục nào phù hợp với bộ lọc đã chọn</td></tr>) : (
-                groupedTasks.filter((t) => {
-                  if (t.isSectionHeader) return true;
-                  return !collapsedSections.has(t._sectionKey || '');
-                }).map((t, idx) => {
+                (() => {
+                  const uncollapsedTasks = groupedTasks.filter((t) => {
+                    if (t.isSectionHeader) return true;
+                    return !collapsedSections.has(t._sectionKey || '');
+                  });
+                  const start = (taskPage - 1) * TASK_PAGE_SIZE;
+                  return uncollapsedTasks.slice(start, start + TASK_PAGE_SIZE);
+                })().map((t, idx) => {
                   if (t.isSectionHeader) {
                     const isCollapsed = collapsedSections.has(t._sectionKey || '');
                     return (
@@ -3111,6 +3121,61 @@ const hasSyncedRef = useRef(false);
             </tbody>
           </table>
         </div>
+
+        {/* Pagination Controls */}
+        {(() => {
+          const uncollapsedTasks = groupedTasks.filter((t) => {
+            if (t.isSectionHeader) return true;
+            return !collapsedSections.has(t._sectionKey || '');
+          });
+          const totalRows = uncollapsedTasks.length;
+          const totalPages = Math.max(1, Math.ceil(totalRows / TASK_PAGE_SIZE));
+          if (totalRows === 0) return null;
+          return (
+            <div className="flex flex-wrap items-center justify-center gap-4 border-t border-slate-200 bg-white px-4 py-2.5 text-xs text-slate-600 shrink-0 select-none">
+              <div className="flex items-center gap-2">
+                <span className="font-medium whitespace-nowrap">Hiển thị {(taskPage - 1) * TASK_PAGE_SIZE + 1}-{Math.min(taskPage * TASK_PAGE_SIZE, totalRows)} / {totalRows} công việc (Cố định 25 / trang)</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  disabled={taskPage <= 1}
+                  onClick={() => setTaskPage(1)}
+                  className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 font-medium hover:bg-slate-50 transition-colors disabled:cursor-not-allowed disabled:opacity-40 shadow-xs"
+                >
+                  Đầu
+                </button>
+                <button
+                  type="button"
+                  disabled={taskPage <= 1}
+                  onClick={() => setTaskPage(p => Math.max(1, p - 1))}
+                  className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 font-medium hover:bg-slate-50 transition-colors disabled:cursor-not-allowed disabled:opacity-40 shadow-xs"
+                >
+                  Trước
+                </button>
+                <span className="px-3 font-semibold text-slate-700 whitespace-nowrap">
+                  Trang {taskPage} / {totalPages}
+                </span>
+                <button
+                  type="button"
+                  disabled={taskPage >= totalPages}
+                  onClick={() => setTaskPage(p => Math.min(totalPages, p + 1))}
+                  className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 font-medium hover:bg-slate-50 transition-colors disabled:cursor-not-allowed disabled:opacity-40 shadow-xs"
+                >
+                  Sau
+                </button>
+                <button
+                  type="button"
+                  disabled={taskPage >= totalPages}
+                  onClick={() => setTaskPage(totalPages)}
+                  className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 font-medium hover:bg-slate-50 transition-colors disabled:cursor-not-allowed disabled:opacity-40 shadow-xs"
+                >
+                  Cuối
+                </button>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Clean Footer */}
       </PullToRefresh>
