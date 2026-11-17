@@ -37,6 +37,7 @@ export const TaskAssignmentPage: React.FC = () => {
   const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedEngineerIds, setSelectedEngineerIds] = useState<string[]>([]);
+  const [batchDueDate, setBatchDueDate] = useState('');
   const [assignNote, setAssignNote] = useState('');
   const [selectedFile, setSelectedFile] = useState<{ url: string; type: 'image' | 'file'; name: string } | null>(null);
   const [showAttachMenu, setShowAttachMenu] = useState(false);
@@ -1036,6 +1037,7 @@ export const TaskAssignmentPage: React.FC = () => {
         followerNames: followerNames.length > 0 ? followerNames : undefined,
         assignerId: assignerId,
         assignerName: assignerName,
+        dueDate: batchDueDate ? batchDueDate : existingTask?.dueDate,
         status: nextStatus,
         notes: updatedNotes
       });
@@ -1045,9 +1047,10 @@ export const TaskAssignmentPage: React.FC = () => {
     store.logActivity(`Quản lý ${assignerName} đã GIAO ${readyTasks.length} CÔNG VIỆC cho ${engNamesStr}`, 'Hệ thống');
 
     if (store.addNotification) {
+      const deadlineText = batchDueDate ? ` (Hạn hoàn thành: ${batchDueDate.split('-').reverse().join('/')})` : '';
       store.addNotification({
         title: `Giao việc: ${engNamesStr}`,
-        message: `${assignerName} đã giao ${readyTasks.length} công việc mới cho ${engNamesStr}${assignNote.trim() ? `: "${assignNote.trim()}"` : ''}${selectedFile ? (selectedFile.type === 'image' ? ' [Kèm 1 hình ảnh]' : ` [Kèm tệp: ${selectedFile.name}]`) : '.'}`,
+        message: `${assignerName} đã giao ${readyTasks.length} công việc mới cho ${engNamesStr}${deadlineText}${assignNote.trim() ? `: "${assignNote.trim()}"` : ''}${selectedFile ? (selectedFile.type === 'image' ? ' [Kèm 1 hình ảnh]' : ` [Kèm tệp: ${selectedFile.name}]`) : '.'}`,
         link: '/my-tasks?tab=pending&category=project',
         type: `task_assigned:::${engIdsStr}:::${engNamesStr}`,
         icon: 'assignment_ind',
@@ -1058,7 +1061,7 @@ export const TaskAssignmentPage: React.FC = () => {
       if (batchFollowerIds.length > 0) {
         store.addNotification({
           title: `Theo dõi ${selectedTaskIds.length} công việc mới`,
-          message: `${assignerName} đã thêm bạn vào danh sách THEO DÕI ${selectedTaskIds.length} công việc giao cho ${engNamesStr}.`,
+          message: `${assignerName} đã thêm bạn vào danh sách THEO DÕI ${selectedTaskIds.length} công việc giao cho ${engNamesStr}${deadlineText}.`,
           link: '/my-tasks?category=project',
           type: `task_follower:::${batchFollowerIds.join(',')}:::${followerNames.join(',')}`,
           icon: 'visibility',
@@ -1073,6 +1076,7 @@ export const TaskAssignmentPage: React.FC = () => {
     setIsModalOpen(false);
     setSelectedEngineerIds([]);
     setBatchFollowerIds([]);
+    setBatchDueDate('');
     setAssignNote('');
     setSelectedFile(null);
     setShowAttachMenu(false);
@@ -1618,6 +1622,7 @@ export const TaskAssignmentPage: React.FC = () => {
                   <th className="py-2.5 px-4 border-r border-slate-200">Nội dung công việc</th>
                   <th className="py-2.5 px-3 w-36 border-r border-slate-200">Người phụ trách</th>
                   <th className="py-2.5 px-3 w-36 border-r border-slate-200">Người theo dõi</th>
+                  <th className="py-2.5 px-3 w-28 text-center border-r border-slate-200">Thời hạn / Hạn</th>
                   <th className="py-2.5 px-3 w-24 text-center border-r border-slate-200">Khối lượng</th>
                   <th className="py-2.5 px-3 w-28 text-center border-r border-slate-200">Trạng thái</th>
                   <th className="py-2.5 px-4 w-36 border-r border-slate-200 text-center">Người cập nhật</th>
@@ -1627,7 +1632,7 @@ export const TaskAssignmentPage: React.FC = () => {
               <tbody className="divide-y divide-slate-200 font-medium">
                 {projectDisplayedTasks.length === 0 ? (
                   <tr>
-                    <td colSpan={projectFilterStatus === 'unassigned' ? 8 : 7} className="py-8 text-center text-slate-400 italic">
+                    <td colSpan={projectFilterStatus === 'unassigned' ? 9 : 8} className="py-8 text-center text-slate-400 italic">
                       Không có công việc dự án nào phù hợp.
                     </td>
                   </tr>
@@ -1652,7 +1657,7 @@ export const TaskAssignmentPage: React.FC = () => {
                               />
                             </td>
                           )}
-                          <td colSpan={7} className="py-2 px-3">
+                          <td colSpan={8} className="py-2 px-3">
                             <div className="flex items-center justify-between gap-2">
                               <button
                                 type="button"
@@ -1787,6 +1792,35 @@ export const TaskAssignmentPage: React.FC = () => {
                                     </div>
                                   ) : (
                                     <span className="text-slate-400 italic font-normal text-[11px]">—</span>
+                                  );
+                                })()}
+                              </td>
+                              <td className="py-2.5 px-3 text-center border-r border-slate-200">
+                                {(() => {
+                                  const isDone = isTaskActuallyDone(t);
+                                  const todayStr = new Date().toISOString().split('T')[0];
+                                  const isOverdue = !isDone && t.dueDate && String(t.dueDate).split('T')[0] < todayStr;
+                                  const formatDateStr = (d?: string) => {
+                                    if (!d) return '—';
+                                    const parts = d.split('-');
+                                    return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : d;
+                                  };
+                                  if (!t.dueDate) {
+                                    return <span className="text-slate-400 font-normal">—</span>;
+                                  }
+                                  return (
+                                    <span
+                                      className={`font-mono text-xs ${
+                                        isDone
+                                          ? 'text-slate-500'
+                                          : isOverdue
+                                          ? 'text-rose-600 font-bold'
+                                          : 'text-slate-700 font-semibold'
+                                      }`}
+                                      title={isOverdue ? 'Đã quá hạn hoàn thành!' : 'Hạn hoàn thành'}
+                                    >
+                                      {formatDateStr(t.dueDate)}
+                                    </span>
                                   );
                                 })()}
                               </td>
@@ -2249,6 +2283,32 @@ export const TaskAssignmentPage: React.FC = () => {
                     })}
                   </div>
                 )}
+              </div>
+
+              {/* Hạn hoàn thành (Deadline) */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-bold text-slate-700 flex items-center justify-between">
+                  <span>Hạn hoàn thành (Deadline)</span>
+                  <span className="text-xs font-normal text-slate-400">(Tùy chọn)</span>
+                </label>
+                <div className="relative flex items-center">
+                  <input
+                    type="date"
+                    value={batchDueDate}
+                    onChange={(e) => setBatchDueDate(e.target.value)}
+                    className="w-full h-[38px] px-3 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-medium text-slate-700 cursor-pointer"
+                  />
+                  {batchDueDate && (
+                    <button
+                      type="button"
+                      onClick={() => setBatchDueDate('')}
+                      className="absolute right-8 text-slate-400 hover:text-slate-600 cursor-pointer p-1"
+                      title="Xóa hạn hoàn thành"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">close</span>
+                    </button>
+                  )}
+                </div>
               </div>
 
               <div className="flex flex-col gap-1.5 relative">
