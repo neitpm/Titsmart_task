@@ -307,14 +307,17 @@ export const DocumentTrackingPage: React.FC = () => {
     return Array.from(pCodes).sort();
   }, [documentTracks, projects]);
 
+  const defaultPaymentStatuses = ['Chưa thanh toán', 'Đã thanh toán', 'Đã thanh toán 1 phần', 'Chờ thanh toán', 'Đã quyết toán'];
+  const defaultDocStatuses = ['Chưa nhận', 'Đã nhận đủ', 'Chưa ký', 'Đã ký', 'Đã gửi đi', 'Đã đổi gửi lại', 'Đã hoàn thành'];
+
   const docStatusOptions = useMemo(() => {
-    const statuses = new Set<string>();
+    const statuses = new Set<string>(defaultDocStatuses);
     documentTracks.forEach(t => { if (t.docStatus) statuses.add(t.docStatus); });
     return Array.from(statuses).sort();
   }, [documentTracks]);
 
   const paymentStatusOptions = useMemo(() => {
-    const statuses = new Set<string>();
+    const statuses = new Set<string>(defaultPaymentStatuses);
     documentTracks.forEach(t => { if (t.paymentStatus) statuses.add(t.paymentStatus); });
     return Array.from(statuses).sort();
   }, [documentTracks]);
@@ -1431,21 +1434,37 @@ export const DocumentTrackingPage: React.FC = () => {
             </div>
             <div>
               <label className="block font-bold mb-1 text-slate-800">Thanh toán</label>
-              <CustomSelect value={newDoc.paymentStatus || 'Chưa thanh toán'} onChange={(e) => setNewDoc({...newDoc, paymentStatus: e.target.value})} className="w-full border border-slate-300 rounded-lg p-2 bg-white font-bold">
-                <option value="Chưa thanh toán">Chưa thanh toán</option>
-                <option value="Đã thanh toán">Đã thanh toán</option>
-              </CustomSelect>
+              <input 
+                type="text"
+                list="payment-status-list"
+                value={newDoc.paymentStatus || ''} 
+                onChange={(e) => setNewDoc({...newDoc, paymentStatus: e.target.value})} 
+                placeholder="Nhập hoặc chọn trạng thái..."
+                className="w-full border border-slate-300 rounded-lg p-2 bg-white font-bold text-slate-900 focus:ring-1 focus:ring-primary focus:outline-none" 
+              />
+              <datalist id="payment-status-list">
+                {paymentStatusOptions.map(opt => (
+                  <option key={opt} value={opt} />
+                ))}
+              </datalist>
             </div>
           </div>
           <div className="grid grid-cols-2 gapx-1 py-1">
             <div>
               <label className="block font-bold mb-1">Trạng thái hồ sơ</label>
-              <CustomSelect value={newDoc.docStatus || 'Chưa ký'} onChange={(e) => setNewDoc(prev => ({...prev, docStatus: e.target.value, ...(e.target.value === 'Đã nhận đủ' || e.target.value === 'Đã ký') && !prev.receiveDate ? { receiveDate: new Date().toISOString().split('T')[0] } : {}}))} className="w-full border rounded-lg p-2 bg-white">
-                <option value="Chưa nhận">Chưa nhận</option>
-                <option value="Đã nhận đủ">Đã nhận đủ</option>
-                <option value="Đã ký">Đã ký</option>
-                <option value="Đã đổi gửi lại">Đã đổi gửi lại</option>
-              </CustomSelect>
+              <input 
+                type="text"
+                list="doc-status-list"
+                value={newDoc.docStatus || ''} 
+                onChange={(e) => setNewDoc(prev => ({...prev, docStatus: e.target.value, ...(e.target.value === 'Đã nhận đủ' || e.target.value === 'Đã ký') && !prev.receiveDate ? { receiveDate: new Date().toISOString().split('T')[0] } : {}}))} 
+                placeholder="Nhập hoặc chọn trạng thái..."
+                className="w-full border rounded-lg p-2 bg-white font-bold text-slate-900 focus:ring-1 focus:ring-primary focus:outline-none" 
+              />
+              <datalist id="doc-status-list">
+                {docStatusOptions.map(opt => (
+                  <option key={opt} value={opt} />
+                ))}
+              </datalist>
             </div>
               <div className="flex items-center pt-5 gap-2"><input type="checkbox" checked={Boolean(newDoc.isCompleted)} onChange={(e) => setNewDoc(prev => ({...prev, isCompleted: e.target.checked, ...(e.target.checked ? { docStatus: 'Đã ký' } : {})}))} className="w-4 h-4" /> <span className="font-bold">Đã hoàn tất hồ sơ</span></div>
           </div>
@@ -1627,21 +1646,37 @@ export const DocumentTrackingPage: React.FC = () => {
                 </div>
                 <div>
                   <label className="block font-bold mb-1 text-slate-800">Thanh toán</label>
-                  <CustomSelect value={editingDoc.paymentStatus || 'Chưa thanh toán'} onChange={(e) => setEditingDoc({...editingDoc, paymentStatus: e.target.value})} className="w-full border border-slate-300 rounded-lg p-2 bg-white font-bold">
-                    <option value="Chưa thanh toán">Chưa thanh toán</option>
-                    <option value="Đã thanh toán">Đã thanh toán</option>
-                  </CustomSelect>
+                  <input 
+                    type="text"
+                    list="payment-status-list-edit"
+                    value={editingDoc.paymentStatus || ''} 
+                    onChange={(e) => setEditingDoc({...editingDoc, paymentStatus: e.target.value})} 
+                    placeholder="Nhập hoặc chọn trạng thái..."
+                    className="w-full border border-slate-300 rounded-lg p-2 bg-white font-bold text-slate-900 focus:ring-1 focus:ring-primary focus:outline-none" 
+                  />
+                  <datalist id="payment-status-list-edit">
+                    {paymentStatusOptions.map(opt => (
+                      <option key={opt} value={opt} />
+                    ))}
+                  </datalist>
                 </div>
               </div>
               <div className="grid grid-cols-2 gapx-1 py-1">
                 <div>
                   <label className="block font-bold mb-1">Trạng thái hồ sơ</label>
-                  <CustomSelect value={editingDoc.docStatus || 'Chưa ký'} onChange={(e) => setEditingDoc(prev => prev ? ({...prev, docStatus: e.target.value, ...(e.target.value === 'Đã nhận đủ' || e.target.value === 'Đã ký') && !prev.receiveDate ? { receiveDate: new Date().toISOString().split('T')[0] } : {}}) : null)} className="w-full border rounded-lg p-2 bg-white">
-                    <option value="Chưa nhận">Chưa nhận</option>
-                    <option value="Đã nhận đủ">Đã nhận đủ</option>
-                    <option value="Đã ký">Đã ký</option>
-                    <option value="Đã đổi gửi lại">Đã đổi gửi lại</option>
-                  </CustomSelect>
+                  <input 
+                    type="text"
+                    list="doc-status-list-edit"
+                    value={editingDoc.docStatus || ''} 
+                    onChange={(e) => setEditingDoc(prev => prev ? ({...prev, docStatus: e.target.value, ...(e.target.value === 'Đã nhận đủ' || e.target.value === 'Đã ký') && !prev.receiveDate ? { receiveDate: new Date().toISOString().split('T')[0] } : {}}) : null)} 
+                    placeholder="Nhập hoặc chọn trạng thái..."
+                    className="w-full border rounded-lg p-2 bg-white font-bold text-slate-900 focus:ring-1 focus:ring-primary focus:outline-none" 
+                  />
+                  <datalist id="doc-status-list-edit">
+                    {docStatusOptions.map(opt => (
+                      <option key={opt} value={opt} />
+                    ))}
+                  </datalist>
                 </div>
                 <div className="flex items-center pt-5 gap-2"><input type="checkbox" checked={Boolean(editingDoc.isCompleted)} onChange={(e) => setEditingDoc(prev => prev ? ({...prev, isCompleted: e.target.checked, ...(e.target.checked ? { docStatus: 'Đã ký' } : {})}) : null)} className="w-4 h-4" /> <span className="font-bold">Đã hoàn tất hồ sơ</span></div>
               </div>

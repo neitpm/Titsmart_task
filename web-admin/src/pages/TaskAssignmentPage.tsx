@@ -1423,7 +1423,7 @@ export const TaskAssignmentPage: React.FC = () => {
           {directDisplayedTasks.length > 0 && (
             <div className="flex flex-wrap items-center justify-center gap-4 border-t border-slate-200 bg-white px-4 py-2.5 text-xs text-slate-600 shrink-0 select-none shadow-xs">
               <div className="flex items-center gap-2">
-                <span className="font-medium whitespace-nowrap">Hiển thị {(directTaskPage - 1) * ASSIGNMENT_PAGE_SIZE + 1}-{Math.min(directTaskPage * ASSIGNMENT_PAGE_SIZE, directDisplayedTasks.length)} / {directDisplayedTasks.length} công việc phát sinh (Cố định 25 / trang)</span>
+                <span className="font-medium whitespace-nowrap">Hiển thị {(directTaskPage - 1) * ASSIGNMENT_PAGE_SIZE + 1}-{Math.min(directTaskPage * ASSIGNMENT_PAGE_SIZE, directDisplayedTasks.length)} / {directDisplayedTasks.length} công việc phát sinh</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <button
@@ -1844,7 +1844,7 @@ export const TaskAssignmentPage: React.FC = () => {
           {projectDisplayedTasks.length > 0 && (
             <div className="flex flex-wrap items-center justify-center gap-4 border-t border-slate-200 bg-white px-4 py-2.5 text-xs text-slate-600 shrink-0 select-none shadow-xs">
               <div className="flex items-center gap-2">
-                <span className="font-medium whitespace-nowrap">Hiển thị {(projectTaskPage - 1) * ASSIGNMENT_PAGE_SIZE + 1}-{Math.min(projectTaskPage * ASSIGNMENT_PAGE_SIZE, projectDisplayedTasks.length)} / {projectDisplayedTasks.length} công việc dự án (Cố định 25 / trang)</span>
+                <span className="font-medium whitespace-nowrap">Hiển thị {(projectTaskPage - 1) * ASSIGNMENT_PAGE_SIZE + 1}-{Math.min(projectTaskPage * ASSIGNMENT_PAGE_SIZE, projectDisplayedTasks.length)} / {projectDisplayedTasks.length} công việc dự án</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <button

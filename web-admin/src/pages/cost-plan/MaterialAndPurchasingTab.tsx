@@ -2325,7 +2325,7 @@ export const MaterialAndPurchasingTab: React.FC<MaterialAndPurchasingTabProps> =
         return (
           <div className="flex flex-wrap items-center justify-center gap-4 border-t border-slate-200 bg-white px-4 py-2.5 text-xs text-slate-600 shrink-0 select-none">
             <div className="flex items-center gap-2">
-              <span className="font-medium whitespace-nowrap">Hiển thị {(tablePage - 1) * TABLE_PAGE_SIZE + 1}-{Math.min(tablePage * TABLE_PAGE_SIZE, totalRows)} / {totalRows} mục (Cố định 25 / trang)</span>
+              <span className="font-medium whitespace-nowrap">Hiển thị {(tablePage - 1) * TABLE_PAGE_SIZE + 1}-{Math.min(tablePage * TABLE_PAGE_SIZE, totalRows)} / {totalRows} mục</span>
             </div>
             <div className="flex items-center gap-1.5">
               <button

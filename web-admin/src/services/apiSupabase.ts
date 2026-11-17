@@ -1926,6 +1926,7 @@ export const api = {
         receive_date: cleanDate(data.receiveDate),
         doc_status: data.docStatus || 'Chưa ký',
         doc_type: data.docType || 'Giao',
+        document_type: data.docType || 'Giao',
         side: data.side || 'Bên trả',
         contract_value: Number(data.contractValue) || 0,
         prepay_percent: Number(data.prepayPercent) || 0,
