@@ -260,10 +260,16 @@ export const ProjectCostPlanPage: React.FC = () => {
       names.add(normalizeStr(user.username));
     }
     if (user.name) names.add(normalizeStr(user.name));
+    if ((user as any).email) {
+      ids.add(String((user as any).email).trim().toLowerCase());
+      names.add(normalizeStr((user as any).email));
+    }
     if (myLinkedEng) {
       if (myLinkedEng.id) ids.add(String(myLinkedEng.id).trim().toLowerCase());
       if (myLinkedEng.username) ids.add(String(myLinkedEng.username).trim().toLowerCase());
       if (myLinkedEng.name) names.add(normalizeStr(myLinkedEng.name));
+      if ((myLinkedEng as any).email) ids.add(String((myLinkedEng as any).email).trim().toLowerCase());
+      if ((myLinkedEng as any).auth_user_id) ids.add(String((myLinkedEng as any).auth_user_id).trim().toLowerCase());
     }
     // Nếu là admin hệ thống, luôn nhận diện định danh 'admin'
     if (isSystemAdmin(user)) {
@@ -1732,7 +1738,7 @@ export const ProjectCostPlanPage: React.FC = () => {
         };
       }
 
-      // Đối chiếu tự động với bảng Chi phí / Quỹ: nếu khoản cấp quỹ này đã có trong danh sách chi phí của dự án thì tự động coi là COMPLETED
+      // Đối chiếu tự động với bảng Chi phí / Quỹ: chỉ đánh dấu COMPLETED nếu khoản chi phí này có liên kết trực tiếp bằng fundRequestId hoặc [FUND_ID:...]
       const isApprovedInExpenses = expenses.some(exp => {
         if (exp.fundRequestId && (exp.fundRequestId === req.id || (req.notificationId && exp.fundRequestId === req.notificationId))) {
           return true;
@@ -1740,13 +1746,7 @@ export const ProjectCostPlanPage: React.FC = () => {
         if (exp.notes && (exp.notes.includes(`[FUND_ID:${req.id}]`) || (req.notificationId && exp.notes.includes(`[FUND_ID:${req.notificationId}]`)))) {
           return true;
         }
-        const isFund = (exp.content || '').trim().toLowerCase() === 'quỹ' || (exp.content || '').trim().toLowerCase() === 'cấp quỹ';
-        if (!isFund) return false;
-        const matchesSpender = (exp.spenderName || '').trim().toLowerCase() === (req.creatorName || '').trim().toLowerCase();
-        const matchesAmount = Math.abs(Number(exp.incomeAmount || 0) - Number(req.amount || 0)) < 1;
-        const matchesPurpose = req.purpose ? (exp.description || '').toLowerCase().includes(req.purpose.toLowerCase()) : true;
-        const matchesProj = !req.projectCode || exp.projectCode === req.projectCode;
-        return matchesSpender && matchesAmount && matchesPurpose && matchesProj;
+        return false;
       });
 
       if (isApprovedInExpenses) {
@@ -2952,9 +2952,9 @@ export const ProjectCostPlanPage: React.FC = () => {
                         (rAccNorm && myUserIdentifiers.names.has(rAccNorm))
                       );
 
-                      if ((status === 'PENDING_CHECK' || status === 'PENDING') && (isChecker || (canCheck && !isCreator))) return true;
+                      if ((status === 'PENDING_CHECK' || status === 'PENDING' || status === 'NEED_MORE_INFO') && (isChecker || (canCheck && !isCreator) || isDirectorUser)) return true;
                       if (status === 'NEED_MORE_INFO' && isCreator) return true;
-                      if (status === 'CHECKED_WAITING_APPROVAL' && (isReviewer || (canApprove && !isCreator))) return true;
+                      if (status === 'CHECKED_WAITING_APPROVAL' && (isReviewer || (canApprove && !isCreator) || isDirectorUser)) return true;
                       if ((status === 'APPROVED_WAITING_ACCOUNTING' || status === 'ACCOUNTING_PROCESSING') && (isAccountant || canTransfer)) return true;
                       if (status === 'TRANSFERRED_WAITING_CONFIRMATION' && (isCreator || canConfirm)) return true;
 
@@ -5710,18 +5710,18 @@ export const ProjectCostPlanPage: React.FC = () => {
                       (rAccNorm && myUserIdentifiers.names.has(rAccNorm))
                     );
 
-                    // Nhận diện tài khoản Kế toán thuần túy: có từ "kế toán" trong vai trò/chức danh hoặc có quyền transfer nhưng KHÔNG phải admin/lãnh đạo/người duyệt
+                    // Nhận diện tài khoản Kế toán thuần túy: có từ "kế toán" trong vai trò/chức danh hoặc có quyền transfer nhưng KHÔNG phải admin/lãnh đạo/người duyệt/người kiểm tra
                     const userRoleStr = String(user?.role || '').toLowerCase();
                     const userTitleStr = String((user as any)?.title || '').toLowerCase();
-                    const isPureAccountant = !isSystemAdminUser && !isReviewer && (
+                    const isPureAccountant = !isSystemAdminUser && !isDirectorUser && !isReviewer && !isChecker && (
                       userRoleStr.includes('kế toán') || 
                       userTitleStr.includes('kế toán') || 
                       (canTransferPerm && !canApprovePerm)
                     );
 
                     // Phân quyền hành động nghiệp vụ chặt chẽ:
-                    const canDoCheck = !isCreator && !isPureAccountant && (isChecker || canCheckPerm || isSystemAdminUser);
-                    const canDoApprove = !isCreator && !isPureAccountant && (!isChecker || allowDualRole || isSystemAdminUser) && (isReviewer || canApprovePerm || isSystemAdminUser);
+                    const canDoCheck = !isCreator && !isPureAccountant && (isChecker || canCheckPerm || isDirectorUser || isSystemAdminUser);
+                    const canDoApprove = !isCreator && !isPureAccountant && (!isChecker || allowDualRole || isDirectorUser || isSystemAdminUser) && (isReviewer || canApprovePerm || isDirectorUser || isSystemAdminUser);
                     const isAccountantRoleOrPerm = userRoleStr.includes('kế toán') || userTitleStr.includes('kế toán') || canTransferPerm;
                     const canDoTransfer = isAccountant || isAccountantRoleOrPerm || isSystemAdminUser;
                     const canDoConfirm = isCreator || isSystemAdminUser;
@@ -6228,14 +6228,14 @@ export const ProjectCostPlanPage: React.FC = () => {
 
                 const userRoleStr = String(user?.role || '').toLowerCase();
                 const userTitleStr = String((user as any)?.title || '').toLowerCase();
-                const isPureAccountant = !isSystemAdminUser && !isReviewer && (
+                const isPureAccountant = !isSystemAdminUser && !isDirectorUser && !isReviewer && !isChecker && (
                   userRoleStr.includes('kế toán') || 
                   userTitleStr.includes('kế toán') || 
                   (canTransferPerm && !canApprovePerm)
                 );
 
-                const canDoCheck = !isCreator && !isPureAccountant && (isChecker || canCheckPerm || isSystemAdminUser);
-                const canDoApprove = !isCreator && !isPureAccountant && (!isChecker || allowDualRole || isSystemAdminUser) && (isReviewer || canApprovePerm || isSystemAdminUser);
+                const canDoCheck = !isCreator && !isPureAccountant && (isChecker || canCheckPerm || isDirectorUser || isSystemAdminUser);
+                const canDoApprove = !isCreator && !isPureAccountant && (!isChecker || allowDualRole || isDirectorUser || isSystemAdminUser) && (isReviewer || canApprovePerm || isDirectorUser || isSystemAdminUser);
                 const isAccountantRoleOrPerm = userRoleStr.includes('kế toán') || userTitleStr.includes('kế toán') || canTransferPerm;
                 const canDoTransfer = isAccountant || isAccountantRoleOrPerm || isSystemAdminUser;
                 const canDoConfirm = isCreator || isSystemAdminUser;
