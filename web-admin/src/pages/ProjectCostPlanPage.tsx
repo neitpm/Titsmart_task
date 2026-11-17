@@ -3213,7 +3213,7 @@ export const ProjectCostPlanPage: React.FC = () => {
             </div>
 
             {/* Pagination Controls for Cash Flow / Expenses */}
-            <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 bg-slate-50 border-t border-slate-200 text-xs text-slate-600 rounded-b-xl select-none">
+            <div className="flex flex-wrap items-center justify-center gap-4 px-4 py-2.5 bg-slate-50 border-t border-slate-200 text-xs text-slate-600 rounded-b-xl select-none">
               <div className="flex items-center gap-2">
                 <span>Hiển thị {combinedCashFlow.length === 0 ? 0 : (expensePage - 1) * expensePageSize + 1}-{Math.min(expensePage * expensePageSize, combinedCashFlow.length)} / {combinedCashFlow.length} khoản mục</span>
                 <select

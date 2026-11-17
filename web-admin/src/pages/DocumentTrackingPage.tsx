@@ -1244,7 +1244,7 @@ export const DocumentTrackingPage: React.FC = () => {
               })}
               </tbody>
             </table>
-            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 bg-white px-3 py-2 text-xs text-slate-600">
+            <div className="flex flex-wrap items-center justify-center gap-4 border-t border-slate-200 bg-white px-4 py-2.5 text-xs text-slate-600 shrink-0">
               <div className="flex items-center gap-2">
                 <span>Hiển thị {filteredTracks.length === 0 ? 0 : (documentPage - 1) * documentPageSize + 1}-{Math.min(documentPage * documentPageSize, filteredTracks.length)} / {filteredTracks.length} hồ sơ</span>
                 <CustomSelect
