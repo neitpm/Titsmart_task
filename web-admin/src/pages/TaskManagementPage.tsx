@@ -721,6 +721,7 @@ const hasSyncedRef = useRef(false);
   const [assigningTask, setAssigningTask] = useState<Task | null>(null);
   const [assigningUserIds, setAssigningUserIds] = useState<string[]>([]);
   const [assigningFollowerIds, setAssigningFollowerIds] = useState<string[]>([]);
+  const [assignDueDate, setAssignDueDate] = useState('');
   const [assignNote, setAssignNote] = useState('');
   const [assignSelectedFile, setAssignSelectedFile] = useState<{ url: string; type: 'image' | 'file'; name: string } | null>(null);
   const [assignShowAttachMenu, setAssignShowAttachMenu] = useState(false);
@@ -869,6 +870,7 @@ const hasSyncedRef = useRef(false);
   const [editIssueStatus, setEditIssueStatus] = useState('');
   const [editNotes, setEditNotes] = useState('');
   const [editEngineerId, setEditEngineerId] = useState('');
+  const [editDueDate, setEditDueDate] = useState('');
   const [editParentId, setEditParentId] = useState<string>('');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -885,6 +887,7 @@ const hasSyncedRef = useRef(false);
   const [purchaseStatus, setPurchaseStatus] = useState('Chưa đặt hàng');
   const [constrStatus, setConstrStatus] = useState('Chưa thi công');
   const [engineerId, setEngineerId] = useState('');
+  const [dueDate, setDueDate] = useState('');
   const [isSectionHeader, setIsSectionHeader] = useState(false);
   const [ocrIssueDraft, setOcrIssueDraft] = useState('');
   const [parentIdSelect, setParentIdSelect] = useState<string>('default');
@@ -1031,6 +1034,7 @@ const hasSyncedRef = useRef(false);
     setEditIssueStatus(t.issueStatus || '');
     setEditNotes(t.notes || '');
     setEditEngineerId(t.assignedEngineerId || '');
+    setEditDueDate(t.dueDate ? String(t.dueDate).split('T')[0] : '');
 
     let parentIdVal = t.parentId || '';
     if (parentIdVal) {
@@ -1116,6 +1120,7 @@ const hasSyncedRef = useRef(false);
       notes: editNotes,
       assignedEngineerId: editEngineerId,
       assignedEngineerName: editEngineerId ? (eng?.name || '') : '',
+      dueDate: editDueDate ? editDueDate : undefined,
       assignerId: isNewlyAssigned
         ? (authStore.user?.id || editingTask.assignerId) 
         : editingTask.assignerId,
@@ -1833,6 +1838,7 @@ const hasSyncedRef = useRef(false);
       isSectionHeader,
       sectionName: finalSectionName,
       parentId: validatedParentId,
+      dueDate: (!isSectionHeader && dueDate) ? dueDate : undefined,
       assignedEngineerId: assignedEngId,
       assignedEngineerName: assignedEngId ? (eng?.name || '') : '',
       assignerId: (!isSectionHeader && assignedEngId) ? assignerId : undefined,
@@ -1842,9 +1848,10 @@ const hasSyncedRef = useRef(false);
     if (engineerId && eng) {
       const storeState = useRealtimeStore.getState();
       if (storeState.addNotification) {
+        const deadlineText = dueDate ? ` (Hạn: ${dueDate.split('-').reverse().join('/')})` : '';
         storeState.addNotification({
           title: `Giao việc: ${eng.name}`,
-          message: `${assignerName} đã giao công việc "${name}" thuộc dự án ${proj ? proj.name : projectCode} cho ${eng.name}.`,
+          message: `${assignerName} đã giao công việc "${name}" thuộc dự án ${proj ? proj.name : projectCode} cho ${eng.name}${deadlineText}.`,
           type: `task_assigned:::${engineerId}:::${eng.name}`,
           icon: 'assignment_ind',
           senderId: assignerId,
@@ -3023,6 +3030,7 @@ const hasSyncedRef = useRef(false);
                               e.stopPropagation();
                               setAssigningTask(t);
                               setAssignNote('');
+                              setAssignDueDate(t.dueDate ? String(t.dueDate).split('T')[0] : '');
                               const parts = t.assignedEngineerName?.split('|') || [];
                               const idsString = parts.length > 1 ? parts[1] : t.assignedEngineerId;
                               setAssigningUserIds(idsString ? idsString.split(',') : []);
@@ -3283,6 +3291,32 @@ const hasSyncedRef = useRef(false);
             </div>
           </div>
 
+          {/* Hạn hoàn thành (Deadline) */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-bold text-slate-700 flex items-center justify-between">
+              <span>Hạn hoàn thành (Deadline)</span>
+              <span className="text-[10px] font-normal text-slate-400">(Tùy chọn)</span>
+            </label>
+            <div className="relative flex items-center">
+              <input
+                type="date"
+                value={assignDueDate}
+                onChange={(e) => setAssignDueDate(e.target.value)}
+                className="w-full h-[36px] px-3 border border-slate-300 rounded-lg text-xs bg-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-medium text-slate-700 cursor-pointer"
+              />
+              {assignDueDate && (
+                <button
+                  type="button"
+                  onClick={() => setAssignDueDate('')}
+                  className="absolute right-3 text-slate-400 hover:text-slate-600 cursor-pointer p-1"
+                  title="Xóa hạn hoàn thành"
+                >
+                  <span className="material-symbols-outlined text-[16px]">close</span>
+                </button>
+              )}
+            </div>
+          </div>
+
           <div className="space-y-2 relative">
             <div className="flex items-center justify-between">
               <label className="block text-xs font-bold text-slate-700 flex items-center gap-1">
@@ -3460,6 +3494,7 @@ const hasSyncedRef = useRef(false);
                     followerNames: followerNames.length > 0 ? followerNames : undefined,
                     assignerId: assignerId,
                     assignerName: assignerName,
+                    dueDate: assignDueDate ? assignDueDate : undefined,
                     status: nextStatus,
                     notes: updatedNotes
                   });
@@ -3467,11 +3502,12 @@ const hasSyncedRef = useRef(false);
                   // Gửi thông báo realtime & nhật ký hoạt động
                   const store = useRealtimeStore.getState();
                   if (ids && selectedEngs.length > 0) {
+                    const deadlineText = assignDueDate ? ` (Hạn: ${assignDueDate.split('-').reverse().join('/')})` : '';
                     store.logActivity(`Quản lý ${assignerName} đã ${isReassigning ? 'ĐỔI PHÂN CÔNG' : 'GIAO CÔNG VIỆC'}: "${assigningTask.name}" cho ${names}`, assigningTask.projectName || assigningTask.projectCode || 'Dự án');
                     if (store.addNotification) {
                       await store.addNotification({
                         title: isReassigning ? `Đổi phân công: ${names}` : `Giao việc: ${names}`,
-                        message: `${assignerName} đã ${isReassigning ? 'thay đổi phân công' : 'giao công việc'} "${assigningTask.name}" thuộc dự án ${assigningTask.projectName || assigningTask.projectCode} cho ${names}.${assignSelectedFile ? ` [Có đính kèm ${assignSelectedFile.type === 'image' ? 'hình ảnh' : 'tệp'}]` : ''}`,
+                        message: `${assignerName} đã ${isReassigning ? 'thay đổi phân công' : 'giao công việc'} "${assigningTask.name}" thuộc dự án ${assigningTask.projectName || assigningTask.projectCode} cho ${names}${deadlineText}.${assignSelectedFile ? ` [Có đính kèm ${assignSelectedFile.type === 'image' ? 'hình ảnh' : 'tệp'}]` : ''}`,
                         type: `task_assigned:::${ids}:::${names}`,
                         icon: 'assignment_ind',
                         senderId: assignerId,
@@ -3481,7 +3517,7 @@ const hasSyncedRef = useRef(false);
                       if (followerIds.length > 0) {
                         await store.addNotification({
                           title: `Theo dõi công việc: ${assigningTask.name}`,
-                          message: `${assignerName} đã thêm bạn vào danh sách THEO DÕI công việc "${assigningTask.name}" (phụ trách: ${names}).`,
+                          message: `${assignerName} đã thêm bạn vào danh sách THEO DÕI công việc "${assigningTask.name}" (phụ trách: ${names})${deadlineText}.`,
                           type: `task_follower:::${followerIds.join(',')}:::${followerNames.join(',')}`,
                           icon: 'visibility',
                           senderId: assignerId,
@@ -3599,11 +3635,37 @@ const hasSyncedRef = useRef(false);
                 </div>
               </div>
 
+              {/* Hạn hoàn thành hàng loạt (Deadline) */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-slate-700 flex items-center justify-between">
+                  <span>2. Hạn hoàn thành (Deadline)</span>
+                  <span className="text-[10px] font-normal text-slate-400">(Tùy chọn)</span>
+                </label>
+                <div className="relative flex items-center">
+                  <input
+                    type="date"
+                    value={assignDueDate}
+                    onChange={(e) => setAssignDueDate(e.target.value)}
+                    className="w-full h-[36px] px-3 border border-slate-300 rounded-lg text-xs bg-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-medium text-slate-700 cursor-pointer"
+                  />
+                  {assignDueDate && (
+                    <button
+                      type="button"
+                      onClick={() => setAssignDueDate('')}
+                      className="absolute right-3 text-slate-400 hover:text-slate-600 cursor-pointer p-1"
+                      title="Xóa hạn hoàn thành"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">close</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
               <div className="space-y-2 relative">
                 <div className="flex items-center justify-between">
                   <label className="block text-xs font-bold text-slate-700 flex items-center gap-1">
                     <span className="material-symbols-outlined text-primary text-[15px]">edit_note</span>
-                    2. Ghi chú / Hướng dẫn công việc chung (Tùy chọn)
+                    3. Ghi chú / Hướng dẫn công việc chung (Tùy chọn)
                   </label>
                   
                   <button
@@ -3724,6 +3786,7 @@ const hasSyncedRef = useRef(false);
                         assignedEngineerName: names + (ids ? '|' + ids : ''),
                         assignerId: assignerId,
                         assignerName: assignerName,
+                        dueDate: assignDueDate ? assignDueDate : undefined,
                         status: nextStatus,
                         notes: updatedNotes
                       });
@@ -3732,9 +3795,10 @@ const hasSyncedRef = useRef(false);
                     const store = useRealtimeStore.getState();
                     store.logActivity(`Quản lý ${assignerName} đã GIAO HÀNG LOẠT ${tasksToAssign.length} công việc thuộc đầu mục "${bulkAssignSection.sectionName}" cho ${names}`, bulkAssignSection.projectCode || 'Dự án');
                     if (store.addNotification) {
+                      const deadlineText = assignDueDate ? ` (Hạn: ${assignDueDate.split('-').reverse().join('/')})` : '';
                       await store.addNotification({
                         title: `Giao hàng loạt: ${names}`,
-                        message: `${assignerName} đã giao hàng loạt ${tasksToAssign.length} công việc thuộc đầu mục "${bulkAssignSection.sectionName}" cho ${names}.`,
+                        message: `${assignerName} đã giao hàng loạt ${tasksToAssign.length} công việc thuộc đầu mục "${bulkAssignSection.sectionName}" cho ${names}${deadlineText}.`,
                         type: `task_assigned:::${ids}:::${names}`,
                         icon: 'assignment_ind',
                         senderId: assignerId,
@@ -3744,6 +3808,7 @@ const hasSyncedRef = useRef(false);
 
                     setBulkAssignSection(null);
                     setAssigningUserIds([]);
+                    setAssignDueDate('');
                     setAssignNote('');
                     setAssignSelectedFile(null);
                     triggerToast(`Đã giao hàng loạt thành công ${tasksToAssign.length} công việc cho ${names}!`, 'success');
@@ -3796,7 +3861,30 @@ const hasSyncedRef = useRef(false);
             <div className="grid grid-cols-2 gap-3"><div><label className="block font-bold text-slate-700 mb-1">Khối lượng</label><input type="number" step="any" value={editVolume} onChange={(e) => setEditVolume(Number(e.target.value))} className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none bg-white font-mono" /></div><div><label className="block font-bold text-slate-700 mb-1">Đơn vị tính (ĐVT)</label><input type="text" value={editUnit} onChange={(e) => setEditUnit(e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none bg-white font-mono" /></div></div>
             <div className="grid grid-cols-2 gap-3"><div><label className="block font-bold text-slate-700 mb-1">TT Đặt hàng</label><CustomSelect disabled title="Được đồng bộ tự động từ tab Vật tư" value={editPurchaseStatus} onChange={(e) => setEditPurchaseStatus(e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none bg-slate-50 opacity-80">{PURCHASE_STATUS_OPTIONS.map((option) => (<option key={option} value={option}>{option}</option>))}</CustomSelect></div><div><label className="block font-bold text-slate-700 mb-1">Tình trạng thi công</label><CustomSelect disabled title="Được cập nhật tự động theo tiến độ báo cáo và nghiệm thu công việc" value={editConstrStatus} onChange={(e) => setEditConstrStatus(e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none bg-slate-50 opacity-80">{CONSTRUCTION_STATUS_OPTIONS.map((option) => (<option key={option} value={option}>{option}</option>))}</CustomSelect></div></div>
             <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Hạn hoàn thành (Deadline)</label>
+                <div className="relative flex items-center">
+                  <input
+                    type="date"
+                    value={editDueDate}
+                    onChange={(e) => setEditDueDate(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none bg-white text-xs font-medium cursor-pointer"
+                  />
+                  {editDueDate && (
+                    <button
+                      type="button"
+                      onClick={() => setEditDueDate('')}
+                      className="absolute right-2 text-slate-400 hover:text-slate-600 cursor-pointer p-1"
+                      title="Xóa hạn hoàn thành"
+                    >
+                      <span className="material-symbols-outlined text-[14px]">close</span>
+                    </button>
+                  )}
+                </div>
+              </div>
               <div><label className="block font-bold text-slate-700 mb-1">Ghi chú</label><input type="text" value={editNotes} onChange={(e) => setEditNotes(e.target.value)} placeholder="Ghi chú thêm cho dòng công việc" className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none bg-white" /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
               <div>
                 {(() => {
                   const readiness = isTaskReadyForAssignment(editingTask, materialPlans);
@@ -4004,29 +4092,55 @@ const hasSyncedRef = useRef(false);
               {/* Kỹ sư phụ trách & Tiến độ */}
               {(() => {
                 return (
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <label className="block font-bold text-slate-700">Kỹ sư Phụ trách</label>
+                  <>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="block font-bold text-slate-700">Kỹ sư Phụ trách</label>
+                        </div>
+                        <CustomSelect 
+                          value={engineerId} 
+                          onChange={(e) => {
+                            setEngineerId(e.target.value);
+                          }} 
+                          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:outline-none bg-white border-slate-200 font-medium"
+                        >
+                          <option value="">-- Chưa giao --</option>
+                          {projectEngineers.map((eng) => (<option key={eng.id} value={eng.id}>{eng.name} ({eng.title})</option>))}
+                        </CustomSelect>
                       </div>
-                      <CustomSelect 
-                        value={engineerId} 
-                        onChange={(e) => {
-                          setEngineerId(e.target.value);
-                        }} 
-                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:outline-none bg-white border-slate-200 font-medium"
-                      >
-                        <option value="">-- Chưa giao --</option>
-                        {projectEngineers.map((eng) => (<option key={eng.id} value={eng.id}>{eng.name} ({eng.title})</option>))}
-                      </CustomSelect>
-                    </div>
-                    <div>
-                      <label className="block font-bold text-slate-700 mb-1">Tiến độ tự tính (%)</label>
-                      <div className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 font-mono font-bold text-slate-800">
-                        {calculateAutoProgressPercent(purchaseStatus, constrStatus)}%
+                      <div>
+                        <label className="block font-bold text-slate-700 mb-1">Hạn hoàn thành (Deadline)</label>
+                        <div className="relative flex items-center">
+                          <input
+                            type="date"
+                            value={dueDate}
+                            onChange={(e) => setDueDate(e.target.value)}
+                            className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none bg-white text-xs font-medium cursor-pointer"
+                          />
+                          {dueDate && (
+                            <button
+                              type="button"
+                              onClick={() => setDueDate('')}
+                              className="absolute right-2 text-slate-400 hover:text-slate-600 cursor-pointer p-1"
+                              title="Xóa hạn hoàn thành"
+                            >
+                              <span className="material-symbols-outlined text-[14px]">close</span>
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
+                    <div className="grid grid-cols-2 gap-3 mt-3">
+                      <div>
+                        <label className="block font-bold text-slate-700 mb-1">Tiến độ tự tính (%)</label>
+                        <div className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 font-mono font-bold text-slate-800">
+                          {calculateAutoProgressPercent(purchaseStatus, constrStatus)}%
+                        </div>
+                      </div>
+                      <div />
+                    </div>
+                  </>
                 );
               })()}
             </>
