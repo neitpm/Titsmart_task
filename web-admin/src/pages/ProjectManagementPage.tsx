@@ -1094,16 +1094,17 @@ export const ProjectManagementPage: React.FC = () => {
       <LoadingSpinner loading={loading} message={loadingMessage} />
       <Toast show={toastState.show} message={toastState.message} type={toastState.type} />
 
-      <section className="border-b border-slate-200 bg-white shadow-xs px-3 pr-14 md:px-6 md:pr-20 py-2 md:py-0 md:h-12 flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-2 relative z-10 shrink-0 no-drag-region electron-no-drag" style={{ WebkitAppRegion: 'no-drag' } as any}>
-        <div className="flex items-center gap-2 md:gap-3 shrink-0">
-          <div className="border-l-4 border-primary pl-2 flex items-center">
+      <section className="border-b border-slate-200 bg-white shadow-xs px-3 sm:px-4 md:px-6 py-2.5 flex flex-wrap items-center justify-between gap-2.5 relative z-10 shrink-0 no-drag-region electron-no-drag" style={{ WebkitAppRegion: 'no-drag' } as any}>
+        {/* Nhóm bộ lọc bên trái: Tiêu đề + Trạng thái + Phân loại + Ngày */}
+        <div className="flex items-center gap-2 flex-wrap min-w-0">
+          <div className="border-l-4 border-primary pl-2 flex items-center shrink-0">
             <h1 className="page-title text-sm md:text-base font-extrabold text-slate-900 shrink-0">{TEXT.projectManagement}</h1>
           </div>
 
           <CustomSelect
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as 'all' | 'active' | 'completed' | 'on_hold')}
-            className="h-[34px] min-w-[150px] rounded-lg border border-slate-200 bg-white px-2 text-xs font-bold text-slate-700 shadow-2xs outline-none focus:border-primary"
+            className="h-[34px] min-w-[130px] sm:min-w-[145px] rounded-lg border border-slate-200 bg-white px-2 text-xs font-bold text-slate-700 shadow-2xs outline-none focus:border-primary shrink-0"
           >
             <option value="all">Tất cả ({counts.all})</option>
             <option value="active">Đang triển khai ({counts.active})</option>
@@ -1114,7 +1115,7 @@ export const ProjectManagementPage: React.FC = () => {
           <CustomSelect
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
-            className="h-[34px] min-w-[160px] max-w-[220px] rounded-lg border border-slate-200 bg-white px-2 text-xs font-bold text-slate-700 shadow-2xs outline-none focus:border-primary"
+            className="h-[34px] min-w-[135px] max-w-[180px] rounded-lg border border-slate-200 bg-white px-2 text-xs font-bold text-slate-700 shadow-2xs outline-none focus:border-primary shrink-0"
             title="Lọc theo phân loại dự án"
           >
             <option value="all">-- Phân loại: Tất cả --</option>
@@ -1132,7 +1133,7 @@ export const ProjectManagementPage: React.FC = () => {
               type="date"
               value={filterDateFrom}
               onChange={e => setFilterDateFrom(e.target.value)}
-              className="bg-transparent border-none outline-none text-xs w-[100px] text-slate-700 cursor-pointer font-medium"
+              className="bg-transparent border-none outline-none text-xs w-[96px] text-slate-700 cursor-pointer font-medium"
             />
             <span className="text-slate-300">|</span>
             <span className="text-slate-400 font-medium whitespace-nowrap text-[11px]">Đến</span>
@@ -1140,7 +1141,7 @@ export const ProjectManagementPage: React.FC = () => {
               type="date"
               value={filterDateTo}
               onChange={e => setFilterDateTo(e.target.value)}
-              className="bg-transparent border-none outline-none text-xs w-[100px] text-slate-700 cursor-pointer font-medium"
+              className="bg-transparent border-none outline-none text-xs w-[96px] text-slate-700 cursor-pointer font-medium"
             />
             {(filterDateFrom || filterDateTo) && (
               <button
@@ -1158,8 +1159,9 @@ export const ProjectManagementPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 w-full md:w-auto shrink-0 flex-wrap sm:flex-nowrap">
-          <div className="relative flex-1 sm:w-60 md:w-72 flex items-center min-w-0">
+        {/* Nhóm thao tác bên phải: Ô tìm kiếm + Nút Tạo dự án mới */}
+        <div className="flex items-center gap-2 shrink-0 ml-auto">
+          <div className="relative w-44 sm:w-56 md:w-64 flex items-center min-w-0">
             <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-base">search</span>
             <input
               type="text"
@@ -1194,10 +1196,10 @@ export const ProjectManagementPage: React.FC = () => {
                 setIsNewProjectModalOpen(true);
               }}
               title={TEXT.createProject}
-              className="flex items-center justify-center gap-1 bg-primary text-white px-2.5 sm:px-3 h-[34px] rounded-lg text-xs font-bold hover:opacity-90 active:scale-95 shadow-xs whitespace-nowrap shrink-0 cursor-pointer"
+              className="flex items-center justify-center gap-1 bg-primary text-white px-3 h-[34px] rounded-lg text-xs font-bold hover:opacity-90 active:scale-95 shadow-xs whitespace-nowrap shrink-0 cursor-pointer"
             >
               <span className="material-symbols-outlined text-[16px]">add</span>
-              <span className="hidden sm:inline">Tạo dự án mới</span>
+              <span>Tạo dự án mới</span>
             </button>
           )}
         </div>
