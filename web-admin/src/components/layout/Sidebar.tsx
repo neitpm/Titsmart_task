@@ -156,12 +156,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
       <aside 
         ref={sidebarRef} 
         onMouseEnter={() => {
-          setIsSidebarHovered(true);
+          if (typeof window !== 'undefined' && window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
+            setIsSidebarHovered(true);
+          }
         }}
         onMouseLeave={() => {
-          setIsSidebarHovered(false);
+          if (typeof window !== 'undefined' && window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
+            setIsSidebarHovered(false);
+          }
         }}
-        className={`hidden md:flex fixed left-0 top-0 h-screen transition-[width,box-shadow] duration-200 ease-out will-change-[width] flex-col border-r border-slate-200 bg-white z-[100] ${
+        className={`hidden md:flex fixed left-0 top-0 h-[100dvh] transition-[width,box-shadow] duration-200 ease-out will-change-[width] flex-col border-r border-slate-200 bg-white z-[100] ${
           !isSidebarExpanded && isSidebarHovered ? 'shadow-[4px_0_24px_rgba(0,0,0,0.18)]' : 'shadow-[0_0_15px_rgba(0,0,0,0.05)]'
         } overflow-x-hidden ${isExpanded ? 'w-[170px]' : 'w-[56px]'}`}
       >
