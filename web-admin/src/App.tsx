@@ -23,8 +23,9 @@ import { ProjectOverviewTab } from './pages/ProjectOverviewTab';
 import { TaskAssignmentPage } from './pages/TaskAssignmentPage';
 import { MyTasksPage } from './pages/MyTasksPage';
 import { AttendancePage } from './pages/AttendancePage';
-import { CompanyAdminLoginPage } from './pages/CompanyAdminLoginPage';
-import { CompanyAdminPortalPage } from './pages/CompanyAdminPortalPage';
+// Lazy load Company Admin Portal
+const CompanyAdminLoginPage = React.lazy(() => import('./pages/CompanyAdminLoginPage').then(m => ({ default: m.CompanyAdminLoginPage })));
+const CompanyAdminPortalPage = React.lazy(() => import('./pages/CompanyAdminPortalPage').then(m => ({ default: m.CompanyAdminPortalPage })));
 
 import { App as CapApp } from '@capacitor/app';
 
