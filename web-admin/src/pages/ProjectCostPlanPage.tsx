@@ -6043,12 +6043,15 @@ export const ProjectCostPlanPage: React.FC = () => {
                                           ? `/projects/${encodeURIComponent(pCodeParam)}/cost-plan?tab=EXPENSE&openFundRequests=true&fundId=${encodeURIComponent(req.id)}`
                                           : `/cost-plan?tab=EXPENSE&openFundRequests=true&fundId=${encodeURIComponent(req.id)}`;
 
-                                        const targetAccRecipients = [req.creatorId, req.reviewerId].filter(Boolean);
-                                        for (const recId of targetAccRecipients) {
+                                        const targetAccRecipients = [
+                                          { id: req.creatorId, name: req.creatorName },
+                                          { id: req.reviewerId, name: req.reviewerName }
+                                        ].filter(r => r.id || r.name);
+                                        for (const rec of targetAccRecipients) {
                                           await addNotification({
                                             title: `Kế toán tiếp nhận xử lý cấp quỹ: ${pName}`,
-                                            message: `Kế toán: ${reviewerName} đã tiếp nhận hồ sơ lúc ${nowTimeStr}. Số tiền: ${numericAmount.toLocaleString('vi-VN')} đ cho ${req.creatorName}. Trạng thái: Kế toán đang xử lý thủ tục chuyển khoản.`,
-                                            type: `fund_request_processing:::${recId}`,
+                                            message: `Kế toán: ${reviewerName} đã tiếp nhận hồ sơ lúc ${nowTimeStr}. Yêu cầu cấp quỹ của ${req.creatorName} số tiền ${numericAmount.toLocaleString('vi-VN')} đ. Trạng thái: Kế toán đang xử lý thủ tục chuyển khoản.`,
+                                            type: `fund_request_processing:::${rec.id || ''}:::${rec.name || ''}`,
                                             icon: 'account_balance',
                                             link: linkBase,
                                             senderId: user?.id,
@@ -6728,12 +6731,15 @@ export const ProjectCostPlanPage: React.FC = () => {
                 ? `/projects/${encodeURIComponent(pCodeParam)}/cost-plan?tab=EXPENSE&openFundRequests=true&fundId=${encodeURIComponent(req.id)}`
                 : `/cost-plan?tab=EXPENSE&openFundRequests=true&fundId=${encodeURIComponent(req.id)}`;
 
-              const targetRecipients = [req.creatorId, req.reviewerId].filter(Boolean);
-              for (const recId of targetRecipients) {
+              const targetRecipients = [
+                { id: req.creatorId, name: req.creatorName },
+                { id: req.reviewerId, name: req.reviewerName }
+              ].filter(r => r.id || r.name);
+              for (const rec of targetRecipients) {
                 await addNotification({
                   title: `${notifTitle}: ${pName}`,
-                  message: `Người thực hiện: ${reviewerName} lúc ${nowTimeStr}. Số tiền: ${Number(req.amount || 0).toLocaleString('vi-VN')} đ. Trạng thái: ${nextStatus === 'NEED_MORE_INFO' ? 'Cần bổ sung TT' : 'Từ chối'}. Nội dung: ${reason}`,
-                  type: `fund_request_rejected:::${recId}`,
+                  message: `Người thực hiện: ${reviewerName} lúc ${nowTimeStr}. Yêu cầu cấp quỹ của ${req.creatorName} số tiền ${Number(req.amount || 0).toLocaleString('vi-VN')} đ. Trạng thái: ${nextStatus === 'NEED_MORE_INFO' ? 'Cần bổ sung TT' : 'Từ chối'}. Nội dung: ${reason}`,
+                  type: `fund_request_rejected:::${rec.id || ''}:::${rec.name || ''}`,
                   icon: fundRequestRejectModal.actionType === 'NEED_MORE_INFO' ? 'help' : 'cancel',
                   link: linkBase,
                   senderId: user?.id,
@@ -7081,17 +7087,21 @@ export const ProjectCostPlanPage: React.FC = () => {
 
               if (addNotification) {
                 const nowTimeStr = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) + ' ' + new Date().toLocaleDateString('vi-VN');
-                const notifTargets = [req.accountantId, req.reviewerId, req.checkerId].filter(Boolean);
+                const notifTargets = [
+                  { id: req.accountantId, name: req.accountantName },
+                  { id: req.reviewerId, name: req.reviewerName },
+                  { id: req.checkerId, name: req.checkerName }
+                ].filter(r => r.id || r.name);
                 const pCodeParam = req.projectCode || selectedProject || '';
                 const linkBase = pCodeParam
                   ? `/projects/${encodeURIComponent(pCodeParam)}/cost-plan?tab=EXPENSE&openFundRequests=true&fundId=${encodeURIComponent(req.id)}`
                   : `/cost-plan?tab=EXPENSE&openFundRequests=true&fundId=${encodeURIComponent(req.id)}`;
 
-                for (const tId of notifTargets) {
+                for (const target of notifTargets) {
                   await addNotification({
                     title: `Cấp quỹ hoàn tất: ${pName}`,
                     message: `Người tạo: ${req.creatorName} đã xác nhận nhận đủ ${targetAmount.toLocaleString('vi-VN')} đ lúc ${nowTimeStr}. Trạng thái: Đã cấp tiền (Hoàn tất). Đã ghi nhận nạp quỹ dự án thành công.`,
-                    type: `fund_request_completed:::${tId}`,
+                    type: `fund_request_completed:::${target.id || ''}:::${target.name || ''}`,
                     icon: 'task_alt',
                     link: linkBase,
                     senderId: user?.id,
@@ -7140,17 +7150,21 @@ export const ProjectCostPlanPage: React.FC = () => {
 
               if (addNotification) {
                 const nowTimeStr = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) + ' ' + new Date().toLocaleDateString('vi-VN');
-                const notifTargets = [req.accountantId, req.reviewerId, req.checkerId].filter(Boolean);
+                const notifTargets = [
+                  { id: req.accountantId, name: req.accountantName },
+                  { id: req.reviewerId, name: req.reviewerName },
+                  { id: req.checkerId, name: req.checkerName }
+                ].filter(r => r.id || r.name);
                 const pCodeParam = req.projectCode || selectedProject || '';
                 const linkBase = pCodeParam
                   ? `/projects/${encodeURIComponent(pCodeParam)}/cost-plan?tab=EXPENSE&openFundRequests=true&fundId=${encodeURIComponent(req.id)}`
                   : `/cost-plan?tab=EXPENSE&openFundRequests=true&fundId=${encodeURIComponent(req.id)}`;
 
-                for (const tId of notifTargets) {
+                for (const target of notifTargets) {
                   await addNotification({
                     title: `Cảnh báo đối soát cấp quỹ: ${pName}`,
                     message: `Người tạo: ${req.creatorName} phản hồi lúc ${nowTimeStr}: ${statusDesc}. Lý do/Ghi chú: ${fundRequestConfirmModal.note || 'Chưa ghi rõ'}. Trạng thái: Đã chuyển - Chờ đối soát. Vui lòng kiểm tra lại UNC.`,
-                    type: `fund_request_issue:::${tId}`,
+                    type: `fund_request_issue:::${target.id || ''}:::${target.name || ''}`,
                     icon: 'warning',
                     link: linkBase,
                     senderId: user?.id,
@@ -7389,13 +7403,17 @@ export const ProjectCostPlanPage: React.FC = () => {
                 ? `/projects/${encodeURIComponent(pCodeParam)}/cost-plan?tab=EXPENSE&openFundRequests=true&fundId=${encodeURIComponent(req.id)}`
                 : `/cost-plan?tab=EXPENSE&openFundRequests=true&fundId=${encodeURIComponent(req.id)}`;
 
-              const targetRecipients = [req.creatorId, req.reviewerId, req.checkerId].filter(Boolean);
-              for (const recId of targetRecipients) {
-                const isRecipientCreator = recId === req.creatorId;
+              const targetRecipients = [
+                { id: req.creatorId, name: req.creatorName },
+                { id: req.reviewerId, name: req.reviewerName },
+                { id: req.checkerId, name: req.checkerName }
+              ].filter(r => r.id || r.name);
+              for (const rec of targetRecipients) {
+                const isRecipientCreator = rec.id === req.creatorId || rec.name === req.creatorName;
                 await addNotification({
                   title: `Kế toán đã chuyển khoản cấp quỹ: ${pName}`,
-                  message: `Kế toán: ${reviewerName} đã chuyển ${numericAmount.toLocaleString('vi-VN')} đ (kèm UNC) lúc ${nowTimeStr}. Trạng thái: Đã chuyển - Chờ xác nhận.${isRecipientCreator ? ' Vui lòng kiểm tra tài khoản và nhấn "Xác nhận nhận tiền".' : ''}`,
-                  type: `fund_request_transferred:::${recId}`,
+                  message: `Kế toán: ${reviewerName} đã chuyển ${numericAmount.toLocaleString('vi-VN')} đ (kèm UNC) lúc ${nowTimeStr}. Yêu cầu cấp quỹ của ${req.creatorName}. Trạng thái: Đã chuyển - Chờ xác nhận.${isRecipientCreator ? ' Vui lòng kiểm tra tài khoản và nhấn "Xác nhận nhận tiền".' : ''}`,
+                  type: `fund_request_transferred:::${rec.id || ''}:::${rec.name || ''}`,
                   icon: 'receipt_long',
                   link: linkBase,
                   senderId: user?.id,

@@ -32,18 +32,21 @@ export const isNotificationForUser = (notification: any, user: any, engineers: a
   const userEmail = String(user.email || '').trim().toLowerCase();
   const userPhone = String(user.phone || '').trim();
 
-  // Admin hệ thống (kỹ thuật) KHÔNG nhận thông báo nghiệp vụ dự án (tiến độ, cấp quỹ, nghỉ phép, vật tư)
-  // Chỉ Ban Giám Đốc, PM, Quản lý dự án mới nhận thông báo điều hành & nghiệp vụ
+  // Admin hệ thống (kỹ thuật): nếu CHỈ là tài khoản quản trị kỹ thuật thuần túy (không kiêm Giám đốc, không kiêm Quản lý/PM)
+  // thì chỉ xem các thông báo hệ thống / cập nhật app để tránh loãng.
+  // Nhưng nếu có chức danh/quyền hạn điều hành (Giám đốc, PM, hoặc phân quyền cụ thể) thì vẫn nhận thông báo nghiệp vụ bình thường.
   const isSysAdmin = isSystemAdmin(user);
-  if (isSysAdmin) {
-    // Admin kỹ thuật chỉ nhận thông báo về cập nhật phần mềm hoặc bảo trì hệ thống
+  const isDirectorUser = isDirector(user);
+  const hasBusinessLeadership = isDirectorUser || role === 'pm' || role === 'quản lý dự án' || role === 'manager' || role === 'quản lý' || role === 'giám sát' || (user?.permissions && user.permissions.length > 5);
+
+  if (isSysAdmin && !hasBusinessLeadership) {
+    // Admin kỹ thuật thuần túy chỉ nhận thông báo về cập nhật phần mềm hoặc bảo trì hệ thống
     const typeStr = String(notification?.type || '');
     const tLow = String(notification?.title || '').toLowerCase();
     return typeStr.startsWith('system_') || typeStr.startsWith('app_update') || tLow.includes('cập nhật phần mềm');
   }
 
-  const isDirectorUser = isDirector(user);
-  const isAdmin = isDirectorUser || role === 'pm' || role === 'quản lý dự án' || role === 'manager' || role === 'quản lý' || role === 'giám sát';
+  const isAdmin = isDirectorUser || role === 'pm' || role === 'quản lý dự án' || role === 'manager' || role === 'quản lý' || role === 'giám sát' || (isSysAdmin && hasBusinessLeadership);
 
   // Find engineer object(s) corresponding to current user
   const myEngs = (engineers || []).filter(e => {
@@ -57,6 +60,7 @@ export const isNotificationForUser = (notification: any, user: any, engineers: a
 
     return (
       (eId && (eId === userId || (userId.startsWith('user-') && eId === userId.replace('user-', '')))) ||
+      (e.auth_user_id && String(e.auth_user_id).trim().toLowerCase() === userId) ||
       (eName && (eName === name || eNormName === normName)) ||
       (eUsername && (eUsername === username || (userId.startsWith('user-') && eUsername === userId.replace('user-', '')))) ||
       (eEmail && userEmail && (eEmail === userEmail || eEmail.split('@')[0] === userEmail.split('@')[0])) ||
@@ -71,6 +75,7 @@ export const isNotificationForUser = (notification: any, user: any, engineers: a
     userId.replace(/^user-/, ''),
     username,
     ...myEngs.map(e => String(e.id || '').trim().toLowerCase()),
+    ...myEngs.map(e => String(e.auth_user_id || '').trim().toLowerCase()),
     ...myEngs.map(e => String(e.username || '').trim().toLowerCase())
   ].filter(Boolean)));
 
@@ -109,7 +114,22 @@ export const isNotificationForUser = (notification: any, user: any, engineers: a
   const isMatchingId = (targetId: string) => {
     if (!targetId) return false;
     const tId = String(targetId).trim().toLowerCase();
-    return myIds.includes(tId) || myIds.includes(tId.replace(/^user-/, ''));
+    if (myIds.includes(tId) || myIds.includes(tId.replace(/^user-/, ''))) return true;
+    
+    // Cross-reference targetId with engineers list:
+    // If targetId is an engineer.id or engineer.auth_user_id belonging to one of myEngs
+    const matchedEng = (engineers || []).find(e => {
+      if (!e) return false;
+      const eId = String(e.id || '').trim().toLowerCase();
+      const eAuthId = String(e.auth_user_id || '').trim().toLowerCase();
+      return eId === tId || eAuthId === tId;
+    });
+    if (matchedEng) {
+      const eId = String(matchedEng.id || '').trim().toLowerCase();
+      const eAuthId = String(matchedEng.auth_user_id || '').trim().toLowerCase();
+      if (myIds.includes(eId) || (eAuthId && myIds.includes(eAuthId))) return true;
+    }
+    return false;
   };
 
   // User's assigned project codes
@@ -389,8 +409,8 @@ export const isNotificationForUser = (notification: any, user: any, engineers: a
       const targetIds = (parts[1] || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
       const targetNames = (parts[2] || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
 
-      const isMeId = targetIds.some(tId => myIds.includes(tId) || (myEng && tId === String(myEng.id).toLowerCase()));
-      const isMeName = targetNames.some(tName => myNames.some(n => tName.includes(n) || n.includes(tName)));
+      const isMeId = targetIds.some(tId => isMatchingId(tId));
+      const isMeName = targetNames.some(tName => isMatchingName(tName));
 
       if (isMeId || isMeName) return true;
 
@@ -427,11 +447,16 @@ export const isNotificationForUser = (notification: any, user: any, engineers: a
       const targetIds = (parts[1] || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
       const targetNames = (parts[2] || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
 
-      const isMeId = targetIds.some(tId => myIds.includes(tId) || (myEng && tId === String(myEng.id).toLowerCase()));
-      const isMeName = targetNames.some(tName => myNames.some(n => tName.includes(n) || n.includes(tName)));
+      const isMeId = targetIds.some(tId => isMatchingId(tId));
+      const isMeName = targetNames.some(tName => isMatchingName(tName));
 
       // Người được chỉ định đích danh luôn thấy
       if (isMeId || isMeName) return true;
+
+      // Nếu tên người dùng xuất hiện trong nội dung hoặc tiêu đề (ví dụ: "cho Nguyễn Văn A", "yêu cầu của B")
+      if (myNames.some(n => n && n.length >= 3 && (mLow.includes(n.toLowerCase()) || tLow.includes(n.toLowerCase())))) {
+        return true;
+      }
 
       // Admin / Quản trị viên / Người có quyền kiểm tra, duyệt, chuyển tiền (nếu không phải người tạo đơn) luôn thấy yêu cầu chờ xử lý
       if (
@@ -490,7 +515,7 @@ export const isNotificationForUser = (notification: any, user: any, engineers: a
     const targetId = parts[1]?.toLowerCase();
     const targetName = parts[2]?.toLowerCase();
     if (targetId && (isMatchingId(targetId) || (myEng && targetId === String(myEng.id).toLowerCase()))) return true;
-    if (targetName && myNames.some(n => targetName.includes(n) || n.includes(targetName))) return true;
+    if (targetName && isMatchingName(targetName)) return true;
     return false;
   }
 
