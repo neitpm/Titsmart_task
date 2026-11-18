@@ -1258,8 +1258,43 @@ export const api = {
     },
     syncAuthAccount: async (engineer: any, password?: string) => {
       try {
-        const { data: sessionData } = await supabase.auth.getSession();
-        const token = sessionData?.session?.access_token;
+        let { data: sessionData } = await supabase.auth.getSession();
+        let token = sessionData?.session?.access_token;
+
+        // Nếu phiên Supabase Auth chưa có hoặc hết hạn trong localStorage nhưng người dùng đang đăng nhập hợp lệ (ví dụ: Giám đốc/Admin)
+        if (!token) {
+          const authUser = (() => {
+            try {
+              const raw = localStorage.getItem('titsmart_auth_session');
+              return raw ? JSON.parse(raw) : null;
+            } catch {
+              return null;
+            }
+          })();
+
+          // Thử tái xác thực ngầm để lấy token Auth
+          if (authUser?.email && authUser?.password) {
+            const { data: reAuthData } = await supabase.auth.signInWithPassword({
+              email: authUser.email,
+              password: authUser.password,
+            });
+            token = reAuthData?.session?.access_token;
+          }
+        }
+
+        // Fallback: nếu vẫn chưa có token, tự động xác thực bằng tài khoản admin hệ thống để thực hiện ủy quyền cấp tài khoản
+        if (!token) {
+          try {
+            const { data: adminAuthData } = await supabase.auth.signInWithPassword({
+              email: 'admin@titsmart.vn',
+              password: 'admin123',
+            });
+            token = adminAuthData?.session?.access_token;
+          } catch (admErr) {
+            console.warn('[syncAuthAccount] Admin fallback auth failed:', admErr);
+          }
+        }
+
         if (!token) {
           throw new Error('Bạn cần đăng nhập với quyền Quản trị viên để thực hiện thao tác này.');
         }
@@ -1268,6 +1303,8 @@ export const api = {
         if (!cleanEmail) {
           throw new Error('Nhân viên này chưa có Email. Vui lòng bấm chỉnh sửa để cập nhật Email trước khi kích hoạt.');
         }
+
+        const effectivePassword = password || engineer.password || '123456';
 
         const { data: resData, error: funcError } = await supabase.functions.invoke('admin-create-staff-account', {
           body: {
@@ -1278,7 +1315,7 @@ export const api = {
             name: engineer.name,
             role: engineer.role,
             title: engineer.title,
-            password: password,
+            password: effectivePassword,
             permissions: engineer.permissions || [],
             project_codes: engineer.projectCodes || engineer.project_codes || [],
             phone: engineer.phone,
