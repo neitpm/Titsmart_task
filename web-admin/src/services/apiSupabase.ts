@@ -1125,7 +1125,13 @@ export const api = {
         if (companyId) {
           query = query.eq('company_id', companyId);
         }
-        const { data, error } = await query.order('created_at', { ascending: true });
+        let { data, error } = await query.order('created_at', { ascending: true });
+        if (error && (error.code === 'PGRST204' || String(error.message).includes('company_id') || String(error.message).includes('column'))) {
+          // Fallback nếu database trên Supabase Cloud chưa có cột company_id
+          const fallbackRes = await supabase.from('engineers').select('*').order('created_at', { ascending: true });
+          data = fallbackRes.data;
+          error = fallbackRes.error;
+        }
         if (error) {
           console.warn('[Engineers] Supabase error:', error);
           return [];
@@ -1141,8 +1147,11 @@ export const api = {
     },
     create: async (data: any) => {
       const payload = toSnakeCase(data);
-      if (!payload.company_id) {
-        payload.company_id = getCurrentCompanyId();
+      const companyId = getCurrentCompanyId();
+      if (companyId && !payload.company_id) {
+        payload.company_id = companyId;
+      } else if (!companyId) {
+        delete payload.company_id;
       }
       if (payload.is_locked !== undefined) {
         payload.is_active = !payload.is_locked;
@@ -1159,22 +1168,21 @@ export const api = {
 
       const { data: result, error } = await supabase.from('engineers').insert(payload).select().single();
       if (error) {
-        if (error.code === 'PGRST204' || String(error.code).includes('400') || String(error.message).includes('column') || String(error.message).includes('password') || String(error.message).includes('is_locked') || String(error.message).includes('is_active') || String(error.message).includes('project_codes')) {
-          delete payload.updated_by;
-          delete payload.updated_at;
-          delete payload.is_locked;
-          const { data: retryResult, error: retryError } = await supabase.from('engineers').insert(payload).select().single();
-          if (retryError) {
-            delete payload.password;
-            delete payload.is_active;
-            delete payload.project_codes;
-            const { data: finalResult, error: finalError } = await supabase.from('engineers').insert(payload).select().single();
-            if (finalError) throw finalError;
-            return toCamelCase(finalResult);
-          }
-          return toCamelCase(retryResult);
+        // Tự động gỡ bỏ các cột mở rộng (company_id, project_codes, v.v.) nếu DB Cloud chưa cập nhật schema
+        delete payload.company_id;
+        delete payload.updated_by;
+        delete payload.updated_at;
+        delete payload.is_locked;
+        const { data: retryResult, error: retryError } = await supabase.from('engineers').insert(payload).select().single();
+        if (retryError) {
+          delete payload.password;
+          delete payload.is_active;
+          delete payload.project_codes;
+          const { data: finalResult, error: finalError } = await supabase.from('engineers').insert(payload).select().single();
+          if (finalError) throw finalError;
+          return toCamelCase(finalResult);
         }
-        throw error;
+        return toCamelCase(retryResult);
       }
       return toCamelCase(result);
     },
@@ -1198,6 +1206,8 @@ export const api = {
         delete clean.updated_at;
         delete clean.updatedBy;
         delete clean.updatedAt;
+        delete clean.company_id;
+        delete clean.companyId;
         if (projCodes !== undefined) {
           clean.project_codes = projCodes;
         }
