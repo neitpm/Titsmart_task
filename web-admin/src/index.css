@@ -27,6 +27,24 @@
   }
 }
 
+/* Company Admin Portal: flat administration console styling, inspired by Supabase. */
+.min-h-screen.bg-slate-50 .rounded-2xl,
+.min-h-screen.bg-slate-50 .rounded-xl,
+.min-h-screen.bg-slate-50 .rounded-lg {
+  border-radius: 0.375rem;
+}
+
+.min-h-screen.bg-slate-50 aside button {
+  border-radius: 0.375rem;
+}
+
+.min-h-screen.bg-slate-50 button,
+.min-h-screen.bg-slate-50 input,
+.min-h-screen.bg-slate-50 select,
+.min-h-screen.bg-slate-50 textarea {
+  border-radius: 0.5rem;
+}
+
 /* Custom Scrollbar Styling */
 ::-webkit-scrollbar {
   width: 6px;

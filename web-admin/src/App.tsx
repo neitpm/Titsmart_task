@@ -23,6 +23,8 @@ import { ProjectOverviewTab } from './pages/ProjectOverviewTab';
 import { TaskAssignmentPage } from './pages/TaskAssignmentPage';
 import { MyTasksPage } from './pages/MyTasksPage';
 import { AttendancePage } from './pages/AttendancePage';
+import { CompanyAdminLoginPage } from './pages/CompanyAdminLoginPage';
+import { CompanyAdminPortalPage } from './pages/CompanyAdminPortalPage';
 
 import { App as CapApp } from '@capacitor/app';
 
@@ -285,6 +287,8 @@ export const App: React.FC = () => {
 
       <Routes>
         <Route path="/login" element={user ? <Navigate to="/" replace /> : renderLogin()} />
+        <Route path="/company-admin/login" element={<CompanyAdminLoginPage />} />
+        <Route path="/company-admin" element={<CompanyAdminPortalPage />} />
         <Route element={<ProtectedLayout />}>
           <Route path="/" element={<Navigate to={"/projects"} replace />} />
           <Route path="/dashboard" element={<DashboardPage />} />

@@ -51,12 +51,31 @@ serve(async (req: Request) => {
     const adminClient = createClient(supabaseUrl, supabaseServiceKey);
     const callerId = String(callerUser.id || '').trim();
 
-    // Tra cứu bản ghi nhân sự duy nhất ứng với auth_user_id của caller (Không auto-heal ngầm)
-    const { data: callerEng } = await adminClient
+    // Tra cứu bản ghi nhân sự duy nhất ứng với auth_user_id của caller (hoặc fallback qua email nếu chưa map auth_user_id)
+    let { data: callerEng } = await adminClient
       .from("engineers")
       .select("id, role, permissions, auth_user_id, is_active, email")
       .eq("auth_user_id", callerId)
       .maybeSingle();
+
+    if (!callerEng && callerUser.email) {
+      const { data: engByEmail } = await adminClient
+        .from("engineers")
+        .select("id, role, permissions, auth_user_id, is_active, email")
+        .ilike("email", callerUser.email)
+        .maybeSingle();
+
+      if (engByEmail) {
+        callerEng = engByEmail;
+        // Auto-link auth_user_id nếu chưa có
+        if (!engByEmail.auth_user_id) {
+          await adminClient
+            .from("engineers")
+            .update({ auth_user_id: callerId })
+            .eq("id", engByEmail.id);
+        }
+      }
+    }
 
     if (!callerEng) {
       return new Response(
@@ -74,11 +93,12 @@ serve(async (req: Request) => {
       );
     }
 
-    // Tiêu chuẩn phân quyền: Phải có quyền MANAGE_USERS hoặc là System Admin (admin/Quản trị viên) trong database
+    // Tiêu chuẩn phân quyền: Ban Giám Đốc, Admin, hoặc tài khoản có quyền MANAGE_USERS
     const callerPermissions: string[] = Array.isArray(callerEng.permissions) ? callerEng.permissions : [];
     const roleStr = String(callerEng.role || '').toLowerCase();
+    const isDirectorRole = roleStr.includes("giám đốc") || roleStr === "director" || roleStr.includes("lãnh đạo");
     const isSystemAdminRole = roleStr === "admin" || roleStr === "quản trị viên";
-    const hasManageUsers = isSystemAdminRole || callerPermissions.includes("MANAGE_USERS");
+    const hasManageUsers = isSystemAdminRole || isDirectorRole || callerPermissions.includes("MANAGE_USERS");
 
     if (!hasManageUsers) {
       return new Response(

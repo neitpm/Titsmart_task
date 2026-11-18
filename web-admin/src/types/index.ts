@@ -27,6 +27,10 @@ export const SYSTEM_PERMISSIONS: Permission[] = [
 ];
 
 export const BUSINESS_PERMISSIONS: Permission[] = [
+  'VIEW_USERS',
+  'EDIT_USERS',
+  'MANAGE_USERS',
+  'MANAGE_PERMISSIONS',
   'VIEW_PROJECTS',
   'CREATE_PROJECTS',
   'EDIT_PROJECTS',

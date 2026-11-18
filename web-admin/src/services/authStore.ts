@@ -12,7 +12,7 @@ export const getDefaultPermissions = (role: string): Permission[] => {
     ];
   }
 
-  // 2. Giám đốc / Ban Lãnh đạo: Sở hữu toàn quyền điều hành nghiệp vụ, phê duyệt tài chính, dự án, nhân sự
+  // 2. Giám đốc / Ban Lãnh đạo: Sở hữu toàn quyền điều hành nghiệp vụ, phê duyệt tài chính, dự án, quản lý nhân sự
   if (normRole.includes('giám đốc') || normRole === 'director' || normRole.includes('lãnh đạo')) {
     return [
       'VIEW_PROJECTS', 'CREATE_PROJECTS', 'EDIT_PROJECTS', 'DELETE_PROJECTS',
@@ -21,7 +21,7 @@ export const getDefaultPermissions = (role: string): Permission[] => {
       'VIEW_FINANCE', 'EDIT_PRICES', 'VIEW_PAYMENTS', 'EDIT_PAYMENTS', 'VIEW_EXPENSES', 'EDIT_EXPENSES',
       'CHECK_FUND_REQUEST', 'APPROVE_FUND_REQUEST', 'PROCESS_FUND_TRANSFER', 'CONFIRM_FUND_RECEIPT',
       'VIEW_DOCUMENTS', 'CREATE_DOCUMENTS', 'EDIT_DOCUMENTS', 'DELETE_DOCUMENTS', 'MANAGE_DOCUMENTS', 'VIEW_PROJECT_DIAGRAM', 'MANAGE_PROJECT_DIAGRAM',
-      'VIEW_USERS', 'MANAGE_PAYROLL', 'APPROVE_LEAVE_STEP1', 'APPROVE_LEAVE_FINAL', 'EXPORT_DATA'
+      'VIEW_USERS', 'EDIT_USERS', 'MANAGE_USERS', 'MANAGE_PERMISSIONS', 'MANAGE_PAYROLL', 'APPROVE_LEAVE_STEP1', 'APPROVE_LEAVE_FINAL', 'EXPORT_DATA'
     ];
   }
 

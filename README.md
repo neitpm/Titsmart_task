@@ -13,4 +13,3 @@ Thu muc nay chua ho so khoi dong va cau truc source code de phat trien he thong 
 - `storage/`: thu muc phuc vu luu file local trong moi truong dev.
 
 File `bang theo doi tien do.xlsx` hien tai duoc xem la du lieu mau de phan tich/import ban dau. He thong that se cho tao du an dong, khong co dinh theo cac sheet trong file.
-
