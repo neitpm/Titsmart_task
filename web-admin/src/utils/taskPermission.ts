@@ -1,4 +1,4 @@
-import { AuthUser } from '../services/authStore';
+import { AuthUser, isDirector, isSystemAdmin, hasPermission } from '../services/authStore';
 import { Task, Engineer, ProjectMaterialPlan } from '../types';
 
 /**
@@ -103,7 +103,25 @@ export const isUserTaskAssigner = (
 
   const role = normalizeText(user.role);
   const username = normalizeText(user.username);
-  if (role === 'admin' || role === 'quản trị viên' || username === 'admin') {
+  const title = normalizeText((user as any).title);
+
+  // 1. Giám đốc / Ban Lãnh đạo (Cấp 1) hoặc Quản trị viên (Admin) luôn có toàn quyền duyệt / nghiệm thu / điều hành công việc
+  if (
+    isDirector(user) ||
+    isSystemAdmin(user) ||
+    role === 'admin' ||
+    role === 'quản trị viên' ||
+    username === 'admin' ||
+    role.includes('giám đốc') ||
+    role.includes('ban giám đốc') ||
+    role.includes('lãnh đạo') ||
+    role === 'director' ||
+    title.includes('giám đốc') ||
+    title.includes('ban giám đốc') ||
+    title.includes('lãnh đạo') ||
+    hasPermission(user, 'APPROVE_TASKS') ||
+    hasPermission(user, 'ASSIGN_TASKS')
+  ) {
     return true;
   }
 

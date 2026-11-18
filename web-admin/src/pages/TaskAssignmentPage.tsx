@@ -95,7 +95,22 @@ export const TaskAssignmentPage: React.FC = () => {
 
   const canApproveTask = (currentUser: any, task: any): boolean => {
     if (!currentUser || !task) return false;
-    if (task.status !== 'Chờ nghiệm thu') return false;
+    if (task.status === 'Hoàn thành' || task.constrStatus === 'Đã hoàn thành' || task.isDone) return false;
+    const isWaiting = task.status === 'Chờ nghiệm thu' || task.constrStatus === 'Chờ nghiệm thu';
+    if (!isWaiting) return false;
+
+    // Giám đốc, Ban Lãnh đạo (Cấp 1) hoặc Quản trị viên (Admin) luôn có toàn quyền duyệt / nghiệm thu
+    if (
+      isDirector(currentUser) ||
+      isSystemAdmin(currentUser) ||
+      currentUser.role === 'admin' ||
+      currentUser.role === 'quản trị viên' ||
+      hasPermission(currentUser, 'APPROVE_TASKS') ||
+      (Array.isArray(currentUser.permissions) && currentUser.permissions.includes('APPROVE_TASKS'))
+    ) {
+      return true;
+    }
+
     return isUserTaskAssigner(currentUser, task, engineers);
   };
 

@@ -4,7 +4,7 @@ import * as XLSX from 'xlsx';
 import { exportToStyledExcel } from '../utils/excelExportUtils';
 import jsPDF from 'jspdf';
 import { useRealtimeStore, calculateTaskProgressFromStatuses } from '../services/realtimeStore';
-import { useAuthStore, hasPermission } from '../services/authStore';
+import { useAuthStore, hasPermission, isDirector, isSystemAdmin } from '../services/authStore';
 import { Modal } from '../components/common/Modal';
 import { Toast } from '../components/common/Toast';
 import { OcrUploadPanel } from '../components/common/OcrUploadPanel';
@@ -347,15 +347,29 @@ export const TaskManagementPage: React.FC = () => {
   const canApproveTask = (currentUser: any, task: any): boolean => {
     if (!currentUser || !task) return false;
     // Nếu công việc đã Hoàn thành hoặc đã xong thì ẩn nút nghiệm thu
-    if (task.status === 'Hoàn thành' || task.isDone) return false;
-    if (!isUserTaskAssigner(currentUser, task, engineers)) return false;
+    if (task.status === 'Hoàn thành' || task.constrStatus === 'Đã hoàn thành' || task.isDone) return false;
     // Chỉ hiện nút Nghiệm thu khi công việc đang ở trạng thái Chờ nghiệm thu
-    return task.status === 'Chờ nghiệm thu';
+    const isWaiting = task.status === 'Chờ nghiệm thu' || task.constrStatus === 'Chờ nghiệm thu';
+    if (!isWaiting) return false;
+
+    // Giám đốc, Ban Lãnh đạo (Cấp 1) hoặc Quản trị viên (Admin) luôn có toàn quyền duyệt / nghiệm thu
+    if (
+      isDirector(currentUser) ||
+      isSystemAdmin(currentUser) ||
+      currentUser.role === 'admin' ||
+      currentUser.role === 'quản trị viên' ||
+      hasPermission(currentUser, 'APPROVE_TASKS') ||
+      (Array.isArray(currentUser.permissions) && currentUser.permissions.includes('APPROVE_TASKS'))
+    ) {
+      return true;
+    }
+
+    return isUserTaskAssigner(currentUser, task, engineers);
   };
 
   const handleApproveTask = async (task: Task) => {
     if (!canApproveTask(authStore.user, task)) {
-      triggerToast('Chỉ người giao việc mới có quyền nghiệm thu!', 'warning');
+      triggerToast('Chỉ người giao việc, Ban Giám Đốc hoặc Quản trị viên mới có quyền nghiệm thu!', 'warning');
       return;
     }
     const adminName = authStore.user?.name || authStore.user?.username || 'Quản lý';
@@ -3026,12 +3040,27 @@ const hasSyncedRef = useRef(false);
                         </span>
                       </td>
                       <td className="py-1.5 px-2 text-center whitespace-nowrap border-r border-slate-200">
-                        <span 
-                          title="Tiến độ thi công (được cập nhật theo tiến độ báo cáo và nghiệm thu công việc)" 
-                          className={`inline-block w-full max-w-[110px] rounded border px-1 py-0.5 text-[10px] font-bold text-center whitespace-nowrap leading-snug ${getStatusColorStyle(t.constrStatus || t.status || "Chưa thi công")}`}
-                        >
-                          {t.constrStatus || t.status || "Chưa thi công"}
-                        </span>
+                        {canApproveTask(authStore.user, t) ? (
+                          <button 
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleApproveTask(t);
+                            }}
+                            title="Nhấn để nghiệm thu hoàn thành ngay (hoặc bấm Nghiệm thu / Từ chối ở cột Giao việc)" 
+                            className="inline-flex items-center justify-center gap-1 w-full max-w-[115px] rounded border border-purple-400 bg-purple-50 hover:bg-purple-600 hover:text-white px-1.5 py-0.5 text-[10px] font-bold text-purple-700 text-center whitespace-nowrap leading-snug cursor-pointer shadow-2xs transition-all animate-pulse"
+                          >
+                            <span className="material-symbols-outlined text-[13px]">verified</span>
+                            Chờ nghiệm thu
+                          </button>
+                        ) : (
+                          <span 
+                            title="Tiến độ thi công (được cập nhật theo tiến độ báo cáo và nghiệm thu công việc)" 
+                            className={`inline-block w-full max-w-[110px] rounded border px-1 py-0.5 text-[10px] font-bold text-center whitespace-nowrap leading-snug ${getStatusColorStyle(t.constrStatus || t.status || "Chưa thi công")}`}
+                          >
+                            {t.constrStatus || t.status || "Chưa thi công"}
+                          </span>
+                        )}
                       </td>
                        {(hasPermission(authStore.user, 'ASSIGN_TASKS') || isUserTaskAssignee(authStore.user, t, engineers)) && (
                           <td 

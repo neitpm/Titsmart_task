@@ -464,7 +464,7 @@ export const MyTasksPage: React.FC = () => {
 
   const handleApproveTask = async (task: any) => {
     if (!isUserTaskAssigner(user, task, engineers)) {
-      triggerToast('Chỉ người giao việc mới có quyền nghiệm thu!', 'warning');
+      triggerToast('Chỉ người giao việc, Ban Giám Đốc hoặc Quản trị viên mới có quyền nghiệm thu!', 'warning');
       return;
     }
     const todayStr = new Date().toISOString().split('T')[0];

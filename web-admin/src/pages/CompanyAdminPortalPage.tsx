@@ -720,18 +720,18 @@ export const CompanyAdminPortalPage: React.FC = () => {
                 <td className="p-3">{p.position || '—'}</td>
                 <td className="p-3">{p.company_roles?.title || p.role}</td>
                 <td className="p-3">
-                  <span className={`rounded px-2 py-0.5 text-xs font-bold ${p.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-600'}`}>
+                  <span className={`rounded-sm px-2 py-0.5 text-xs font-bold ${p.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-600'}`}>
                     {p.status === 'active' ? 'Hoạt động' : 'Đã khóa'}
                   </span>
                 </td>
                 <td className="p-3 flex items-center gap-2 flex-wrap">
-                  <button onClick={() => togglePersonStatus(p)} className={`rounded px-3 py-1 text-xs font-bold ${p.status === 'active' ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'}`}>
+                  <button onClick={() => togglePersonStatus(p)} className={`rounded-sm px-3 py-1 text-xs font-bold ${p.status === 'active' ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'}`}>
                     {p.status === 'active' ? 'Khóa' : 'Mở khóa'}
                   </button>
                   <button
                     disabled={provisioningId === p.id}
                     onClick={() => provisionAuth(p)}
-                    className="rounded bg-indigo-50 px-3 py-1 text-xs font-bold text-indigo-700 hover:bg-indigo-100 disabled:opacity-60"
+                    className="rounded-sm bg-indigo-50 px-3 py-1 text-xs font-bold text-indigo-700 hover:bg-indigo-100 disabled:opacity-60"
                   >
                     {provisioningId === p.id ? '...' : 'Tạo TK Auth'}
                   </button>
@@ -799,14 +799,14 @@ export const CompanyAdminPortalPage: React.FC = () => {
                     <td className="p-3 font-semibold">{r.title || '—'}</td>
                     <td className="p-3 text-center">{r.level}</td>
                     <td className="p-3">
-                      <span className={`rounded px-2 py-0.5 text-xs font-bold ${r.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
+                      <span className={`rounded-sm px-2 py-0.5 text-xs font-bold ${r.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
                         {r.is_active ? 'On' : 'Off'}
                       </span>
                     </td>
                     <td className="p-3">
                       <button
                         onClick={e => { e.stopPropagation(); toggleRoleStatus(r); }}
-                        className={`rounded px-2 py-1 text-xs font-bold ${r.is_active ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'}`}
+                        className={`rounded-sm px-2 py-1 text-xs font-bold ${r.is_active ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'}`}
                       >
                         {r.is_active ? 'Tắt' : 'Bật'}
                       </button>
@@ -898,20 +898,20 @@ export const CompanyAdminPortalPage: React.FC = () => {
                 </td>
                 <td className="p-3 text-center">{item.sort_order}</td>
                 <td className="p-3">
-                  <span className={`rounded px-2 py-0.5 text-xs font-bold ${item.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
+                  <span className={`rounded-sm px-2 py-0.5 text-xs font-bold ${item.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
                     {item.is_active ? 'Hoạt động' : 'Ẩn'}
                   </span>
                 </td>
                 <td className="p-3 flex gap-2">
                   {editingCatalog === item.id ? (
                     <>
-                      <button onClick={() => saveCatalogItem(item)} className="rounded bg-emerald-600 px-2 py-1 text-xs font-bold text-white">Lưu</button>
-                      <button onClick={() => setEditingCatalog(null)} className="rounded border px-2 py-1 text-xs font-bold text-slate-600">Hủy</button>
+                      <button onClick={() => saveCatalogItem(item)} className="rounded-sm bg-emerald-600 px-2 py-1 text-xs font-bold text-white">Lưu</button>
+                      <button onClick={() => setEditingCatalog(null)} className="rounded-sm border px-2 py-1 text-xs font-bold text-slate-600">Hủy</button>
                     </>
                   ) : (
                     <>
-                      <button onClick={() => { setEditingCatalog(item.id); setEditCatalogName(item.name); }} className="rounded bg-blue-50 px-2 py-1 text-xs font-bold text-blue-700 hover:bg-blue-100">Sửa</button>
-                      <button onClick={() => deleteCatalogItem(item)} className="rounded bg-red-50 px-2 py-1 text-xs font-bold text-red-600 hover:bg-red-100">Xóa</button>
+                      <button onClick={() => { setEditingCatalog(item.id); setEditCatalogName(item.name); }} className="rounded-sm bg-blue-50 px-2 py-1 text-xs font-bold text-blue-700 hover:bg-blue-100">Sửa</button>
+                      <button onClick={() => deleteCatalogItem(item)} className="rounded-sm bg-red-50 px-2 py-1 text-xs font-bold text-red-600 hover:bg-red-100">Xóa</button>
                     </>
                   )}
                 </td>
