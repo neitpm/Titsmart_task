@@ -148,10 +148,16 @@ serve(async (req: Request) => {
       targetEngineer = data;
     }
 
-    // Nếu đã có auth_user_id và user đó tồn tại hợp lệ trong auth.users -> Trả về kết quả ngay (Idempotent)
+    // Nếu đã có auth_user_id và user đó tồn tại hợp lệ trong auth.users
     if (targetEngineer && targetEngineer.auth_user_id) {
       const { data: existingAuth } = await adminClient.auth.admin.getUserById(targetEngineer.auth_user_id);
       if (existingAuth?.user) {
+        // Cập nhật mật khẩu nếu có truyền vào
+        if (password) {
+          await adminClient.auth.admin.updateUserById(existingAuth.user.id, {
+            password: password,
+          });
+        }
         // Cập nhật trạng thái ACTIVE nếu cần
         await adminClient
           .from("engineers")
