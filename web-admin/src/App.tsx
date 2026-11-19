@@ -41,7 +41,7 @@ import { requestSystemNotificationPermission } from './services/systemNotificati
 
 const ProtectedLayout: React.FC = () => {
   const user = useAuthStore((state) => state.user);
-  if (!user) return <CompanyAdminLoginPage />;
+  if (!user) return <Navigate to="/login" replace />;
   return (
     <Layout>
       <Outlet />
@@ -328,10 +328,34 @@ export const App: React.FC = () => {
       {user && <NotificationBell />}
       <ChatWidget />
 
-      <Routes>
+      <React.Suspense
+        fallback={
+          <div className="flex h-screen w-full items-center justify-center bg-slate-50">
+            <div className="flex flex-col items-center gap-3">
+              <div className="h-9 w-9 animate-spin rounded-full border-4 border-primary/20 border-t-primary" />
+              <span className="text-xs font-semibold text-slate-500">Đang tải ứng dụng...</span>
+            </div>
+          </div>
+        }
+      >
+        <Routes>
         <Route path="/login" element={user ? <Navigate to="/" replace /> : renderLogin()} />
-        <Route path="/company-admin/login" element={<CompanyAdminLoginPage />} />
-        <Route path="/company-admin" element={<CompanyAdminPortalPage />} />
+        <Route
+          path="/company-admin/login"
+          element={
+            <React.Suspense fallback={<div className="flex h-screen w-full items-center justify-center bg-slate-50 text-xs font-semibold text-slate-500">Đang tải trang...</div>}>
+              <CompanyAdminLoginPage />
+            </React.Suspense>
+          }
+        />
+        <Route
+          path="/company-admin"
+          element={
+            <React.Suspense fallback={<div className="flex h-screen w-full items-center justify-center bg-slate-50 text-xs font-semibold text-slate-500">Đang tải trang...</div>}>
+              <CompanyAdminPortalPage />
+            </React.Suspense>
+          }
+        />
         <Route element={<ProtectedLayout />}>
           <Route path="/" element={<Navigate to={"/projects"} replace />} />
           <Route path="/dashboard" element={<DashboardPage />} />
@@ -362,6 +386,7 @@ export const App: React.FC = () => {
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </React.Suspense>
     </>
   );
 };
