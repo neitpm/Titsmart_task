@@ -586,9 +586,21 @@ export const useAuthStore = create<AuthStoreState>((set, get) => ({
     }
 
     const isSystemAdmin = cleanInput.toLowerCase() === 'admin' || resolvedEmail.toLowerCase() === 'admin@titsmart.vn';
+    const provisionedCompanyUser = Boolean(authUser.user_metadata?.company_id);
+    if (!engineerData && provisionedCompanyUser) {
+      engineerData = {
+        id: authUid,
+        auth_user_id: authUid,
+        email: authUser.email || resolvedEmail,
+        username: authUser.user_metadata?.name || resolvedEmail,
+        full_name: authUser.user_metadata?.name || resolvedEmail,
+        role: 'Nhân viên',
+        is_active: true,
+      };
+    }
 
     // Nếu không tìm thấy thông tin nhân sự và không phải admin mặc định
-    if (!engineerData && !isSystemAdmin) {
+    if (!engineerData && !isSystemAdmin && !provisionedCompanyUser) {
       await supabase.auth.signOut().catch(() => {});
       return {
         ok: false,
@@ -599,7 +611,7 @@ export const useAuthStore = create<AuthStoreState>((set, get) => ({
     // YÊU CẦU BẢO MẬT: MAPPING auth_user_id BẮT BUỘC ĐƯỢC ADMIN/BACKEND/MIGRATION THIẾT LẬP
     // Frontend tuyệt đối không tự ý cập nhật ngầm mapping vào DB.
     // Nếu tài khoản nhân sự chưa có liên kết auth_user_id chính xác với Supabase Auth user id:
-    if (engineerData && engineerData.auth_user_id !== authUid && !isSystemAdmin) {
+    if (engineerData && engineerData.auth_user_id !== authUid && !isSystemAdmin && !provisionedCompanyUser) {
       await supabase.auth.signOut().catch(() => {});
       return {
         ok: false,

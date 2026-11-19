@@ -14,6 +14,7 @@ import { CustomSelect } from '@/components/common/CustomSelect';
 import { FileUpload } from '../components/common/FileUpload';
 import { AuditInfoCell } from '../components/common/AuditInfoCell';
 import { PullToRefresh } from '../components/common/PullToRefresh';
+import { useUIStore } from '../services/uiStore';
 
 export const DocumentTrackingPage: React.FC = () => {
   const documentTracks = useRealtimeStore(s => s.documentTracks);
@@ -267,8 +268,18 @@ export const DocumentTrackingPage: React.FC = () => {
   const [filterDateFrom, setFilterDateFrom] = useState('');
   const [filterDateTo, setFilterDateTo] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const tablePaginationMode = useUIStore(s => s.tablePaginationMode);
+  const tablePageSize = useUIStore(s => s.tablePageSize);
+  const setTablePaginationMode = useUIStore(s => s.setTablePaginationMode);
+  const setTablePageSize = useUIStore(s => s.setTablePageSize);
+
   const [documentPage, setDocumentPage] = useState(1);
-  const [documentPageSize, setDocumentPageSize] = useState(25);
+  const [docVisibleLimit, setDocVisibleLimit] = useState(tablePageSize || 25);
+  const docSentinelRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    setDocVisibleLimit(tablePageSize || 25);
+  }, [tablePageSize]);
 
   // Helper for due date calculation
   const getDueInfo = (track: DocumentTrack) => {
@@ -399,15 +410,35 @@ export const DocumentTrackingPage: React.FC = () => {
     });
   }, [documentTracks, filterProjectCode, filterDocStatus, filterPaymentStatus, filterDueStatus, filterDateFrom, filterDateTo, searchQuery, projects]);
 
-  const documentTotalPages = Math.max(1, Math.ceil(filteredTracks.length / documentPageSize));
+  const effectivePageSize = tablePageSize || 25;
+  const documentTotalPages = Math.max(1, Math.ceil(filteredTracks.length / effectivePageSize));
   const paginatedTracks = useMemo(() => {
-    const start = (documentPage - 1) * documentPageSize;
-    return filteredTracks.slice(start, start + documentPageSize);
-  }, [filteredTracks, documentPage, documentPageSize]);
+    if (tablePaginationMode === 'infinite') {
+      return filteredTracks.slice(0, docVisibleLimit);
+    }
+    const start = (documentPage - 1) * effectivePageSize;
+    return filteredTracks.slice(start, start + effectivePageSize);
+  }, [filteredTracks, documentPage, effectivePageSize, tablePaginationMode, docVisibleLimit]);
 
   useEffect(() => {
     setDocumentPage(1);
-  }, [filterProjectCode, filterDocStatus, filterPaymentStatus, filterDueStatus, filterDateFrom, filterDateTo, searchQuery, documentPageSize]);
+    setDocVisibleLimit(effectivePageSize);
+  }, [filterProjectCode, filterDocStatus, filterPaymentStatus, filterDueStatus, filterDateFrom, filterDateTo, searchQuery, effectivePageSize]);
+
+  useEffect(() => {
+    if (tablePaginationMode !== 'infinite') return;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0] && entries[0].isIntersecting) {
+        setDocVisibleLimit(prev => (prev < filteredTracks.length ? Math.min(filteredTracks.length, prev + effectivePageSize) : prev));
+      }
+    }, { rootMargin: '300px' });
+    const el = docSentinelRef.current;
+    if (el) observer.observe(el);
+    return () => {
+      if (el) observer.unobserve(el);
+      observer.disconnect();
+    };
+  }, [tablePaginationMode, filteredTracks.length, effectivePageSize]);
 
   useEffect(() => {
     if (documentPage > documentTotalPages) setDocumentPage(documentTotalPages);
@@ -1245,29 +1276,111 @@ export const DocumentTrackingPage: React.FC = () => {
                   </tr>
                 );
               })}
+              {tablePaginationMode === 'infinite' && docVisibleLimit < filteredTracks.length && (
+                <tr>
+                  <td colSpan={10} className="py-2.5 px-4 text-center bg-slate-50/60">
+                    <div ref={docSentinelRef} className="flex items-center justify-center gap-2 text-slate-500 text-xs py-1">
+                      <span className="w-3.5 h-3.5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                      <span className="font-medium text-[11px]">Đang cuộn nạp thêm hồ sơ ({docVisibleLimit} / {filteredTracks.length})...</span>
+                    </div>
+                  </td>
+                </tr>
+              )}
               </tbody>
             </table>
-            <div className="flex flex-wrap items-center justify-center gap-4 border-t border-slate-200 bg-white px-4 py-2.5 text-xs text-slate-600 shrink-0">
-              <div className="flex items-center gap-2">
-                <span>Hiển thị {filteredTracks.length === 0 ? 0 : (documentPage - 1) * documentPageSize + 1}-{Math.min(documentPage * documentPageSize, filteredTracks.length)} / {filteredTracks.length} hồ sơ</span>
-                <CustomSelect
-                  value={String(documentPageSize)}
-                  onChange={(e) => setDocumentPageSize(Number(e.target.value))}
-                  className="rounded border border-slate-300 bg-white px-2 py-1 text-xs"
-                >
-                  <option value="25">25 / trang</option>
-                  <option value="50">50 / trang</option>
-                  <option value="100">100 / trang</option>
-                </CustomSelect>
-              </div>
-              <div className="flex items-center gap-1">
-                <button type="button" disabled={documentPage <= 1} onClick={() => setDocumentPage(1)} className="rounded border border-slate-300 px-2 py-1 disabled:cursor-not-allowed disabled:opacity-40">Đầu</button>
-                <button type="button" disabled={documentPage <= 1} onClick={() => setDocumentPage(page => Math.max(1, page - 1))} className="rounded border border-slate-300 px-2 py-1 disabled:cursor-not-allowed disabled:opacity-40">Trước</button>
-                <span className="px-2 font-semibold">Trang {documentPage} / {documentTotalPages}</span>
-                <button type="button" disabled={documentPage >= documentTotalPages} onClick={() => setDocumentPage(page => Math.min(documentTotalPages, page + 1))} className="rounded border border-slate-300 px-2 py-1 disabled:cursor-not-allowed disabled:opacity-40">Sau</button>
-                <button type="button" disabled={documentPage >= documentTotalPages} onClick={() => setDocumentPage(documentTotalPages)} className="rounded border border-slate-300 px-2 py-1 disabled:cursor-not-allowed disabled:opacity-40">Cuối</button>
-              </div>
-            </div>
+            {filteredTracks.length > 0 && (() => {
+              if (tablePaginationMode === 'infinite') {
+                const currentCount = Math.min(docVisibleLimit, filteredTracks.length);
+                const hasMore = docVisibleLimit < filteredTracks.length;
+                return (
+                  <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-white px-4 py-2 text-xs text-slate-600 shrink-0 select-none shadow-xs">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-slate-700 whitespace-nowrap">
+                        Hiển thị <span className="text-primary font-bold">{currentCount}</span> / {filteredTracks.length} hồ sơ
+                      </span>
+                      {hasMore && (
+                        <span className="hidden sm:inline-flex items-center gap-1 text-[11px] text-slate-400">
+                          • Vuốt/cuộn xuống để tự động nạp tiếp
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {hasMore && (
+                        <button
+                          type="button"
+                          onClick={() => setDocVisibleLimit(prev => Math.min(filteredTracks.length, prev + effectivePageSize))}
+                          className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary font-bold text-xs transition-colors shadow-2xs cursor-pointer"
+                        >
+                          <span className="material-symbols-outlined text-[15px]">arrow_downward</span>
+                          <span>Tải thêm {Math.min(effectivePageSize, filteredTracks.length - docVisibleLimit)} dòng</span>
+                        </button>
+                      )}
+                      <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+                        <span className="text-[10px] text-slate-400 px-1 font-bold">Mỗi lần:</span>
+                        {[25, 50, 100].map(size => (
+                          <button
+                            key={size}
+                            type="button"
+                            onClick={() => setTablePageSize(size)}
+                            className={`px-1.5 py-0.5 text-[10.5px] font-bold rounded ${tablePageSize === size ? 'bg-white text-primary shadow-2xs' : 'text-slate-500 hover:text-slate-800'}`}
+                          >
+                            {size}
+                          </button>
+                        ))}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setTablePaginationMode('pagination')}
+                        className="flex items-center gap-1 px-2 py-1 rounded-lg border border-slate-200 hover:bg-slate-50 text-[11px] font-semibold text-slate-600 transition-colors shadow-2xs"
+                        title="Chuyển sang chế độ Phân trang truyền thống"
+                      >
+                        <span className="material-symbols-outlined text-sm">auto_stories</span>
+                        <span className="hidden md:inline">Phân trang</span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              }
+
+              return (
+                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-white px-4 py-2 text-xs text-slate-600 shrink-0 select-none shadow-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium whitespace-nowrap">Hiển thị {filteredTracks.length === 0 ? 0 : (documentPage - 1) * effectivePageSize + 1}-{Math.min(documentPage * effectivePageSize, filteredTracks.length)} / {filteredTracks.length} hồ sơ</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <button type="button" disabled={documentPage <= 1} onClick={() => setDocumentPage(1)} className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 font-medium hover:bg-slate-50 transition-colors disabled:cursor-not-allowed disabled:opacity-40 shadow-xs">Đầu</button>
+                    <button type="button" disabled={documentPage <= 1} onClick={() => setDocumentPage(page => Math.max(1, page - 1))} className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 font-medium hover:bg-slate-50 transition-colors disabled:cursor-not-allowed disabled:opacity-40 shadow-xs">Trước</button>
+                    <span className="px-3 font-semibold text-slate-700 whitespace-nowrap">Trang {documentPage} / {documentTotalPages}</span>
+                    <button type="button" disabled={documentPage >= documentTotalPages} onClick={() => setDocumentPage(page => Math.min(documentTotalPages, page + 1))} className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 font-medium hover:bg-slate-50 transition-colors disabled:cursor-not-allowed disabled:opacity-40 shadow-xs">Sau</button>
+                    <button type="button" disabled={documentPage >= documentTotalPages} onClick={() => setDocumentPage(documentTotalPages)} className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 font-medium hover:bg-slate-50 transition-colors disabled:cursor-not-allowed disabled:opacity-40 shadow-xs">Cuối</button>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+                      <span className="text-[10px] text-slate-400 px-1 font-bold">Mỗi trang:</span>
+                      {[25, 50, 100].map(size => (
+                        <button
+                          key={size}
+                          type="button"
+                          onClick={() => setTablePageSize(size)}
+                          className={`px-1.5 py-0.5 text-[10.5px] font-bold rounded ${tablePageSize === size ? 'bg-white text-primary shadow-2xs' : 'text-slate-500 hover:text-slate-800'}`}
+                        >
+                          {size}
+                        </button>
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setTablePaginationMode('infinite')}
+                      className="flex items-center gap-1 px-2 py-1 rounded-lg border border-slate-200 hover:bg-slate-50 text-[11px] font-semibold text-slate-600 transition-colors shadow-2xs"
+                      title="Chuyển sang chế độ Cuộn tải thêm (Infinite Scroll)"
+                    >
+                      <span className="material-symbols-outlined text-sm">history_toggle_off</span>
+                      <span className="hidden md:inline">Cuộn tải</span>
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </PullToRefresh>
 

@@ -16,6 +16,7 @@ import { Toast } from '../components/common/Toast';
 import { isUserTaskAssignee, isUserTaskAssigner, isUserTaskFollower, getTaskFollowerNames, isTaskReadyForAssignment } from '../utils/taskPermission';
 import { EmployeePeriodToolbar } from '../components/tasks/EmployeePeriodToolbar';
 import { TimePeriodType, getDateRangeForPeriod, isTaskInPeriod, isTaskAssignedToPerson, getTaskTimeBounds } from '../utils/taskPeriodFilter';
+import { useUIStore } from '../services/uiStore';
 
 export const TaskAssignmentPage: React.FC = () => {
   const navigate = useNavigate();
@@ -331,9 +332,22 @@ export const TaskAssignmentPage: React.FC = () => {
     return 'unassigned';
   });
   const [projectSearch, setProjectSearch] = useState('');
+  const tablePaginationMode = useUIStore(s => s.tablePaginationMode);
+  const tablePageSize = useUIStore(s => s.tablePageSize);
+  const setTablePaginationMode = useUIStore(s => s.setTablePaginationMode);
+  const setTablePageSize = useUIStore(s => s.setTablePageSize);
+
   const [projectTaskPage, setProjectTaskPage] = useState(1);
   const [directTaskPage, setDirectTaskPage] = useState(1);
-  const ASSIGNMENT_PAGE_SIZE = 25;
+  const [directVisibleLimit, setDirectVisibleLimit] = useState(tablePageSize || 25);
+  const [projectVisibleLimit, setProjectVisibleLimit] = useState(tablePageSize || 25);
+  const directSentinelRef = useRef<HTMLDivElement | null>(null);
+  const projectSentinelRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    setDirectVisibleLimit(tablePageSize || 25);
+    setProjectVisibleLimit(tablePageSize || 25);
+  }, [tablePageSize]);
 
   // Bộ lọc Nhân sự & Thời gian (Ngày / Tháng / Quý)
   const [filterEmployeeId, setFilterEmployeeId] = useState<string>('all');
@@ -866,27 +880,69 @@ export const TaskAssignmentPage: React.FC = () => {
     });
   }, [directAllTasks, filterEmployeeId, filterPeriodType, filterCustomStart, filterCustomEnd, engineers, directFilterStatus, directSearch]);
 
-  const paginatedDirectTasks = useMemo(() => {
-    const start = (directTaskPage - 1) * ASSIGNMENT_PAGE_SIZE;
-    return directDisplayedTasks.slice(start, start + ASSIGNMENT_PAGE_SIZE);
-  }, [directDisplayedTasks, directTaskPage]);
+  const effectivePageSize = tablePageSize || 25;
 
-  const directTotalPages = Math.max(1, Math.ceil(directDisplayedTasks.length / ASSIGNMENT_PAGE_SIZE));
+  const paginatedDirectTasks = useMemo(() => {
+    if (tablePaginationMode === 'infinite') {
+      return directDisplayedTasks.slice(0, directVisibleLimit);
+    }
+    const start = (directTaskPage - 1) * effectivePageSize;
+    return directDisplayedTasks.slice(start, start + effectivePageSize);
+  }, [directDisplayedTasks, directTaskPage, tablePaginationMode, directVisibleLimit, effectivePageSize]);
+
+  const directTotalPages = Math.max(1, Math.ceil(directDisplayedTasks.length / effectivePageSize));
 
   useEffect(() => {
     setDirectTaskPage(1);
-  }, [filterEmployeeId, filterPeriodType, filterCustomStart, filterCustomEnd, directFilterStatus, directSearch]);
+    setDirectVisibleLimit(effectivePageSize);
+  }, [filterEmployeeId, filterPeriodType, filterCustomStart, filterCustomEnd, directFilterStatus, directSearch, effectivePageSize]);
+
+  // Observer cuộn tải thêm cho Direct Tasks
+  useEffect(() => {
+    if (tablePaginationMode !== 'infinite') return;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0] && entries[0].isIntersecting) {
+        setDirectVisibleLimit(prev => (prev < directDisplayedTasks.length ? Math.min(directDisplayedTasks.length, prev + effectivePageSize) : prev));
+      }
+    }, { rootMargin: '300px' });
+    const el = directSentinelRef.current;
+    if (el) observer.observe(el);
+    return () => {
+      if (el) observer.unobserve(el);
+      observer.disconnect();
+    };
+  }, [tablePaginationMode, directDisplayedTasks.length, effectivePageSize]);
 
   const paginatedProjectTasks = useMemo(() => {
-    const start = (projectTaskPage - 1) * ASSIGNMENT_PAGE_SIZE;
-    return projectDisplayedTasks.slice(start, start + ASSIGNMENT_PAGE_SIZE);
-  }, [projectDisplayedTasks, projectTaskPage]);
+    if (tablePaginationMode === 'infinite') {
+      return projectDisplayedTasks.slice(0, projectVisibleLimit);
+    }
+    const start = (projectTaskPage - 1) * effectivePageSize;
+    return projectDisplayedTasks.slice(start, start + effectivePageSize);
+  }, [projectDisplayedTasks, projectTaskPage, tablePaginationMode, projectVisibleLimit, effectivePageSize]);
 
-  const projectTotalPages = Math.max(1, Math.ceil(projectDisplayedTasks.length / ASSIGNMENT_PAGE_SIZE));
+  const projectTotalPages = Math.max(1, Math.ceil(projectDisplayedTasks.length / effectivePageSize));
 
   useEffect(() => {
     setProjectTaskPage(1);
-  }, [filterProjectCode, projectFilterStatus, filterEmployeeId, filterPeriodType, filterCustomStart, filterCustomEnd, projectSearch]);
+    setProjectVisibleLimit(effectivePageSize);
+  }, [filterProjectCode, projectFilterStatus, filterEmployeeId, filterPeriodType, filterCustomStart, filterCustomEnd, projectSearch, effectivePageSize]);
+
+  // Observer cuộn tải thêm cho Project Tasks
+  useEffect(() => {
+    if (tablePaginationMode !== 'infinite') return;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0] && entries[0].isIntersecting) {
+        setProjectVisibleLimit(prev => (prev < projectDisplayedTasks.length ? Math.min(projectDisplayedTasks.length, prev + effectivePageSize) : prev));
+      }
+    }, { rootMargin: '300px' });
+    const el = projectSentinelRef.current;
+    if (el) observer.observe(el);
+    return () => {
+      if (el) observer.unobserve(el);
+      observer.disconnect();
+    };
+  }, [tablePaginationMode, projectDisplayedTasks.length, effectivePageSize]);
 
   // Group paginated project tasks by project
   const paginatedGroupedProjectTasks = useMemo(() => {
@@ -1443,55 +1499,144 @@ export const TaskAssignmentPage: React.FC = () => {
                     );
                   })
                 )}
+                {tablePaginationMode === 'infinite' && directVisibleLimit < directDisplayedTasks.length && (
+                  <tr>
+                    <td colSpan={10} className="py-2.5 px-4 text-center bg-slate-50/60">
+                      <div ref={directSentinelRef} className="flex items-center justify-center gap-2 text-slate-500 text-xs py-1">
+                        <span className="w-3.5 h-3.5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                        <span className="font-medium text-[11px]">Đang cuộn nạp thêm công việc ({directVisibleLimit} / {directDisplayedTasks.length})...</span>
+                      </div>
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
 
           {/* Pagination Controls for Direct Tasks */}
-          {directDisplayedTasks.length > 0 && (
-            <div className="flex flex-wrap items-center justify-center gap-4 border-t border-slate-200 bg-white px-4 py-2.5 text-xs text-slate-600 shrink-0 select-none shadow-xs">
-              <div className="flex items-center gap-2">
-                <span className="font-medium whitespace-nowrap">Hiển thị {(directTaskPage - 1) * ASSIGNMENT_PAGE_SIZE + 1}-{Math.min(directTaskPage * ASSIGNMENT_PAGE_SIZE, directDisplayedTasks.length)} / {directDisplayedTasks.length} công việc phát sinh</span>
+          {directDisplayedTasks.length > 0 && (() => {
+            if (tablePaginationMode === 'infinite') {
+              const currentCount = Math.min(directVisibleLimit, directDisplayedTasks.length);
+              const hasMore = directVisibleLimit < directDisplayedTasks.length;
+              return (
+                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-white px-4 py-2 text-xs text-slate-600 shrink-0 select-none shadow-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-slate-700 whitespace-nowrap">
+                      Hiển thị <span className="text-primary font-bold">{currentCount}</span> / {directDisplayedTasks.length} công việc phát sinh
+                    </span>
+                    {hasMore && (
+                      <span className="hidden sm:inline-flex items-center gap-1 text-[11px] text-slate-400">
+                        • Vuốt/cuộn xuống để tự động nạp tiếp
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {hasMore && (
+                      <button
+                        type="button"
+                        onClick={() => setDirectVisibleLimit(prev => Math.min(directDisplayedTasks.length, prev + effectivePageSize))}
+                        className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary font-bold text-xs transition-colors shadow-2xs cursor-pointer"
+                      >
+                        <span className="material-symbols-outlined text-[15px]">arrow_downward</span>
+                        <span>Tải thêm {Math.min(effectivePageSize, directDisplayedTasks.length - directVisibleLimit)} dòng</span>
+                      </button>
+                    )}
+                    <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+                      <span className="text-[10px] text-slate-400 px-1 font-bold">Mỗi lần:</span>
+                      {[25, 50, 100].map(size => (
+                        <button
+                          key={size}
+                          type="button"
+                          onClick={() => setTablePageSize(size)}
+                          className={`px-1.5 py-0.5 text-[10.5px] font-bold rounded ${tablePageSize === size ? 'bg-white text-primary shadow-2xs' : 'text-slate-500 hover:text-slate-800'}`}
+                        >
+                          {size}
+                        </button>
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setTablePaginationMode('pagination')}
+                      className="flex items-center gap-1 px-2 py-1 rounded-lg border border-slate-200 hover:bg-slate-50 text-[11px] font-semibold text-slate-600 transition-colors shadow-2xs"
+                      title="Chuyển sang chế độ Phân trang truyền thống"
+                    >
+                      <span className="material-symbols-outlined text-sm">auto_stories</span>
+                      <span className="hidden md:inline">Phân trang</span>
+                    </button>
+                  </div>
+                </div>
+              );
+            }
+
+            return (
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-white px-4 py-2 text-xs text-slate-600 shrink-0 select-none shadow-xs">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium whitespace-nowrap">Hiển thị {(directTaskPage - 1) * effectivePageSize + 1}-{Math.min(directTaskPage * effectivePageSize, directDisplayedTasks.length)} / {directDisplayedTasks.length} công việc phát sinh</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    disabled={directTaskPage <= 1}
+                    onClick={() => setDirectTaskPage(1)}
+                    className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 font-medium hover:bg-slate-50 transition-colors disabled:cursor-not-allowed disabled:opacity-40 shadow-xs"
+                  >
+                    Đầu
+                  </button>
+                  <button
+                    type="button"
+                    disabled={directTaskPage <= 1}
+                    onClick={() => setDirectTaskPage(p => Math.max(1, p - 1))}
+                    className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 font-medium hover:bg-slate-50 transition-colors disabled:cursor-not-allowed disabled:opacity-40 shadow-xs"
+                  >
+                    Trước
+                  </button>
+                  <span className="px-3 font-semibold text-slate-700 whitespace-nowrap">
+                    Trang {directTaskPage} / {directTotalPages}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={directTaskPage >= directTotalPages}
+                    onClick={() => setDirectTaskPage(p => Math.min(directTotalPages, p + 1))}
+                    className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 font-medium hover:bg-slate-50 transition-colors disabled:cursor-not-allowed disabled:opacity-40 shadow-xs"
+                  >
+                    Sau
+                  </button>
+                  <button
+                    type="button"
+                    disabled={directTaskPage >= directTotalPages}
+                    onClick={() => setDirectTaskPage(directTotalPages)}
+                    className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 font-medium hover:bg-slate-50 transition-colors disabled:cursor-not-allowed disabled:opacity-40 shadow-xs"
+                  >
+                    Cuối
+                  </button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+                    <span className="text-[10px] text-slate-400 px-1 font-bold">Mỗi trang:</span>
+                    {[25, 50, 100].map(size => (
+                      <button
+                        key={size}
+                        type="button"
+                        onClick={() => setTablePageSize(size)}
+                        className={`px-1.5 py-0.5 text-[10.5px] font-bold rounded ${tablePageSize === size ? 'bg-white text-primary shadow-2xs' : 'text-slate-500 hover:text-slate-800'}`}
+                      >
+                        {size}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setTablePaginationMode('infinite')}
+                    className="flex items-center gap-1 px-2 py-1 rounded-lg border border-slate-200 hover:bg-slate-50 text-[11px] font-semibold text-slate-600 transition-colors shadow-2xs"
+                    title="Chuyển sang chế độ Cuộn tải thêm (Infinite Scroll)"
+                  >
+                    <span className="material-symbols-outlined text-sm">history_toggle_off</span>
+                    <span className="hidden md:inline">Cuộn tải</span>
+                  </button>
+                </div>
               </div>
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  disabled={directTaskPage <= 1}
-                  onClick={() => setDirectTaskPage(1)}
-                  className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 font-medium hover:bg-slate-50 transition-colors disabled:cursor-not-allowed disabled:opacity-40 shadow-xs"
-                >
-                  Đầu
-                </button>
-                <button
-                  type="button"
-                  disabled={directTaskPage <= 1}
-                  onClick={() => setDirectTaskPage(p => Math.max(1, p - 1))}
-                  className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 font-medium hover:bg-slate-50 transition-colors disabled:cursor-not-allowed disabled:opacity-40 shadow-xs"
-                >
-                  Trước
-                </button>
-                <span className="px-3 font-semibold text-slate-700 whitespace-nowrap">
-                  Trang {directTaskPage} / {directTotalPages}
-                </span>
-                <button
-                  type="button"
-                  disabled={directTaskPage >= directTotalPages}
-                  onClick={() => setDirectTaskPage(p => Math.min(directTotalPages, p + 1))}
-                  className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 font-medium hover:bg-slate-50 transition-colors disabled:cursor-not-allowed disabled:opacity-40 shadow-xs"
-                >
-                  Sau
-                </button>
-                <button
-                  type="button"
-                  disabled={directTaskPage >= directTotalPages}
-                  onClick={() => setDirectTaskPage(directTotalPages)}
-                  className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 font-medium hover:bg-slate-50 transition-colors disabled:cursor-not-allowed disabled:opacity-40 shadow-xs"
-                >
-                  Cuối
-                </button>
-              </div>
-            </div>
-          )}
+            );
+          })()}
 
         </div>
       ) : (
@@ -1925,55 +2070,144 @@ export const TaskAssignmentPage: React.FC = () => {
                     );
                   })
                 )}
+                {tablePaginationMode === 'infinite' && projectVisibleLimit < projectDisplayedTasks.length && (
+                  <tr>
+                    <td colSpan={10} className="py-2.5 px-4 text-center bg-slate-50/60">
+                      <div ref={projectSentinelRef} className="flex items-center justify-center gap-2 text-slate-500 text-xs py-1">
+                        <span className="w-3.5 h-3.5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                        <span className="font-medium text-[11px]">Đang cuộn nạp thêm công việc ({projectVisibleLimit} / {projectDisplayedTasks.length})...</span>
+                      </div>
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
 
           {/* Pagination Controls for Project Tasks */}
-          {projectDisplayedTasks.length > 0 && (
-            <div className="flex flex-wrap items-center justify-center gap-4 border-t border-slate-200 bg-white px-4 py-2.5 text-xs text-slate-600 shrink-0 select-none shadow-xs">
-              <div className="flex items-center gap-2">
-                <span className="font-medium whitespace-nowrap">Hiển thị {(projectTaskPage - 1) * ASSIGNMENT_PAGE_SIZE + 1}-{Math.min(projectTaskPage * ASSIGNMENT_PAGE_SIZE, projectDisplayedTasks.length)} / {projectDisplayedTasks.length} công việc dự án</span>
+          {projectDisplayedTasks.length > 0 && (() => {
+            if (tablePaginationMode === 'infinite') {
+              const currentCount = Math.min(projectVisibleLimit, projectDisplayedTasks.length);
+              const hasMore = projectVisibleLimit < projectDisplayedTasks.length;
+              return (
+                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-white px-4 py-2 text-xs text-slate-600 shrink-0 select-none shadow-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-slate-700 whitespace-nowrap">
+                      Hiển thị <span className="text-primary font-bold">{currentCount}</span> / {projectDisplayedTasks.length} công việc dự án
+                    </span>
+                    {hasMore && (
+                      <span className="hidden sm:inline-flex items-center gap-1 text-[11px] text-slate-400">
+                        • Vuốt/cuộn xuống để tự động nạp tiếp
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {hasMore && (
+                      <button
+                        type="button"
+                        onClick={() => setProjectVisibleLimit(prev => Math.min(projectDisplayedTasks.length, prev + effectivePageSize))}
+                        className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary font-bold text-xs transition-colors shadow-2xs cursor-pointer"
+                      >
+                        <span className="material-symbols-outlined text-[15px]">arrow_downward</span>
+                        <span>Tải thêm {Math.min(effectivePageSize, projectDisplayedTasks.length - projectVisibleLimit)} dòng</span>
+                      </button>
+                    )}
+                    <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+                      <span className="text-[10px] text-slate-400 px-1 font-bold">Mỗi lần:</span>
+                      {[25, 50, 100].map(size => (
+                        <button
+                          key={size}
+                          type="button"
+                          onClick={() => setTablePageSize(size)}
+                          className={`px-1.5 py-0.5 text-[10.5px] font-bold rounded ${tablePageSize === size ? 'bg-white text-primary shadow-2xs' : 'text-slate-500 hover:text-slate-800'}`}
+                        >
+                          {size}
+                        </button>
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setTablePaginationMode('pagination')}
+                      className="flex items-center gap-1 px-2 py-1 rounded-lg border border-slate-200 hover:bg-slate-50 text-[11px] font-semibold text-slate-600 transition-colors shadow-2xs"
+                      title="Chuyển sang chế độ Phân trang truyền thống"
+                    >
+                      <span className="material-symbols-outlined text-sm">auto_stories</span>
+                      <span className="hidden md:inline">Phân trang</span>
+                    </button>
+                  </div>
+                </div>
+              );
+            }
+
+            return (
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-white px-4 py-2 text-xs text-slate-600 shrink-0 select-none shadow-xs">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium whitespace-nowrap">Hiển thị {(projectTaskPage - 1) * effectivePageSize + 1}-{Math.min(projectTaskPage * effectivePageSize, projectDisplayedTasks.length)} / {projectDisplayedTasks.length} công việc dự án</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    disabled={projectTaskPage <= 1}
+                    onClick={() => setProjectTaskPage(1)}
+                    className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 font-medium hover:bg-slate-50 transition-colors disabled:cursor-not-allowed disabled:opacity-40 shadow-xs"
+                  >
+                    Đầu
+                  </button>
+                  <button
+                    type="button"
+                    disabled={projectTaskPage <= 1}
+                    onClick={() => setProjectTaskPage(p => Math.max(1, p - 1))}
+                    className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 font-medium hover:bg-slate-50 transition-colors disabled:cursor-not-allowed disabled:opacity-40 shadow-xs"
+                  >
+                    Trước
+                  </button>
+                  <span className="px-3 font-semibold text-slate-700 whitespace-nowrap">
+                    Trang {projectTaskPage} / {projectTotalPages}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={projectTaskPage >= projectTotalPages}
+                    onClick={() => setProjectTaskPage(p => Math.min(projectTotalPages, p + 1))}
+                    className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 font-medium hover:bg-slate-50 transition-colors disabled:cursor-not-allowed disabled:opacity-40 shadow-xs"
+                  >
+                    Sau
+                  </button>
+                  <button
+                    type="button"
+                    disabled={projectTaskPage >= projectTotalPages}
+                    onClick={() => setProjectTaskPage(projectTotalPages)}
+                    className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 font-medium hover:bg-slate-50 transition-colors disabled:cursor-not-allowed disabled:opacity-40 shadow-xs"
+                  >
+                    Cuối
+                  </button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+                    <span className="text-[10px] text-slate-400 px-1 font-bold">Mỗi trang:</span>
+                    {[25, 50, 100].map(size => (
+                      <button
+                        key={size}
+                        type="button"
+                        onClick={() => setTablePageSize(size)}
+                        className={`px-1.5 py-0.5 text-[10.5px] font-bold rounded ${tablePageSize === size ? 'bg-white text-primary shadow-2xs' : 'text-slate-500 hover:text-slate-800'}`}
+                      >
+                        {size}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setTablePaginationMode('infinite')}
+                    className="flex items-center gap-1 px-2 py-1 rounded-lg border border-slate-200 hover:bg-slate-50 text-[11px] font-semibold text-slate-600 transition-colors shadow-2xs"
+                    title="Chuyển sang chế độ Cuộn tải thêm (Infinite Scroll)"
+                  >
+                    <span className="material-symbols-outlined text-sm">history_toggle_off</span>
+                    <span className="hidden md:inline">Cuộn tải</span>
+                  </button>
+                </div>
               </div>
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  disabled={projectTaskPage <= 1}
-                  onClick={() => setProjectTaskPage(1)}
-                  className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 font-medium hover:bg-slate-50 transition-colors disabled:cursor-not-allowed disabled:opacity-40 shadow-xs"
-                >
-                  Đầu
-                </button>
-                <button
-                  type="button"
-                  disabled={projectTaskPage <= 1}
-                  onClick={() => setProjectTaskPage(p => Math.max(1, p - 1))}
-                  className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 font-medium hover:bg-slate-50 transition-colors disabled:cursor-not-allowed disabled:opacity-40 shadow-xs"
-                >
-                  Trước
-                </button>
-                <span className="px-3 font-semibold text-slate-700 whitespace-nowrap">
-                  Trang {projectTaskPage} / {projectTotalPages}
-                </span>
-                <button
-                  type="button"
-                  disabled={projectTaskPage >= projectTotalPages}
-                  onClick={() => setProjectTaskPage(p => Math.min(projectTotalPages, p + 1))}
-                  className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 font-medium hover:bg-slate-50 transition-colors disabled:cursor-not-allowed disabled:opacity-40 shadow-xs"
-                >
-                  Sau
-                </button>
-                <button
-                  type="button"
-                  disabled={projectTaskPage >= projectTotalPages}
-                  onClick={() => setProjectTaskPage(projectTotalPages)}
-                  className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 font-medium hover:bg-slate-50 transition-colors disabled:cursor-not-allowed disabled:opacity-40 shadow-xs"
-                >
-                  Cuối
-                </button>
-              </div>
-            </div>
-          )}
+            );
+          })()}
 
         </div>
       )}

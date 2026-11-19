@@ -205,6 +205,10 @@ export const SettingsPage: React.FC = () => {
     setAutoShowNotificationPopup,
     showChatWidget,
     setShowChatWidget,
+    tablePaginationMode,
+    tablePageSize,
+    setTablePaginationMode,
+    setTablePageSize,
   } = useUIStore();
 
   const [inputCompanyName, setInputCompanyName] = useState(companyName || 'TITSMART');
@@ -1473,6 +1477,72 @@ export const SettingsPage: React.FC = () => {
                       >
                         Rê chuột
                       </button>
+                    </div>
+                  </div>
+
+                  {/* Row 2: Chế độ hiển thị danh sách & phân trang */}
+                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/80 space-y-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <span className="material-symbols-outlined text-xl text-primary">view_stream</span>
+                        <div>
+                          <span className="text-xs font-bold text-slate-800 block">Kiểu hiển thị danh sách & phân trang</span>
+                          <span className="text-[11px] text-slate-500">
+                            {tablePaginationMode === 'infinite'
+                              ? 'Đang bật Cuộn vô tận: Vuốt hoặc cuộn chuột xuống đáy sẽ tự động nạp tiếp dữ liệu.'
+                              : 'Đang bật Phân trang truyền thống: Bấm nút chuyển trang Đầu, Trước, Sau, Cuối.'}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center bg-slate-200/80 p-0.5 rounded-lg border border-slate-200/60 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setTablePaginationMode('infinite');
+                            triggerToast('Đã chuyển sang chế độ Cuộn tải thêm (Infinite Scroll)', 'success');
+                          }}
+                          className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all flex items-center gap-1 cursor-pointer ${
+                            tablePaginationMode === 'infinite' ? 'bg-white text-primary shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                          }`}
+                        >
+                          <span className="material-symbols-outlined text-sm">history_toggle_off</span>
+                          <span>Cuộn tải thêm</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setTablePaginationMode('pagination');
+                            triggerToast('Đã chuyển sang chế độ Phân trang truyền thống', 'success');
+                          }}
+                          className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all flex items-center gap-1 cursor-pointer ${
+                            tablePaginationMode === 'pagination' ? 'bg-white text-primary shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                          }`}
+                        >
+                          <span className="material-symbols-outlined text-sm">auto_stories</span>
+                          <span>Phân trang</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-2 border-t border-slate-200/70">
+                      <span className="text-xs font-semibold text-slate-600">Số lượng dòng nạp mỗi lần:</span>
+                      <div className="flex items-center gap-1 bg-slate-200/70 p-0.5 rounded-lg border border-slate-200/60">
+                        {[25, 50, 100].map((size) => (
+                          <button
+                            key={size}
+                            type="button"
+                            onClick={() => {
+                              setTablePageSize(size);
+                              triggerToast(`Đã đổi số dòng nạp mỗi lần thành ${size} dòng`, 'success');
+                            }}
+                            className={`px-3 py-1 text-xs font-bold rounded-md transition-all cursor-pointer ${
+                              tablePageSize === size ? 'bg-white text-primary shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                            }`}
+                          >
+                            {size} dòng
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </div>

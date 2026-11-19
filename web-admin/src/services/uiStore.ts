@@ -23,6 +23,10 @@ interface UIStoreState {
   defaultAccountantId?: string;
   defaultAccountantName?: string;
   isApplyingBranding: boolean;
+  tablePaginationMode: 'infinite' | 'pagination';
+  tablePageSize: number;
+  setTablePaginationMode: (val: 'infinite' | 'pagination') => void;
+  setTablePageSize: (val: number) => void;
   setSidebarHoverToExpand: (val: boolean) => void;
   setSidebarShowToggleButton: (val: boolean) => void;
   setIsSidebarExpanded: (val: boolean | ((prev: boolean) => boolean)) => void;
@@ -70,6 +74,10 @@ export const useUIStore = create<UIStoreState>()(
       defaultAccountantId: '',
       defaultAccountantName: '',
       isApplyingBranding: false,
+      tablePaginationMode: 'infinite',
+      tablePageSize: 25,
+      setTablePaginationMode: (val) => set({ tablePaginationMode: val }),
+      setTablePageSize: (val) => set({ tablePageSize: val }),
       setAllowDirectFundApproval: (val) => set({ allowDirectFundApproval: val }),
       setAllowDualCheckerReviewerRole: (val) => set({ allowDualCheckerReviewerRole: val }),
       setDefaultAccountant: (id, name) => set({ defaultAccountantId: id || '', defaultAccountantName: name || '' }),
@@ -154,6 +162,8 @@ export const useUIStore = create<UIStoreState>()(
         allowDualCheckerReviewerRole: state.allowDualCheckerReviewerRole,
         defaultAccountantId: state.defaultAccountantId,
         defaultAccountantName: state.defaultAccountantName,
+        tablePaginationMode: state.tablePaginationMode,
+        tablePageSize: state.tablePageSize,
       }),
     }
   )

@@ -41,7 +41,7 @@ import { requestSystemNotificationPermission } from './services/systemNotificati
 
 const ProtectedLayout: React.FC = () => {
   const user = useAuthStore((state) => state.user);
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) return <CompanyAdminLoginPage />;
   return (
     <Layout>
       <Outlet />

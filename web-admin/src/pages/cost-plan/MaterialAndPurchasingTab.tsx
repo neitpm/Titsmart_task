@@ -9,6 +9,7 @@ import { DocumentCertificateTab } from './DocumentCertificateTab';
 import { AuditInfoCell } from '../../components/common/AuditInfoCell';
 import { stripDiscussionThread } from '../../utils/taskDiscussion';
 import { Toast } from '../../components/common/Toast';
+import { useUIStore } from '../../services/uiStore';
 
 interface MaterialAndPurchasingTabProps {
   activeSubTab?: 'TECH' | 'ORDER' | 'DOCS' | 'FINANCE';
@@ -464,13 +465,25 @@ export const MaterialAndPurchasingTab: React.FC<MaterialAndPurchasingTabProps> =
     tableContainerRef.current.scrollLeft = scrollLeftState - walk;
   };
 
+  const tablePaginationMode = useUIStore(s => s.tablePaginationMode);
+  const tablePageSize = useUIStore(s => s.tablePageSize);
+  const setTablePaginationMode = useUIStore(s => s.setTablePaginationMode);
+  const setTablePageSize = useUIStore(s => s.setTablePageSize);
+
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
   const [tablePage, setTablePage] = useState(1);
-  const TABLE_PAGE_SIZE = 25;
+  const [visibleLimit, setVisibleLimit] = useState(tablePageSize || 25);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    setVisibleLimit(tablePageSize || 25);
+  }, [tablePageSize]);
 
   useEffect(() => {
     setTablePage(1);
+    setVisibleLimit(tablePageSize || 25);
   }, [data, purchasingData, activeSubTab, statusFilter, searchQuery]);
+
   const toggleSection = (sectionKey: string) => {
     setCollapsedSections(prev => {
       const next = new Set(prev);
@@ -1117,6 +1130,22 @@ export const MaterialAndPurchasingTab: React.FC<MaterialAndPurchasingTabProps> =
     return Math.max(26, Math.min(45, calculated));
   }, [groupedData]);
 
+  useEffect(() => {
+    if (tablePaginationMode !== 'infinite') return;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0] && entries[0].isIntersecting) {
+        const totalRows = (groupedData || []).filter(plan => plan.isSec || !collapsedSections.has(plan._sectionKey || '')).length;
+        setVisibleLimit(prev => (prev < totalRows ? Math.min(totalRows, prev + (tablePageSize || 25)) : prev));
+      }
+    }, { rootMargin: '300px' });
+    const el = sentinelRef.current;
+    if (el) observer.observe(el);
+    return () => {
+      if (el) observer.unobserve(el);
+      observer.disconnect();
+    };
+  }, [tablePaginationMode, groupedData, collapsedSections, tablePageSize]);
+
   const totals = useMemo(() => {
     let sell = 0;
     let cost = 0;
@@ -1632,8 +1661,12 @@ export const MaterialAndPurchasingTab: React.FC<MaterialAndPurchasingTabProps> =
             ) : (
               (() => {
                 const uncollapsedRows = groupedData.filter(plan => plan.isSec || !collapsedSections.has(plan._sectionKey || ''));
-                const start = (tablePage - 1) * TABLE_PAGE_SIZE;
-                return uncollapsedRows.slice(start, start + TABLE_PAGE_SIZE);
+                if (tablePaginationMode === 'infinite') {
+                  return uncollapsedRows.slice(0, visibleLimit);
+                }
+                const effectivePageSize = tablePageSize || 25;
+                const start = (tablePage - 1) * effectivePageSize;
+                return uncollapsedRows.slice(start, start + effectivePageSize);
               })()
                 .map((plan, index) => {
                   const parent = plan.isSec || isParentRow(plan);
@@ -2275,6 +2308,20 @@ export const MaterialAndPurchasingTab: React.FC<MaterialAndPurchasingTabProps> =
                       );
                     })
             )}
+            {tablePaginationMode === 'infinite' && (() => {
+              const totalRows = (groupedData || []).filter(plan => plan.isSec || !collapsedSections.has(plan._sectionKey || '')).length;
+              if (visibleLimit >= totalRows) return null;
+              return (
+                <tr>
+                  <td colSpan={colSpanCount + 2} className="py-2.5 px-4 text-center bg-slate-50/60">
+                    <div ref={sentinelRef} className="flex items-center justify-center gap-2 text-slate-500 text-xs py-1">
+                      <span className="w-3.5 h-3.5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                      <span className="font-medium text-[11px]">Đang cuộn nạp thêm ({visibleLimit} / {totalRows})...</span>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })()}
           </tbody>
           {subTab === 'FINANCE' && (
             <tfoot className="sticky bottom-0 z-30 border-t-2 border-slate-400 bg-slate-100 font-extrabold text-slate-800 shadow-[0_-3px_10px_rgba(0,0,0,0.12)] text-[11px]">
@@ -2320,12 +2367,67 @@ export const MaterialAndPurchasingTab: React.FC<MaterialAndPurchasingTabProps> =
       {(() => {
         const uncollapsedRows = groupedData.filter(plan => plan.isSec || !collapsedSections.has(plan._sectionKey || ''));
         const totalRows = uncollapsedRows.length;
-        const totalPages = Math.max(1, Math.ceil(totalRows / TABLE_PAGE_SIZE));
         if (totalRows === 0) return null;
+
+        if (tablePaginationMode === 'infinite') {
+          const currentCount = Math.min(visibleLimit, totalRows);
+          const hasMore = visibleLimit < totalRows;
+          return (
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-white px-4 py-2 text-xs text-slate-600 shrink-0 select-none">
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-slate-700 whitespace-nowrap">
+                  Hiển thị <span className="text-primary font-bold">{currentCount}</span> / {totalRows} mục
+                </span>
+                {hasMore && (
+                  <span className="hidden sm:inline-flex items-center gap-1 text-[11px] text-slate-400">
+                    • Vuốt/cuộn xuống để tự động nạp tiếp
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                {hasMore && (
+                  <button
+                    type="button"
+                    onClick={() => setVisibleLimit(prev => Math.min(totalRows, prev + (tablePageSize || 25)))}
+                    className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary font-bold text-xs transition-colors shadow-2xs cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-[15px]">arrow_downward</span>
+                    <span>Tải thêm {Math.min(tablePageSize || 25, totalRows - visibleLimit)} dòng</span>
+                  </button>
+                )}
+                <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+                  <span className="text-[10px] text-slate-400 px-1 font-bold">Mỗi lần:</span>
+                  {[25, 50, 100].map(size => (
+                    <button
+                      key={size}
+                      type="button"
+                      onClick={() => setTablePageSize(size)}
+                      className={`px-1.5 py-0.5 text-[10.5px] font-bold rounded ${tablePageSize === size ? 'bg-white text-primary shadow-2xs' : 'text-slate-500 hover:text-slate-800'}`}
+                    >
+                      {size}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setTablePaginationMode('pagination')}
+                  className="flex items-center gap-1 px-2 py-1 rounded-lg border border-slate-200 hover:bg-slate-50 text-[11px] font-semibold text-slate-600 transition-colors shadow-2xs"
+                  title="Chuyển sang chế độ Phân trang truyền thống"
+                >
+                  <span className="material-symbols-outlined text-sm">auto_stories</span>
+                  <span className="hidden md:inline">Phân trang</span>
+                </button>
+              </div>
+            </div>
+          );
+        }
+
+        const effectivePageSize = tablePageSize || 25;
+        const totalPages = Math.max(1, Math.ceil(totalRows / effectivePageSize));
         return (
-          <div className="flex flex-wrap items-center justify-center gap-4 border-t border-slate-200 bg-white px-4 py-2.5 text-xs text-slate-600 shrink-0 select-none">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-white px-4 py-2 text-xs text-slate-600 shrink-0 select-none">
             <div className="flex items-center gap-2">
-              <span className="font-medium whitespace-nowrap">Hiển thị {(tablePage - 1) * TABLE_PAGE_SIZE + 1}-{Math.min(tablePage * TABLE_PAGE_SIZE, totalRows)} / {totalRows} mục</span>
+              <span className="font-medium whitespace-nowrap">Hiển thị {(tablePage - 1) * effectivePageSize + 1}-{Math.min(tablePage * effectivePageSize, totalRows)} / {totalRows} mục</span>
             </div>
             <div className="flex items-center gap-1.5">
               <button
@@ -2362,6 +2464,30 @@ export const MaterialAndPurchasingTab: React.FC<MaterialAndPurchasingTabProps> =
                 className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 font-medium hover:bg-slate-50 transition-colors disabled:cursor-not-allowed disabled:opacity-40 shadow-xs"
               >
                 Cuối
+              </button>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+                <span className="text-[10px] text-slate-400 px-1 font-bold">Mỗi trang:</span>
+                {[25, 50, 100].map(size => (
+                  <button
+                    key={size}
+                    type="button"
+                    onClick={() => setTablePageSize(size)}
+                    className={`px-1.5 py-0.5 text-[10.5px] font-bold rounded ${tablePageSize === size ? 'bg-white text-primary shadow-2xs' : 'text-slate-500 hover:text-slate-800'}`}
+                  >
+                    {size}
+                  </button>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => setTablePaginationMode('infinite')}
+                className="flex items-center gap-1 px-2 py-1 rounded-lg border border-slate-200 hover:bg-slate-50 text-[11px] font-semibold text-slate-600 transition-colors shadow-2xs"
+                title="Chuyển sang chế độ Cuộn tải thêm (Infinite Scroll)"
+              >
+                <span className="material-symbols-outlined text-sm">history_toggle_off</span>
+                <span className="hidden md:inline">Cuộn tải</span>
               </button>
             </div>
           </div>

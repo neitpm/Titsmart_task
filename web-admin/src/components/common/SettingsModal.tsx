@@ -39,6 +39,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     companyName,
     companySlogan,
     companyLogo,
+    tablePaginationMode,
+    tablePageSize,
+    setTablePaginationMode,
+    setTablePageSize,
     setSidebarHoverToExpand,
     setSidebarShowToggleButton,
     setShowNotificationBell,
@@ -403,6 +407,61 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
               <div className="h-px bg-slate-100 my-1"></div>
             </>
           )}
+
+          {/* Section: Kiểu hiển thị phân trang & danh sách */}
+          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 space-y-2.5">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-base text-primary">view_stream</span>
+                <div>
+                  <span className="text-xs font-bold text-slate-800 block">Kiểu hiển thị danh sách</span>
+                  <span className="text-[10px] text-slate-500">Tiến độ công việc & các bảng biểu</span>
+                </div>
+              </div>
+              <div className="flex items-center bg-slate-200/80 p-0.5 rounded-lg border border-slate-200/60 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setTablePaginationMode('infinite')}
+                  className={`px-2.5 py-1 text-xs font-bold rounded-md transition-all flex items-center gap-1 ${
+                    tablePaginationMode === 'infinite' ? 'bg-white text-primary shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                  title="Vuốt hoặc cuộn chuột xuống đáy tự động nạp thêm dữ liệu"
+                >
+                  <span className="material-symbols-outlined text-xs">history_toggle_off</span>
+                  <span>Cuộn tải thêm</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTablePaginationMode('pagination')}
+                  className={`px-2.5 py-1 text-xs font-bold rounded-md transition-all flex items-center gap-1 ${
+                    tablePaginationMode === 'pagination' ? 'bg-white text-primary shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                  title="Chia trang truyền thống: Đầu, Trước, Sau, Cuối"
+                >
+                  <span className="material-symbols-outlined text-xs">auto_stories</span>
+                  <span>Phân trang</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between pt-1.5 border-t border-slate-200/60">
+              <span className="text-[11px] font-semibold text-slate-600">Số dòng nạp mỗi lần:</span>
+              <div className="flex items-center gap-1 bg-slate-200/70 p-0.5 rounded-lg border border-slate-200/60">
+                {[25, 50, 100].map((size) => (
+                  <button
+                    key={size}
+                    type="button"
+                    onClick={() => setTablePageSize(size)}
+                    className={`px-2 py-0.5 text-xs font-bold rounded-md transition-all ${
+                      tablePageSize === size ? 'bg-white text-primary shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    {size} dòng
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
 
           {/* Row 1: Sidebar Mode (Desktop Only) */}
           <div className="hidden sm:flex items-center justify-between gap-3 p-3 rounded-xl bg-slate-50 border border-slate-200/80">
