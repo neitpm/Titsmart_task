@@ -3221,16 +3221,12 @@ const hasSyncedRef = useRef(false);
                               </div>
                             )}
                             {canApproveTask(authStore.user, t) && (
-                              <div className="grid grid-cols-2 gap-1 w-full max-w-[150px]">
+                              <div className="grid grid-cols-2 gap-1 w-full max-w-[125px]">
                                 <button onClick={(e) => { e.stopPropagation(); handleApproveTask(t); }} className="text-[9px] bg-purple-600 hover:bg-purple-700 text-white px-1 py-0.5 rounded shadow-xs min-w-0 font-bold flex items-center justify-center gap-0.5 animate-pulse cursor-pointer whitespace-nowrap" title="Nghiệm thu hoàn thành công việc">
                                   Nghiệm thu
                                 </button>
                                 <button onClick={(e) => { e.stopPropagation(); setDiscussionTask(t); }} className="text-[9px] bg-rose-500 hover:bg-rose-600 text-white px-1 py-0.5 rounded shadow-xs min-w-0 font-bold flex items-center justify-center gap-0.5 cursor-pointer whitespace-nowrap" title="Từ chối nghiệm thu và yêu cầu thực hiện lại">
                                   Từ chối
-                                </button>
-                                <button onClick={(e) => { e.stopPropagation(); setDiscussionTask(t); }} className="col-span-2 text-[9px] bg-amber-500 hover:bg-amber-600 text-white px-1 py-0.5 rounded shadow-xs font-bold flex items-center justify-center gap-0.5 cursor-pointer whitespace-nowrap" title="Gửi thắc mắc hoặc yêu cầu chỉnh sửa">
-                                  <span className="material-symbols-outlined text-[11px]">help</span>
-                                  Gửi thắc mắc / yêu cầu chỉnh sửa
                                 </button>
                               </div>
                             )}
