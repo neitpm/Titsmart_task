@@ -18,7 +18,7 @@ import { appendTaskDiscussion, getLatestDiscussion, stripDiscussionThread, parse
 import { getEngineersForProject } from '../utils/projectMemberUtils';
 import { uploadAttachment } from '../utils/fileUploadHelper';
 import { PullToRefresh } from '../components/common/PullToRefresh';
-import { isUserTaskAssignee, isUserTaskAssigner, isUserTaskFollower, isTaskReadyForAssignment } from '../utils/taskPermission';
+import { isUserTaskAssignee, isUserTaskAssigner, isUserTaskFollower, isTaskReadyForAssignment, getTaskDiscussionSenderRole } from '../utils/taskPermission';
 import { getTaskTimeBounds } from '../utils/taskPeriodFilter';
 import { useUIStore } from '../services/uiStore';
 
@@ -520,12 +520,13 @@ export const TaskManagementPage: React.FC = () => {
   };
 
   const handleSendReply = async (task: Task, replyText: string, fileAttachment?: { url: string; type: 'image' | 'file'; name: string }) => {
-    const userName = authStore.user?.name || authStore.user?.username || 'Người giao việc';
+    const userName = authStore.user?.name || authStore.user?.username || 'Người dùng';
     const userId = authStore.user?.id || '';
+    const senderRole = getTaskDiscussionSenderRole(authStore.user, task, engineers);
     const updatedNotes = appendTaskDiscussion(task.notes || '', {
       senderId: userId,
       senderName: userName,
-      senderRole: 'Người giao việc',
+      senderRole: senderRole,
       type: 'reply',
       content: replyText,
       fileUrl: fileAttachment?.url,

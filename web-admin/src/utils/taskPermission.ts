@@ -211,6 +211,109 @@ export const isUserTaskFollower = (
 };
 
 /**
+ * Kiểm tra xem người dùng có phải là Người trực tiếp giao việc / tạo việc cho task này không
+ */
+export const isUserDirectAssigner = (
+  user: AuthUser | null | undefined,
+  task: Task | null | undefined
+): boolean => {
+  if (!user || !task) return false;
+  const uId = normalizeText(user.id);
+  const uName = normalizeText(user.name);
+  const uUsername = normalizeText(user.username);
+
+  const allMyIds = [uId, uUsername].filter(Boolean);
+  const allMyNames = [uName, uUsername].filter(Boolean);
+
+  if (task.assignerId && allMyIds.includes(normalizeText(task.assignerId))) return true;
+  if (task.assignerName && allMyNames.some(mn => normalizeText(task.assignerName).includes(mn) || mn.includes(normalizeText(task.assignerName)))) return true;
+  if ((task as any).createdById && allMyIds.includes(normalizeText((task as any).createdById))) return true;
+  if ((task as any).createdByName && allMyNames.some(mn => normalizeText((task as any).createdByName).includes(mn) || mn.includes(normalizeText((task as any).createdByName)))) return true;
+
+  return false;
+};
+
+/**
+ * Xác định chính xác vai trò hiển thị trong luồng trao đổi (Discussion Sender Role)
+ * Thứ tự ưu tiên:
+ * 1. Nếu là người được giao việc (Assignee) -> Luôn là "Nhân sự đảm nhiệm"
+ * 2. Nếu là người trực tiếp giao việc / tạo việc (Direct Assigner) -> "Người giao việc"
+ * 3. Nếu là người theo dõi (Follower) -> "Người theo dõi"
+ * 4. Nếu có quyền quản lý / duyệt việc (Manager/Admin/Director) -> "Người giao việc"
+ * 5. Mặc định: "Người theo dõi"
+ */
+export const getTaskDiscussionSenderRole = (
+  user: AuthUser | null | undefined,
+  task: Task | null | undefined,
+  engineers?: Engineer[]
+): string => {
+  if (!user || !task) return 'Nhân sự đảm nhiệm';
+
+  // 1. ƯU TIÊN SỐ 1: Người được giao việc trực tiếp
+  if (isUserTaskAssignee(user, task, engineers)) {
+    return 'Nhân sự đảm nhiệm';
+  }
+
+  // 2. Người trực tiếp giao việc
+  if (isUserDirectAssigner(user, task)) {
+    return 'Người giao việc';
+  }
+
+  // 3. Người theo dõi
+  if (isUserTaskFollower(user, task, engineers)) {
+    return 'Người theo dõi';
+  }
+
+  // 4. Ban Lãnh đạo hoặc Người có quyền quản lý / giao việc
+  if (isDirector(user) || isSystemAdmin(user)) {
+    return 'Người giao việc';
+  }
+
+  if (isUserTaskAssigner(user, task, engineers)) {
+    return 'Người giao việc';
+  }
+
+  return 'Người theo dõi';
+};
+
+/**
+ * Kiểm tra xem một tin nhắn trao đổi (bằng senderName hoặc senderId) có phải do người được giao việc (Assignee) gửi không
+ */
+export const isDiscussionSenderAssignee = (
+  senderId: string | undefined,
+  senderName: string | undefined,
+  task: Task | null | undefined
+): boolean => {
+  if (!task) return false;
+  const sId = normalizeText(senderId);
+  const sName = normalizeText(senderName);
+
+  if (task.assignedEngineerId) {
+    const assignedIds = String(task.assignedEngineerId).split(',').map(s => normalizeText(s));
+    if (sId && assignedIds.includes(sId)) return true;
+  }
+
+  if (task.assignedEngineerName) {
+    const raw = String(task.assignedEngineerName);
+    const parts = raw.split('|');
+    const namePart = normalizeText(parts[0]);
+    const idPart = parts.length > 1 ? normalizeText(parts[1]) : '';
+
+    if (sId && idPart && idPart.split(',').map(s => normalizeText(s)).includes(sId)) return true;
+
+    if (sName) {
+      const assignedNames = namePart.split(',').map(s => normalizeText(s));
+      for (const an of assignedNames) {
+        if (!an) continue;
+        if (an === sName || an.includes(sName) || sName.includes(an)) return true;
+      }
+    }
+  }
+
+  return false;
+};
+
+/**
  * Resolves full follower display names from followerNames, followerIds, or raw tags
  */
 export const getTaskFollowerNames = (task: Task | null | undefined, engineers?: Engineer[]): string[] => {

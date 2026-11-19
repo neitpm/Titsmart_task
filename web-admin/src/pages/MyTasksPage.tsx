@@ -8,7 +8,7 @@ import { Task } from '../types';
 import { TaskDiscussionModal } from '../components/tasks/TaskDiscussionModal';
 import { Toast } from '../components/common/Toast';
 import { appendTaskDiscussion, getLatestDiscussion } from '../utils/taskDiscussion';
-import { isUserTaskAssignee, isUserTaskAssigner, isUserTaskFollower, getTaskFollowerNames, isTaskReadyForAssignment } from '../utils/taskPermission';
+import { isUserTaskAssignee, isUserTaskAssigner, isUserTaskFollower, getTaskFollowerNames, isTaskReadyForAssignment, getTaskDiscussionSenderRole } from '../utils/taskPermission';
 
 export const MyTasksPage: React.FC = () => {
   const navigate = useNavigate();
@@ -358,21 +358,9 @@ export const MyTasksPage: React.FC = () => {
     const userName = user?.name || user?.username || 'Thành viên';
     const userId = user?.id || '';
 
-    const isAssigner = Boolean(
-      task.assignerId === userId || 
-      user?.role === 'admin' || 
-      user?.username === 'admin' ||
-      (task.assignerName && user?.name && task.assignerName.toLowerCase().includes(user.name.toLowerCase()))
-    );
-    const isAssignee = Boolean(
-      task.assignedEngineerId === userId || 
-      (task.assignedEngineerName && (
-        task.assignedEngineerName.includes('|' + userId) ||
-        (user?.name && task.assignedEngineerName.toLowerCase().includes(user.name.toLowerCase()))
-      ))
-    );
-    const isFollower = (task.followerIds && task.followerIds.includes(userId)) || (!isAssigner && !isAssignee);
-    const senderRole = isFollower ? 'Người theo dõi' : (isAssigner ? 'Người giao việc' : 'Người nhận việc');
+    const senderRole = getTaskDiscussionSenderRole(user, task, engineers);
+    const isFollower = senderRole === 'Người theo dõi';
+    const isAssigner = senderRole === 'Người giao việc';
 
     const updatedNotes = appendTaskDiscussion(task.notes || '', {
       senderId: userId,

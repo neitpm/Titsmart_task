@@ -13,7 +13,7 @@ import { appendTaskDiscussion, parseTaskDiscussions, getLatestDiscussion, stripD
 import { getEngineersForProject } from '../utils/projectMemberUtils';
 import { uploadAttachment } from '../utils/fileUploadHelper';
 import { Toast } from '../components/common/Toast';
-import { isUserTaskAssignee, isUserTaskAssigner, isUserTaskFollower, getTaskFollowerNames, isTaskReadyForAssignment } from '../utils/taskPermission';
+import { isUserTaskAssignee, isUserTaskAssigner, isUserTaskFollower, getTaskFollowerNames, isTaskReadyForAssignment, getTaskDiscussionSenderRole } from '../utils/taskPermission';
 import { EmployeePeriodToolbar } from '../components/tasks/EmployeePeriodToolbar';
 import { TimePeriodType, getDateRangeForPeriod, isTaskInPeriod, isTaskAssignedToPerson, getTaskTimeBounds } from '../utils/taskPeriodFilter';
 import { useUIStore } from '../services/uiStore';
@@ -232,11 +232,9 @@ export const TaskAssignmentPage: React.FC = () => {
     const userName = user?.name || user?.username || 'Thành viên';
     const userId = user?.id || '';
 
-    const isAssigner = isUserTaskAssigner(user, task, engineers);
-    const isAssignee = isUserTaskAssignee(user, task, engineers);
-    const isFollower = isUserTaskFollower(user, task, engineers) || (!isAssigner && !isAssignee);
-
-    const senderRole = isFollower ? 'Người theo dõi' : (isAssigner ? 'Người giao việc' : 'Người nhận việc');
+    const senderRole = getTaskDiscussionSenderRole(user, task, engineers);
+    const isFollower = senderRole === 'Người theo dõi';
+    const isAssigner = senderRole === 'Người giao việc';
 
     const updatedNotes = appendTaskDiscussion(task.notes || '', {
       senderId: userId,

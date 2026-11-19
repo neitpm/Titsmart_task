@@ -5,7 +5,7 @@ import { useAuthStore } from '../../services/authStore';
 import { useRealtimeStore } from '../../services/realtimeStore';
 import { Modal } from '../common/Modal';
 import { uploadAttachment } from '../../utils/fileUploadHelper';
-import { isUserTaskAssignee, isUserTaskAssigner, isUserTaskFollower } from '../../utils/taskPermission';
+import { isUserTaskAssignee, isUserTaskAssigner, isUserTaskFollower, getTaskDiscussionSenderRole, isDiscussionSenderAssignee } from '../../utils/taskPermission';
 
 export interface TaskDiscussionModalProps {
   isOpen: boolean;
@@ -137,7 +137,7 @@ export const TaskDiscussionModal: React.FC<TaskDiscussionModalProps> = ({
       // Nếu task đã hoàn thành hoặc đang chờ nghiệm thu, chỉ lưu tin nhắn trao đổi, không gọi qua onSendReply / onSendQuestion để tránh thay đổi status
       if (isCompleted || isWaitingApproval) {
         const store = useRealtimeStore.getState();
-        const senderRole = isFollower ? 'Người theo dõi' : (isAssigner ? 'Người giao việc' : 'Người nhận việc');
+        const senderRole = getTaskDiscussionSenderRole(authUser, task, engineers);
         const updatedNotes = appendTaskDiscussion(task.notes || '', {
           senderId: activeUserId,
           senderName: activeUserName,
@@ -174,7 +174,7 @@ export const TaskDiscussionModal: React.FC<TaskDiscussionModalProps> = ({
         return;
       }
 
-      if (isAssignee && hasQuestion && onSendQuestion) {
+      if (isAssignee && onSendQuestion) {
         await (onSendQuestion as any)(task, inputText.trim(), selectedFile || undefined);
       } else if (onSendReply) {
         await (onSendReply as any)(task, inputText.trim(), selectedFile || undefined);
@@ -182,7 +182,7 @@ export const TaskDiscussionModal: React.FC<TaskDiscussionModalProps> = ({
         await (onSendQuestion as any)(task, inputText.trim(), selectedFile || undefined);
       } else {
         const store = useRealtimeStore.getState();
-        const senderRole = isFollower ? 'Người theo dõi' : (isAssigner ? 'Người giao việc' : 'Người nhận việc');
+        const senderRole = getTaskDiscussionSenderRole(authUser, task, engineers);
         const updatedNotes = appendTaskDiscussion(task.notes || '', {
           senderId: activeUserId,
           senderName: activeUserName,
@@ -359,35 +359,46 @@ export const TaskDiscussionModal: React.FC<TaskDiscussionModalProps> = ({
                       <span className="text-xs font-bold text-slate-800">
                         {msg.senderName}
                       </span>
-                      {msg.senderRole ? (
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
-                          msg.senderRole === 'Người theo dõi'
-                            ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
-                            : msg.senderRole === 'Người giao việc'
-                              ? 'bg-blue-50 text-blue-700 border-blue-200'
-                              : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                        }`}>
-                          {msg.senderRole}
-                        </span>
-                      ) : (
-                        <>
-                          {isAssignNote && (
-                            <span className="text-[10px] font-bold px-2 py-0.5 bg-blue-100 text-blue-800 rounded">
-                              Ghi chú giao việc
+                      {(() => {
+                        const isMsgSenderAssignee = isDiscussionSenderAssignee(msg.senderId, msg.senderName, task);
+                        const displayRole = isMsgSenderAssignee 
+                          ? 'Nhân sự đảm nhiệm' 
+                          : (msg.senderRole || (isAssignNote ? 'Người giao việc' : ''));
+                        
+                        if (displayRole) {
+                          return (
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
+                              displayRole === 'Người theo dõi'
+                                ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                                : displayRole === 'Người giao việc'
+                                  ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                  : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            }`}>
+                              {displayRole}
                             </span>
-                          )}
-                          {isQuestion && (
-                            <span className="text-[10px] font-bold px-2 py-0.5 bg-orange-100 text-orange-800 rounded">
-                              Thắc mắc
-                            </span>
-                          )}
-                          {isReply && (
-                            <span className="text-[10px] font-bold px-2 py-0.5 bg-purple-100 text-purple-800 rounded">
-                              Phản hồi hướng dẫn
-                            </span>
-                          )}
-                        </>
-                      )}
+                          );
+                        }
+
+                        return (
+                          <>
+                            {isAssignNote && (
+                              <span className="text-[10px] font-bold px-2 py-0.5 bg-blue-100 text-blue-800 rounded">
+                                Ghi chú giao việc
+                              </span>
+                            )}
+                            {isQuestion && (
+                              <span className="text-[10px] font-bold px-2 py-0.5 bg-orange-100 text-orange-800 rounded">
+                                Thắc mắc
+                              </span>
+                            )}
+                            {isReply && (
+                              <span className="text-[10px] font-bold px-2 py-0.5 bg-purple-100 text-purple-800 rounded">
+                                Phản hồi hướng dẫn
+                              </span>
+                            )}
+                          </>
+                        );
+                      })()}
                       <span className="text-[11px] text-slate-400 font-mono">{formattedTime}</span>
                     </div>
 
