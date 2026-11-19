@@ -454,7 +454,7 @@ export const CompanyAdminPortalPage: React.FC = () => {
       });
       await postAuditLog(data.companyId, 'provision_auth_account', 'person', person.id, { email: person.email });
       showMsg(`Đã tạo tài khoản Auth cho ${person.email}.`);
-      setAuthPwd(generatePassword());
+      // Giữ nguyên mật khẩu vừa gửi vào Auth để admin có thể copy chính xác.
     } catch (e) {
       showMsg(e instanceof Error ? e.message : 'Không tạo được tài khoản Auth', 'err');
     } finally {

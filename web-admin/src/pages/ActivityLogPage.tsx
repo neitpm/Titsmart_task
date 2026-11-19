@@ -6,7 +6,7 @@ import { useRealtimeStore } from '../services/realtimeStore';
 import { useAuthStore, isSystemAdmin, isDirector, hasPermission } from '../services/authStore';
 import { Modal } from '../components/common/Modal';
 import { PullToRefresh } from '../components/common/PullToRefresh';
-import { getLogNavigatePath } from '../components/common/AuditInfoCell';
+import { getLogNavigatePath, formatAuditDetail } from '../components/common/AuditInfoCell';
 
 const parseDateKey = (timestamp: string): string => {
   const value = (timestamp || '').trim();
@@ -120,12 +120,13 @@ const renderActionText = (text: string, fullDetail: boolean = false) => {
       renderedMain = <>{mainText}</>;
     }
 
-    if (fullDetail && detailText) {
+    const cleanDetail = formatAuditDetail(detailText);
+    if (fullDetail && cleanDetail) {
       return (
         <div className="flex flex-col gap-2">
           <div>{renderedMain}</div>
           <div className="text-xs text-slate-600 bg-white p-3 rounded-lg border border-slate-200 italic shadow-sm whitespace-pre-wrap">
-            {detailText}
+            {cleanDetail}
           </div>
         </div>
       );

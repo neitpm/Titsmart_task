@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../../services/apiSupabase';
 import { useAuthStore } from '../../services/authStore';
 import { isNotificationForUser } from './NotificationBell';
+import { stripDiscussionThread } from '../../utils/taskDiscussion';
 
 export const formatAuditDateTime = (isoString?: string): string => {
   if (!isoString || typeof isoString !== 'string') return '';
@@ -152,25 +153,39 @@ export const getLogNavigatePath = (action: string, projectCode?: string): string
   return null;
 };
 
-const cleanDisplayNotes = (val: string) => {
-  return String(val || '')
-    .replace(/\[tech-status:[^\]]+\]/gi, '')
-    .replace(/\[FOLLOWERS:[^\]]+\]/gi, '')
-    .replace(/\[ASSIGNER:[^\]]+\]/gi, '')
-    .replace(/\[order:[\d.]+\]/gi, '')
+export const cleanDisplayNotes = (val: string): string => {
+  if (!val || typeof val !== 'string') return '';
+  // 1. Loại bỏ [THREAD:[...]] an toàn theo depth bracket
+  let str = stripDiscussionThread(val);
+
+  // 2. Loại bỏ các tag ẩn / metadata kỹ thuật
+  str = str
+    .replace(/\[tech-status:[^\]]*\]/gi, '')
+    .replace(/\[FOLLOWERS:[^\]]*\]/gi, '')
+    .replace(/\[ASSIGNER:[^\]]*\]/gi, '')
+    .replace(/\[order:[\d.]*\]/gi, '')
     .replace(/\[section\]/gi, '')
     .replace(/\[contractor\]/gi, '')
     .replace(/\[owner\]/gi, '')
-    .replace(/\[STATUS:[^\]]+\]/gi, '')
+    .replace(/\[STATUS:[^\]]*\]/gi, '')
+    .replace(/\[doc-track\s*\]/gi, '')
     .replace(/\[DOC-DATA\]/gi, '')
-    .replace(/\[DOC-NOTE\]/gi, '')
+    .replace(/\[DOC-NOTE\][\s\S]*$/gi, '')
     .replace(/\[DOC-FILENAME\]/gi, '')
-    .replace(/\[THREAD:[^\]]+\]/gi, '')
     .replace(/Nhà thầu cung cấp/gi, '')
     .replace(/Chủ đầu tư cung cấp/gi, '')
     .replace(/Import từ phụ lục dự án/gi, '')
-    .replace(/Đồng bộ từ phụ lục khi tạo dự án/gi, '')
-    .trim();
+    .replace(/Đồng bộ từ phụ lục khi tạo dự án/gi, '');
+
+  // 3. Loại bỏ các ký tự thừa như ngoặc vuông ']' hoặc '[' còn sót lại từ metadata
+  str = str.replace(/^[\]\[\s,;:\-—"']+|[\]\[\s,;:\-—"']+$/g, '').trim();
+
+  // 4. Nếu toàn bộ chuỗi chỉ còn lại các ký tự đặc biệt / ngoặc vuông hoặc rác
+  if (!str || /^[\]\[\s,;:\-—"']*$/.test(str)) {
+    return '';
+  }
+
+  return str;
 };
 
 const renderChangeBadge = (val: string, type: 'before' | 'after') => {
@@ -235,13 +250,14 @@ const renderChangeBadge = (val: string, type: 'before' | 'after') => {
   );
 };
 
-const formatAuditDetail = (value: string): string => {
-  return String(value || '')
+export const formatAuditDetail = (value: string): string => {
+  if (!value) return '';
+  let str = stripDiscussionThread(value);
+  str = str
     .replace(/,?\s*Ghi chú\s*:\s*(?:"[^"]*"\s*[-=]+>\s*)?\[tech-status:[^\]]+\]/gi, '')
     .replace(/\[tech-status:[^\]]+\]/gi, '')
     .replace(/\[FOLLOWERS:[^\]]+\]/gi, '')
     .replace(/\[ASSIGNER:[^\]]+\]/gi, '')
-    .replace(/\[THREAD:[^\]]+\]/gi, '')
     .replace(/,?\s*Người thực hiện\s*:\s*"[^"]*"\s*[-=]+>\s*"[0-9a-f-]{20,}"/gi, '')
     .replace(/,?\s*assignerId\s*:\s*"[^"]*"\s*[-=]+>\s*"[0-9a-f-]{20,}"/gi, '')
     .replace(/,?\s*assignerName\s*:\s*"[^"]*"\s*[-=]+>\s*"[^"]*"/gi, '')
@@ -250,23 +266,70 @@ const formatAuditDetail = (value: string): string => {
     .replace(/\s+-\s+(?=(?:Đầu mục|TT Đặt hàng|Tình trạng kỹ thuật|Ghi chú|Trạng thái|Phân công|Người theo dõi|Tiến độ|Khối lượng|ĐVT)\s*:)/gi, '\n')
     .replace(/\s*\|\s*/g, '\n')
     .trim();
+
+  // Lọc bỏ từng dòng nếu dòng đó là Ghi chú và không có thay đổi thực sự
+  const cleanedLines = str.split('\n')
+    .map(line => line.trim())
+    .filter(line => {
+      if (!line) return false;
+      if (line.startsWith('Ghi chú:')) {
+        const parts = line.replace(/^Ghi chú:\s*/i, '').split(/(?:[-=]+>|→)/);
+        if (parts.length === 2) {
+          const b = cleanDisplayNotes(parts[0].replace(/^["'\s]+|["'\s]+$/g, ''));
+          const a = cleanDisplayNotes(parts[1].replace(/^["'\s]+|["'\s]+$/g, ''));
+          if (!b && !a) return false;
+          if (b === a) return false;
+        }
+      }
+      if (/^[\]\[\s,;:\-—"']*$/.test(line)) return false;
+      return true;
+    });
+
+  const result = cleanedLines.join('\n').trim();
+  if (/^(?:Dự án[^:]+,\s*Đầu mục[^:]+:\s*)+$/i.test(result)) {
+    return '';
+  }
+  return result;
 };
 
-const parseAuditChangeRows = (value: string): Array<{ field: string; before: string; after: string }> => {
-  const normalized = String(value || '').replace(/\bfollowerNames\s*:/gi, 'Người theo dõi:').replace(/\s+/g, ' ').trim();
+export const parseAuditChangeRows = (value: string): Array<{ field: string; before: string; after: string }> => {
+  const normalized = String(value || '')
+    .replace(/\bfollowerNames\s*:/gi, 'Người theo dõi:')
+    .replace(/\s+/g, ' ')
+    .trim();
   const rows: Array<{ field: string; before: string; after: string }> = [];
   const fieldNames = [
     'TT Đặt hàng', 'Tình trạng kỹ thuật', 'Ghi chú', 'Trạng thái', 'Phân công', 'Người theo dõi',
     'Thi công', 'Tiến độ', 'Khối lượng', 'ĐVT', 'Tên', 'Hạn hoàn thành', 'Vấn đề'
   ].join('|');
-  const pattern = new RegExp(`(${fieldNames})\\s*:\\s*["“]?([^"”]+?)["”]?\\s*[-=]+>\\s*["“]?([^"”]+?)["”]?(?=,\\s*(?:${fieldNames})\\s*:|$)`, 'gi');
+  const pattern = new RegExp(`(${fieldNames})\\s*:\\s*["“]?([^"”]+?)["”]?\\s*(?:[-=]+>|→)\\s*["“]?([^"”]+?)["”]?(?=,\\s*(?:${fieldNames})\\s*:|$)`, 'gi');
   let match: RegExpExecArray | null;
   while ((match = pattern.exec(normalized)) !== null) {
-    rows.push({
-      field: match[1].trim(),
-      before: match[2].replace(/^"|"$/g, '').split('|')[0].trim(),
-      after: match[3].replace(/^"|"$/g, '').split('|')[0].trim(),
-    });
+    const rawBefore = match[2].replace(/^"|"$/g, '').split('|')[0].trim();
+    const rawAfter = match[3].replace(/^"|"$/g, '').split('|')[0].trim();
+    const field = match[1].trim();
+
+    if (field.toLowerCase() === 'ghi chú') {
+      const cleanBefore = cleanDisplayNotes(rawBefore);
+      const cleanAfter = cleanDisplayNotes(rawAfter);
+      if (cleanBefore === cleanAfter || (!cleanBefore && !cleanAfter)) {
+        continue;
+      }
+      rows.push({
+        field,
+        before: cleanBefore || '(trống)',
+        after: cleanAfter || '(trống)',
+      });
+      continue;
+    }
+
+    if (rawBefore !== rawAfter) {
+      rows.push({
+        field,
+        before: rawBefore,
+        after: rawAfter,
+      });
+    }
   }
   return rows.filter(row => {
     if (row.field.toLowerCase() !== 'ghi chú') return true;
@@ -322,15 +385,34 @@ const renderActionText = (text: string, timestamp?: string) => {
 
   // Format detail text sạch sẽ, loại bỏ code metadata
   if (detailText) {
-    const parts = detailText.split('->').map(s => s.trim());
-    if (parts.length === 2 && detailText.includes('Ghi chú:')) {
+    const parts = detailText.split(/[-=]+>|→/).map(s => s.trim());
+    if (parts.length === 2 && detailText.includes('Ghi chú:') && !detailText.includes(',')) {
       const fromVal = cleanDisplayNotes(parts[0].replace(/^.*Ghi chú:\s*"?/i, '').replace(/"?$/, ''));
       const toVal = cleanDisplayNotes(parts[1].replace(/^"?/, '').replace(/"?$/, ''));
-      if (fromVal || toVal) {
+      if (fromVal && toVal && fromVal !== toVal) {
         detailText = `Ghi chú: "${fromVal}" → "${toVal}"`;
+      } else if (!fromVal && toVal) {
+        detailText = `Ghi chú: "(trống)" → "${toVal}"`;
+      } else if (fromVal && !toVal) {
+        detailText = `Ghi chú: "${fromVal}" → "(trống)"`;
       } else {
         detailText = '';
       }
+    }
+  }
+
+  let changeRows: Array<{ field: string; before: string; after: string }> = [];
+  let formattedDetailStr = '';
+  if (detailText) {
+    changeRows = parseAuditChangeRows(detailText);
+    formattedDetailStr = formatAuditDetail(detailText);
+    const hasMeaningfulText = Boolean(
+      formattedDetailStr &&
+      formattedDetailStr.trim() !== ']' &&
+      !/^(?:Dự án[^:]+,\s*Đầu mục[^:]+:\s*)+$/i.test(formattedDetailStr.trim())
+    );
+    if (changeRows.length === 0 && !hasMeaningfulText) {
+      detailText = '';
     }
   }
 
@@ -365,7 +447,7 @@ const renderActionText = (text: string, timestamp?: string) => {
             <span className="material-symbols-outlined text-[15px] text-slate-400">expand_more</span>
           </summary>
           <div className="border-t border-slate-200 bg-slate-50 px-2.5 py-2 text-slate-600">
-            {parseAuditChangeRows(detailText).length > 0 ? (
+            {changeRows.length > 0 ? (
               <div className="overflow-x-auto rounded border border-slate-200 bg-white">
                 <table className="w-full min-w-[520px] border-collapse text-[10.5px]">
                   <thead className="bg-slate-100 text-left text-[10px] font-bold uppercase text-slate-500">
@@ -377,7 +459,7 @@ const renderActionText = (text: string, timestamp?: string) => {
                     </tr>
                   </thead>
                   <tbody>
-                    {parseAuditChangeRows(detailText).map((row, index) => (
+                    {changeRows.map((row, index) => (
                       <tr key={`${row.field}-${index}`} className="border-b border-slate-100 last:border-b-0 hover:bg-slate-50/70 transition-colors">
                         <td className="px-2.5 py-1.5 font-semibold text-slate-700 whitespace-nowrap">{row.field}</td>
                         <td className="px-2.5 py-1.5">{renderChangeBadge(row.before, 'before')}</td>
@@ -388,9 +470,9 @@ const renderActionText = (text: string, timestamp?: string) => {
                   </tbody>
                 </table>
               </div>
-            ) : (
-              <div className="whitespace-pre-line leading-relaxed">{formatAuditDetail(detailText)}</div>
-            )}
+            ) : formattedDetailStr ? (
+              <div className="whitespace-pre-line leading-relaxed">{formattedDetailStr}</div>
+            ) : null}
           </div>
         </details>
       ) : null}
@@ -583,8 +665,11 @@ export const AuditInfoCell: React.FC<{
       const itemPart = actionMain.includes(':')
         ? actionMain.substring(actionMain.indexOf(':') + 1).trim().toLowerCase()
         : actionMain.toLowerCase();
+      const actionType = actionMain.includes(':')
+        ? actionMain.split(':')[0].trim().toLowerCase()
+        : actionMain.toLowerCase();
       const timeBucket = logTimeMs ? Math.floor(logTimeMs / 60000) : actionText;
-      const mergeKey = `${timeBucket}:::${itemPart}`;
+      const mergeKey = `${timeBucket}:::${actionType}:::${itemPart}`;
 
       if (!map.has(u)) {
         const eng = (engineers || []).find(e => e?.name?.toLowerCase() === u.toLowerCase());
