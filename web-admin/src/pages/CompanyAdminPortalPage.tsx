@@ -448,7 +448,7 @@ export const CompanyAdminPortalPage: React.FC = () => {
     if (!data) return;
     setProvisioningId(person.id);
     try {
-      await apiFetch('/provision-company-admin', {
+      await apiFetch('/provision-company-user', {
         method: 'POST',
         body: JSON.stringify({ companyId: data.companyId, email: person.email, password: authPwd, name: person.name || person.email }),
       });

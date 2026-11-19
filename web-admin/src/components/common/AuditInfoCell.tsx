@@ -3,6 +3,8 @@ import { useRealtimeStore } from '../../services/realtimeStore';
 import { Modal } from './Modal';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../services/apiSupabase';
+import { useAuthStore } from '../../services/authStore';
+import { isNotificationForUser } from './NotificationBell';
 
 export const formatAuditDateTime = (isoString?: string): string => {
   if (!isoString || typeof isoString !== 'string') return '';
@@ -455,6 +457,8 @@ export const AuditInfoCell: React.FC<{
   const activityLogs = useRealtimeStore(s => s.activityLogs);
   const engineers = useRealtimeStore(s => s.engineers);
   const projects = useRealtimeStore(s => s.projects);
+  const notifications = useRealtimeStore(s => s.notifications);
+  const currentUser = useAuthStore(s => s.user);
 
   const formattedTime = formatAuditDateTime(updatedAt);
   const isSystemOrEmpty = !updatedBy || updatedBy.trim() === '';
@@ -642,6 +646,113 @@ export const AuditInfoCell: React.FC<{
       }
     }
 
+    // 4. Tích hợp Thông báo của dự án từ notifications (tạo nên số thông báo của dự án)
+    if (projectCode) {
+      const pCodeUpper = String(projectCode).trim().toUpperCase();
+      const pCodeLower = pCodeUpper.toLowerCase();
+      const matchedProj = (projects || []).find(p => p.code?.toUpperCase() === pCodeUpper || p.id?.toUpperCase() === pCodeUpper);
+      const pNameUpper = matchedProj?.name ? matchedProj.name.trim().toUpperCase() : '';
+      const pNameLower = pNameUpper.toLowerCase();
+
+      const readStorageKey = `buildcore_read_notifs_${currentUser?.id || currentUser?.username || 'guest'}`;
+      let readNotifIds = new Set<string>();
+      try {
+        const raw = localStorage.getItem(readStorageKey);
+        if (raw) readNotifIds = new Set(JSON.parse(raw));
+      } catch {}
+
+      const projectNotifs = (notifications || []).filter(notif => {
+        if (!isNotificationForUser(notif, currentUser, engineers)) return false;
+
+        const notifProj = String((notif as any).projectCode || (notif as any).projectId || '').trim().toUpperCase();
+        if (notifProj && (notifProj === pCodeUpper || (matchedProj?.id && notifProj === matchedProj.id.toUpperCase()))) return true;
+
+        const notifLink = String(notif.link || '').toLowerCase();
+        if (pCodeLower && notifLink.includes(pCodeLower)) return true;
+        if (matchedProj?.id && notifLink.includes(matchedProj.id.toLowerCase())) return true;
+
+        const notifText = `${notif.title || ''} ${notif.message || ''}`.toLowerCase();
+        if (pNameLower && pNameLower.length >= 4 && notifText.includes(pNameLower)) return true;
+        if (pCodeLower && pCodeLower.length >= 3 && notifText.includes(pCodeLower)) return true;
+
+        return false;
+      });
+
+      projectNotifs.forEach(notif => {
+        let actorName = String(notif.senderName || (notif as any).sender_name || '').trim();
+        if (!actorName && notif.message) {
+          const msg = notif.message;
+          const actorMatch = msg.match(/\[[^\]]+\]\s*([^đv\n]+?)\s+(?:đã|vừa)/i) ||
+            msg.match(/Người thực hiện:\s*([^,\n]+?)\s+lúc/i) ||
+            msg.match(/^([^đv\n]+?)\s+(?:đã|vừa)/i);
+          if (actorMatch && actorMatch[1]) {
+            actorName = actorMatch[1].trim();
+          }
+        }
+        if (!actorName) {
+          actorName = 'Quản trị hệ thống';
+        }
+
+        const u = normalizeUser(actorName);
+        const logTimeMs = parseAuditTime(notif.timestamp);
+        const displayTime = formatAuditDateTime(notif.timestamp);
+
+        const cleanMsg = String(notif.message || '')
+          .replace(/​?\[\[META:.*?\]\]/g, '')
+          .trim();
+        const actionText = `${notif.title || 'Thông báo'}${cleanMsg ? ': ' + cleanMsg : ''}`;
+
+        let targetLink = notif.link || '';
+        if (!targetLink && notif.message && notif.message.includes('[[META:')) {
+          try {
+            const match = notif.message.match(/\[\[META:(.*?)\]\]/);
+            if (match && match[1]) {
+              const meta = JSON.parse(decodeURIComponent(match[1]));
+              if (meta?.l) targetLink = meta.l;
+            }
+          } catch {}
+        }
+
+        const isUnread = !notif.read && !readNotifIds.has(notif.id);
+
+        const notifEntry = {
+          action: actionText,
+          timestamp: notif.timestamp,
+          rawTimeMs: logTimeMs,
+          targetLink,
+          notifId: notif.id,
+          isUnread
+        };
+
+        if (!map.has(u)) {
+          const eng = (engineers || []).find(e => e?.name?.toLowerCase() === u.toLowerCase());
+          const title = u === 'Quản trị hệ thống' ? 'Ban Giám Đốc' : eng?.title;
+          map.set(u, {
+            name: u,
+            count: 1,
+            lastTime: displayTime,
+            rawTimeMs: logTimeMs,
+            title,
+            logs: [notifEntry as any]
+          });
+        } else {
+          const existing = map.get(u)!;
+          if (logTimeMs > existing.rawTimeMs) {
+            existing.rawTimeMs = logTimeMs;
+            existing.lastTime = displayTime;
+          }
+          const alreadyExists = existing.logs.some((l: any) => 
+            l.notifId === notif.id || 
+            (l.action === actionText && Math.abs((l.rawTimeMs || 0) - logTimeMs) < 60000)
+          );
+          if (!alreadyExists) {
+            existing.count += 1;
+            existing.logs.push(notifEntry as any);
+          }
+        }
+      });
+    }
+
     // Sort logs inside each user by rawTimeMs descending
     const currentNorm = normalizeUser(updatedBy);
     return Array.from(map.values()).map(u => ({
@@ -653,7 +764,7 @@ export const AuditInfoCell: React.FC<{
       if (currentNorm && b.name.toLowerCase() === currentNorm.toLowerCase()) return 1;
       return b.rawTimeMs - a.rawTimeMs;
     });
-  }, [showModal, activityLogs, scopedLogs, engineers, updatedBy, updatedAt, formattedTime, projectCode, itemTitle, taskDiscussions]);
+  }, [showModal, activityLogs, scopedLogs, engineers, updatedBy, updatedAt, formattedTime, projectCode, itemTitle, taskDiscussions, notifications, currentUser]);
 
   // Khi được mở từ nút chuông dự án (hideTrigger + forceOpen), vẫn phải
   // dựng Modal kể cả khi dòng cập nhật tổng quan của dự án đang trống.
@@ -693,9 +804,38 @@ export const AuditInfoCell: React.FC<{
         size="lg"
       >
         <div className="p-3 space-y-4 max-h-[75vh] overflow-y-auto">
-          <p className="text-xs text-slate-500 font-medium">
-            Chi tiết nhân sự và nhật ký các nội dung cập nhật trên hệ thống:
-          </p>
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <p className="text-xs text-slate-500 font-medium">
+              Chi tiết nhân sự và nhật ký các nội dung cập nhật trên hệ thống:
+            </p>
+            {projectCode && userList.some(u => u.logs.some((l: any) => l.isUnread)) && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const readStorageKey = `buildcore_read_notifs_${currentUser?.id || currentUser?.username || 'guest'}`;
+                  const store = useRealtimeStore.getState();
+                  try {
+                    const raw = localStorage.getItem(readStorageKey);
+                    const set = raw ? new Set<string>(JSON.parse(raw)) : new Set<string>();
+                    userList.forEach(u => {
+                      u.logs.forEach((l: any) => {
+                        if (l.notifId) {
+                          set.add(l.notifId);
+                          store.markNotificationRead(l.notifId);
+                        }
+                      });
+                    });
+                    localStorage.setItem(readStorageKey, JSON.stringify(Array.from(set).slice(-500)));
+                  } catch {}
+                }}
+                className="px-2.5 py-1 text-[11px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
+              >
+                <span className="material-symbols-outlined text-[13px]">done_all</span>
+                Đánh dấu tất cả đã đọc
+              </button>
+            )}
+          </div>
 
           {userList.length === 0 ? (
             <div className="text-center py-8 text-slate-400 text-xs italic">
@@ -767,7 +907,18 @@ export const AuditInfoCell: React.FC<{
                                   className="hover:bg-slate-50/80 transition-colors cursor-pointer"
                                   title="Mở nội dung đã phát sinh thông báo"
                                   onClick={() => {
-                                    const target = getLogNavigatePath(log.action, projectCode);
+                                    if ((log as any).notifId) {
+                                      const store = useRealtimeStore.getState();
+                                      store.markNotificationRead((log as any).notifId);
+                                      const readStorageKey = `buildcore_read_notifs_${currentUser?.id || currentUser?.username || 'guest'}`;
+                                      try {
+                                        const raw = localStorage.getItem(readStorageKey);
+                                        const set = raw ? new Set<string>(JSON.parse(raw)) : new Set<string>();
+                                        set.add((log as any).notifId);
+                                        localStorage.setItem(readStorageKey, JSON.stringify(Array.from(set).slice(-500)));
+                                      } catch {}
+                                    }
+                                    const target = (log as any).targetLink || getLogNavigatePath(log.action, projectCode);
                                     if (target) {
                                       setShowModal(false);
                                       navigate(target, { state: { reset: Date.now() } });
@@ -780,6 +931,12 @@ export const AuditInfoCell: React.FC<{
                                         {badge.icon}
                                       </span>
                                       <div className="min-w-0 flex-1 break-words">
+                                        {(log as any).isUnread && (
+                                          <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded-full text-[9px] font-extrabold bg-rose-50 text-rose-600 border border-rose-200 mr-1.5 shadow-2xs">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+                                            Mới
+                                          </span>
+                                        )}
                                         {renderActionText(log.action, log.timestamp)}
                                       </div>
                                     </div>

@@ -719,7 +719,12 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ isSidebar = 
 
   const handleMarkAllAsRead = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    addReadIds(displayNotifications.map((n: any) => n.id));
+    const ids = displayNotifications.map((n: any) => n.id);
+    addReadIds(ids);
+    const store = useRealtimeStore.getState();
+    ids.forEach(id => {
+      store.markNotificationRead(id);
+    });
   };
 
   const handleClearRead = (e: React.MouseEvent) => {
@@ -755,9 +760,9 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ isSidebar = 
   };
 
   const handleNotificationClick = (notification: any) => {
-    if (!notification.read) {
-      addReadIds([notification.id]);
-    }
+    // Đánh dấu đã đọc ngay lập tức trong per-user local storage và trong realtime store / DB (giảm badge ngay lập tức)
+    addReadIds([notification.id]);
+    useRealtimeStore.getState().markNotificationRead(notification.id);
 
     setShowPopover(false);
     setShowCenterModal(false);

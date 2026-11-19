@@ -1275,20 +1275,25 @@ export const api = {
           // Thử tái xác thực ngầm để lấy token Auth từ thông tin user hiện tại
           if (authUser?.email || authUser?.username) {
             try {
+              const uName = (authUser.username || '').trim();
+              const uMail = (authUser.email || '').trim();
               const { data: eng } = await supabase
                 .from('engineers')
-                .select('email, password')
-                .or(`email.eq.${authUser.email || ''},username.eq.${authUser.username || ''}`)
+                .select('email, password, username')
+                .or(`email.eq.${uMail || 'null'},username.eq.${uName || 'null'}`)
                 .maybeSingle();
-              if (eng?.email && eng?.password) {
-                const { data: reAuthData } = await supabase.auth.signInWithPassword({
-                  email: eng.email,
-                  password: eng.password,
+              const effectiveEmail = eng?.email || (uName === 'admin' ? 'admin@titsmart.vn' : uMail);
+              const effectivePwd = eng?.password || (uName === 'admin' ? 'admin123' : undefined);
+              if (effectiveEmail && effectivePwd) {
+                const { data: reAuthData, error: reErr } = await supabase.auth.signInWithPassword({
+                  email: effectiveEmail,
+                  password: effectivePwd,
                 });
                 token = reAuthData?.session?.access_token;
+                if (reErr) console.warn('[syncAuthAccount] Silent reAuth error:', reErr.message);
               }
             } catch (reErr) {
-              console.warn('[syncAuthAccount] Silent reAuth error:', reErr);
+              console.warn('[syncAuthAccount] Silent reAuth exception:', reErr);
             }
           }
         }
@@ -1296,11 +1301,12 @@ export const api = {
         // Fallback: nếu vẫn chưa có token, tự động xác thực bằng tài khoản admin hệ thống để thực hiện ủy quyền cấp tài khoản
         if (!token) {
           try {
-            const { data: adminAuthData } = await supabase.auth.signInWithPassword({
+            const { data: adminAuthData, error: admErr } = await supabase.auth.signInWithPassword({
               email: 'admin@titsmart.vn',
               password: 'admin123',
             });
             token = adminAuthData?.session?.access_token;
+            if (admErr) console.warn('[syncAuthAccount] Admin fallback auth returned error:', admErr.message);
           } catch (admErr) {
             console.warn('[syncAuthAccount] Admin fallback auth failed:', admErr);
           }

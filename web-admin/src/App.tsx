@@ -275,6 +275,44 @@ export const App: React.FC = () => {
     };
   }, [user?.id]);
 
+  // Khi người dùng bấm vào thông báo hoặc vào màn hình chứa nội dung tạo nên thông báo (highlight, taskId, fundId)
+  // Tự động nhận diện thông báo tương ứng của dự án đó đã đọc và trừ ngay 1 trên badge
+  useEffect(() => {
+    if (!user) return;
+    const params = new URLSearchParams(location.search);
+    const highlight = params.get('highlight');
+    const taskId = params.get('taskId');
+    const fundId = params.get('fundId');
+    if (!highlight && !taskId && !fundId) return;
+
+    const notifs = useRealtimeStore.getState().notifications || [];
+    const readStorageKey = `buildcore_read_notifs_${user?.id || user?.username || 'guest'}`;
+    let localReadIds = new Set<string>();
+    try {
+      const raw = localStorage.getItem(readStorageKey);
+      if (raw) localReadIds = new Set(JSON.parse(raw));
+    } catch {}
+
+    const decodedHighlight = highlight ? decodeURIComponent(highlight).trim().toLowerCase() : '';
+
+    notifs.forEach((n) => {
+      if (n.read || localReadIds.has(n.id)) return;
+      const text = `${n.title || ''} ${n.message || ''} ${n.link || ''}`.toLowerCase();
+      let isMatch = false;
+      if (decodedHighlight && decodedHighlight.length >= 3 && text.includes(decodedHighlight)) isMatch = true;
+      if (taskId && text.includes(taskId.toLowerCase())) isMatch = true;
+      if (fundId && text.includes(fundId.toLowerCase())) isMatch = true;
+
+      if (isMatch) {
+        localReadIds.add(n.id);
+        try {
+          localStorage.setItem(readStorageKey, JSON.stringify(Array.from(localReadIds).slice(-500)));
+        } catch {}
+        useRealtimeStore.getState().markNotificationRead(n.id);
+      }
+    });
+  }, [location.pathname, location.search, user?.id]);
+
   return (
     <>
       <UpdateNotifier />

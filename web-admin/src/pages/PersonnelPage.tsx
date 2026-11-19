@@ -890,7 +890,7 @@ export const PersonnelPage: React.FC = () => {
                                       e.stopPropagation();
                                       setSyncingId(person.id);
                                       try {
-                                        const res = await syncEngineerAuth(person);
+                                        const res = await syncEngineerAuth(person, (person as any).password || '123456');
                                         if (res.success) {
                                           triggerToast(`Đã đồng bộ lại tài khoản cho "${person.name}" thành công!`, 'success');
                                         } else {

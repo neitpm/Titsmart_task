@@ -293,9 +293,17 @@ export const ProjectManagementPage: React.FC = () => {
       const effectiveUpdatedBy = (project.updatedBy && project.updatedBy !== 'Hệ thống') ? project.updatedBy : '';
       const effectiveUpdatedAt = project.updatedAt || '';
 
+      // Lấy danh sách thông báo đã đọc của tài khoản hiện tại từ per-user local storage
+      const readStorageKey = `buildcore_read_notifs_${currentUser?.id || currentUser?.username || 'guest'}`;
+      let localReadIds = new Set<string>();
+      try {
+        const raw = localStorage.getItem(readStorageKey);
+        if (raw) localReadIds = new Set(JSON.parse(raw));
+      } catch {}
+
       // Đếm số thông báo chưa đọc thuộc riêng dự án này theo quyền của user
       const projectUnreadNotifCount = notifications.filter((notif) => {
-        if (notif.read) return false;
+        if (notif.read || localReadIds.has(notif.id)) return false;
         if (!isNotificationForUser(notif, currentUser, engineers, tasks)) return false;
 
         const notifProj = String((notif as any).projectCode || (notif as any).projectId || '').trim().toUpperCase();
