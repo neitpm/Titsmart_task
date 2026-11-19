@@ -444,6 +444,18 @@ export const CompanyAdminPortalPage: React.FC = () => {
     }
   };
 
+  const removePerson = async (person: Person) => {
+    if (!data || !window.confirm(`Xóa nhân sự ${person.email} khỏi công ty?`)) return;
+    try {
+      await apiFetch(`/api/v1/companies/${data.companyId}/people/${person.id}`, { method: 'DELETE' });
+      await postAuditLog(data.companyId, 'remove_person', 'person', person.id, { email: person.email });
+      await loadPeople();
+      showMsg(`Đã xóa ${person.email} khỏi danh sách nhân sự.`);
+    } catch (e) {
+      showMsg(e instanceof Error ? e.message : 'Không xóa được nhân sự', 'err');
+    }
+  };
+
   const provisionAuth = async (person: Person) => {
     if (!data) return;
     setProvisioningId(person.id);
@@ -648,7 +660,6 @@ export const CompanyAdminPortalPage: React.FC = () => {
             />
             {logoFile && <p className="mt-1 text-xs text-slate-400">Chọn: {logoFile.name}</p>}
           </div>
-          <Field label="Hoặc nhập Logo URL thủ công" value={brand.logo_url} onChange={v => { setBrand({ ...brand, logo_url: v }); setLogoPreview(v); setLogoFile(null); }} placeholder="https://..." />
         </div>
         {logoPreview && (
           <div className="mt-4">
@@ -735,6 +746,14 @@ export const CompanyAdminPortalPage: React.FC = () => {
                   >
                     {provisioningId === p.id ? '...' : 'Tạo TK Auth'}
                   </button>
+                  {p.role !== 'company_admin' && (
+                    <button
+                      onClick={() => removePerson(p)}
+                      className="rounded-sm bg-red-100 px-3 py-1 text-xs font-bold text-red-700 hover:bg-red-200"
+                    >
+                      Xóa
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}</tbody>

@@ -696,12 +696,9 @@ const hasSyncedRef = useRef(false);
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
   const tablePaginationMode = useUIStore(s => s.tablePaginationMode);
   const tablePageSize = useUIStore(s => s.tablePageSize);
-  const setTablePaginationMode = useUIStore(s => s.setTablePaginationMode);
-  const setTablePageSize = useUIStore(s => s.setTablePageSize);
 
   const [taskPage, setTaskPage] = useState(1);
   const [visibleLimit, setVisibleLimit] = useState(tablePageSize || 25);
-  const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     setVisibleLimit(tablePageSize || 25);
@@ -2485,24 +2482,6 @@ const hasSyncedRef = useRef(false);
   const totalPureItems = groupedTasks.filter((t) => !t.isSectionHeader).length;
   const completedPureItems = groupedTasks.filter((t) => !t.isSectionHeader && (t.isDone || t.progress >= 1)).length;
 
-  // Tự động tải thêm khi cuộn gần đáy danh sách ở chế độ cuộn vô tận
-  useEffect(() => {
-    if (tablePaginationMode !== 'infinite') return;
-    const observer = new IntersectionObserver((entries) => {
-      if (entries[0] && entries[0].isIntersecting) {
-        const totalRows = groupedTasks.filter(t => t.isSectionHeader || !collapsedSections.has(t._sectionKey || '')).length;
-        setVisibleLimit(prev => (prev < totalRows ? Math.min(totalRows, prev + (tablePageSize || 25)) : prev));
-      }
-    }, { rootMargin: '350px' });
-
-    const el = sentinelRef.current;
-    if (el) observer.observe(el);
-    return () => {
-      if (el) observer.unobserve(el);
-      observer.disconnect();
-    };
-  }, [tablePaginationMode, groupedTasks, collapsedSections, tablePageSize]);
-
   const NotificationButton: React.FC = () => {
     const notifications = useRealtimeStore(s => s.notifications);
     const markNotificationRead = useRealtimeStore(s => s.markNotificationRead);
@@ -3243,20 +3222,6 @@ const hasSyncedRef = useRef(false);
                   );
                 })
               )}
-              {tablePaginationMode === 'infinite' && (() => {
-                const totalRows = groupedTasks.filter(t => t.isSectionHeader || !collapsedSections.has(t._sectionKey || '')).length;
-                if (visibleLimit >= totalRows) return null;
-                return (
-                  <tr>
-                    <td colSpan={11} className="py-2.5 px-4 text-center bg-slate-50/60">
-                      <div ref={sentinelRef} className="flex items-center justify-center gap-2 text-slate-500 text-xs py-1">
-                        <span className="w-3.5 h-3.5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-                        <span className="font-medium text-[11px]">Đang cuộn nạp thêm công việc ({visibleLimit} / {totalRows})...</span>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })()}
             </tbody>
           </table>
         </div>
@@ -3284,47 +3249,21 @@ const hasSyncedRef = useRef(false);
                 </span>
                 {hasMore && (
                   <span className="hidden sm:inline-flex items-center gap-1 text-[11px] text-slate-400">
-                    • Vuốt/cuộn xuống để tự động tải tiếp
+                    • Cuộn xuống để tự động tải tiếp
                   </span>
                 )}
               </div>
 
-              <div className="flex items-center gap-2 flex-wrap">
-                {hasMore && (
-                  <button
-                    type="button"
-                    onClick={() => setVisibleLimit(prev => Math.min(totalRows, prev + (tablePageSize || 25)))}
-                    className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary font-bold text-xs transition-colors shadow-2xs cursor-pointer"
-                  >
-                    <span className="material-symbols-outlined text-[15px]">arrow_downward</span>
-                    <span>Tải thêm {Math.min(tablePageSize || 25, totalRows - visibleLimit)} dòng</span>
-                  </button>
-                )}
-
-                <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200">
-                  <span className="text-[10px] text-slate-400 px-1 font-bold">Mỗi lần:</span>
-                  {[25, 50, 100].map(size => (
-                    <button
-                      key={size}
-                      type="button"
-                      onClick={() => setTablePageSize(size)}
-                      className={`px-1.5 py-0.5 text-[10.5px] font-bold rounded ${tablePageSize === size ? 'bg-white text-primary shadow-2xs' : 'text-slate-500 hover:text-slate-800'}`}
-                    >
-                      {size}
-                    </button>
-                  ))}
-                </div>
-
+              {hasMore && (
                 <button
                   type="button"
-                  onClick={() => setTablePaginationMode('pagination')}
-                  className="flex items-center gap-1 px-2 py-1 rounded-lg border border-slate-200 hover:bg-slate-50 text-[11px] font-semibold text-slate-600 transition-colors shadow-2xs"
-                  title="Chuyển sang chế độ Phân trang truyền thống"
+                  onClick={() => setVisibleLimit(prev => Math.min(totalRows, prev + (tablePageSize || 25)))}
+                  className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary font-bold text-xs transition-colors shadow-2xs cursor-pointer"
                 >
-                  <span className="material-symbols-outlined text-sm">auto_stories</span>
-                  <span className="hidden md:inline">Phân trang</span>
+                  <span className="material-symbols-outlined text-[15px]">arrow_downward</span>
+                  <span>Tải thêm {Math.min(tablePageSize || 25, totalRows - visibleLimit)} dòng</span>
                 </button>
-              </div>
+              )}
             </div>
           );
         }
@@ -3373,30 +3312,6 @@ const hasSyncedRef = useRef(false);
                 className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 font-medium hover:bg-slate-50 transition-colors disabled:cursor-not-allowed disabled:opacity-40 shadow-xs"
               >
                 Cuối
-              </button>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200">
-                <span className="text-[10px] text-slate-400 px-1 font-bold">Mỗi trang:</span>
-                {[25, 50, 100].map(size => (
-                  <button
-                    key={size}
-                    type="button"
-                    onClick={() => setTablePageSize(size)}
-                    className={`px-1.5 py-0.5 text-[10.5px] font-bold rounded ${tablePageSize === size ? 'bg-white text-primary shadow-2xs' : 'text-slate-500 hover:text-slate-800'}`}
-                  >
-                    {size}
-                  </button>
-                ))}
-              </div>
-              <button
-                type="button"
-                onClick={() => setTablePaginationMode('infinite')}
-                className="flex items-center gap-1 px-2 py-1 rounded-lg border border-slate-200 hover:bg-slate-50 text-[11px] font-semibold text-slate-600 transition-colors shadow-2xs"
-                title="Chuyển sang chế độ Cuộn tải thêm (Infinite Scroll)"
-              >
-                <span className="material-symbols-outlined text-sm">history_toggle_off</span>
-                <span className="hidden md:inline">Cuộn tải</span>
               </button>
             </div>
           </div>

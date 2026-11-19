@@ -150,11 +150,9 @@ export const ProjectManagementPage: React.FC = () => {
   // Chế độ xem (Dạng thẻ lưới vs Dạng bảng danh sách) & Phân trang cho 500+ dự án
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const tablePaginationMode = useUIStore(s => s.tablePaginationMode);
-  const setTablePaginationMode = useUIStore(s => s.setTablePaginationMode);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState<number>(24);
   const [projectVisibleLimit, setProjectVisibleLimit] = useState<number>(24);
-  const projectSentinelRef = useRef<HTMLDivElement | null>(null);
   const [sortBy, setSortBy] = useState<'latest' | 'oldest' | 'name_asc' | 'name_desc' | 'progress_desc' | 'progress_asc'>('latest');
 
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
@@ -451,20 +449,7 @@ export const ProjectManagementPage: React.FC = () => {
     return enhancedProjects.slice(startIndex, startIndex + pageSize);
   }, [enhancedProjects, safeCurrentPage, pageSize, tablePaginationMode, projectVisibleLimit]);
 
-  useEffect(() => {
-    if (tablePaginationMode !== 'infinite') return;
-    const observer = new IntersectionObserver((entries) => {
-      if (entries[0] && entries[0].isIntersecting) {
-        setProjectVisibleLimit(prev => (prev < enhancedProjects.length ? Math.min(enhancedProjects.length, prev + 24) : prev));
-      }
-    }, { rootMargin: '300px' });
-    const el = projectSentinelRef.current;
-    if (el) observer.observe(el);
-    return () => {
-      if (el) observer.unobserve(el);
-      observer.disconnect();
-    };
-  }, [tablePaginationMode, enhancedProjects.length]);
+
 
   const openProjectTasks = (project: Project) => navigate(`/projects/${project.id}`);
 
@@ -1513,12 +1498,6 @@ export const ProjectManagementPage: React.FC = () => {
                     </div>
                   );
                 })}
-                {tablePaginationMode === 'infinite' && projectVisibleLimit < enhancedProjects.length && (
-                  <div ref={viewMode === 'grid' ? projectSentinelRef : undefined} className="col-span-full py-4 flex items-center justify-center gap-2 text-slate-500 text-xs">
-                    <span className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-                    <span>Đang cuộn nạp thêm dự án ({projectVisibleLimit} / {enhancedProjects.length})...</span>
-                  </div>
-                )}
               </div>
             )}
 
@@ -1668,16 +1647,6 @@ export const ProjectManagementPage: React.FC = () => {
                           </tr>
                         );
                       })}
-                      {tablePaginationMode === 'infinite' && projectVisibleLimit < enhancedProjects.length && (
-                        <tr>
-                          <td colSpan={9} className="py-3 px-4 text-center bg-slate-50/60">
-                            <div ref={viewMode === 'table' ? projectSentinelRef : undefined} className="flex items-center justify-center gap-2 text-slate-500 text-xs py-1">
-                              <span className="w-3.5 h-3.5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-                              <span className="font-medium text-[11px]">Đang cuộn nạp thêm dự án ({projectVisibleLimit} / {enhancedProjects.length})...</span>
-                            </div>
-                          </td>
-                        </tr>
-                      )}
                     </tbody>
                   </table>
                 </div>
@@ -1697,31 +1666,20 @@ export const ProjectManagementPage: React.FC = () => {
                       </span>
                       {hasMore && (
                         <span className="hidden sm:inline-flex items-center gap-1 text-[11px] text-slate-400">
-                          • Vuốt/cuộn xuống để tự động nạp tiếp
+                          • Cuộn xuống để tự động nạp tiếp
                         </span>
                       )}
                     </div>
-                    <div className="flex items-center gap-2">
-                      {hasMore && (
-                        <button
-                          type="button"
-                          onClick={() => setProjectVisibleLimit(prev => Math.min(enhancedProjects.length, prev + 24))}
-                          className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary font-bold text-xs transition-colors shadow-2xs cursor-pointer"
-                        >
-                          <span className="material-symbols-outlined text-[15px]">arrow_downward</span>
-                          <span>Tải thêm {Math.min(24, enhancedProjects.length - projectVisibleLimit)} dự án</span>
-                        </button>
-                      )}
+                    {hasMore && (
                       <button
                         type="button"
-                        onClick={() => setTablePaginationMode('pagination')}
-                        className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-slate-200 hover:bg-slate-50 text-[11px] font-semibold text-slate-600 transition-colors shadow-2xs cursor-pointer"
-                        title="Chuyển sang chế độ Phân trang truyền thống"
+                        onClick={() => setProjectVisibleLimit(prev => Math.min(enhancedProjects.length, prev + 24))}
+                        className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary font-bold text-xs transition-colors shadow-2xs cursor-pointer"
                       >
-                        <span className="material-symbols-outlined text-sm">auto_stories</span>
-                        <span className="hidden md:inline">Phân trang</span>
+                        <span className="material-symbols-outlined text-[15px]">arrow_downward</span>
+                        <span>Tải thêm {Math.min(24, enhancedProjects.length - projectVisibleLimit)} dự án</span>
                       </button>
-                    </div>
+                    )}
                   </div>
                 );
               }
@@ -1771,16 +1729,6 @@ export const ProjectManagementPage: React.FC = () => {
                       Cuối
                     </button>
                   </div>
-
-                  <button
-                    type="button"
-                    onClick={() => setTablePaginationMode('infinite')}
-                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-slate-200 hover:bg-slate-50 text-[11px] font-semibold text-slate-600 transition-colors shadow-2xs cursor-pointer"
-                    title="Chuyển sang chế độ Cuộn tải thêm (Infinite Scroll)"
-                  >
-                    <span className="material-symbols-outlined text-sm">history_toggle_off</span>
-                    <span className="hidden md:inline">Cuộn tải</span>
-                  </button>
                 </div>
               );
             })()}
