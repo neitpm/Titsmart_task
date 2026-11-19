@@ -19,6 +19,7 @@ export const cleanNotes = (value?: string): string => {
     .replace(/\[FOLLOWERS:[^\]]*\]/gi, '')
     .replace(/\[ASSIGNER:[^\]]*\]/gi, '')
     .replace(/\[START_DATE:[^\]]*\]/gi, '')
+    .replace(/\[DUE_DATE:[^\]]*\]/gi, '')
     .replace(/\[doc-track\]/gi, '')
     .replace(/\[doc-track\s*\]/gi, '')
     .replace(/\[DOC-NOTE\]/gi, '')

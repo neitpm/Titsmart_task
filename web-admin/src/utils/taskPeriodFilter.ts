@@ -119,6 +119,14 @@ export function getTaskTimeBounds(task: Task): TaskTimeBounds {
     }
   }
 
+  // Parse [DUE_DATE:YYYY-MM-DD] from task.notes if not already set
+  if (!result.dueDate && task.notes && typeof task.notes === 'string') {
+    const dueTagMatch = task.notes.match(/\[DUE_DATE:([^\]]+)\]/i);
+    if (dueTagMatch) {
+      result.dueDate = dueTagMatch[1].trim().slice(0, 10);
+    }
+  }
+
   const isDone = isTaskActuallyDone(task);
 
   // 1. Phân tích lịch sử thảo luận / thread nếu có

@@ -508,6 +508,12 @@ export const api = {
           if (startDateMatch && !t.startDate) {
             t.startDate = startDateMatch[1].trim();
           }
+
+          // Parse due date from notes tag [DUE_DATE:YYYY-MM-DD]
+          const dueDateMatch = t.notes.match(/\[DUE_DATE:([^\]]+)\]/i);
+          if (dueDateMatch && !t.dueDate) {
+            t.dueDate = dueDateMatch[1].trim();
+          }
         }
         if (t.sourceRow && typeof t.sourceRow === 'object') {
           if (t.sourceRow.followerIds && (!t.followerIds || t.followerIds.length === 0)) {
@@ -561,6 +567,14 @@ export const api = {
         }
       }
 
+      // Encode due date safely in notes
+      if (data.dueDate) {
+        const dueTag = `[DUE_DATE:${String(data.dueDate).slice(0, 10)}]`;
+        if (!payload.notes || !payload.notes.includes('[DUE_DATE:')) {
+          payload.notes = (payload.notes ? payload.notes + '\n' : '') + dueTag;
+        }
+      }
+
       // Whitelist — chỉ giữ lại các cột thực sự có trong DB (tránh 400 Bad Request khi insert)
       const TASK_DB_COLUMNS = new Set([
         'id','stt','code','name','project_code','project_name','volume','unit','progress','status',
@@ -592,6 +606,13 @@ export const api = {
           if (!resCamel.startDate && resCamel.notes) {
             const sm = resCamel.notes.match(/\[START_DATE:([^\]]+)\]/i);
             if (sm) resCamel.startDate = sm[1].trim();
+          }
+          if (data.dueDate && !resCamel.dueDate) {
+            resCamel.dueDate = data.dueDate;
+          }
+          if (!resCamel.dueDate && resCamel.notes) {
+            const dm = resCamel.notes.match(/\[DUE_DATE:([^\]]+)\]/i);
+            if (dm) resCamel.dueDate = dm[1].trim();
           }
           return resCamel;
         }
@@ -743,6 +764,17 @@ export const api = {
         }
       }
 
+      if (data.dueDate !== undefined) {
+        let existingNotes = payload.notes || '';
+        existingNotes = existingNotes.replace(/\[DUE_DATE:[^\]]*\]/g, '').trim();
+        if (data.dueDate) {
+          const dueTag = `[DUE_DATE:${String(data.dueDate).slice(0, 10)}]`;
+          payload.notes = (existingNotes ? existingNotes + '\n' : '') + dueTag;
+        } else {
+          payload.notes = existingNotes;
+        }
+      }
+
       // Whitelist — chỉ giữ lại các cột thực sự có trong DB (tránh 400 Bad Request)
       const TASK_DB_COLUMNS = new Set([
         'id','stt','code','name','project_code','project_name','volume','unit','progress','status',
@@ -775,6 +807,13 @@ export const api = {
           if (!resCamel.startDate && resCamel.notes) {
             const sm = resCamel.notes.match(/\[START_DATE:([^\]]+)\]/i);
             if (sm) resCamel.startDate = sm[1].trim();
+          }
+          if (data.dueDate && !resCamel.dueDate) {
+            resCamel.dueDate = data.dueDate;
+          }
+          if (!resCamel.dueDate && resCamel.notes) {
+            const dm = resCamel.notes.match(/\[DUE_DATE:([^\]]+)\]/i);
+            if (dm) resCamel.dueDate = dm[1].trim();
           }
           return resCamel;
         }

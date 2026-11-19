@@ -852,6 +852,8 @@ const hasSyncedRef = useRef(false);
       const techStatusMatch = originalNotes.match(/\[tech-status:[^\]]+\]/i);
       const assignerMatch = originalNotes.match(/\[ASSIGNER:[^\]]+\]/i);
       const followersMatch = originalNotes.match(/\[FOLLOWERS:[^\]]+\]/i);
+      const startDateMatch = originalNotes.match(/\[START_DATE:[^\]]+\]/i);
+      const dueDateMatch = originalNotes.match(/\[DUE_DATE:[^\]]+\]/i);
       const existingTags = originalNotes.match(/(\[order:[\d.]+\]|\[section\]|\[contractor\]|\[owner\])/gi) || [];
 
       const parts: string[] = [];
@@ -861,6 +863,8 @@ const hasSyncedRef = useRef(false);
       if (threadMatch) parts.push(threadMatch[0]);
       if (assignerMatch) parts.push(assignerMatch[0]);
       if (followersMatch) parts.push(followersMatch[0]);
+      if (startDateMatch) parts.push(startDateMatch[0]);
+      if (dueDateMatch) parts.push(dueDateMatch[0]);
 
       finalValue = parts.join(' ').trim();
     } else if (field === 'volume') {
@@ -1066,7 +1070,8 @@ const hasSyncedRef = useRef(false);
     setEditIssueStatus(t.issueStatus || '');
     setEditNotes(t.notes || '');
     setEditEngineerId(t.assignedEngineerId || '');
-    setEditDueDate(t.dueDate ? String(t.dueDate).split('T')[0] : '');
+    const bounds = getTaskTimeBounds(t);
+    setEditDueDate(t.dueDate ? String(t.dueDate).split('T')[0] : (bounds.dueDate || ''));
 
     let parentIdVal = t.parentId || '';
     if (parentIdVal) {
@@ -2832,7 +2837,7 @@ const hasSyncedRef = useRef(false);
           }}
           className="w-full overflow-x-auto overflow-y-auto flex-1 custom-scrollbar"
         >
-          <table className="min-w-[1070px] w-full text-left border-collapse text-[11px] table-fixed" style={{ "--stt-width": `${maxSttWidth}px` } as React.CSSProperties}>
+          <table className="min-w-[1170px] w-full text-left border-collapse text-[11px] table-fixed" style={{ "--stt-width": `${maxSttWidth}px` } as React.CSSProperties}>
             <colgroup>
               <col style={{ width: "var(--stt-width)" }} />
               <col />
@@ -2844,6 +2849,7 @@ const hasSyncedRef = useRef(false);
                {(hasPermission(authStore.user, 'ASSIGN_TASKS') || tasks.some(task => isUserTaskAssignee(authStore.user, task, engineers))) && (
                 <>
                   <col style={{ width: 130 }} />
+                  <col style={{ width: 100 }} />
                   <col style={{ width: 100 }} />
                   <col style={{ width: 100 }} />
                 </>
@@ -2864,6 +2870,7 @@ const hasSyncedRef = useRef(false);
                     <>
                       <th className="py-2 px-1 w-[130px] min-w-[130px] text-center border-b border-slate-200 whitespace-nowrap">GIAO VIỆC</th>
                       <th className="py-2 px-1 w-[100px] min-w-[100px] text-center border-b border-slate-200 whitespace-nowrap">BẮT ĐẦU NHẬN VIỆC</th>
+                      <th className="py-2 px-1 w-[100px] min-w-[100px] text-center border-b border-slate-200 whitespace-nowrap">HẠN HOÀN THÀNH</th>
                       <th className="py-2 px-1 w-[100px] min-w-[100px] text-center border-b border-slate-200 whitespace-nowrap">HOÀN THÀNH</th>
                     </>
                   )}
@@ -2929,7 +2936,7 @@ const hasSyncedRef = useRef(false);
                             </div>
                           </div>
                         </td>
-                         <td colSpan={(hasPermission(authStore.user, 'ASSIGN_TASKS') || tasks.some(task => isUserTaskAssignee(authStore.user, task, engineers))) ? 10 : 7} className="bg-blue-50/90 py-2 px-2 text-slate-500 truncate text-[11px]" title={cleanNotes(t.notes)}>
+                         <td colSpan={(hasPermission(authStore.user, 'ASSIGN_TASKS') || tasks.some(task => isUserTaskAssignee(authStore.user, task, engineers))) ? 11 : 7} className="bg-blue-50/90 py-2 px-2 text-slate-500 truncate text-[11px]" title={cleanNotes(t.notes)}>
                           {cleanNotes(t.notes)}
                         </td>
                       </tr>
@@ -3103,7 +3110,8 @@ const hasSyncedRef = useRef(false);
                               e.stopPropagation();
                               setAssigningTask(t);
                               setAssignNote('');
-                              setAssignDueDate(t.dueDate ? String(t.dueDate).split('T')[0] : '');
+                              const bounds = getTaskTimeBounds(t);
+                              setAssignDueDate(t.dueDate ? String(t.dueDate).split('T')[0] : (bounds.dueDate || ''));
                               const parts = t.assignedEngineerName?.split('|') || [];
                               const idsString = parts.length > 1 ? parts[1] : t.assignedEngineerId;
                               setAssigningUserIds(idsString ? idsString.split(',') : []);
@@ -3193,6 +3201,50 @@ const hasSyncedRef = useRef(false);
                               return (
                                 <span className="font-semibold text-slate-700" title={`Bắt đầu nhận việc: ${formatted}`}>
                                   {formatted}
+                                </span>
+                              );
+                            })()}
+                          </td>
+
+                          {/* Cột Hạn hoàn thành (Deadline) */}
+                          <td className="py-1.5 px-1 text-center whitespace-nowrap border-r border-slate-200 font-mono text-[10px]">
+                            {editingCell?.id === t.id && editingCell?.field === 'dueDate' ? (
+                              <input
+                                type="date"
+                                value={tempValue || ''}
+                                onChange={(e) => setTempValue(e.target.value)}
+                                onBlur={() => saveEditing(t)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') saveEditing(t);
+                                  if (e.key === 'Escape') setEditingCell(null);
+                                }}
+                                autoFocus
+                                className="w-full text-center border rounded px-0.5 py-0.5 bg-white text-slate-900 font-bold focus:outline-primary text-[10px] cursor-pointer"
+                              />
+                            ) : (() => {
+                              const isDone = isTaskActuallyDone(t);
+                              const todayStr = new Date().toISOString().split('T')[0];
+                              const bounds = getTaskTimeBounds(t);
+                              const dueStr = t.dueDate || bounds.dueDate;
+                              const dueYMD = dueStr ? String(dueStr).slice(0, 10) : '';
+                              const isOverdue = !isDone && dueYMD && dueYMD < todayStr;
+                              const parts = dueYMD ? dueYMD.split('-') : [];
+                              const formatted = parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : dueYMD;
+                              return (
+                                <span
+                                  onClick={() => startEditing(t.id, 'dueDate', dueYMD)}
+                                  className={`cursor-pointer hover:underline hover:bg-slate-100 block w-full px-0.5 py-0.5 rounded font-semibold ${
+                                    !dueYMD
+                                      ? 'text-slate-300'
+                                      : isDone
+                                      ? 'text-slate-500'
+                                      : isOverdue
+                                      ? 'text-rose-600 font-bold bg-rose-50 border border-rose-200'
+                                      : 'text-amber-700'
+                                  }`}
+                                  title={!dueYMD ? 'Nhấn để đặt hạn hoàn thành (Deadline)' : (isOverdue ? `Đã quá hạn hoàn thành! (${formatted}) - Nhấn để đổi hạn` : `Hạn hoàn thành: ${formatted} - Nhấn để đổi hạn`)}
+                                >
+                                  {formatted || '—'}
                                 </span>
                               );
                             })()}
