@@ -328,11 +328,12 @@ export const App: React.FC = () => {
       {user && <NotificationBell />}
       <ChatWidget />
 
-      <Routes>
-        <Route path="/login" element={user ? <Navigate to="/" replace /> : renderLogin()} />
-        <Route path="/company-admin/login" element={<CompanyAdminLoginPage />} />
-        <Route path="/company-admin" element={<CompanyAdminPortalPage />} />
-        <Route element={<ProtectedLayout />}>
+      <React.Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-600">Đang tải ứng dụng...</div>}>
+        <Routes>
+          <Route path="/login" element={user ? <Navigate to="/" replace /> : renderLogin()} />
+          <Route path="/company-admin/login" element={<CompanyAdminLoginPage />} />
+          <Route path="/company-admin" element={<CompanyAdminPortalPage />} />
+          <Route element={<ProtectedLayout />}>
           <Route path="/" element={<Navigate to={"/projects"} replace />} />
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/task-assignment" element={<TaskAssignmentPage />} />
@@ -359,9 +360,10 @@ export const App: React.FC = () => {
           <Route path="/attendance" element={<AttendancePage />} />
           <Route path="/account" element={<AccountPage />} />
           <Route path="/settings" element={<SettingsPage />} />
-        </Route>
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+          </Route>
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </React.Suspense>
     </>
   );
 };
