@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../services/authStore';
 import { useRealtimeStore } from '../services/realtimeStore';
 import { useUIStore } from '../services/uiStore';
-import { platformAuthClient } from '../services/platformAuthClient';
 import { User, Key, Eye, EyeOff, Lock, ArrowRight, Shield, Zap, Boxes, BarChart3 } from 'lucide-react';
 
 export const LoginPage: React.FC<{ onSwitchStyle?: () => void }> = ({ onSwitchStyle }) => {
@@ -40,17 +39,7 @@ export const LoginPage: React.FC<{ onSwitchStyle?: () => void }> = ({ onSwitchSt
         useRealtimeStore.getState().logActivity('Đăng nhập vào hệ thống', 'Hệ thống');
         navigate('/', { replace: true });
       } else {
-        // Eén login endpoint: Company Admin accounts live in Platform Auth.
-        // If Product Auth rejects the credentials, try the isolated Platform Auth.
-        const { error: platformError } = await platformAuthClient.auth.signInWithPassword({
-          email: username.trim(),
-          password,
-        });
-        if (!platformError) {
-          navigate('/company-admin', { replace: true });
-        } else {
-          setError(result.error || 'Đăng nhập thất bại.');
-        }
+        setError(result.error || 'Đăng nhập thất bại.');
       }
     }, 600);
   };
