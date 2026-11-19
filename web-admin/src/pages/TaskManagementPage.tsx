@@ -2837,7 +2837,7 @@ const hasSyncedRef = useRef(false);
           }}
           className="w-full overflow-x-auto overflow-y-auto flex-1 custom-scrollbar"
         >
-          <table className="min-w-[1170px] w-full text-left border-collapse text-[11px] table-fixed" style={{ "--stt-width": `${maxSttWidth}px` } as React.CSSProperties}>
+          <table className="min-w-[1200px] w-full text-left border-collapse text-[11px] table-fixed" style={{ "--stt-width": `${maxSttWidth}px` } as React.CSSProperties}>
             <colgroup>
               <col style={{ width: "var(--stt-width)" }} />
               <col />
@@ -2849,8 +2849,8 @@ const hasSyncedRef = useRef(false);
                {(hasPermission(authStore.user, 'ASSIGN_TASKS') || tasks.some(task => isUserTaskAssignee(authStore.user, task, engineers))) && (
                 <>
                   <col style={{ width: 130 }} />
-                  <col style={{ width: 100 }} />
-                  <col style={{ width: 100 }} />
+                  <col style={{ width: 120 }} />
+                  <col style={{ width: 110 }} />
                   <col style={{ width: 100 }} />
                 </>
               )}
@@ -2861,17 +2861,17 @@ const hasSyncedRef = useRef(false);
               <tr>
                 <th style={{ width: "var(--stt-width)", minWidth: "var(--stt-width)", maxWidth: "var(--stt-width)" }} className="py-2 px-0 bg-slate-50 text-center border-b border-r border-slate-200 whitespace-nowrap tracking-tighter">STT</th>
                 <th className="sticky left-0 z-30 py-2 px-2 min-w-[260px] bg-slate-50 border-b border-r border-slate-200 whitespace-normal shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">NỘI DUNG</th>
-                <th className="py-2 px-0.5 w-[45px] text-center border-b border-slate-200 whitespace-nowrap">KL</th>
-                <th className="py-2 px-0.5 w-[60px] min-w-[60px] text-center border-b border-slate-200 whitespace-nowrap">ĐVT</th>
-                <th className="py-2 px-1 w-[52px] min-w-[52px] text-center border-b border-slate-200 whitespace-nowrap">%</th>
-                <th className="py-2 px-2 w-[125px] min-w-[125px] text-center border-b border-slate-200 whitespace-nowrap">TT ĐẶT HÀNG</th>
-                <th className="py-2 px-2 w-[125px] min-w-[125px] text-center border-b border-slate-200 whitespace-nowrap">TĐ THI CÔNG</th>
+                <th className="py-2 px-0.5 w-[45px] text-center border-b border-r border-slate-200 whitespace-nowrap">KL</th>
+                <th className="py-2 px-0.5 w-[60px] min-w-[60px] text-center border-b border-r border-slate-200 whitespace-nowrap">ĐVT</th>
+                <th className="py-2 px-1 w-[52px] min-w-[52px] text-center border-b border-r border-slate-200 whitespace-nowrap">%</th>
+                <th className="py-2 px-2 w-[125px] min-w-[125px] text-center border-b border-r border-slate-200 whitespace-nowrap">TT ĐẶT HÀNG</th>
+                <th className="py-2 px-2 w-[125px] min-w-[125px] text-center border-b border-r border-slate-200 whitespace-nowrap">TĐ THI CÔNG</th>
                  {(hasPermission(authStore.user, 'ASSIGN_TASKS') || tasks.some(task => isUserTaskAssignee(authStore.user, task, engineers))) && (
                     <>
-                      <th className="py-2 px-1 w-[130px] min-w-[130px] text-center border-b border-slate-200 whitespace-nowrap">GIAO VIỆC</th>
-                      <th className="py-2 px-1 w-[100px] min-w-[100px] text-center border-b border-slate-200 whitespace-nowrap">BẮT ĐẦU NHẬN VIỆC</th>
-                      <th className="py-2 px-1 w-[100px] min-w-[100px] text-center border-b border-slate-200 whitespace-nowrap">HẠN HOÀN THÀNH</th>
-                      <th className="py-2 px-1 w-[100px] min-w-[100px] text-center border-b border-slate-200 whitespace-nowrap">HOÀN THÀNH</th>
+                      <th className="py-2 px-1 w-[130px] min-w-[130px] text-center border-b border-r border-slate-200 whitespace-nowrap">GIAO VIỆC</th>
+                      <th className="py-2 px-1 w-[120px] min-w-[120px] text-center border-b border-r border-slate-200 whitespace-nowrap">BẮT ĐẦU NHẬN VIỆC</th>
+                      <th className="py-2 px-1 w-[110px] min-w-[110px] text-center border-b border-r border-slate-200 whitespace-nowrap">HẠN HOÀN THÀNH</th>
+                      <th className="py-2 px-1 w-[100px] min-w-[100px] text-center border-b border-r border-slate-200 whitespace-nowrap">HOÀN THÀNH</th>
                     </>
                   )}
                 <th className="bg-slate-50 py-2 px-1 w-[90px] min-w-[85px] border-b border-r border-slate-200 whitespace-nowrap text-center">GHI CHÚ</th>
