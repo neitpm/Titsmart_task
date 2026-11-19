@@ -1285,6 +1285,13 @@ export const ProjectManagementPage: React.FC = () => {
         onRefresh={async () => {
           await fetchProjects();
         }}
+        onScroll={(e) => {
+          if (tablePaginationMode !== 'infinite') return;
+          const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+          if (scrollHeight - (scrollTop + clientHeight) < 350) {
+            setProjectVisibleLimit(prev => (prev < enhancedProjects.length ? Math.min(enhancedProjects.length, prev + 24) : prev));
+          }
+        }}
         className={`flex-1 ${viewMode === 'table' ? 'p-0' : 'p-2 sm:p-3 pb-6 md:p-4 md:pb-6'}`}
       >
         {(isFetchingProjects && projects.length === 0 && tasks.length === 0) ? (
@@ -1498,6 +1505,14 @@ export const ProjectManagementPage: React.FC = () => {
                     </div>
                   );
                 })}
+                {tablePaginationMode === 'infinite' && projectVisibleLimit < enhancedProjects.length && (
+                  <div className="col-span-full py-4 flex items-center justify-center">
+                    <div className="inline-flex items-center justify-center gap-2 text-primary font-medium text-xs bg-white/90 border border-slate-200 px-4 py-2 rounded-xl shadow-xs">
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
+                      <span>Đang tải thêm dự án...</span>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -1647,6 +1662,16 @@ export const ProjectManagementPage: React.FC = () => {
                           </tr>
                         );
                       })}
+                      {tablePaginationMode === 'infinite' && projectVisibleLimit < enhancedProjects.length && (
+                        <tr className="bg-slate-50/70 border-t border-slate-200">
+                          <td colSpan={10} className="py-3 text-center">
+                            <div className="inline-flex items-center justify-center gap-2 text-primary font-medium text-xs">
+                              <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
+                              <span>Đang tải thêm dự án...</span>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -1664,21 +1689,14 @@ export const ProjectManagementPage: React.FC = () => {
                       <span>
                         Hiển thị <strong className="text-primary font-bold">{currentCount}</strong> / <strong className="text-slate-800">{enhancedProjects.length}</strong> dự án
                       </span>
-                      {hasMore && (
-                        <span className="hidden sm:inline-flex items-center gap-1 text-[11px] text-slate-400">
-                          • Cuộn xuống để tự động nạp tiếp
-                        </span>
-                      )}
                     </div>
-                    {hasMore && (
-                      <button
-                        type="button"
-                        onClick={() => setProjectVisibleLimit(prev => Math.min(enhancedProjects.length, prev + 24))}
-                        className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary font-bold text-xs transition-colors shadow-2xs cursor-pointer"
-                      >
-                        <span className="material-symbols-outlined text-[15px]">arrow_downward</span>
-                        <span>Tải thêm {Math.min(24, enhancedProjects.length - projectVisibleLimit)} dự án</span>
-                      </button>
+                    {hasMore ? (
+                      <div className="flex items-center gap-1.5 text-xs text-primary font-medium">
+                        <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
+                        <span>Cuộn để tự động tải tiếp...</span>
+                      </div>
+                    ) : (
+                      <span className="text-[11px] text-slate-400">Đã hiển thị tất cả ({enhancedProjects.length})</span>
                     )}
                   </div>
                 );

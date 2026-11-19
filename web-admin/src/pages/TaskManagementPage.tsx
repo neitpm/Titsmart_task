@@ -2479,6 +2479,13 @@ const hasSyncedRef = useRef(false);
     return Math.max(26, Math.min(45, calculated));
   }, [groupedTasks]);
 
+  const uncollapsedTasks = React.useMemo(() => {
+    return groupedTasks.filter((t) => {
+      if (t.isSectionHeader) return true;
+      return !collapsedSections.has(t._sectionKey || '');
+    });
+  }, [groupedTasks, collapsedSections]);
+
   const totalPureItems = groupedTasks.filter((t) => !t.isSectionHeader).length;
   const completedPureItems = groupedTasks.filter((t) => !t.isSectionHeader && (t.isDone || t.progress >= 1)).length;
 
@@ -2811,7 +2818,7 @@ const hasSyncedRef = useRef(false);
             setIsScrolledHorizontally(scrollLeft > 10);
             if (tablePaginationMode === 'infinite') {
               const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
-              if (scrollHeight - (scrollTop + clientHeight) < 250) {
+              if (scrollHeight - (scrollTop + clientHeight) < 350) {
                 const totalRows = groupedTasks.filter(t => t.isSectionHeader || !collapsedSections.has(t._sectionKey || '')).length;
                 setVisibleLimit(prev => (prev < totalRows ? Math.min(totalRows, prev + (tablePageSize || 25)) : prev));
               }
@@ -3222,6 +3229,16 @@ const hasSyncedRef = useRef(false);
                   );
                 })
               )}
+              {tablePaginationMode === 'infinite' && visibleLimit < uncollapsedTasks.length && (
+                <tr className="bg-slate-50/70 border-t border-slate-200">
+                  <td colSpan={15} className="py-3 text-center">
+                    <div className="inline-flex items-center justify-center gap-2 text-primary font-medium text-xs">
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
+                      <span>Đang tải thêm công việc...</span>
+                    </div>
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -3247,22 +3264,14 @@ const hasSyncedRef = useRef(false);
                 <span className="font-semibold text-slate-700 whitespace-nowrap">
                   Hiển thị <span className="text-primary font-bold">{currentCount}</span> / {totalRows} công việc
                 </span>
-                {hasMore && (
-                  <span className="hidden sm:inline-flex items-center gap-1 text-[11px] text-slate-400">
-                    • Cuộn xuống để tự động tải tiếp
-                  </span>
-                )}
               </div>
-
-              {hasMore && (
-                <button
-                  type="button"
-                  onClick={() => setVisibleLimit(prev => Math.min(totalRows, prev + (tablePageSize || 25)))}
-                  className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary font-bold text-xs transition-colors shadow-2xs cursor-pointer"
-                >
-                  <span className="material-symbols-outlined text-[15px]">arrow_downward</span>
-                  <span>Tải thêm {Math.min(tablePageSize || 25, totalRows - visibleLimit)} dòng</span>
-                </button>
+              {hasMore ? (
+                <div className="flex items-center gap-1.5 text-xs text-primary font-medium">
+                  <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
+                  <span>Cuộn để tự động tải tiếp...</span>
+                </div>
+              ) : (
+                <span className="text-[11px] text-slate-400">Đã hiển thị tất cả ({totalRows})</span>
               )}
             </div>
           );

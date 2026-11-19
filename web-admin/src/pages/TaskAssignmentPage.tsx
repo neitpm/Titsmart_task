@@ -1136,7 +1136,7 @@ export const TaskAssignmentPage: React.FC = () => {
     }
     if (tablePaginationMode === 'infinite') {
       const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
-      if (scrollTop > 20 && scrollHeight - (scrollTop + clientHeight) < 150) {
+      if (scrollHeight - (scrollTop + clientHeight) < 350) {
         if (directVisibleLimit < directDisplayedTasks.length) {
           setDirectVisibleLimit(prev => Math.min(directDisplayedTasks.length, prev + effectivePageSize));
         }
@@ -1153,7 +1153,7 @@ export const TaskAssignmentPage: React.FC = () => {
     }
     if (tablePaginationMode === 'infinite') {
       const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
-      if (scrollTop > 20 && scrollHeight - (scrollTop + clientHeight) < 150) {
+      if (scrollHeight - (scrollTop + clientHeight) < 350) {
         if (projectVisibleLimit < projectDisplayedTasks.length) {
           setProjectVisibleLimit(prev => Math.min(projectDisplayedTasks.length, prev + effectivePageSize));
         }
@@ -1487,7 +1487,16 @@ export const TaskAssignmentPage: React.FC = () => {
                     );
                   })
                 )}
-                {tablePaginationMode === 'infinite' && directVisibleLimit < directDisplayedTasks.length && null}
+                {tablePaginationMode === 'infinite' && directVisibleLimit < directDisplayedTasks.length && (
+                  <tr className="bg-slate-50/70 border-t border-slate-200">
+                    <td colSpan={8} className="py-3 text-center">
+                      <div className="inline-flex items-center justify-center gap-2 text-primary font-medium text-xs">
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
+                        <span>Đang tải thêm công việc...</span>
+                      </div>
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -1503,21 +1512,14 @@ export const TaskAssignmentPage: React.FC = () => {
                     <span className="font-semibold text-slate-700 whitespace-nowrap">
                       Hiển thị <span className="text-primary font-bold">{currentCount}</span> / {directDisplayedTasks.length} công việc phát sinh
                     </span>
-                    {hasMore && (
-                      <span className="hidden sm:inline-flex items-center gap-1 text-[11px] text-slate-400">
-                        • Cuộn xuống để tự động nạp tiếp
-                      </span>
-                    )}
                   </div>
-                  {hasMore && (
-                    <button
-                      type="button"
-                      onClick={() => setDirectVisibleLimit(prev => Math.min(directDisplayedTasks.length, prev + effectivePageSize))}
-                      className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary font-bold text-xs transition-colors shadow-2xs cursor-pointer"
-                    >
-                      <span className="material-symbols-outlined text-[15px]">arrow_downward</span>
-                      <span>Tải thêm {Math.min(effectivePageSize, directDisplayedTasks.length - directVisibleLimit)} dòng</span>
-                    </button>
+                  {hasMore ? (
+                    <div className="flex items-center gap-1.5 text-xs text-primary font-medium">
+                      <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
+                      <span>Cuộn để tự động tải tiếp...</span>
+                    </div>
+                  ) : (
+                    <span className="text-[11px] text-slate-400">Đã hiển thị tất cả ({directDisplayedTasks.length})</span>
                   )}
                 </div>
               );
@@ -2001,7 +2003,16 @@ export const TaskAssignmentPage: React.FC = () => {
                     );
                   })
                 )}
-                {tablePaginationMode === 'infinite' && projectVisibleLimit < projectDisplayedTasks.length && null}
+                {tablePaginationMode === 'infinite' && projectVisibleLimit < projectDisplayedTasks.length && (
+                  <tr className="bg-slate-50/70 border-t border-slate-200">
+                    <td colSpan={projectFilterStatus === 'unassigned' ? 11 : 10} className="py-3 text-center">
+                      <div className="inline-flex items-center justify-center gap-2 text-primary font-medium text-xs">
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
+                        <span>Đang tải thêm công việc dự án...</span>
+                      </div>
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -2017,21 +2028,14 @@ export const TaskAssignmentPage: React.FC = () => {
                     <span className="font-semibold text-slate-700 whitespace-nowrap">
                       Hiển thị <span className="text-primary font-bold">{currentCount}</span> / {projectDisplayedTasks.length} công việc dự án
                     </span>
-                    {hasMore && (
-                      <span className="hidden sm:inline-flex items-center gap-1 text-[11px] text-slate-400">
-                        • Cuộn xuống để tự động nạp tiếp
-                      </span>
-                    )}
                   </div>
-                  {hasMore && (
-                    <button
-                      type="button"
-                      onClick={() => setProjectVisibleLimit(prev => Math.min(projectDisplayedTasks.length, prev + effectivePageSize))}
-                      className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary font-bold text-xs transition-colors shadow-2xs cursor-pointer"
-                    >
-                      <span className="material-symbols-outlined text-[15px]">arrow_downward</span>
-                      <span>Tải thêm {Math.min(effectivePageSize, projectDisplayedTasks.length - projectVisibleLimit)} dòng</span>
-                    </button>
+                  {hasMore ? (
+                    <div className="flex items-center gap-1.5 text-xs text-primary font-medium">
+                      <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
+                      <span>Cuộn để tự động tải tiếp...</span>
+                    </div>
+                  ) : (
+                    <span className="text-[11px] text-slate-400">Đã hiển thị tất cả ({projectDisplayedTasks.length})</span>
                   )}
                 </div>
               );

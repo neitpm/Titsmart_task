@@ -1010,7 +1010,7 @@ export const DocumentTrackingPage: React.FC = () => {
             onScroll={(e) => {
               if (tablePaginationMode !== 'infinite') return;
               const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
-              if (scrollTop > 20 && scrollHeight - (scrollTop + clientHeight) < 150) {
+              if (scrollHeight - (scrollTop + clientHeight) < 350) {
                 if (docVisibleLimit < filteredTracks.length) {
                   setDocVisibleLimit(prev => Math.min(filteredTracks.length, prev + effectivePageSize));
                 }
@@ -1269,6 +1269,16 @@ export const DocumentTrackingPage: React.FC = () => {
                   </tr>
                 );
               })}
+              {tablePaginationMode === 'infinite' && docVisibleLimit < filteredTracks.length && (
+                <tr className="bg-slate-50/70 border-t border-slate-200">
+                  <td colSpan={projectId ? 16 : 17} className="py-3 text-center">
+                    <div className="inline-flex items-center justify-center gap-2 text-primary font-medium text-xs">
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
+                      <span>Đang tải thêm hồ sơ...</span>
+                    </div>
+                  </td>
+                </tr>
+              )}
               </tbody>
             </table>
             {filteredTracks.length > 0 && (() => {
@@ -1281,21 +1291,14 @@ export const DocumentTrackingPage: React.FC = () => {
                       <span className="font-semibold text-slate-700 whitespace-nowrap">
                         Hiển thị <span className="text-primary font-bold">{currentCount}</span> / {filteredTracks.length} hồ sơ
                       </span>
-                      {hasMore && (
-                        <span className="hidden sm:inline-flex items-center gap-1 text-[11px] text-slate-400">
-                          • Cuộn xuống để tự động tải tiếp
-                        </span>
-                      )}
                     </div>
-                    {hasMore && (
-                      <button
-                        type="button"
-                        onClick={() => setDocVisibleLimit(prev => Math.min(filteredTracks.length, prev + effectivePageSize))}
-                        className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary font-bold text-xs transition-colors shadow-2xs cursor-pointer"
-                      >
-                        <span className="material-symbols-outlined text-[15px]">arrow_downward</span>
-                        <span>Tải thêm {Math.min(effectivePageSize, filteredTracks.length - docVisibleLimit)} hồ sơ</span>
-                      </button>
+                    {hasMore ? (
+                      <div className="flex items-center gap-1.5 text-xs text-primary font-medium">
+                        <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
+                        <span>Cuộn để tự động tải tiếp...</span>
+                      </div>
+                    ) : (
+                      <span className="text-[11px] text-slate-400">Đã hiển thị tất cả ({filteredTracks.length})</span>
                     )}
                   </div>
                 );

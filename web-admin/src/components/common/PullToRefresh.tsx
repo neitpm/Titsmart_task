@@ -13,6 +13,7 @@ interface PullToRefreshProps {
   children: React.ReactNode;
   className?: string;
   disabled?: boolean;
+  onScroll?: React.UIEventHandler<HTMLDivElement>;
 }
 
 export const PullToRefresh: React.FC<PullToRefreshProps> = ({
@@ -20,6 +21,7 @@ export const PullToRefresh: React.FC<PullToRefreshProps> = ({
   children,
   className = '',
   disabled = false,
+  onScroll,
 }) => {
   const [isMobile, setIsMobile] = useState(checkIsMobile);
   const [pullDistance, setPullDistance] = useState(0);
@@ -105,6 +107,7 @@ export const PullToRefresh: React.FC<PullToRefreshProps> = ({
     return (
       <div
         ref={containerRef}
+        onScroll={onScroll}
         className={`relative overflow-y-auto ${className}`}
       >
         {children}
@@ -115,6 +118,7 @@ export const PullToRefresh: React.FC<PullToRefreshProps> = ({
   return (
     <div
       ref={containerRef}
+      onScroll={onScroll}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}

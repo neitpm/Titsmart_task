@@ -1163,6 +1163,10 @@ export const MaterialAndPurchasingTab: React.FC<MaterialAndPurchasingTabProps> =
     };
   }, [data, purchasingData]);
 
+  const uncollapsedRows = useMemo(() => {
+    return groupedData.filter(plan => plan.isSec || !collapsedSections.has(plan._sectionKey || ''));
+  }, [groupedData, collapsedSections]);
+
   const colSpanCount = useMemo(() => {
     if (subTab === 'TECH') return 10;
     if (subTab === 'DOCS') return 7;
@@ -1478,7 +1482,16 @@ export const MaterialAndPurchasingTab: React.FC<MaterialAndPurchasingTabProps> =
         onMouseUp={handleMouseLeaveOrUp}
         onMouseMove={handleMouseMove}
         className={`w-full max-w-full min-h-0 flex-1 overflow-x-auto custom-scrollbar select-none ${isMouseDown ? 'cursor-grabbing' : 'cursor-grab'}`} 
-        onScroll={(e) => setIsScrolledHorizontally(e.currentTarget.scrollLeft > 10)}
+        onScroll={(e) => {
+          setIsScrolledHorizontally(e.currentTarget.scrollLeft > 10);
+          if (tablePaginationMode === 'infinite') {
+            const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+            if (scrollHeight - (scrollTop + clientHeight) < 350) {
+              const uncollapsedRows = groupedData.filter(plan => plan.isSec || !collapsedSections.has(plan._sectionKey || ''));
+              setVisibleLimit(prev => (prev < uncollapsedRows.length ? Math.min(uncollapsedRows.length, prev + (tablePageSize || 25)) : prev));
+            }
+          }
+        }}
       >
         <table className={`w-full table-fixed border-collapse text-left text-xs ${subTab === 'FINANCE' ? 'min-w-[2150px]' : subTab === 'DOCS' ? 'min-w-[950px]' : 'min-w-[1050px] md:min-w-[1150px]'}`} style={{ "--stt-width": `${maxSttWidth}px` } as React.CSSProperties}>
           <colgroup>
@@ -2289,6 +2302,16 @@ export const MaterialAndPurchasingTab: React.FC<MaterialAndPurchasingTabProps> =
                       );
                     })
             )}
+            {tablePaginationMode === 'infinite' && visibleLimit < uncollapsedRows.length && (
+              <tr className="bg-slate-50/70 border-t border-slate-200">
+                <td colSpan={25} className="py-3 text-center">
+                  <div className="inline-flex items-center justify-center gap-2 text-primary font-medium text-xs">
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
+                    <span>Đang tải thêm...</span>
+                  </div>
+                </td>
+              </tr>
+            )}
           </tbody>
           {subTab === 'FINANCE' && (
             <tfoot className="sticky bottom-0 z-30 border-t-2 border-slate-400 bg-slate-100 font-extrabold text-slate-800 shadow-[0_-3px_10px_rgba(0,0,0,0.12)] text-[11px]">
@@ -2345,21 +2368,14 @@ export const MaterialAndPurchasingTab: React.FC<MaterialAndPurchasingTabProps> =
                 <span className="font-semibold text-slate-700 whitespace-nowrap">
                   Hiển thị <span className="text-primary font-bold">{currentCount}</span> / {totalRows} mục
                 </span>
-                {hasMore && (
-                  <span className="hidden sm:inline-flex items-center gap-1 text-[11px] text-slate-400">
-                    • Cuộn xuống để tự động tải tiếp
-                  </span>
-                )}
               </div>
-              {hasMore && (
-                <button
-                  type="button"
-                  onClick={() => setVisibleLimit(prev => Math.min(totalRows, prev + (tablePageSize || 25)))}
-                  className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary font-bold text-xs transition-colors shadow-2xs cursor-pointer"
-                >
-                  <span className="material-symbols-outlined text-[15px]">arrow_downward</span>
-                  <span>Tải thêm {Math.min(tablePageSize || 25, totalRows - visibleLimit)} dòng</span>
-                </button>
+              {hasMore ? (
+                <div className="flex items-center gap-1.5 text-xs text-primary font-medium">
+                  <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
+                  <span>Cuộn để tự động tải tiếp...</span>
+                </div>
+              ) : (
+                <span className="text-[11px] text-slate-400">Đã hiển thị tất cả ({totalRows})</span>
               )}
             </div>
           );
