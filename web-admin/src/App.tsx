@@ -23,6 +23,7 @@ import { ProjectOverviewTab } from './pages/ProjectOverviewTab';
 import { TaskAssignmentPage } from './pages/TaskAssignmentPage';
 import { MyTasksPage } from './pages/MyTasksPage';
 import { AttendancePage } from './pages/AttendancePage';
+import { WorkPlanPage } from './pages/WorkPlanPage';
 // Lazy load Company Admin Portal
 const CompanyAdminLoginPage = React.lazy(() => import('./pages/CompanyAdminLoginPage').then(m => ({ default: m.CompanyAdminLoginPage })));
 const CompanyAdminPortalPage = React.lazy(() => import('./pages/CompanyAdminPortalPage').then(m => ({ default: m.CompanyAdminPortalPage })));
@@ -373,6 +374,8 @@ export const App: React.FC = () => {
             <Route path="diagram" element={<ProjectDiagramTab />} />
           </Route>
           <Route path="/tasks" element={<TaskManagementPage />} />
+          <Route path="/work-plan" element={<WorkPlanPage />} />
+          <Route path="/schedule" element={<Navigate to="/work-plan" replace />} />
           <Route path="/document-tracking" element={<DocumentTrackingPage />} />
           <Route path="/field-logs" element={<FieldLogsPage />} />
           <Route path="/materials" element={<MaterialTrackingPage />} />
