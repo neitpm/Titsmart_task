@@ -1435,9 +1435,9 @@ export const useRealtimeStore = create<RealtimeStoreState>((set, get) => {
             if (ignoredFields.includes(key)) return;
             const previousValue = (existingTask as any)[key];
             if (key === 'notes') {
-              const prevClean = cleanNoteForLog(previousValue);
-              const nextClean = cleanNoteForLog(nextValue);
-              if (prevClean !== nextClean) {
+              const prevClean = cleanNoteForLog(previousValue).trim();
+              const nextClean = cleanNoteForLog(nextValue).trim();
+              if (prevClean !== nextClean && (prevClean || nextClean)) {
                 changes.push(`Ghi chú: "${prevClean || '(trống)'}" -> "${nextClean || '(trống)'}"`);
               }
               return;
@@ -2365,9 +2365,9 @@ export const useRealtimeStore = create<RealtimeStoreState>((set, get) => {
             if (oldPlan.orderedStatus !== merged.orderedStatus) changes.push(`TT Đặt hàng: "${oldPlan.orderedStatus || 'Chưa đặt hàng'}" -> "${merged.orderedStatus || 'Chưa đặt hàng'}"`);
             if (oldPlan.techSpecStatus !== merged.techSpecStatus) changes.push(`Tình trạng kỹ thuật: "${oldPlan.techSpecStatus || 'Chưa xác định'}" -> "${merged.techSpecStatus || 'Chưa xác định'}"`);
             if (oldPlan.progressStatus !== merged.progressStatus) changes.push(`TT Thi công: "${oldPlan.progressStatus || 'Chưa thi công'}" -> "${merged.progressStatus || 'Chưa thi công'}"`);
-            const oldNoteClean = cleanNoteForLog(oldPlan.notes);
-            const newNoteClean = cleanNoteForLog(merged.notes);
-            if (oldNoteClean !== newNoteClean) changes.push(`Ghi chú: "${oldNoteClean || '(trống)'}" -> "${newNoteClean || '(trống)'}"`);
+            const oldNoteClean = cleanNoteForLog(oldPlan.notes).trim();
+            const newNoteClean = cleanNoteForLog(merged.notes).trim();
+            if (oldNoteClean !== newNoteClean && (oldNoteClean || newNoteClean)) changes.push(`Ghi chú: "${oldNoteClean || '(trống)'}" -> "${newNoteClean || '(trống)'}"`);
           }
           const detailStr = changes.length > 0 ? ` |Detail:Dự án ${merged.projectCode}, Đầu mục ${merged.stt}: ${changes.join(', ')}` : '';
           
@@ -2441,9 +2441,9 @@ export const useRealtimeStore = create<RealtimeStoreState>((set, get) => {
             if (oldPlan.volumeContract !== merged.volumeContract) changes.push(`KL: "${oldPlan.volumeContract || ''}" -> "${merged.volumeContract || ''}"`);
             if (oldPlan.unit !== merged.unit) changes.push(`ĐVT: "${oldPlan.unit || ''}" -> "${merged.unit || ''}"`);
             if (oldPlan.unitPrice !== merged.unitPrice) changes.push(`Đơn giá: "${oldPlan.unitPrice || ''}" -> "${merged.unitPrice || ''}"`);
-            const oldNoteClean = cleanNoteForLog(oldPlan.notes);
-            const newNoteClean = cleanNoteForLog(merged.notes);
-            if (oldNoteClean !== newNoteClean) changes.push(`Ghi chú: "${oldNoteClean || '(trống)'}" -> "${newNoteClean || '(trống)'}"`);
+            const oldNoteClean = cleanNoteForLog(oldPlan.notes).trim();
+            const newNoteClean = cleanNoteForLog(merged.notes).trim();
+            if (oldNoteClean !== newNoteClean && (oldNoteClean || newNoteClean)) changes.push(`Ghi chú: "${oldNoteClean || '(trống)'}" -> "${newNoteClean || '(trống)'}"`);
           }
           const detailStr = changes.length > 0 ? ` |Detail:Dự án ${merged.projectCode}, Đầu mục ${merged.stt}: ${changes.join(', ')}` : '';
           

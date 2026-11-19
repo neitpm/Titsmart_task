@@ -272,8 +272,10 @@ export const formatAuditDetail = (value: string): string => {
     .map(line => line.trim())
     .filter(line => {
       if (!line) return false;
-      if (line.startsWith('Ghi chú:')) {
-        const parts = line.replace(/^Ghi chú:\s*/i, '').split(/(?:[-=]+>|→)/);
+      if (line.includes('Ghi chú:')) {
+        const noteIdx = line.indexOf('Ghi chú:');
+        const notePart = line.substring(noteIdx);
+        const parts = notePart.replace(/^Ghi chú:\s*/i, '').split(/(?:[-=]+>|→)/);
         if (parts.length === 2) {
           const b = cleanDisplayNotes(parts[0].replace(/^["'\s]+|["'\s]+$/g, ''));
           const a = cleanDisplayNotes(parts[1].replace(/^["'\s]+|["'\s]+$/g, ''));
@@ -302,7 +304,7 @@ export const parseAuditChangeRows = (value: string): Array<{ field: string; befo
     'TT Đặt hàng', 'Tình trạng kỹ thuật', 'Ghi chú', 'Trạng thái', 'Phân công', 'Người theo dõi',
     'Thi công', 'Tiến độ', 'Khối lượng', 'ĐVT', 'Tên', 'Hạn hoàn thành', 'Vấn đề'
   ].join('|');
-  const pattern = new RegExp(`(${fieldNames})\\s*:\\s*["“]?([^"”]+?)["”]?\\s*(?:[-=]+>|→)\\s*["“]?([^"”]+?)["”]?(?=,\\s*(?:${fieldNames})\\s*:|$)`, 'gi');
+  const pattern = new RegExp(`(${fieldNames})\\s*:\\s*["“]?([^"”]*?)["”]?\\s*(?:[-=]+>|→)\\s*["“]?([^"”]*?)["”]?(?=,\\s*(?:${fieldNames})\\s*:|$)`, 'gi');
   let match: RegExpExecArray | null;
   while ((match = pattern.exec(normalized)) !== null) {
     const rawBefore = match[2].replace(/^"|"$/g, '').split('|')[0].trim();
@@ -386,17 +388,19 @@ const renderActionText = (text: string, timestamp?: string) => {
   // Format detail text sạch sẽ, loại bỏ code metadata
   if (detailText) {
     const parts = detailText.split(/[-=]+>|→/).map(s => s.trim());
-    if (parts.length === 2 && detailText.includes('Ghi chú:') && !detailText.includes(',')) {
+    if (parts.length === 2 && detailText.includes('Ghi chú:')) {
       const fromVal = cleanDisplayNotes(parts[0].replace(/^.*Ghi chú:\s*"?/i, '').replace(/"?$/, ''));
       const toVal = cleanDisplayNotes(parts[1].replace(/^"?/, '').replace(/"?$/, ''));
-      if (fromVal && toVal && fromVal !== toVal) {
+      if (!fromVal && !toVal) {
+        detailText = '';
+      } else if (fromVal === toVal) {
+        detailText = '';
+      } else if (fromVal && toVal) {
         detailText = `Ghi chú: "${fromVal}" → "${toVal}"`;
       } else if (!fromVal && toVal) {
         detailText = `Ghi chú: "(trống)" → "${toVal}"`;
       } else if (fromVal && !toVal) {
         detailText = `Ghi chú: "${fromVal}" → "(trống)"`;
-      } else {
-        detailText = '';
       }
     }
   }
