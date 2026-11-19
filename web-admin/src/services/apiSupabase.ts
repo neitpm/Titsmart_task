@@ -1272,13 +1272,24 @@ export const api = {
             }
           })();
 
-          // Thử tái xác thực ngầm để lấy token Auth
-          if (authUser?.email && authUser?.password) {
-            const { data: reAuthData } = await supabase.auth.signInWithPassword({
-              email: authUser.email,
-              password: authUser.password,
-            });
-            token = reAuthData?.session?.access_token;
+          // Thử tái xác thực ngầm để lấy token Auth từ thông tin user hiện tại
+          if (authUser?.email || authUser?.username) {
+            try {
+              const { data: eng } = await supabase
+                .from('engineers')
+                .select('email, password')
+                .or(`email.eq.${authUser.email || ''},username.eq.${authUser.username || ''}`)
+                .maybeSingle();
+              if (eng?.email && eng?.password) {
+                const { data: reAuthData } = await supabase.auth.signInWithPassword({
+                  email: eng.email,
+                  password: eng.password,
+                });
+                token = reAuthData?.session?.access_token;
+              }
+            } catch (reErr) {
+              console.warn('[syncAuthAccount] Silent reAuth error:', reErr);
+            }
           }
         }
 
@@ -1307,6 +1318,7 @@ export const api = {
         const effectivePassword = password || engineer.password || '123456';
 
         const { data: resData, error: funcError } = await supabase.functions.invoke('admin-create-staff-account', {
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
           body: {
             action: 'sync',
             engineer_id: engineer.id,

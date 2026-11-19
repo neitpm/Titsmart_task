@@ -5399,12 +5399,14 @@ export const ProjectCostPlanPage: React.FC = () => {
                 {engineers
                   .filter(eng => {
                     if (eng.isLocked || (eng as any).is_locked) return false;
-                    // Không hiển thị người tạo
-                    if (user?.id && eng.id === user.id) return false;
-                    const perms = eng.permissions || [];
-                    const hasPerm = perms.includes('CHECK_FUND_REQUEST');
-                    const isMgr = (String(eng.role || '').toLowerCase().includes('quản lý') || String(eng.title || '').toLowerCase().includes('chỉ huy') || String(eng.title || '').toLowerCase().includes('giám sát')) && eng.username !== 'admin';
-                    return hasPerm || isMgr;
+                    // Không hiển thị người tạo (kiểm tra đầy đủ id, auth_user_id, username, name)
+                    const isCreator = Boolean(
+                      (user?.id && (eng.id === user.id || (eng as any).auth_user_id === user.id || (user.id.startsWith('user-') && eng.id === user.id.replace('user-', '')))) ||
+                      (user?.username && eng.username && String(eng.username).trim().toLowerCase() === String(user.username).trim().toLowerCase()) ||
+                      (user?.name && eng.name && normalizeStr(eng.name) === normalizeStr(user.name))
+                    );
+                    if (isCreator) return false;
+                    return true;
                   })
                   .map(eng => (
                     <option key={eng.id} value={eng.id}>
@@ -5441,7 +5443,12 @@ export const ProjectCostPlanPage: React.FC = () => {
                   .filter(eng => {
                     if (eng.isLocked || (eng as any).is_locked) return false;
                     // Không hiển thị người tạo
-                    if (user?.id && eng.id === user.id) return false;
+                    const isCreator = Boolean(
+                      (user?.id && (eng.id === user.id || (eng as any).auth_user_id === user.id || (user.id.startsWith('user-') && eng.id === user.id.replace('user-', '')))) ||
+                      (user?.username && eng.username && String(eng.username).trim().toLowerCase() === String(user.username).trim().toLowerCase()) ||
+                      (user?.name && eng.name && normalizeStr(eng.name) === normalizeStr(user.name))
+                    );
+                    if (isCreator) return false;
                     // Không trùng người kiểm tra (trừ khi bật kiêm nhiệm)
                     const allowDual = useUIStore.getState().allowDualCheckerReviewerRole;
                     if (!allowDual && fundRequestForm.checkerId && eng.id === fundRequestForm.checkerId) return false;
