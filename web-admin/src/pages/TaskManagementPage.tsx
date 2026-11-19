@@ -764,6 +764,17 @@ const hasSyncedRef = useRef(false);
   const [bulkAssignSection, setBulkAssignSection] = useState<{ sectionKey: string; sectionName: string; projectCode: string } | null>(null);
   const [isAssignUploading, setIsAssignUploading] = useState(false);
 
+  const openAssignModal = (t: Task) => {
+    setAssigningTask(t);
+    setAssignNote('');
+    const bounds = getTaskTimeBounds(t);
+    setAssignDueDate(t.dueDate ? String(t.dueDate).split('T')[0] : (bounds.dueDate || ''));
+    const parts = t.assignedEngineerName?.split('|') || [];
+    const idsString = parts.length > 1 ? parts[1] : t.assignedEngineerId;
+    setAssigningUserIds(idsString ? idsString.split(',') : []);
+    setAssigningFollowerIds(t.followerIds || []);
+  };
+
   const handleAssignFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -3104,26 +3115,42 @@ const hasSyncedRef = useRef(false);
                       </td>
                        {(hasPermission(authStore.user, 'ASSIGN_TASKS') || isUserTaskAssignee(authStore.user, t, engineers)) && (
                           <td 
-                           className={`py-1.5 px-1 text-center whitespace-nowrap border-r border-slate-200 transition-colors ${hasPermission(authStore.user, 'ASSIGN_TASKS') ? 'cursor-pointer hover:bg-slate-50' : ''}`}
-                          onClick={(e) => {
-                            if (hasPermission(authStore.user, 'ASSIGN_TASKS')) {
+                            className="py-1.5 px-1 text-center whitespace-nowrap border-r border-slate-200 transition-colors cursor-pointer hover:bg-slate-50"
+                            onClick={(e) => {
                               e.stopPropagation();
-                              setAssigningTask(t);
-                              setAssignNote('');
-                              const bounds = getTaskTimeBounds(t);
-                              setAssignDueDate(t.dueDate ? String(t.dueDate).split('T')[0] : (bounds.dueDate || ''));
-                              const parts = t.assignedEngineerName?.split('|') || [];
-                              const idsString = parts.length > 1 ? parts[1] : t.assignedEngineerId;
-                              setAssigningUserIds(idsString ? idsString.split(',') : []);
-                              setAssigningFollowerIds(t.followerIds || []);
-                            }
-                          }}
-                        >
-                          <div className="flex flex-col gap-1 items-center justify-center pointer-events-none">
+                              if (hasAssignment) {
+                                setDiscussionTask(t);
+                              } else if (hasPermission(authStore.user, 'ASSIGN_TASKS')) {
+                                openAssignModal(t);
+                              }
+                            }}
+                          >
+                          <div className="flex flex-col gap-1 items-center justify-center pointer-events-auto">
                             {hasAssignment ? (
-                              resolvedAssignedNames.map((name: string, i: number) => (
-                                <span key={i} className="text-[10px] font-bold text-blue-700 bg-blue-50 px-1 rounded truncate w-full max-w-[100px]" title={name.trim()}>{name.trim()}</span>
-                              ))
+                              <div className="flex items-center justify-center gap-1 w-full max-w-[125px]">
+                                <div
+                                  onClick={(e) => { e.stopPropagation(); setDiscussionTask(t); }}
+                                  className="flex-1 min-w-0 flex flex-col items-center cursor-pointer group/name"
+                                  title="Nhấn để mở Trao đổi & Hướng dẫn công việc"
+                                >
+                                  {resolvedAssignedNames.map((name: string, i: number) => (
+                                    <span key={i} className="text-[10px] font-bold text-blue-700 bg-blue-50 group-hover/name:bg-blue-100 group-hover/name:text-blue-900 border border-blue-200 px-1 py-0.5 rounded truncate w-full max-w-[100px] flex items-center justify-center gap-0.5 transition-colors">
+                                      <span className="material-symbols-outlined text-[10px] text-blue-600">chat</span>
+                                      <span className="truncate">{name.trim()}</span>
+                                    </span>
+                                  ))}
+                                </div>
+                                {hasPermission(authStore.user, 'ASSIGN_TASKS') && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); openAssignModal(t); }}
+                                    className="p-0.5 rounded hover:bg-slate-200 text-slate-400 hover:text-primary transition-colors cursor-pointer shrink-0"
+                                    title="Đổi người phụ trách / Phân công lại"
+                                  >
+                                    <span className="material-symbols-outlined text-[13px]">edit</span>
+                                  </button>
+                                )}
+                              </div>
                             ) : (() => {
                               const readiness = isTaskReadyForAssignment(t, materialPlans);
                               if (!readiness.ready) {
@@ -3134,16 +3161,24 @@ const hasSyncedRef = useRef(false);
                                 );
                               }
                               return (
-                                <span className="text-[10px] text-slate-400 font-medium group-hover:text-primary transition-colors">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (hasPermission(authStore.user, 'ASSIGN_TASKS')) openAssignModal(t);
+                                  }}
+                                  className="text-[10px] text-slate-400 font-medium hover:text-primary transition-colors cursor-pointer"
+                                  title="Giao việc cho nhân viên"
+                                >
                                   + Giao việc
-                                </span>
+                                </button>
                               );
                             })()}
 
                             {t.status === 'Có thắc mắc' && (
                               <button 
                                 onClick={(e) => { e.stopPropagation(); setDiscussionTask(t); }} 
-                                className="text-[9px] bg-amber-500 pointer-events-auto hover:bg-amber-600 text-white px-2 py-0.5 rounded shadow-sm w-full flex items-center justify-center gap-0.5 font-bold animate-pulse cursor-pointer"
+                                className="text-[9px] bg-amber-500 hover:bg-amber-600 text-white px-2 py-0.5 rounded shadow-sm w-full flex items-center justify-center gap-0.5 font-bold animate-pulse cursor-pointer"
                                 title="Xem thắc mắc của nhân sự và phản hồi"
                               >
                                 <span className="material-symbols-outlined text-[11px]">question_answer</span>
@@ -3157,7 +3192,7 @@ const hasSyncedRef = useRef(false);
                               t.constrStatus !== 'Đã hoàn thành' && 
                               t.status !== 'Hoàn thành' && 
                               (t.status === 'Chờ nhận việc' || t.status === 'Có thắc mắc' || (t.status === 'Chưa làm' && t.assignedEngineerId)) && (
-                              <div className="flex items-center gap-1 w-full max-w-[120px] pointer-events-auto">
+                              <div className="flex items-center gap-1 w-full max-w-[120px]">
                                 <button onClick={(e) => { e.stopPropagation(); handleAcceptTask(t); }} className="text-[9px] bg-emerald-500 hover:bg-emerald-600 text-white px-1 py-0.5 rounded shadow-sm flex-1 font-bold cursor-pointer whitespace-nowrap">Nhận việc</button>
                                 <button onClick={(e) => { e.stopPropagation(); setDiscussionTask(t); }} className="text-[9px] bg-amber-500 hover:bg-amber-600 text-white px-1 py-0.5 rounded shadow-sm flex-1 font-bold cursor-pointer whitespace-nowrap">Thắc mắc</button>
                               </div>
@@ -3167,10 +3202,26 @@ const hasSyncedRef = useRef(false);
                               (t.progress ?? 0) < 1 && 
                               t.constrStatus !== 'Đã hoàn thành' && 
                               t.status === 'Đang làm' && (
-                              <button onClick={(e) => { e.stopPropagation(); handleReportDone(t); }} className="text-[9px] bg-blue-500 pointer-events-auto hover:bg-blue-600 text-white px-1.5 py-0.5 rounded shadow-sm w-full max-w-[120px] font-bold cursor-pointer whitespace-nowrap">Báo cáo hoàn thành</button>
+                              <div className="flex items-center gap-1 w-full max-w-[130px]">
+                                <button 
+                                  onClick={(e) => { e.stopPropagation(); setDiscussionTask(t); }} 
+                                  className="text-[9px] bg-amber-500 hover:bg-amber-600 text-white px-1.5 py-0.5 rounded shadow-sm font-bold cursor-pointer whitespace-nowrap flex items-center justify-center gap-0.5"
+                                  title="Trao đổi hoặc gửi thắc mắc khi đang làm việc"
+                                >
+                                  <span className="material-symbols-outlined text-[10px]">chat</span>
+                                  Trao đổi
+                                </button>
+                                <button 
+                                  onClick={(e) => { e.stopPropagation(); handleReportDone(t); }} 
+                                  className="text-[9px] bg-blue-500 hover:bg-blue-600 text-white px-1.5 py-0.5 rounded shadow-sm flex-1 font-bold cursor-pointer whitespace-nowrap"
+                                  title="Báo cáo hoàn thành công việc"
+                                >
+                                  Báo cáo xong
+                                </button>
+                              </div>
                             )}
                             {canApproveTask(authStore.user, t) && (
-                              <div className="grid grid-cols-2 gap-1 w-full max-w-[150px] pointer-events-auto">
+                              <div className="grid grid-cols-2 gap-1 w-full max-w-[150px]">
                                 <button onClick={(e) => { e.stopPropagation(); handleApproveTask(t); }} className="text-[9px] bg-purple-600 hover:bg-purple-700 text-white px-1 py-0.5 rounded shadow-xs min-w-0 font-bold flex items-center justify-center gap-0.5 animate-pulse cursor-pointer whitespace-nowrap" title="Nghiệm thu hoàn thành công việc">
                                   Nghiệm thu
                                 </button>
@@ -3387,8 +3438,8 @@ const hasSyncedRef = useRef(false);
         onClose={() => { setAssigningTask(null); setAssigningUserIds([]); setAssigningFollowerIds([]); setAssignNote(''); }}
         title={
           assigningTask && (assigningTask.status === 'Hoàn thành' || (assigningTask.progress ?? 0) >= 1 || assigningTask.constrStatus === 'Đã hoàn thành' || assigningTask.isDone)
-            ? 'Phân công & Trao đổi công việc'
-            : (assigningTask?.assignedEngineerId ? 'Cập nhật phân công & Trao đổi' : 'Giao việc cho nhân viên')
+            ? 'Phân công nhân sự'
+            : (assigningTask?.assignedEngineerId ? 'Cập nhật phân công' : 'Giao việc cho nhân viên')
         }
       >
         <div className="space-y-4">
@@ -3636,6 +3687,26 @@ const hasSyncedRef = useRef(false);
             ) : <div />}
 
             <div className="flex items-center gap-2">
+              {assigningTask?.assignedEngineerId && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const task = assigningTask;
+                    setAssigningTask(null);
+                    setAssigningUserIds([]);
+                    setAssigningFollowerIds([]);
+                    setAssignNote('');
+                    setAssignSelectedFile(null);
+                    setAssignShowAttachMenu(false);
+                    setDiscussionTask(task);
+                  }}
+                  className="px-3 py-2 text-xs font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-300 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+                  title="Mở hộp thoại Trao đổi & Hướng dẫn công việc"
+                >
+                  <span className="material-symbols-outlined text-[15px]">chat</span>
+                  <span>Mở luồng trao đổi</span>
+                </button>
+              )}
               <button onClick={() => { setAssigningTask(null); setAssigningUserIds([]); setAssigningFollowerIds([]); setAssignNote(''); setAssignSelectedFile(null); setAssignShowAttachMenu(false); }} className="px-4 py-2 text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer">Hủy</button>
               <button 
                 onClick={async () => {
