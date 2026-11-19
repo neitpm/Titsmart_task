@@ -2829,7 +2829,7 @@ const hasSyncedRef = useRef(false);
           <table className="min-w-[1070px] w-full text-left border-collapse text-[11px] table-fixed" style={{ "--stt-width": `${maxSttWidth}px` } as React.CSSProperties}>
             <colgroup>
               <col style={{ width: "var(--stt-width)" }} />
-              <col style={{ minWidth: 260 }} />
+              <col />
               <col style={{ width: 45 }} />
               <col style={{ width: 60 }} />
               <col style={{ width: 52 }} />
@@ -3229,16 +3229,6 @@ const hasSyncedRef = useRef(false);
                   );
                 })
               )}
-              {tablePaginationMode === 'infinite' && visibleLimit < uncollapsedTasks.length && (
-                <tr className="bg-slate-50/70 border-t border-slate-200">
-                  <td colSpan={15} className="py-3 text-center">
-                    <div className="inline-flex items-center justify-center gap-2 text-primary font-medium text-xs">
-                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
-                      <span>Đang tải thêm công việc...</span>
-                    </div>
-                  </td>
-                </tr>
-              )}
             </tbody>
           </table>
         </div>
@@ -3264,15 +3254,17 @@ const hasSyncedRef = useRef(false);
                 <span className="font-semibold text-slate-700 whitespace-nowrap">
                   Hiển thị <span className="text-primary font-bold">{currentCount}</span> / {totalRows} công việc
                 </span>
+                {hasMore && (
+                  <span className="hidden sm:inline-flex items-center gap-1 text-[11px] text-slate-400">
+                    • Tự động nạp thêm khi cuộn
+                  </span>
+                )}
               </div>
-              {hasMore ? (
-                <div className="flex items-center gap-1.5 text-xs text-primary font-medium">
-                  <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
-                  <span>Cuộn để tự động tải tiếp...</span>
-                </div>
-              ) : (
-                <span className="text-[11px] text-slate-400">Đã hiển thị tất cả ({totalRows})</span>
-              )}
+              <div>
+                {!hasMore && (
+                  <span className="text-[11px] text-slate-400">Đã hiển thị tất cả ({totalRows})</span>
+                )}
+              </div>
             </div>
           );
         }
