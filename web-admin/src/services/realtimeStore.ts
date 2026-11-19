@@ -2054,6 +2054,9 @@ export const useRealtimeStore = create<RealtimeStoreState>((set, get) => {
           return { notifications: nextNotifs };
         });
 
+        // Bắn broadcast realtime ngay lập tức
+        broadcastRealtimeSync('notifications');
+
         // Bắn Push Notification đến thiết bị di động của các user nhận
         try {
           const targetUsers: string[] = [];
@@ -2957,41 +2960,82 @@ export function setupRealtimeSync() {
     }, 2000);
   };
 
-  // Tạo 1 Channel tổng duy nhất lắng nghe broadcast thời gian thực (không tải Postgres Connection Pool)
+  // Tạo 1 Channel tổng lắng nghe broadcast và database changes thời gian thực
   const channel = supabase.channel('realtime-global-sync', {
     config: {
       broadcast: { self: false },
     }
   });
 
-  // Lắng nghe sự kiện Broadcast thời gian thực giữa tất cả các thiết bị/trình duyệt (0% tải DB)
+  // 1. Lắng nghe sự kiện Broadcast thời gian thực giữa tất cả các thiết bị/trình duyệt
   channel.on('broadcast', { event: 'REALTIME_SYNC' }, (eventData: any) => {
     debouncedRefresh(eventData?.payload);
   });
 
-  try {
-    channel.subscribe((status: string, err?: any) => {
-      console.log('[Realtime] Trạng thái kết nối:', status);
-      if (err) console.warn('[Realtime] Subscription error ignored:', err);
-    });
-  } catch (e) {
-    console.warn('[Realtime] Could not subscribe to realtime channel', e);
-  }
+  // 2. LẮNG NGHE POSTGRES_CHANGES TRỰC TIẾP TỪ DATABASE CHO THÔNG BÁO!
+  // Khi bất kỳ ai ở bất kỳ thiết bị nào (web, mobile, backend) tạo/sửa thông báo:
+  channel.on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, (payload: any) => {
+    console.log('[Realtime] Nhận thông báo mới tức thì từ Database:', payload?.new?.title);
+    useRealtimeStore.getState().fetchNotifications();
+  });
+  channel.on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'notifications' }, () => {
+    useRealtimeStore.getState().fetchNotifications();
+  });
 
-  // Heartbeat polling 60s tự động kiểm tra tin nhắn & thông báo mới (chỉ chạy khi tab đang mở)
+  // 3. Lắng nghe tin nhắn chat thời gian thực
+  channel.on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'direct_messages' }, () => {
+    console.log('[Realtime] Nhận tin nhắn chat mới tức thì từ Database');
+    useRealtimeStore.getState().fetchDirectMessages();
+  });
+
+  // 4. Lắng nghe thay đổi dữ liệu nghiệp vụ quan trọng (expenses/cấp quỹ, tasks, projects, issues, engineers)
+  channel.on('postgres_changes', { event: '*', schema: 'public', table: 'expenses' }, () => {
+    debouncedRefresh({ table: 'expenses' });
+  });
+  channel.on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => {
+    debouncedRefresh({ table: 'tasks' });
+  });
+  channel.on('postgres_changes', { event: '*', schema: 'public', table: 'projects' }, () => {
+    debouncedRefresh({ table: 'projects' });
+  });
+  channel.on('postgres_changes', { event: '*', schema: 'public', table: 'issues' }, () => {
+    debouncedRefresh({ table: 'issues' });
+  });
+  channel.on('postgres_changes', { event: '*', schema: 'public', table: 'engineers' }, () => {
+    debouncedRefresh({ table: 'engineers' });
+  });
+
+  // Đăng ký channel và tự động kết nối lại nếu bị gián đoạn mạng
+  const subscribeChannel = () => {
+    try {
+      channel.subscribe((status: string, err?: any) => {
+        console.log('[Realtime] Trạng thái kết nối:', status);
+        if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
+          console.warn('[Realtime] Kết nối Realtime bị ngắt, tự động thử kết nối lại sau 3s...');
+          setTimeout(subscribeChannel, 3000);
+        }
+      });
+    } catch (e) {
+      console.warn('[Realtime] Could not subscribe to realtime channel', e);
+    }
+  };
+  subscribeChannel();
+
+  // Heartbeat polling 15s tự động kiểm tra tin nhắn & thông báo mới (lưới an toàn khi mạng chập chờn)
+  // Trong Electron desktop app, cho phép chạy cả khi app đang thu nhỏ/chạy ngầm để không bỏ lỡ thông báo Windows
+  const isElectron = typeof window !== 'undefined' && Boolean((window as any).electronAPI);
   const heartbeatInterval = setInterval(() => {
-    if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+    if (!isElectron && typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
     const store = useRealtimeStore.getState();
     store.fetchNotifications();
     store.fetchDirectMessages();
-  }, 60000);
+  }, 15000);
 
-  // Tự động tải lại dữ liệu khi quay lại tab (có giới hạn giãn cách tối thiểu 60s để tránh spam request)
-  let lastFocusFetch = Date.now();
+  // Tự động tải lại dữ liệu ngay khi người dùng bấm quay lại cửa sổ ứng dụng (focus)
+  let lastFocusFetch = 0;
   const handleFocus = () => {
-    if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
     const now = Date.now();
-    if (now - lastFocusFetch < 60000) return; // Bỏ qua nếu vừa focus trong vòng 60 giây
+    if (now - lastFocusFetch < 3000) return; // Tránh spam nếu focus liên tục trong 3s
     lastFocusFetch = now;
     const store = useRealtimeStore.getState();
     store.fetchNotifications();
@@ -3002,7 +3046,7 @@ export function setupRealtimeSync() {
   }
 
   realtimeChannel = channel;
-  console.log('[Realtime] Đã kích hoạt 1 kênh đồng bộ thời gian thực tối ưu duy nhất.');
+  console.log('[Realtime] Đã kích hoạt 1 kênh đồng bộ thời gian thực tối ưu duy nhất (Broadcast + Postgres Changes).');
 
   return () => {
     clearInterval(heartbeatInterval);

@@ -67,6 +67,8 @@ export const App: React.FC = () => {
   const fetchActivityLogs = useRealtimeStore(s => s.fetchActivityLogs);
   const fetchAccounting = useRealtimeStore(s => s.fetchAccounting);
   const fetchFieldLogs = useRealtimeStore(s => s.fetchFieldLogs);
+  const fetchNotifications = useRealtimeStore(s => s.fetchNotifications);
+  const fetchDirectMessages = useRealtimeStore(s => s.fetchDirectMessages);
 
   useEffect(() => {
     fetchBrandingFromCloud();
@@ -262,6 +264,8 @@ export const App: React.FC = () => {
     fetchIssues();
     fetchEngineers();
     fetchActivityLogs();
+    fetchNotifications();
+    fetchDirectMessages();
     
     // Bật đồng bộ Realtime tối ưu giữa các thiết bị
     const cleanup = setupRealtimeSync();
