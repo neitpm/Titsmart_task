@@ -1922,7 +1922,8 @@ export const TaskAssignmentPage: React.FC = () => {
                               <td className="py-2.5 px-3 text-center border-r border-slate-200 font-mono text-xs">
                                 {(() => {
                                   const bounds = getTaskTimeBounds(t);
-                                  const startDateStr = t.startDate || bounds.acceptedDate;
+                                  const isWorking = t.status === 'Đang làm' || t.constrStatus === 'Đang thi công' || t.status === 'Chờ nghiệm thu' || isTaskActuallyDone(t);
+                                  const startDateStr = t.startDate || bounds.acceptedDate || (isWorking && (t.assignedEngineerId || t.assignedEngineerName) ? String(t.updatedAt || t.createdAt || '').slice(0, 10) : undefined);
                                   if (!startDateStr) return <span className="text-slate-400 font-normal">—</span>;
                                   const parts = String(startDateStr).slice(0, 10).split('-');
                                   const formatted = parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : startDateStr;

@@ -263,8 +263,10 @@ export const TaskManagementPage: React.FC = () => {
     const userName = authStore.user?.name || authStore.user?.username || 'Một nhân sự';
     const userId = authStore.user?.id || '';
     const nowIso = new Date().toISOString();
+    const todayDateStr = nowIso.split('T')[0];
+    const startDateVal = task.startDate || todayDateStr;
 
-    const updatedNotes = appendTaskDiscussion(task.notes || '', {
+    let updatedNotes = appendTaskDiscussion(task.notes || '', {
       type: 'system',
       content: 'Đã xác nhận nhận công việc',
       senderId: userId,
@@ -272,12 +274,15 @@ export const TaskManagementPage: React.FC = () => {
       senderRole: 'Nhân sự đảm nhiệm',
       createdAt: nowIso
     });
+    if (!updatedNotes.includes('[START_DATE:')) {
+      updatedNotes = `[START_DATE:${startDateVal}] ${updatedNotes}`.trim();
+    }
 
     handleUpdateTaskSync(task.id, { 
       status: 'Đang làm', 
       progress: nextProgress, 
       constrStatus: constrStatus,
-      startDate: task.startDate || nowIso.split('T')[0],
+      startDate: startDateVal,
       updatedBy: userName,
       updatedAt: nowIso,
       notes: updatedNotes
@@ -3180,7 +3185,8 @@ const hasSyncedRef = useRef(false);
                           <td className="py-1.5 px-1 text-center whitespace-nowrap border-r border-slate-200 font-mono text-[10px] text-slate-700">
                             {(() => {
                               const bounds = getTaskTimeBounds(t);
-                              const startDateStr = t.startDate || bounds.acceptedDate;
+                              const isWorking = t.status === 'Đang làm' || t.constrStatus === 'Đang thi công' || t.status === 'Chờ nghiệm thu' || isTaskActuallyDone(t);
+                              const startDateStr = t.startDate || bounds.acceptedDate || (isWorking && (t.assignedEngineerId || t.assignedEngineerName) ? String(t.updatedAt || t.createdAt || '').slice(0, 10) : undefined);
                               if (!startDateStr) return <span className="text-slate-300">—</span>;
                               const parts = String(startDateStr).slice(0, 10).split('-');
                               const formatted = parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : startDateStr;

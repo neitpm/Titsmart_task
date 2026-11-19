@@ -111,6 +111,14 @@ export function getTaskTimeBounds(task: Task): TaskTimeBounds {
     result.updatedDate = String(task.updatedAt).slice(0, 10);
   }
 
+  // Parse [START_DATE:YYYY-MM-DD] from task.notes if not already set
+  if (!result.acceptedDate && task.notes && typeof task.notes === 'string') {
+    const startTagMatch = task.notes.match(/\[START_DATE:([^\]]+)\]/i);
+    if (startTagMatch) {
+      result.acceptedDate = startTagMatch[1].trim().slice(0, 10);
+    }
+  }
+
   const isDone = isTaskActuallyDone(task);
 
   // 1. Phân tích lịch sử thảo luận / thread nếu có
@@ -121,7 +129,13 @@ export function getTaskTimeBounds(task: Task): TaskTimeBounds {
       for (const d of discussions) {
         const text = String(d.content || '').toLowerCase();
         const dateStr = d.createdAt ? String(d.createdAt).slice(0, 10) : '';
-        if (dateStr && (text.includes('nhận việc') || text.includes('bắt đầu') || text.includes('tiến hành thi công'))) {
+        if (dateStr && (
+          text.includes('nhận việc') || 
+          text.includes('nhận công việc') || 
+          text.includes('xác nhận nhận') || 
+          text.includes('bắt đầu') || 
+          text.includes('tiến hành thi công')
+        )) {
           if (!result.acceptedDate || dateStr < result.acceptedDate) {
             result.acceptedDate = dateStr;
           }
@@ -146,9 +160,19 @@ export function getTaskTimeBounds(task: Task): TaskTimeBounds {
 
   // 3. Thời điểm nhận việc (acceptedDate):
   // Chỉ ghi nhận khi nhân sự thực sự xác nhận nhận việc (startDate đã được cập nhật hoặc có bản ghi trao đổi "nhận việc").
-  // TUYỆT ĐỐI không lấy createdAt (ngày tạo công việc) gán vào ngày bắt đầu nhận việc!
   if (!result.acceptedDate && task.startDate) {
     result.acceptedDate = String(task.startDate).slice(0, 10);
+  }
+
+  // 4. Fallback an toàn cho công việc đang tiến hành hoặc đã hoàn thành bởi nhân sự:
+  // Nếu công việc đã được giao và đang làm ('Đang làm', 'Đang thi công', 'Chờ nghiệm thu', 'Hoàn thành')
+  // mà chưa tìm thấy ngày nhận việc từ thẻ tag hay thảo luận, fallback lấy updatedAt (thời điểm nhận việc/cập nhật)
+  const isWorkingOrDone = task.status === 'Đang làm' || task.constrStatus === 'Đang thi công' || task.status === 'Chờ nghiệm thu' || isDone;
+  if (!result.acceptedDate && isWorkingOrDone && (task.assignedEngineerId || task.assignedEngineerName)) {
+    const fallbackDate = task.updatedAt || task.createdAt;
+    if (fallbackDate) {
+      result.acceptedDate = String(fallbackDate).slice(0, 10);
+    }
   }
 
   return result;

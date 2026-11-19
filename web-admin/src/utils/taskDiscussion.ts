@@ -88,14 +88,15 @@ export const parseTaskDiscussions = (notes?: string, issue?: string): TaskDiscus
       .replace(/Chủ đầu tư cung cấp/gi, '')
       .replace(/Import từ phụ lục dự án/gi, '')
       .replace(/Đồng bộ từ phụ lục khi tạo dự án/gi, '')
+      .replace(/\[START_DATE:[^\]]*\]/gi, '')
       .split('|')
       .map(s => s.trim())
-      .filter(s => Boolean(s) && !s.startsWith('{') && !s.includes('"senderId"') && !s.includes('[FOLLOWERS:') && !s.includes('[ASSIGNER:') && !s.includes('[tech-status:'))
+      .filter(s => Boolean(s) && !s.startsWith('{') && !s.includes('"senderId"') && !s.includes('[FOLLOWERS:') && !s.includes('[ASSIGNER:') && !s.includes('[START_DATE:') && !s.includes('[tech-status:'))
       .join(' | ')
       .trim();
 
     // Chỉ thêm nếu có nội dung ghi chú người dùng thực sự
-    if (baseNotes && baseNotes !== ']' && !baseNotes.startsWith('[FOLLOWERS:') && !baseNotes.startsWith('[ASSIGNER:')) {
+    if (baseNotes && baseNotes !== ']' && !baseNotes.startsWith('[FOLLOWERS:') && !baseNotes.startsWith('[ASSIGNER:') && !baseNotes.startsWith('[START_DATE:')) {
       result.push({
         id: 'legacy_note',
         senderName: 'Người giao việc',
@@ -164,9 +165,9 @@ export const appendTaskDiscussion = (
  */
 export const stripDiscussionThread = (notes?: string | null): string => {
   if (!notes || typeof notes !== 'string') return '';
-  let str = notes.replace(/\[FOLLOWERS:[^\]]*\]/gi, '').replace(/\[ASSIGNER:[^\]]*\]/gi, '');
+  let str = notes.replace(/\[FOLLOWERS:[^\]]*\]/gi, '').replace(/\[ASSIGNER:[^\]]*\]/gi, '').replace(/\[START_DATE:[^\]]*\]/gi, '');
   const idx = str.indexOf('[THREAD:');
-  if (idx === -1) return str.replace(/\[FOLLOWERS:[^\]]*\]/gi, '').replace(/\[ASSIGNER:[^\]]*\]/gi, '').trim();
+  if (idx === -1) return str.replace(/\[FOLLOWERS:[^\]]*\]/gi, '').replace(/\[ASSIGNER:[^\]]*\]/gi, '').replace(/\[START_DATE:[^\]]*\]/gi, '').trim();
   
   const before = str.slice(0, idx).trim();
   const threadStr = str.slice(idx);
@@ -204,7 +205,7 @@ export const stripDiscussionThread = (notes?: string | null): string => {
   
   const after = endIdx !== -1 ? threadStr.slice(endIdx + 1).trim() : '';
   const result = [before, after].filter(Boolean).join(' ').trim();
-  return result.replace(/\[THREAD:[\s\S]*$/gi, '').replace(/\[FOLLOWERS:[^\]]*\]/gi, '').replace(/\[ASSIGNER:[^\]]*\]/gi, '').trim();
+  return result.replace(/\[THREAD:[\s\S]*$/gi, '').replace(/\[FOLLOWERS:[^\]]*\]/gi, '').replace(/\[ASSIGNER:[^\]]*\]/gi, '').replace(/\[START_DATE:[^\]]*\]/gi, '').trim();
 };
 
 /**
@@ -213,7 +214,7 @@ export const stripDiscussionThread = (notes?: string | null): string => {
 export const getLatestDiscussion = (notes?: string, issue?: string): TaskDiscussionItem | null => {
   const list = parseTaskDiscussions(notes, issue).filter(item => {
     if (!item.content) return false;
-    if (item.content.includes('[FOLLOWERS:') || item.content.includes('[ASSIGNER:')) return false;
+    if (item.content.includes('[FOLLOWERS:') || item.content.includes('[ASSIGNER:') || item.content.includes('[START_DATE:')) return false;
     return true;
   });
   return list.length > 0 ? list[list.length - 1] : null;

@@ -502,6 +502,12 @@ export const api = {
             if (!t.assignerId && parts[0]) t.assignerId = parts[0];
             if (!t.assignerName && parts[1]) t.assignerName = parts[1];
           }
+
+          // Parse start date from notes tag [START_DATE:YYYY-MM-DD]
+          const startDateMatch = t.notes.match(/\[START_DATE:([^\]]+)\]/i);
+          if (startDateMatch && !t.startDate) {
+            t.startDate = startDateMatch[1].trim();
+          }
         }
         if (t.sourceRow && typeof t.sourceRow === 'object') {
           if (t.sourceRow.followerIds && (!t.followerIds || t.followerIds.length === 0)) {
@@ -547,6 +553,14 @@ export const api = {
         }
       }
 
+      // Encode start date safely in notes
+      if (data.startDate) {
+        const startTag = `[START_DATE:${String(data.startDate).slice(0, 10)}]`;
+        if (!payload.notes || !payload.notes.includes('[START_DATE:')) {
+          payload.notes = (payload.notes ? payload.notes + '\n' : '') + startTag;
+        }
+      }
+
       // Whitelist — chỉ giữ lại các cột thực sự có trong DB (tránh 400 Bad Request khi insert)
       const TASK_DB_COLUMNS = new Set([
         'id','stt','code','name','project_code','project_name','volume','unit','progress','status',
@@ -571,6 +585,13 @@ export const api = {
           }
           if (data.followerNames && (!resCamel.followerNames || resCamel.followerNames.length === 0)) {
             resCamel.followerNames = data.followerNames;
+          }
+          if (data.startDate && !resCamel.startDate) {
+            resCamel.startDate = data.startDate;
+          }
+          if (!resCamel.startDate && resCamel.notes) {
+            const sm = resCamel.notes.match(/\[START_DATE:([^\]]+)\]/i);
+            if (sm) resCamel.startDate = sm[1].trim();
           }
           return resCamel;
         }
@@ -711,6 +732,17 @@ export const api = {
         }
       }
 
+      if (data.startDate !== undefined) {
+        let existingNotes = payload.notes || '';
+        existingNotes = existingNotes.replace(/\[START_DATE:[^\]]*\]/g, '').trim();
+        if (data.startDate) {
+          const startTag = `[START_DATE:${String(data.startDate).slice(0, 10)}]`;
+          payload.notes = (existingNotes ? existingNotes + '\n' : '') + startTag;
+        } else {
+          payload.notes = existingNotes;
+        }
+      }
+
       // Whitelist — chỉ giữ lại các cột thực sự có trong DB (tránh 400 Bad Request)
       const TASK_DB_COLUMNS = new Set([
         'id','stt','code','name','project_code','project_name','volume','unit','progress','status',
@@ -736,6 +768,13 @@ export const api = {
           }
           if (data.followerNames && (!resCamel.followerNames || resCamel.followerNames.length === 0)) {
             resCamel.followerNames = data.followerNames;
+          }
+          if (data.startDate && !resCamel.startDate) {
+            resCamel.startDate = data.startDate;
+          }
+          if (!resCamel.startDate && resCamel.notes) {
+            const sm = resCamel.notes.match(/\[START_DATE:([^\]]+)\]/i);
+            if (sm) resCamel.startDate = sm[1].trim();
           }
           return resCamel;
         }
