@@ -5,6 +5,7 @@ import { useAuthStore } from '../services/authStore';
 import { Task, TaskPriority, TaskStatus, isTaskActuallyDone } from '../types';
 import { Modal } from '../components/common/Modal';
 import { Toast } from '../components/common/Toast';
+import { SharedTaskTabs } from '../components/common/SharedTaskTabs';
 import { getTaskTimeBounds } from '../utils/taskPeriodFilter';
 
 type CalendarViewMode = 'month' | 'week' | 'agenda';
@@ -577,7 +578,7 @@ export const WorkPlanPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
+    <div className="flex flex-col h-full bg-slate-50 w-full overflow-hidden">
       {/* Toast */}
       <Toast
         show={toastState.show}
@@ -586,132 +587,126 @@ export const WorkPlanPage: React.FC = () => {
         onClose={() => setToastState((prev) => ({ ...prev, show: false }))}
       />
 
-      {/* Main Container */}
-      <div className="flex-1 p-3 sm:p-5 max-w-[1700px] w-full mx-auto flex flex-col space-y-4">
-        {/* Header Section */}
-        <div className="bg-white rounded-lg p-4 border border-slate-200 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <div className="w-9 h-9 rounded-md bg-blue-600/10 text-primary flex items-center justify-center">
-                <span className="material-symbols-outlined text-2xl">calendar_month</span>
-              </div>
-              <div>
-                <h1 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight flex items-center gap-2">
-                  Lịch & Kế hoạch làm việc
-                  <span className="text-xs px-2 py-0.5 rounded font-bold bg-blue-100 text-primary">
-                    TITSMART Planner
-                  </span>
-                </h1>
-                <p className="text-xs sm:text-sm text-slate-500 font-medium">
-                  Lên kế hoạch những ngày sau, quản lý lịch làm việc và theo dõi hạn hoàn thành công việc
-                </p>
-              </div>
-            </div>
+      {/* TOP HEADER BAR (Đồng bộ chuẩn ứng dụng, h-12, bg-white, border-b border-slate-200) */}
+      <div 
+        className="border-b border-slate-200 bg-white shadow-sm px-3 md:px-6 md:pr-20 py-2.5 md:py-0 md:h-12 flex flex-col md:flex-row justify-between items-start md:items-center gap-2.5 md:gap-2 relative z-40 shrink-0 no-drag-region electron-no-drag"
+        style={{ WebkitAppRegion: 'no-drag' } as any}
+      >
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 md:gap-4 w-full md:w-auto min-w-0">
+          <div className="flex items-center justify-between gap-2 shrink-0 h-7 sm:h-8 md:h-auto pr-12 md:pr-0">
+            <h1 className="page-title text-sm md:text-base font-extrabold text-slate-900 border-l-4 border-primary pl-2 shrink-0">
+              Công việc
+            </h1>
           </div>
+          <SharedTaskTabs activeTab="work-plan" />
+        </div>
 
-          {/* Quick Actions & Alert Configuration */}
-          <div className="flex flex-wrap items-center gap-2.5">
-            {/* User alert setting dropdown button */}
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setShowAlertSetting(!showAlertSetting)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold border transition-colors shadow-2xs cursor-pointer ${
-                  stats.overdue > 0 || stats.dueSoon > 0
-                    ? 'bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100'
-                    : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-                }`}
-                title="Tùy chỉnh thời gian cảnh báo sắp đến thời hạn công việc"
-              >
-                <span className="material-symbols-outlined text-base text-amber-500">notifications_active</span>
-                <span>Cảnh báo trước: <span className="font-black text-primary underline">{alertDays} ngày</span></span>
-                <span className="material-symbols-outlined text-sm">tune</span>
-              </button>
-
-              {/* Alert setting popover */}
-              {showAlertSetting && (
-                <div className="absolute right-0 top-full mt-2 w-72 bg-white rounded-lg shadow-lg border border-slate-200 p-3 z-50 animate-in fade-in zoom-in-95 duration-150">
-                  <div className="text-xs font-bold text-slate-800 mb-2 flex items-center justify-between">
-                    <span>Cài đặt cảnh báo thời hạn</span>
-                    <button
-                      type="button"
-                      onClick={() => setShowAlertSetting(false)}
-                      className="text-slate-400 hover:text-slate-600"
-                    >
-                      <span className="material-symbols-outlined text-sm">close</span>
-                    </button>
-                  </div>
-                  <p className="text-[11px] text-slate-500 mb-3">
-                    Hệ thống sẽ chủ động cảnh báo màu vàng cam khi công việc còn cách hạn hoàn thành:
-                  </p>
-                  <div className="grid grid-cols-3 gap-1.5 mb-2">
-                    {[1, 2, 3, 5, 7, 14].map((d) => (
-                      <button
-                        key={d}
-                        type="button"
-                        onClick={() => handleUpdateAlertDays(d)}
-                        className={`px-2 py-1.5 rounded text-xs font-bold transition-all ${
-                          alertDays === d
-                            ? 'bg-primary text-white shadow-xs'
-                            : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                        }`}
-                      >
-                        {d} ngày
-                      </button>
-                    ))}
-                  </div>
-                  <div className="text-[10px] text-slate-400 italic text-center">
-                    Cài đặt lưu riêng cho tài khoản của bạn
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* View Mode Switcher */}
-            <div className="inline-flex rounded-md bg-slate-100 p-0.5 border border-slate-200">
-              <button
-                type="button"
-                onClick={() => handleSetViewMode('month')}
-                className={`flex items-center gap-1 px-3 py-1.5 rounded text-xs font-bold transition-all ${
-                  viewMode === 'month' ? 'bg-white text-primary shadow-xs' : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <span className="material-symbols-outlined text-sm">calendar_view_month</span>
-                <span>Tháng</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSetViewMode('week')}
-                className={`flex items-center gap-1 px-3 py-1.5 rounded text-xs font-bold transition-all ${
-                  viewMode === 'week' ? 'bg-white text-primary shadow-xs' : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <span className="material-symbols-outlined text-sm">calendar_view_week</span>
-                <span>Tuần</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSetViewMode('agenda')}
-                className={`flex items-center gap-1 px-3 py-1.5 rounded text-xs font-bold transition-all ${
-                  viewMode === 'agenda' ? 'bg-white text-primary shadow-xs' : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <span className="material-symbols-outlined text-sm">view_agenda</span>
-                <span>Lộ trình</span>
-              </button>
-            </div>
-
-            {/* Button + Lên kế hoạch mới */}
+        {/* Right Controls: Cài đặt cảnh báo, Chuyển đổi Tháng/Tuần/Lộ trình, + Lên kế hoạch mới */}
+        <div className="flex items-center gap-2 flex-wrap md:flex-nowrap justify-between md:justify-end w-full md:w-auto">
+          {/* Cài đặt cảnh báo thời hạn */}
+          <div className="relative">
             <button
               type="button"
-              onClick={() => openAddModal()}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 bg-primary hover:bg-blue-700 text-white rounded-md text-xs font-bold transition-colors shadow-sm cursor-pointer"
+              onClick={() => setShowAlertSetting(!showAlertSetting)}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold border transition-colors shadow-2xs cursor-pointer ${
+                stats.overdue > 0 || stats.dueSoon > 0
+                  ? 'bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100'
+                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+              }`}
+              title="Tùy chỉnh thời gian cảnh báo sắp đến thời hạn công việc"
             >
-              <span className="material-symbols-outlined text-base">add_task</span>
-              <span>+ Lên kế hoạch mới</span>
+              <span className="material-symbols-outlined text-base text-amber-500">notifications_active</span>
+              <span>Cảnh báo: <span className="font-black text-primary underline">{alertDays} ngày</span></span>
+              <span className="material-symbols-outlined text-sm">tune</span>
+            </button>
+
+            {/* Alert setting popover */}
+            {showAlertSetting && (
+              <div className="absolute right-0 top-full mt-2 w-72 bg-white rounded-lg shadow-lg border border-slate-200 p-3 z-50 animate-in fade-in zoom-in-95 duration-150">
+                <div className="text-xs font-bold text-slate-800 mb-2 flex items-center justify-between">
+                  <span>Cài đặt cảnh báo thời hạn</span>
+                  <button
+                    type="button"
+                    onClick={() => setShowAlertSetting(false)}
+                    className="text-slate-400 hover:text-slate-600"
+                  >
+                    <span className="material-symbols-outlined text-sm">close</span>
+                  </button>
+                </div>
+                <p className="text-[11px] text-slate-500 mb-3">
+                  Hệ thống sẽ chủ động cảnh báo màu vàng cam khi công việc còn cách hạn hoàn thành:
+                </p>
+                <div className="grid grid-cols-3 gap-1.5 mb-2">
+                  {[1, 2, 3, 5, 7, 14].map((d) => (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => handleUpdateAlertDays(d)}
+                      className={`px-2 py-1.5 rounded text-xs font-bold transition-all ${
+                        alertDays === d
+                          ? 'bg-primary text-white shadow-xs'
+                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                      }`}
+                    >
+                      {d} ngày
+                    </button>
+                  ))}
+                </div>
+                <div className="text-[10px] text-slate-400 italic text-center">
+                  Cài đặt lưu riêng cho tài khoản của bạn
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* View Mode Switcher */}
+          <div className="inline-flex rounded-md bg-slate-100 p-0.5 border border-slate-200">
+            <button
+              type="button"
+              onClick={() => handleSetViewMode('month')}
+              className={`flex items-center gap-1 px-2.5 py-1 rounded text-xs font-bold transition-all ${
+                viewMode === 'month' ? 'bg-white text-primary shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <span className="material-symbols-outlined text-sm">calendar_view_month</span>
+              <span>Tháng</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSetViewMode('week')}
+              className={`flex items-center gap-1 px-2.5 py-1 rounded text-xs font-bold transition-all ${
+                viewMode === 'week' ? 'bg-white text-primary shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <span className="material-symbols-outlined text-sm">calendar_view_week</span>
+              <span>Tuần</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSetViewMode('agenda')}
+              className={`flex items-center gap-1 px-2.5 py-1 rounded text-xs font-bold transition-all ${
+                viewMode === 'agenda' ? 'bg-white text-primary shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <span className="material-symbols-outlined text-sm">view_agenda</span>
+              <span>Lộ trình</span>
             </button>
           </div>
+
+          {/* Button + Lên kế hoạch mới */}
+          <button
+            type="button"
+            onClick={() => openAddModal()}
+            className="flex items-center gap-1.5 px-3 py-1 bg-primary hover:bg-blue-700 text-white rounded-md text-xs font-bold transition-colors shadow-sm cursor-pointer whitespace-nowrap"
+          >
+            <span className="material-symbols-outlined text-base">add_task</span>
+            <span>+ Lên kế hoạch mới</span>
+          </button>
         </div>
+      </div>
+
+      {/* SCROLLABLE BODY: Chức năng cuộn mượt mà toàn bộ nội dung */}
+      <div className="flex-1 overflow-y-auto min-h-0 bg-slate-50 p-3 sm:p-5 space-y-4 custom-scrollbar">
 
         {/* Proactive Alert Banner (Displays if Overdue or Due Soon) */}
         {(stats.overdue > 0 || stats.dueSoon > 0 || stats.dueToday > 0) && (

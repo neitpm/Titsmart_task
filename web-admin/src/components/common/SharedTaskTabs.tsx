@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore, hasPermission } from '../../services/authStore';
 
 export interface SharedTaskTabsProps {
-  activeTab: 'project_tasks' | 'unassigned' | 'assigned' | 'completed' | 'direct' | 'my-tasks' | 'my-tasks-completed';
-  onTabChange?: (tab: 'project_tasks' | 'unassigned' | 'assigned' | 'completed' | 'direct' | 'my-tasks') => void;
+  activeTab: 'project_tasks' | 'unassigned' | 'assigned' | 'completed' | 'direct' | 'my-tasks' | 'my-tasks-completed' | 'work-plan';
+  onTabChange?: (tab: 'project_tasks' | 'unassigned' | 'assigned' | 'completed' | 'direct' | 'my-tasks' | 'work-plan') => void;
   myTasksSubTab?: 'pending' | 'in_progress' | 'completed';
   onMyTasksSubTabChange?: (subTab: 'pending' | 'in_progress' | 'completed') => void;
   category?: 'project' | 'direct';
@@ -23,9 +23,11 @@ export const SharedTaskTabs: React.FC<SharedTaskTabsProps> = ({
   const user = useAuthStore(s => s.user);
   const isAdmin = user?.role === 'admin' || user?.role === 'Quản trị viên' || user?.role === 'pm' || user?.username === 'admin' || hasPermission(user, 'ASSIGN_TASKS');
 
+  const isWorkPlan = activeTab === 'work-plan';
+
   if (!isAdmin) {
-    const isDirect = category === 'direct' || activeTab === 'direct';
-    const isProject = !isDirect;
+    const isDirect = (category === 'direct' || activeTab === 'direct') && !isWorkPlan;
+    const isProject = !isDirect && !isWorkPlan;
 
     return (
       <div 
@@ -55,6 +57,17 @@ export const SharedTaskTabs: React.FC<SharedTaskTabsProps> = ({
           className={"h-[28px] sm:h-[30px] px-2.5 sm:px-3.5 flex items-center justify-center text-[11px] sm:text-xs font-semibold rounded-md transition-all whitespace-nowrap text-center cursor-pointer select-none active:scale-95 no-drag-region electron-no-drag " + (isDirect ? 'bg-white shadow-xs text-primary font-bold ring-1 ring-slate-200/80' : 'text-slate-600 hover:text-slate-900 hover:bg-white/50')}
         >
           Phát sinh
+        </button>
+        <button 
+          type="button"
+          onClick={() => {
+            if (onTabChange) onTabChange('work-plan');
+            else navigate('/work-plan');
+          }}
+          style={{ WebkitAppRegion: 'no-drag' } as any}
+          className={"h-[28px] sm:h-[30px] px-2.5 sm:px-3.5 flex items-center justify-center text-[11px] sm:text-xs font-semibold rounded-md transition-all whitespace-nowrap text-center cursor-pointer select-none active:scale-95 no-drag-region electron-no-drag " + (isWorkPlan ? 'bg-white shadow-xs text-primary font-bold ring-1 ring-slate-200/80' : 'text-slate-600 hover:text-slate-900 hover:bg-white/50')}
+        >
+          Kế hoạch
         </button>
       </div>
     );
@@ -101,6 +114,16 @@ export const SharedTaskTabs: React.FC<SharedTaskTabsProps> = ({
       >
         <span className="hidden xs:inline">Công việc của tôi</span>
         <span className="xs:hidden">Việc của tôi</span>
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+           if (activeTab !== 'work-plan') navigate('/work-plan');
+        }}
+        style={{ WebkitAppRegion: 'no-drag' } as any}
+        className={"h-[28px] sm:h-[30px] px-2.5 sm:px-3.5 flex items-center justify-center text-[11px] sm:text-xs font-semibold rounded-md transition-all whitespace-nowrap text-center cursor-pointer select-none active:scale-95 no-drag-region electron-no-drag " + (isWorkPlan ? 'bg-white shadow-xs text-primary font-bold ring-1 ring-slate-200/80' : 'text-slate-600 hover:text-slate-900 hover:bg-white/50')}
+      >
+        Kế hoạch
       </button>
     </div>
   );
