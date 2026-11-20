@@ -3106,6 +3106,14 @@ export function setupRealtimeSync() {
   channel.on('postgres_changes', { event: '*', schema: 'public', table: 'engineers' }, () => {
     debouncedRefresh({ table: 'engineers' });
   });
+  channel.on('postgres_changes', { event: '*', schema: 'public', table: 'activity_logs' }, () => {
+    debouncedRefresh({ table: 'activity_logs' });
+    window.dispatchEvent(new CustomEvent('titsmart_leaves_updated'));
+    window.dispatchEvent(new CustomEvent('titsmart_attendance_updated'));
+  });
+  channel.on('postgres_changes', { event: '*', schema: 'public', table: 'attendance_logs' }, () => {
+    window.dispatchEvent(new CustomEvent('titsmart_attendance_updated'));
+  });
 
   // Đăng ký channel và tự động kết nối lại nếu bị gián đoạn mạng
   const subscribeChannel = () => {

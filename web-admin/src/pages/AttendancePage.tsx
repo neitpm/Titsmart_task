@@ -75,7 +75,28 @@ export const AttendancePage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const projects = useRealtimeStore(state => state.projects);
   const engineers = useRealtimeStore(state => state.engineers);
+  const notifications = useRealtimeStore(state => state.notifications);
   const addNotification = useRealtimeStore(state => state.addNotification);
+  const lastHandledNotifIdRef = useRef<string | null>(null);
+  const latestNotif = notifications[0];
+
+  // Tự động đồng bộ và nạp lại đơn từ tức thì khi nhận được thông báo liên quan đến nghỉ phép / chấm công
+  useEffect(() => {
+    if (!latestNotif || latestNotif.id === lastHandledNotifIdRef.current) return;
+    lastHandledNotifIdRef.current = latestNotif.id;
+
+    const type = String(latestNotif.type || '').toLowerCase();
+    const title = String(latestNotif.title || '').toLowerCase();
+    const link = String(latestNotif.link || '').toLowerCase();
+
+    if (type.includes('leave') || title.includes('nghỉ phép') || link.includes('tab=leave')) {
+      fetchLeaves(false);
+    }
+    if (type.includes('adj') || title.includes('chấm công') || link.includes('adjustment')) {
+      fetchAdjustments();
+      fetchLogs(false);
+    }
+  }, [latestNotif]);
   const isAdmin = user?.role === 'admin' || user?.role === 'Quản trị viên' || user?.role === 'pm';
 
   // Cho phép Quản lý (Cấp 2), Người duyệt (APPROVE_LEAVE_STEP1/FINAL) và Admin xem 'Tất cả' để duyệt
@@ -656,10 +677,53 @@ export const AttendancePage: React.FC = () => {
   };
 
   useEffect(() => {
-    // Nạp dữ liệu khi vào trang
+    // Nạp dữ liệu ban đầu
     fetchLogs(false);
     fetchLeaves(false);
     fetchAdjustments();
+
+    // ⚡ 1. LẮNG NGHE REALTIME DATABASE TỨC THÌ CHO NGHỈ PHÉP, CHẤM CÔNG VÀ CHẤM CÔNG BÙ
+    const attendanceChannel = supabase
+      .channel(`attendance-realtime-${Date.now()}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'activity_logs' },
+        (payload: any) => {
+          const newRow = payload?.new;
+          const oldRow = payload?.old;
+          const icon = newRow?.icon || oldRow?.icon;
+          if (!icon || icon === 'LEAVE_REQUEST') {
+            fetchLeaves(false);
+          }
+          if (!icon || icon === 'ATTENDANCE_ADJUSTMENT') {
+            fetchAdjustments();
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'attendance_logs' },
+        () => {
+          fetchLogs(false);
+        }
+      )
+      .subscribe();
+
+    // ⚡ 2. LẮNG NGHE SỰ KIỆN ĐỒNG BỘ NỘI BỘ GIỮA CÁC TAB / CỬA SỔ
+    const handleLeavesSync = () => fetchLeaves(false);
+    const handleAttendanceSync = () => {
+      fetchAdjustments();
+      fetchLogs(false);
+    };
+
+    window.addEventListener('titsmart_leaves_updated', handleLeavesSync);
+    window.addEventListener('titsmart_attendance_updated', handleAttendanceSync);
+
+    return () => {
+      supabase.removeChannel(attendanceChannel);
+      window.removeEventListener('titsmart_leaves_updated', handleLeavesSync);
+      window.removeEventListener('titsmart_attendance_updated', handleAttendanceSync);
+    };
   }, []);
 
   const handleCreateAdjustment = async () => {
