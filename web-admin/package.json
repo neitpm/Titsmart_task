@@ -2,7 +2,7 @@
   "name": "buildcore-pro-web-admin",
   "private": true,
   "version": "3.8.446",
-  "description": "TITSMART Project Manager",
+  "description": "WORKCORE Company App",
   "type": "module",
   "main": "dist-electron/main.js",
   "scripts": {
@@ -66,7 +66,7 @@
   },
   "build": {
     "appId": "com.titsmart.projectmanager",
-    "productName": "TITSMART Project Manager",
+    "productName": "WORKCORE Company App",
     "directories": {
       "output": "release"
     },

@@ -56,11 +56,11 @@ function createTray() {
 
   const icon = getAppIcon();
   tray = new Tray(icon || nativeImage.createEmpty());
-  tray.setToolTip('TITSMART - Quản lý công việc');
+  tray.setToolTip('WORKCORE - Quản lý công việc');
 
   const contextMenu = Menu.buildFromTemplate([
     {
-      label: 'Mở TITSMART',
+      label: 'Mở WORKCORE',
       click: () => {
         showMainWindow();
       },
@@ -265,7 +265,7 @@ ipcMain.on('app:show-notification', (_, { title, body, url }) => {
   if (Notification.isSupported()) {
     const icon = getAppIcon();
     const notif = new Notification({
-      title: title || 'TITSMART',
+      title: title || 'WORKCORE',
       body: body || 'Bạn có thông báo mới.',
       icon: icon,
     });
