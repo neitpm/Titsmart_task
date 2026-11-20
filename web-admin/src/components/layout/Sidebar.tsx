@@ -84,6 +84,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
   };
 
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
+  const [isTaskSubOpen, setIsTaskSubOpen] = useState(true);
+
+  useEffect(() => {
+    if (location.pathname === '/task-assignment' || location.pathname === '/my-tasks' || location.pathname === '/work-plan') {
+      setIsTaskSubOpen(true);
+    }
+  }, [location.pathname]);
 
   const toggleGroup = (title: string) => {
     setCollapsedGroups(prev => ({
@@ -134,11 +141,55 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
       }];
     }
 
+    const taskSubItems = [
+      {
+        label: 'Dự án',
+        path: isAdmin ? '/task-assignment?tab=project_tasks' : '/my-tasks?category=project',
+        icon: 'folder_open',
+        isActive: (pathname: string, search: string) => {
+          const sp = new URLSearchParams(search);
+          if (isAdmin) {
+            return pathname === '/task-assignment' && (sp.get('tab') === 'project_tasks' || sp.get('tab') === 'unassigned' || !sp.get('tab'));
+          }
+          return pathname === '/my-tasks' && (sp.get('category') === 'project' || !sp.get('category'));
+        }
+      },
+      {
+        label: 'Phát sinh',
+        path: isAdmin ? '/task-assignment?tab=direct' : '/my-tasks?category=direct',
+        icon: 'bolt',
+        isActive: (pathname: string, search: string) => {
+          const sp = new URLSearchParams(search);
+          if (isAdmin) {
+            return pathname === '/task-assignment' && sp.get('tab') === 'direct';
+          }
+          return pathname === '/my-tasks' && sp.get('category') === 'direct';
+        }
+      },
+      ...(isAdmin ? [{
+        label: 'Việc của tôi',
+        path: '/my-tasks',
+        icon: 'person',
+        isActive: (pathname: string) => pathname === '/my-tasks'
+      }] : []),
+      {
+        label: 'Kế hoạch',
+        path: '/work-plan',
+        icon: 'calendar_month',
+        isActive: (pathname: string) => pathname === '/work-plan'
+      }
+    ];
+
     const mainItems = [
       { label: 'Tổng quan', path: '/dashboard', icon: 'analytics', req: 'VIEW_PROJECTS' },
       { label: 'Tất cả dự án', path: '/projects', icon: 'cell_tower', req: 'VIEW_PROJECTS' },
-      { label: 'Công việc', path: defaultTaskPath, icon: 'checklist', req: 'VIEW_TASKS' },
-      { label: 'Lịch & Kế hoạch', path: '/work-plan', icon: 'calendar_month', req: 'VIEW_TASKS' },
+      { 
+        label: 'Công việc', 
+        path: defaultTaskPath, 
+        icon: 'checklist', 
+        req: 'VIEW_TASKS',
+        children: taskSubItems
+      },
       { label: 'Quản lý hồ sơ', path: '/document-tracking', icon: 'folder_managed', req: 'VIEW_DOCUMENTS' },
       { label: 'Tổng kho', path: '/materials', icon: 'warehouse', req: 'VIEW_MATERIALS' },
       { label: 'Chấm công', path: '/attendance', icon: 'schedule', req: 'VIEW_TASKS' },
@@ -217,29 +268,82 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
                 </div>
               )}
 
-              <div className={`space-y-1 overflow-hidden transition-all duration-200 ${group.collapsible !== false && collapsedGroups[group.title] && isExpanded ? 'max-h-0 opacity-0' : 'max-h-96 opacity-100'}`}>
-                {group.items.map((item) => {
+              <div className={`space-y-1 overflow-hidden transition-all duration-200 ${group.collapsible !== false && collapsedGroups[group.title] && isExpanded ? 'max-h-0 opacity-0' : 'max-h-[1200px] opacity-100'}`}>
+                {group.items.map((item: any) => {
+                  const hasChildren = Array.isArray(item.children) && item.children.length > 0;
                   const isTask = (item.label === 'Công việc' || item.path.includes('task')) &&
-                    (location.pathname === '/task-assignment' || location.pathname === '/my-tasks');
+                    (location.pathname === '/task-assignment' || location.pathname === '/my-tasks' || location.pathname === '/work-plan');
+                  
                   return (
-                    <NavLink
-                      key={item.path}
-                      to={item.path}
-                      end={item.path === '/'}
-                      title={!isExpanded ? item.label : undefined}
-                      className={({ isActive }) =>
-                        `flex items-center rounded-lg text-xs transition-colors overflow-hidden whitespace-nowrap h-10 w-full px-1 gap-2 ${
-                          isActive || isTask
-                            ? 'text-primary bg-blue-100 font-bold shadow-xs'
-                            : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 font-semibold'
-                        }`
-                      }
-                    >
-                      <div className="w-8 h-8 flex-shrink-0 flex items-center justify-center">
-                        <span className="material-symbols-outlined text-[20px]">{item.icon}</span>
+                    <div key={item.path} className="space-y-0.5">
+                      <div className="relative flex items-center">
+                        <NavLink
+                          to={item.path}
+                          end={item.path === '/'}
+                          title={!isExpanded ? item.label : undefined}
+                          onClick={() => {
+                            if (hasChildren) setIsTaskSubOpen(true);
+                          }}
+                          className={({ isActive }) =>
+                            `flex items-center rounded-lg text-xs transition-colors overflow-hidden whitespace-nowrap h-10 w-full px-1 gap-2 ${
+                              isActive || isTask
+                                ? 'text-primary bg-blue-100 font-bold shadow-xs'
+                                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 font-semibold'
+                            }`
+                          }
+                        >
+                          <div className="w-8 h-8 flex-shrink-0 flex items-center justify-center">
+                            <span className="material-symbols-outlined text-[20px]">{item.icon}</span>
+                          </div>
+                          <span className={`truncate flex-1 font-semibold text-xs transition-opacity duration-200 ${isExpanded ? 'opacity-100' : 'opacity-0'}`}>
+                            {item.label}
+                          </span>
+                        </NavLink>
+
+                        {hasChildren && isExpanded && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setIsTaskSubOpen(!isTaskSubOpen);
+                            }}
+                            className="absolute right-1 w-6 h-6 flex items-center justify-center text-slate-400 hover:text-primary transition-colors cursor-pointer rounded hover:bg-blue-200/50"
+                            title={isTaskSubOpen ? "Thu gọn tab con" : "Mở rộng tab con"}
+                          >
+                            <span className={`material-symbols-outlined text-[16px] transition-transform duration-200 ${isTaskSubOpen ? 'rotate-180' : ''}`}>
+                              expand_more
+                            </span>
+                          </button>
+                        )}
                       </div>
-                      <span className={`truncate flex-1 font-semibold text-xs transition-opacity duration-200 ${isExpanded ? 'opacity-100' : 'opacity-0'}`}>{item.label}</span>
-                    </NavLink>
+
+                      {hasChildren && isExpanded && isTaskSubOpen && (
+                        <div className="pl-3.5 pr-1 py-0.5 space-y-1 border-l-2 border-blue-200/70 ml-5 my-0.5 transition-all">
+                          {item.children.map((child: any) => {
+                            const active = child.isActive 
+                              ? child.isActive(location.pathname, location.search)
+                              : location.pathname === child.path;
+                            return (
+                              <NavLink
+                                key={child.path}
+                                to={child.path}
+                                className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md text-[11px] transition-all truncate select-none ${
+                                  active 
+                                    ? 'text-primary bg-blue-50 font-bold shadow-2xs border border-blue-200/80' 
+                                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-medium'
+                                }`}
+                              >
+                                <span className={`material-symbols-outlined text-[14px] shrink-0 ${active ? 'text-primary' : 'text-slate-400'}`}>
+                                  {child.icon}
+                                </span>
+                                <span className="truncate">{child.label}</span>
+                              </NavLink>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
                   );
                 })}
               </div>
@@ -426,7 +530,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
           { label: 'Hồ sơ', path: '/document-tracking', icon: 'folder_managed' },
         ]).map((item) => {
           const isTask = (item.label === 'Công việc' || item.path.includes('task')) &&
-            (location.pathname === '/task-assignment' || location.pathname === '/my-tasks');
+            (location.pathname === '/task-assignment' || location.pathname === '/my-tasks' || location.pathname === '/work-plan');
           return (
             <NavLink
               key={item.path}
