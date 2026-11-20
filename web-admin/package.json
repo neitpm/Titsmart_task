@@ -65,7 +65,7 @@
     "vite-plugin-electron": "^1.1.1"
   },
   "build": {
-    "appId": "com.titsmart.projectmanager",
+    "appId": "com.workcore.companyapp",
     "productName": "WORKCORE Company App",
     "directories": {
       "output": "release"
@@ -76,7 +76,7 @@
     ],
     "win": {
       "target": "nsis",
-      "icon": "public/logo_256.png"
+      "icon": "public/workcore-logo.svg"
     },
     "publish": {
       "provider": "github",
@@ -85,7 +85,7 @@
     },
     "nsis": {
       "oneClick": true,
-      "artifactName": "TITSMART-Setup.${ext}",
+      "artifactName": "WORKCORE-Company-App-Setup.${ext}",
       "perMachine": false
     }
   }
