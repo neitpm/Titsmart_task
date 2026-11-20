@@ -631,9 +631,6 @@ export const CompanyAdminPortalPage: React.FC = () => {
     }
   };
 
-  // ── Redirect if not authenticated ─────────────────────────────────────────
-  if (!loading && !data && !error) return <Navigate to="/company-admin/login" replace />;
-
   // ── Render tab content ────────────────────────────────────────────────────
   const renderCompanyTab = () => (
     <Panel title="Công ty & Thương hiệu" subtitle="Cấu hình thông tin công ty. Lưu trong Platform DB, không ảnh hưởng Product DB.">
@@ -1095,6 +1092,9 @@ export const CompanyAdminPortalPage: React.FC = () => {
     catalog, catalogLoading, catalogType, newCatalog, editingCatalog, editCatalogName,
     workflow, uiSettings, auditLogs, auditLoading, auditFilter, auditHasMore,
     saving, message, msgType, data]);
+
+  // Keep redirects after all hooks so hook order remains stable across renders.
+  if (!loading && !data && !error) return <Navigate to="/company-admin/login" replace />;
 
   return (
     <div className="min-h-screen bg-slate-50">
