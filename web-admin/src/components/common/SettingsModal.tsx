@@ -302,7 +302,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                     <div className="flex items-center gap-3">
                       <div className="relative w-11 h-11 rounded-xl bg-white border border-slate-200/90 flex items-center justify-center p-1.5 shadow-2xs shrink-0 overflow-hidden">
                         <img
-                          src={inputCompanyLogo || './logo.png'}
+src={inputCompanyLogo || '/workcore-logo.svg'}
                           alt="Logo Preview"
                           className="w-full h-full object-contain"
                         />
@@ -358,7 +358,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                   <div className="flex items-center justify-between pt-1">
                     {/* Live Preview nhỏ */}
                     <div className="flex items-center gap-2 px-2.5 py-1.5 bg-white rounded-lg border border-slate-200/80 min-w-0 max-w-[210px] overflow-hidden shadow-2xs">
-                      <img src={inputCompanyLogo || './logo.png'} alt="Logo" className="w-5 h-5 object-contain shrink-0 rounded" />
+<img src={inputCompanyLogo || '/workcore-logo.svg'} alt="Logo" className="w-5 h-5 object-contain shrink-0 rounded" />
                       <div className="min-w-0 flex-1 overflow-hidden">
                         <span 
                           className={`font-extrabold text-blue-900 block leading-tight truncate ${
