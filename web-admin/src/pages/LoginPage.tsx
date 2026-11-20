@@ -47,7 +47,9 @@ export const LoginPage: React.FC<{ onSwitchStyle?: () => void }> = ({ onSwitchSt
           password,
         });
         if (!platformError) {
-          navigate('/company-admin', { replace: true });
+          const { data: platformUser } = await platformAuthClient.auth.getUser();
+          const companyRole = platformUser.user?.user_metadata?.company_role;
+          navigate(companyRole === 'company_admin' ? '/company-admin' : '/', { replace: true });
         } else {
           setError(result.error || 'Đăng nhập thất bại.');
         }

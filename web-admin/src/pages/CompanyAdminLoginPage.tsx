@@ -20,7 +20,12 @@ export const CompanyAdminLoginPage: React.FC = () => {
     setLoading(true);
     const { error: authError } = await platformAuthClient.auth.signInWithPassword({ email: email.trim(), password });
     setLoading(false);
-    if (!authError) { navigate('/company-admin', { replace: true }); return; }
+    if (!authError) {
+      const { data: platformUser } = await platformAuthClient.auth.getUser();
+      const companyRole = platformUser.user?.user_metadata?.company_role;
+      navigate(companyRole === 'company_admin' ? '/company-admin' : '/', { replace: true });
+      return;
+    }
     const productResult = await loginProduct(email.trim(), password);
     if (productResult.ok) navigate('/', { replace: true });
     else setError('Email hoặc mật khẩu không đúng.');
