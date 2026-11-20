@@ -37,11 +37,9 @@ const VITE_DEV_SERVER_URL = process.env['VITE_DEV_SERVER_URL'];
 
 function getAppIcon() {
   const iconPaths = [
-    path.join(__dirname, '../public/favicon.ico'),
-    path.join(__dirname, '../dist/favicon.ico'),
-    path.join(process.resourcesPath || '', 'favicon.ico'),
-    path.join(__dirname, '../public/workcore-logo.svg'),
-    path.join(__dirname, '../dist/workcore-logo.svg'),
+    path.join(__dirname, '../public/workcore-app.ico'),
+    path.join(__dirname, '../dist/workcore-app.ico'),
+    path.join(process.resourcesPath || '', 'workcore-app.ico'),
   ];
   for (const p of iconPaths) {
     if (fs.existsSync(p)) {
