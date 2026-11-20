@@ -279,6 +279,7 @@ export const DEMO_ACCOUNTS: DemoAccount[] = [
 ];
 
 import { supabase } from '../lib/supabase';
+import { platformAuthClient } from './platformAuthClient';
 
 const SESSION_KEY = 'titsmart_auth_session';
 const AUTH_KEYS = ['titsmart_auth_session', 'auth_user', 'buildcore_auth_user', 'titsmart_user'];
@@ -672,6 +673,14 @@ export const useAuthStore = create<AuthStoreState>((set, get) => ({
       let email = user.email || `${user.username}@titsmart.vn`;
       if (!email.includes('@')) {
         email = `${email}@titsmart.vn`;
+      }
+
+      if (user.companyRole === 'member' || user.companyRole === 'company_admin') {
+        const { error: verifyError } = await platformAuthClient.auth.signInWithPassword({ email, password: currentPassword });
+        if (verifyError) return { ok: false, error: 'Mật khẩu hiện tại không chính xác.' };
+        const { error: updateError } = await platformAuthClient.auth.updateUser({ password: newPassword });
+        if (updateError) return { ok: false, error: updateError.message || 'Không thể đổi mật khẩu.' };
+        return { ok: true };
       }
 
       // 1. Kiểm tra mật khẩu hiện tại
