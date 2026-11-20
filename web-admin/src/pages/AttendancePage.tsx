@@ -13,6 +13,7 @@ import * as XLSX from 'xlsx';
 import { exportToStyledExcel } from '../utils/excelExportUtils';
 import { exportMonthlyAttendanceTitsmart } from '../utils/exportMonthlyAttendance';
 import { calculateYearLeaveAccrual, YearLeaveBalanceSummary } from '../utils/leaveAccrualRules';
+import { isHighestLevelPerson, isTechnicalAdminUser } from '../utils/taskPermission';
 
 import { LeaveRequest, LeaveType, AttendanceAdjustmentRequest, AttendanceAdjustmentType } from '../types';
 import { PullToRefresh } from '../components/common/PullToRefresh';
@@ -181,14 +182,29 @@ export const AttendancePage: React.FC = () => {
   const [reviewNote, setReviewNote] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Người có cấp bậc cao nhất trong công ty (loại trừ tài khoản admin kỹ thuật)
+  const highestLeader = React.useMemo(() => {
+    return (engineers || []).find(e => !isTechnicalAdminUser(e) && !e.isLocked && !(e as any).is_locked && isHighestLevelPerson(e));
+  }, [engineers]);
+
+  const highestRankDisplayName = highestLeader?.name || 'Ban Giám Đốc';
+
+  const getStep2ReviewerDisplayName = (name?: string | null) => {
+    if (!name) return highestRankDisplayName;
+    const nLow = name.trim().toLowerCase();
+    if (nLow === 'admin' || nLow === 'quản trị viên' || nLow === 'quản trị' || nLow === 'administrator') {
+      return highestRankDisplayName;
+    }
+    return name;
+  };
+
   // Danh sách Người duyệt Cấp 2 (Chỉ những người được cấp quyền Cấp 2 / APPROVE_LEAVE_STEP1, không bao gồm Cấp 1 / Admin)
   const step1Reviewers = React.useMemo(() => {
     return engineers.filter(eng => {
       if (eng.id === user?.id) return false;
       const perms = eng.permissions || [];
-      const userStr = String((eng as any).username || '').toLowerCase();
-      // Loại trừ Admin và người có quyền duyệt Cấp 1
-      if (userStr === 'admin' || perms.includes('APPROVE_LEAVE_FINAL' as any)) return false;
+      // Loại trừ Admin kỹ thuật và người có quyền duyệt Cấp 1
+      if (isTechnicalAdminUser(eng) || perms.includes('APPROVE_LEAVE_FINAL' as any)) return false;
       const roleStr = String(eng.role || eng.title || '').toLowerCase();
       return perms.includes('APPROVE_LEAVE_STEP1' as any) ||
         roleStr.includes('quản lý') ||
@@ -198,15 +214,15 @@ export const AttendancePage: React.FC = () => {
     });
   }, [engineers, user]);
 
-  // Danh sách Người duyệt Cấp 1 (Ban Giám Đốc có quyền APPROVE_LEAVE_FINAL hoặc vai trò Giám đốc, loại trừ tài khoản admin kỹ thuật)
+  // Danh sách Người duyệt Cấp 1 (Ban Giám Đốc có quyền APPROVE_LEAVE_FINAL hoặc vai trò Giám đốc / Cấp cao nhất, loại trừ tài khoản admin kỹ thuật)
   const step2Reviewers = React.useMemo(() => {
     return engineers.filter(eng => {
       const perms = eng.permissions || [];
       const roleStr = String(eng.role || eng.title || '').toLowerCase();
-      const userStr = String((eng as any).username || '').toLowerCase();
       // Loại trừ tài khoản kỹ thuật admin
-      if (userStr === 'admin') return false;
-      return perms.includes('APPROVE_LEAVE_FINAL' as any) ||
+      if (isTechnicalAdminUser(eng)) return false;
+      return isHighestLevelPerson(eng) ||
+        perms.includes('APPROVE_LEAVE_FINAL' as any) ||
         roleStr.includes('giám đốc') ||
         roleStr.includes('chủ tịch') ||
         roleStr.includes('lãnh đạo');
@@ -239,6 +255,7 @@ export const AttendancePage: React.FC = () => {
     const usernameStr = String(user.username || '').toLowerCase();
     const isDirectorOrAdmin = (
       isAdmin ||
+      isHighestLevelPerson(user) ||
       usernameStr === 'admin' ||
       roleStr === 'admin' ||
       roleStr.includes('giám đốc') ||
@@ -301,6 +318,7 @@ export const AttendancePage: React.FC = () => {
     const usernameStr = String(user.username || '').toLowerCase();
     const isDirectorOrAdmin = (
       isAdmin ||
+      isHighestLevelPerson(user) ||
       usernameStr === 'admin' ||
       roleStr === 'admin' ||
       roleStr.includes('giám đốc') ||
@@ -762,7 +780,7 @@ export const AttendancePage: React.FC = () => {
         await addNotification({
           title: 'Yêu cầu chấm công bù mới',
           message: `${user.name} vừa gửi yêu cầu ${adjType.toLowerCase()} ngày ${formatDate(adjDate)} (chờ Ban Giám Đốc duyệt)`,
-          type: 'adj_pending:::admin:::Quản trị viên',
+          type: highestLeader ? `adj_pending:::${highestLeader.id},admin:::${highestLeader.name},Lãnh đạo` : 'adj_pending:::admin:::Ban Giám Đốc',
           icon: 'edit_calendar',
           link: '/attendance?tab=adjustment',
         });
@@ -872,7 +890,9 @@ export const AttendancePage: React.FC = () => {
       if (finalStatus === 'APPROVED_STEP1') {
         notifTitle = 'Yêu cầu chấm công bù đã được Quản lý duyệt';
         notifMsg = `Yêu cầu của ${reviewAdj.userName} ngày ${formatDate(reviewAdj.adjustmentDate)} đã được ${user.name} duyệt → Chờ Ban Giám Đốc phê duyệt cuối cùng.`;
-        notifType = `adj_step1_approved:::admin,${reviewAdj.userId}:::Quản trị viên,${reviewAdj.userName}`;
+        notifType = highestLeader
+          ? `adj_step1_approved:::${highestLeader.id},admin,${reviewAdj.userId}:::${highestLeader.name},${reviewAdj.userName}`
+          : `adj_step1_approved:::admin,${reviewAdj.userId}:::Ban Giám Đốc,${reviewAdj.userName}`;
       } else if (finalStatus === 'APPROVED') {
         notifTitle = 'Yêu cầu chấm công bù đã được PHÊ DUYỆT';
         notifMsg = `Yêu cầu ${reviewAdj.adjustmentType.toLowerCase()} ngày ${formatDate(reviewAdj.adjustmentDate)} của bạn đã được phê duyệt thành công bởi ${user.name}. Dữ liệu chấm công đã được tự động cập nhật.`;
@@ -1042,7 +1062,7 @@ export const AttendancePage: React.FC = () => {
         await addNotification({
           title: 'Đơn xin nghỉ phép mới',
           message: `${user.name} vừa tạo đơn xin ${leaveType.toLowerCase()} (${diffDays} ngày: từ ${formatDate(leaveStartDate)} đến ${formatDate(leaveEndDate)}) (chờ Ban Giám Đốc duyệt)`,
-          type: 'leave_pending:::admin:::Quản trị viên',
+          type: highestLeader ? `leave_pending:::${highestLeader.id},admin:::${highestLeader.name},Lãnh đạo` : 'leave_pending:::admin:::Ban Giám Đốc',
           icon: 'event_busy',
           link: '/attendance?tab=leave',
         });
@@ -1080,10 +1100,12 @@ export const AttendancePage: React.FC = () => {
         }
       }
 
+      const reviewerDisplayName = isTechnicalAdminUser(user) ? highestRankDisplayName : (user.name || user.username || highestRankDisplayName);
+
       const updated = await api.leaves.review(reviewLeave.id, {
         status: finalStatus,
         reviewerId: user.id,
-        reviewerName: user.name || user.username || 'Admin',
+        reviewerName: reviewerDisplayName,
         reviewNote: reviewNote.trim() || undefined,
         step: reviewStep,
       });
@@ -1100,10 +1122,12 @@ export const AttendancePage: React.FC = () => {
       let notifType = '';
 
       if (finalStatus === 'APPROVED_STEP1') {
-        // Quản lý đã duyệt bước 1 -> Mặc định gửi thông báo đến Admin duyệt bước cuối và nhân viên
+        // Quản lý đã duyệt bước 1 -> Mặc định gửi thông báo đến Lãnh đạo duyệt bước cuối và nhân viên
         notifTitle = 'Đơn nghỉ phép đã được Quản lý duyệt';
         notifMsg = `Đơn của ${reviewLeave.userName} đã được ${user.name} duyệt → Chờ Ban Giám Đốc phê duyệt cuối cùng.`;
-        notifType = `leave_step1_approved:::admin,${reviewLeave.userId}:::Quản trị viên,${reviewLeave.userName}`;
+        notifType = highestLeader
+          ? `leave_step1_approved:::${highestLeader.id},admin,${reviewLeave.userId}:::${highestLeader.name},${reviewLeave.userName}`
+          : `leave_step1_approved:::admin,${reviewLeave.userId}:::Ban Giám Đốc,${reviewLeave.userName}`;
       } else if (finalStatus === 'APPROVED') {
         // Phê duyệt hoàn tất -> Gửi đích danh cho nhân viên làm đơn
         notifTitle = 'Đơn nghỉ phép đã được PHÊ DUYỆT';
@@ -2017,12 +2041,12 @@ export const AttendancePage: React.FC = () => {
                             )}
                             {l.status === 'PENDING' && (
                               <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
-                                {l.step1ReviewerId ? 'Chờ Quản lý duyệt' : 'Chờ Quản trị duyệt'}
+                                {l.step1ReviewerId ? 'Chờ Quản lý duyệt' : 'Chờ Lãnh đạo duyệt'}
                               </span>
                             )}
                             {l.status === 'APPROVED_STEP1' && (
                               <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200 animate-pulse">
-                                Quản lý đã duyệt • Chờ Quản trị
+                                Quản lý đã duyệt • Chờ Lãnh đạo
                               </span>
                             )}
                             {l.status === 'APPROVED' && (
@@ -2064,10 +2088,10 @@ export const AttendancePage: React.FC = () => {
                               )}
                             </div>
                             <div>
-                              <span className="text-slate-400 font-semibold block">Quản trị duyệt:</span>
+                              <span className="text-slate-400 font-semibold block">Lãnh đạo duyệt:</span>
                               {l.step2ReviewerName || (l.reviewerName && !l.step1ReviewerName) ? (
                                 <div>
-                                  <span className="font-bold text-slate-700">{l.step2ReviewerName || l.reviewerName}</span>
+                                  <span className="font-bold text-slate-700">{getStep2ReviewerDisplayName(l.step2ReviewerName || l.reviewerName)}</span>
                                   {l.status === 'APPROVED' ? (
                                     <span className="ml-1 text-[10px] font-bold text-emerald-600">✓ Đã duyệt</span>
                                   ) : (
@@ -2076,7 +2100,7 @@ export const AttendancePage: React.FC = () => {
                                 </div>
                               ) : (
                                 <div>
-                                  <span className="font-semibold text-slate-700">Quản trị</span>
+                                  <span className="font-semibold text-slate-700">{highestRankDisplayName}</span>
                                   {l.status === 'APPROVED' ? (
                                     <span className="ml-1 text-[10px] font-bold text-emerald-600">✓ Đã duyệt</span>
                                   ) : l.status === 'APPROVED_STEP1' ? (
@@ -2126,14 +2150,14 @@ export const AttendancePage: React.FC = () => {
                               <button
                                 onClick={() => { setReviewLeave(l); setReviewStep(2); setReviewAction('APPROVE'); setReviewNote(''); }}
                                 className="px-3 py-1.5 bg-primary text-white hover:bg-blue-800 rounded-lg text-xs font-bold shadow-2xs active:scale-95 transition-all cursor-pointer"
-                                title="Quản trị duyệt"
+                                title="Lãnh đạo duyệt"
                               >
                                 Duyệt
                               </button>
                               <button
                                 onClick={() => { setReviewLeave(l); setReviewStep(2); setReviewAction('REJECT'); setReviewNote(''); }}
                                 className="px-3 py-1.5 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded-lg text-xs font-bold border border-rose-200 active:scale-95 transition-all shadow-2xs cursor-pointer"
-                                title="Quản trị không duyệt"
+                                title="Lãnh đạo không duyệt"
                               >
                                 Không duyệt
                               </button>
@@ -2167,7 +2191,7 @@ export const AttendancePage: React.FC = () => {
                         <th className="p-3">Người theo dõi</th>
                         <th className="p-3 text-center">Trạng thái</th>
                         <th className="p-3">Quản lý duyệt</th>
-                        <th className="p-3">Quản trị duyệt</th>
+                        <th className="p-3">Lãnh đạo duyệt</th>
                         <th className="p-3 text-center w-24">Thao tác</th>
                       </tr>
                     </thead>
@@ -2229,12 +2253,12 @@ export const AttendancePage: React.FC = () => {
                             )}
                             {l.status === 'PENDING' && (
                               <span className="px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
-                                {l.step1ReviewerId ? 'Chờ Quản lý duyệt' : 'Chờ Quản trị duyệt'}
+                                {l.step1ReviewerId ? 'Chờ Quản lý duyệt' : 'Chờ Lãnh đạo duyệt'}
                               </span>
                             )}
                             {l.status === 'APPROVED_STEP1' && (
                               <span className="px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold bg-blue-100 text-blue-800 border border-blue-200 animate-pulse">
-                                Quản lý đã duyệt • Chờ Quản trị
+                                Quản lý đã duyệt • Chờ Lãnh đạo
                               </span>
                             )}
                             {l.status === 'APPROVED' && (
@@ -2266,11 +2290,11 @@ export const AttendancePage: React.FC = () => {
                               <span className="text-slate-400 italic">—</span>
                             )}
                           </td>
-                          {/* Cột Quản trị */}
+                          {/* Cột Lãnh đạo duyệt */}
                           <td className="p-3 text-slate-600">
                             {l.step2ReviewerName || (l.reviewerName && !l.step1ReviewerName) ? (
                               <div>
-                                <span className="font-bold text-slate-800">{l.step2ReviewerName || l.reviewerName}</span>
+                                <span className="font-bold text-slate-800">{getStep2ReviewerDisplayName(l.step2ReviewerName || l.reviewerName)}</span>
                                 {l.status === 'APPROVED' ? (
                                   <span className="ml-1 text-[10px] font-bold text-emerald-600">✓ Phê duyệt</span>
                                 ) : l.status === 'REJECTED' && !l.step1ReviewedAt ? (
@@ -2282,7 +2306,7 @@ export const AttendancePage: React.FC = () => {
                               </div>
                             ) : (
                               <div>
-                                <span className="font-semibold text-slate-700">Quản trị</span>
+                                <span className="font-semibold text-slate-700">{highestRankDisplayName}</span>
                                 {l.status === 'APPROVED_STEP1' ? (
                                   <span className="ml-1 text-[10px] font-bold text-amber-600 animate-pulse">(Chờ duyệt)</span>
                                 ) : l.status === 'APPROVED' ? (
@@ -2319,14 +2343,14 @@ export const AttendancePage: React.FC = () => {
                                   <button
                                     onClick={() => { setReviewLeave(l); setReviewStep(2); setReviewAction('APPROVE'); setReviewNote(''); }}
                                     className="px-2.5 py-1 bg-primary text-white hover:bg-blue-800 rounded text-[11px] font-bold shadow-2xs active:scale-95 transition-all cursor-pointer"
-                                    title="Quản trị phê duyệt đơn"
+                                    title="Lãnh đạo phê duyệt đơn"
                                   >
                                     Duyệt
                                   </button>
                                   <button
                                     onClick={() => { setReviewLeave(l); setReviewStep(2); setReviewAction('REJECT'); setReviewNote(''); }}
                                     className="px-2.5 py-1 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded text-[11px] font-bold border border-rose-200 active:scale-95 transition-all shadow-2xs cursor-pointer"
-                                    title="Quản trị không duyệt / từ chối"
+                                    title="Lãnh đạo không duyệt / từ chối"
                                   >
                                     Không duyệt
                                   </button>
@@ -2536,7 +2560,7 @@ export const AttendancePage: React.FC = () => {
                             <td className="p-3 text-slate-600">
                               {adj.step2ReviewerName ? (
                                 <div>
-                                  <span className="font-bold text-slate-800">{adj.step2ReviewerName}</span>
+                                  <span className="font-bold text-slate-800">{getStep2ReviewerDisplayName(adj.step2ReviewerName)}</span>
                                   {adj.status === 'APPROVED' ? <span className="ml-1 text-[10px] font-bold text-emerald-600">✓ Phê duyệt</span> : <span className="ml-1 text-[10px] text-slate-400">(Chờ)</span>}
                                   {adj.step2ReviewNote && <p className="text-[11px] text-slate-500 italic truncate max-w-[130px]">{adj.step2ReviewNote}</p>}
                                 </div>
@@ -3049,8 +3073,8 @@ export const AttendancePage: React.FC = () => {
         onClose={() => setReviewLeave(null)}
         title={
           reviewAction === 'REJECT'
-            ? `Không duyệt đơn xin nghỉ (${reviewStep === 1 ? 'Quản lý' : 'Quản trị'})`
-            : `Phê duyệt đơn xin nghỉ (${reviewStep === 1 ? 'Quản lý' : 'Quản trị'})`
+            ? `Không duyệt đơn xin nghỉ (${reviewStep === 1 ? 'Quản lý' : 'Lãnh đạo'})`
+            : `Phê duyệt đơn xin nghỉ (${reviewStep === 1 ? 'Quản lý' : 'Lãnh đạo'})`
         }
         icon={reviewAction === 'REJECT' ? 'cancel' : 'rate_review'}
         size="md"
@@ -3117,7 +3141,7 @@ export const AttendancePage: React.FC = () => {
                 placeholder={
                   reviewAction === 'REJECT'
                     ? 'Nhập lý do không duyệt (bình luận sẽ được gửi thông báo trực tiếp đến nhân viên)...'
-                    : (reviewStep === 1 ? 'Ghi chú ý kiến của quản lý trực tiếp...' : 'Ghi chú phê duyệt của Quản trị...')
+                    : (reviewStep === 1 ? 'Ghi chú ý kiến của quản lý trực tiếp...' : 'Ghi chú phê duyệt của Lãnh đạo...')
                 }
                 className={`w-full px-3 py-2 border rounded-lg text-sm outline-none resize-none transition-all ${
                   reviewAction === 'REJECT'
