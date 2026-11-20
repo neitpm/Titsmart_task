@@ -148,7 +148,14 @@ export const ProjectManagementPage: React.FC = () => {
   const [filterDateTo, setFilterDateTo] = useState('');
 
   // Chế độ xem (Dạng thẻ lưới vs Dạng bảng danh sách) & Phân trang cho 500+ dự án
-  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>(() => {
+    return (localStorage.getItem('titsmart_project_view_mode') as 'grid' | 'table') || 'grid';
+  });
+
+  const handleViewModeChange = (mode: 'grid' | 'table') => {
+    setViewMode(mode);
+    localStorage.setItem('titsmart_project_view_mode', mode);
+  };
   const tablePaginationMode = useUIStore(s => s.tablePaginationMode);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState<number>(24);
@@ -1207,35 +1214,16 @@ export const ProjectManagementPage: React.FC = () => {
 
         {/* Nhóm thao tác bên phải: Chuyển dạng Thẻ / Bảng + Ô tìm kiếm + Nút Tạo dự án mới */}
         <div className="flex items-center gap-2 shrink-0 ml-auto">
-          {/* Chuyển chế độ xem Thẻ (Grid) / Bảng gọn (Table) */}
-          <div className="inline-flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200 h-[34px] shrink-0">
-            <button
-              type="button"
-              onClick={() => setViewMode('grid')}
-              className={`flex items-center gap-1 px-2.5 h-full rounded-md text-xs font-semibold transition-all cursor-pointer ${
-                viewMode === 'grid'
-                  ? 'bg-white text-primary shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-              title="Xem dạng thẻ (Grid trực quan)"
-            >
-              <span className="material-symbols-outlined text-[16px]">grid_view</span>
-              <span className="hidden xl:inline text-[11px]">Thẻ</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('table')}
-              className={`flex items-center gap-1 px-2.5 h-full rounded-md text-xs font-semibold transition-all cursor-pointer ${
-                viewMode === 'table'
-                  ? 'bg-white text-primary shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-              title="Xem dạng bảng thu gọn (Tối ưu quét nhanh 500+ dự án)"
-            >
-              <span className="material-symbols-outlined text-[16px]">view_list</span>
-              <span className="hidden xl:inline text-[11px]">Bảng gọn</span>
-            </button>
-          </div>
+          {/* Chuyển chế độ xem Thẻ (Grid) / Bảng gọn (Table) dạng combobox */}
+          <CustomSelect
+            value={viewMode}
+            onChange={(e) => handleViewModeChange(e.target.value as 'grid' | 'table')}
+            className="h-[34px] min-w-[110px] sm:min-w-[125px] rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-bold text-slate-700 shadow-2xs outline-none focus:border-primary shrink-0 cursor-pointer"
+            title="Chế độ hiển thị danh sách dự án"
+          >
+            <option value="grid">⊞ Dạng thẻ</option>
+            <option value="table">☰ Bảng gọn</option>
+          </CustomSelect>
 
           <div className="relative w-44 sm:w-52 md:w-60 flex items-center min-w-0">
             <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-base">search</span>
