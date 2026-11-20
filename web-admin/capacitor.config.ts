@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.titsmart.projectmanager',
-  appName: 'TITSMART Project Manager',
+  appId: 'com.workcore.companyapp',
+  appName: 'WORKCORE Company App',
   webDir: 'dist',
   server: {
     androidScheme: 'http',

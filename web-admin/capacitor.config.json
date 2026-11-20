@@ -1,6 +1,6 @@
 {
-  "appId": "com.titsmart.projectmanager",
-  "appName": "TITSMART Project Manager",
+  "appId": "com.workcore.companyapp",
+  "appName": "WORKCORE Company App",
   "webDir": "dist",
   "server": {
     "androidScheme": "https"
