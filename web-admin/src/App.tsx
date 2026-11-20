@@ -37,6 +37,7 @@ import { LogoutBlockingModal } from './components/common/LogoutBlockingModal';
 import { BrandingBlockingModal } from './components/common/BrandingBlockingModal';
 import { AppExitConfirmModal } from './components/common/AppExitConfirmModal';
 import { requestSystemNotificationPermission } from './services/systemNotificationService';
+import { platformAuthClient } from './services/platformAuthClient';
 
 
 const ProtectedLayout: React.FC = () => {
@@ -255,6 +256,41 @@ export const App: React.FC = () => {
       }
     };
   }, [refreshUser]);
+
+  // Re-read the isolated Platform Auth role on every app start/reload. This
+  // prevents a newly provisioned company admin from inheriting an old member
+  // session and landing on the product project list.
+  useEffect(() => {
+    let cancelled = false;
+    platformAuthClient.auth.getUser().then(({ data }) => {
+      if (cancelled || !data.user) return;
+      const metadata = data.user.user_metadata || {};
+      const companyRole = metadata.company_role;
+      if (!companyRole) return;
+
+      const currentUser = useAuthStore.getState().user;
+      if (currentUser) {
+        useAuthStore.setState({
+          user: {
+            ...currentUser,
+            id: data.user.id,
+            username: metadata.name || data.user.email || currentUser.username,
+            name: metadata.name || data.user.email || currentUser.name,
+            email: data.user.email || currentUser.email,
+            companyId: metadata.company_id || currentUser.companyId,
+            companyRole,
+            platformRole: 'user',
+          },
+        });
+      }
+
+      const adminPaths = new Set(['/','/projects','/dashboard','/login']);
+      if (companyRole === 'company_admin' && adminPaths.has(location.pathname)) {
+        navigate('/company-admin', { replace: true });
+      }
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [location.pathname, navigate]);
 
   useEffect(() => {
     if (!user) return;
