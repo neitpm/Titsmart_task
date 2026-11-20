@@ -8,7 +8,7 @@ import { Task } from '../types';
 import { TaskDiscussionModal } from '../components/tasks/TaskDiscussionModal';
 import { Toast } from '../components/common/Toast';
 import { appendTaskDiscussion, getLatestDiscussion } from '../utils/taskDiscussion';
-import { isUserTaskAssignee, isUserTaskAssigner, isUserTaskFollower, getTaskFollowerNames, isTaskReadyForAssignment, getTaskDiscussionSenderRole } from '../utils/taskPermission';
+import { isUserTaskAssignee, isUserTaskAssigner, isUserTaskFollower, getTaskFollowerNames, isTaskReadyForAssignment, getTaskDiscussionSenderRole, canUserApproveTask } from '../utils/taskPermission';
 
 export const MyTasksPage: React.FC = () => {
   const navigate = useNavigate();
@@ -451,8 +451,8 @@ export const MyTasksPage: React.FC = () => {
   };
 
   const handleApproveTask = async (task: any) => {
-    if (!isUserTaskAssigner(user, task, engineers)) {
-      triggerToast('Chỉ người giao việc, Ban Giám Đốc hoặc Quản trị viên mới có quyền nghiệm thu!', 'warning');
+    if (!canUserApproveTask(user, task, engineers)) {
+      triggerToast('Chỉ người giao việc hoặc người có cấp bậc cao nhất mới có quyền nghiệm thu!', 'warning');
       return;
     }
     const todayStr = new Date().toISOString().split('T')[0];
@@ -919,7 +919,7 @@ export const MyTasksPage: React.FC = () => {
                             </>
                           )}
                           {isWaitingApproval && (
-                            isUserTaskAssigner(user, t, engineers) ? (
+                            canUserApproveTask(user, t, engineers) ? (
                               <button 
                                 onClick={() => handleApproveTask(t)}
                                 className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 active:scale-95 text-white font-bold rounded-lg shadow-xs transition-all text-xs cursor-pointer"
@@ -985,7 +985,7 @@ export const MyTasksPage: React.FC = () => {
           currentUserId={user?.id}
           currentUserName={user?.name || user?.username}
           currentUserRole={user?.role}
-          isAssigner={isUserTaskAssigner(user, discussionTask, engineers)}
+          isAssigner={canUserApproveTask(user, discussionTask, engineers)}
           isAssignee={isUserTaskAssignee(user, discussionTask, engineers)}
           onAcceptTask={handleAcceptTask}
           onSendQuestion={handleSendQuestion}

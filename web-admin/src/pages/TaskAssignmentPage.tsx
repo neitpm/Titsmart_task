@@ -13,7 +13,7 @@ import { appendTaskDiscussion, parseTaskDiscussions, getLatestDiscussion, stripD
 import { getEngineersForProject } from '../utils/projectMemberUtils';
 import { deleteStorageFiles, uploadAttachment } from '../utils/fileUploadHelper';
 import { Toast } from '../components/common/Toast';
-import { isUserTaskAssignee, isUserTaskAssigner, isUserTaskFollower, getTaskFollowerNames, isTaskReadyForAssignment, getTaskDiscussionSenderRole } from '../utils/taskPermission';
+import { isUserTaskAssignee, isUserTaskAssigner, isUserTaskFollower, getTaskFollowerNames, isTaskReadyForAssignment, getTaskDiscussionSenderRole, canUserApproveTask } from '../utils/taskPermission';
 import { EmployeePeriodToolbar } from '../components/tasks/EmployeePeriodToolbar';
 import { TimePeriodType, getDateRangeForPeriod, isTaskInPeriod, isTaskAssignedToPerson, getTaskTimeBounds } from '../utils/taskPeriodFilter';
 import { useUIStore } from '../services/uiStore';
@@ -95,24 +95,7 @@ export const TaskAssignmentPage: React.FC = () => {
   };
 
   const canApproveTask = (currentUser: any, task: any): boolean => {
-    if (!currentUser || !task) return false;
-    if (task.status === 'Hoàn thành' || task.constrStatus === 'Đã hoàn thành' || task.isDone) return false;
-    const isWaiting = task.status === 'Chờ nghiệm thu' || task.constrStatus === 'Chờ nghiệm thu';
-    if (!isWaiting) return false;
-
-    // Giám đốc, Ban Lãnh đạo (Cấp 1) hoặc Quản trị viên (Admin) luôn có toàn quyền duyệt / nghiệm thu
-    if (
-      isDirector(currentUser) ||
-      isSystemAdmin(currentUser) ||
-      currentUser.role === 'admin' ||
-      currentUser.role === 'quản trị viên' ||
-      hasPermission(currentUser, 'APPROVE_TASKS') ||
-      (Array.isArray(currentUser.permissions) && currentUser.permissions.includes('APPROVE_TASKS'))
-    ) {
-      return true;
-    }
-
-    return isUserTaskAssigner(currentUser, task, engineers);
+    return canUserApproveTask(currentUser, task, engineers);
   };
 
   const canDeleteTask = (currentUser: any, task: any): boolean => {
@@ -194,7 +177,7 @@ export const TaskAssignmentPage: React.FC = () => {
   const handleQuickApprove = async (e: React.MouseEvent, task: any) => {
     e.stopPropagation();
     if (!canApproveTask(user, task)) {
-      triggerToast('Chỉ người giao việc mới có quyền nghiệm thu!', 'warning');
+      triggerToast('Chỉ người giao việc hoặc người có cấp bậc cao nhất mới có quyền nghiệm thu!', 'warning');
       return;
     }
     const todayStr = new Date().toISOString().split('T')[0];

@@ -18,7 +18,7 @@ import { appendTaskDiscussion, getLatestDiscussion, stripDiscussionThread, parse
 import { getEngineersForProject } from '../utils/projectMemberUtils';
 import { deleteStorageFiles, uploadAttachment } from '../utils/fileUploadHelper';
 import { PullToRefresh } from '../components/common/PullToRefresh';
-import { isUserTaskAssignee, isUserTaskAssigner, isUserTaskFollower, isTaskReadyForAssignment, getTaskDiscussionSenderRole } from '../utils/taskPermission';
+import { isUserTaskAssignee, isUserTaskAssigner, isUserTaskFollower, isTaskReadyForAssignment, getTaskDiscussionSenderRole, canUserApproveTask, isHighestLevelPerson } from '../utils/taskPermission';
 import { getTaskTimeBounds } from '../utils/taskPeriodFilter';
 import { useUIStore } from '../services/uiStore';
 
@@ -351,31 +351,12 @@ export const TaskManagementPage: React.FC = () => {
   };
 
   const canApproveTask = (currentUser: any, task: any): boolean => {
-    if (!currentUser || !task) return false;
-    // Nếu công việc đã Hoàn thành hoặc đã xong thì ẩn nút nghiệm thu
-    if (task.status === 'Hoàn thành' || task.constrStatus === 'Đã hoàn thành' || task.isDone) return false;
-    // Chỉ hiện nút Nghiệm thu khi công việc đang ở trạng thái Chờ nghiệm thu
-    const isWaiting = task.status === 'Chờ nghiệm thu' || task.constrStatus === 'Chờ nghiệm thu';
-    if (!isWaiting) return false;
-
-    // Giám đốc, Ban Lãnh đạo (Cấp 1) hoặc Quản trị viên (Admin) luôn có toàn quyền duyệt / nghiệm thu
-    if (
-      isDirector(currentUser) ||
-      isSystemAdmin(currentUser) ||
-      currentUser.role === 'admin' ||
-      currentUser.role === 'quản trị viên' ||
-      hasPermission(currentUser, 'APPROVE_TASKS') ||
-      (Array.isArray(currentUser.permissions) && currentUser.permissions.includes('APPROVE_TASKS'))
-    ) {
-      return true;
-    }
-
-    return isUserTaskAssigner(currentUser, task, engineers);
+    return canUserApproveTask(currentUser, task, engineers);
   };
 
   const handleApproveTask = async (task: Task) => {
-    if (!canApproveTask(authStore.user, task)) {
-      triggerToast('Chỉ người giao việc, Ban Giám Đốc hoặc Quản trị viên mới có quyền nghiệm thu!', 'warning');
+    if (!canUserApproveTask(authStore.user, task, engineers)) {
+      triggerToast('Chỉ người giao việc hoặc người có cấp bậc cao nhất mới có quyền nghiệm thu!', 'warning');
       return;
     }
     const adminName = authStore.user?.name || authStore.user?.username || 'Quản lý';
@@ -424,8 +405,8 @@ export const TaskManagementPage: React.FC = () => {
   };
 
   const handleRejectTask = async (task: Task, reason: string, fileAttachment?: { url: string; type: 'image' | 'file'; name: string }) => {
-    if (!canApproveTask(authStore.user, task)) {
-      triggerToast('Chỉ người giao việc mới có quyền từ chối nghiệm thu!', 'warning');
+    if (!canUserApproveTask(authStore.user, task, engineers)) {
+      triggerToast('Chỉ người giao việc hoặc người có cấp bậc cao nhất mới có quyền từ chối nghiệm thu!', 'warning');
       return;
     }
 

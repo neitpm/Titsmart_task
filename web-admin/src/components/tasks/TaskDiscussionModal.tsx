@@ -5,7 +5,7 @@ import { useAuthStore } from '../../services/authStore';
 import { useRealtimeStore } from '../../services/realtimeStore';
 import { Modal } from '../common/Modal';
 import { deleteStorageFiles, uploadAttachment } from '../../utils/fileUploadHelper';
-import { isUserTaskAssignee, isUserTaskAssigner, isUserTaskFollower, getTaskDiscussionSenderRole, isDiscussionSenderAssignee } from '../../utils/taskPermission';
+import { isUserTaskAssignee, isUserTaskAssigner, isUserTaskFollower, getTaskDiscussionSenderRole, isDiscussionSenderAssignee, canUserApproveTask } from '../../utils/taskPermission';
 
 export interface TaskDiscussionModalProps {
   isOpen: boolean;
@@ -49,6 +49,7 @@ export const TaskDiscussionModal: React.FC<TaskDiscussionModalProps> = ({
   const calculatedAssignee = isUserTaskAssignee(authUser, task, engineers);
   const calculatedAssigner = isUserTaskAssigner(authUser, task, engineers);
   const calculatedFollower = isUserTaskFollower(authUser, task, engineers);
+  const calculatedCanApprove = canUserApproveTask(authUser, task, engineers);
 
   const isAssignee = propIsAssignee !== undefined ? propIsAssignee : calculatedAssignee;
   const isAssigner = propIsAssigner !== undefined ? propIsAssigner : calculatedAssigner;
@@ -653,7 +654,7 @@ export const TaskDiscussionModal: React.FC<TaskDiscussionModalProps> = ({
                 {isSubmitting ? 'Đang gửi...' : (hasQuestion ? 'Phản hồi & Giao lại việc' : 'Lưu ghi chú')}
               </button>
             </>
-          ) : isAssigner && isWaitingApproval && onApproveTask ? (
+          ) : calculatedCanApprove && isWaitingApproval && onApproveTask ? (
             <>
               <button 
                 type="button"

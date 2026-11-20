@@ -215,20 +215,144 @@ export const isUserTaskFollower = (
  */
 export const isUserDirectAssigner = (
   user: AuthUser | null | undefined,
-  task: Task | null | undefined
+  task: Task | null | undefined,
+  engineers?: Engineer[]
 ): boolean => {
   if (!user || !task) return false;
   const uId = normalizeText(user.id);
   const uName = normalizeText(user.name);
   const uUsername = normalizeText(user.username);
 
-  const allMyIds = [uId, uUsername].filter(Boolean);
-  const allMyNames = [uName, uUsername].filter(Boolean);
+  // Find linked engineer if exists
+  const myEng = engineers?.find(e => {
+    const eId = normalizeText(e.id);
+    const eName = normalizeText(e.name);
+    const eUsername = normalizeText(e.username);
+    return (
+      (uId && eId === uId) ||
+      (uUsername && eUsername === uUsername) ||
+      (uName && eName === uName)
+    );
+  });
+
+  const myEngId = myEng ? normalizeText(myEng.id) : '';
+  const myEngName = myEng ? normalizeText(myEng.name) : '';
+
+  const allMyIds = [uId, uUsername, myEngId].filter(Boolean);
+  const allMyNames = [uName, uUsername, myEngName].filter(Boolean);
 
   if (task.assignerId && allMyIds.includes(normalizeText(task.assignerId))) return true;
   if (task.assignerName && allMyNames.some(mn => normalizeText(task.assignerName).includes(mn) || mn.includes(normalizeText(task.assignerName)))) return true;
   if ((task as any).createdById && allMyIds.includes(normalizeText((task as any).createdById))) return true;
   if ((task as any).createdByName && allMyNames.some(mn => normalizeText((task as any).createdByName).includes(mn) || mn.includes(normalizeText((task as any).createdByName)))) return true;
+
+  return false;
+};
+
+/**
+ * Kiểm tra xem tài khoản có phải là tài khoản admin kỹ thuật thuần túy hay không
+ */
+export const isTechnicalAdminUser = (u: any): boolean => {
+  if (!u) return false;
+  const username = String(u.username || '').trim().toLowerCase();
+  const name = String(u.name || '').trim().toLowerCase();
+  const role = String(u.role || '').trim().toLowerCase();
+  const title = String((u as any).title || '').trim().toLowerCase();
+  return (
+    username === 'admin' ||
+    name === 'admin' ||
+    role === 'admin' ||
+    role === 'quản trị hệ thống' ||
+    role === 'quản trị viên' ||
+    title === 'quản trị viên' ||
+    title === 'quản trị hệ thống' ||
+    u.id === 'admin'
+  );
+};
+
+/**
+ * Kiểm tra xem người dùng có phải là người có cấp bậc cao nhất trong công ty hay không
+ * (Ban Giám Đốc, Chủ tịch, Tổng Giám Đốc, Cấp 1, Company Admin)
+ */
+export const isHighestLevelPerson = (u: any): boolean => {
+  if (!u) return false;
+  // Bỏ tài khoản admin kỹ thuật: không coi admin là nhân sự lãnh đạo cấp cao
+  if (isTechnicalAdminUser(u)) return false;
+  if (isDirector(u)) return true;
+  const role = String(u.role || '').toLowerCase();
+  const title = String((u as any).title || '').toLowerCase();
+  if (
+    role.includes('giám đốc') ||
+    role.includes('ban giám đốc') ||
+    role === 'director' ||
+    role.includes('lãnh đạo') ||
+    role.includes('chủ tịch') ||
+    role.includes('tổng giám đốc') ||
+    title.includes('giám đốc') ||
+    title.includes('ban giám đốc') ||
+    title.includes('lãnh đạo') ||
+    title.includes('chủ tịch') ||
+    title.includes('tổng giám đốc')
+  ) {
+    return true;
+  }
+  if (u.companyRole === 'company_admin') {
+    return true;
+  }
+  if (u.roleLevel === 'level1' || u.role_level === 'level1') {
+    return true;
+  }
+  const perms = u.permissions || [];
+  if (Array.isArray(perms) && perms.includes('APPROVE_LEAVE_FINAL') && perms.includes('DELETE_PROJECTS')) {
+    return true;
+  }
+  return false;
+};
+
+/**
+ * Kiểm tra xem người dùng có quyền Nghiệm thu / Phê duyệt hoàn thành công việc hay không
+ * 
+ * QUY TẮC NGHIỆP VỤ (BẮT BUỘC):
+ * 1. Nếu công việc đã Hoàn thành / Đã xong -> Ẩn nghiệm thu (false).
+ * 2. Chỉ hiện khi công việc đang ở trạng thái "Chờ nghiệm thu" (status === 'Chờ nghiệm thu' || constrStatus === 'Chờ nghiệm thu').
+ * 3. NGƯỜI LÀM VIỆC (Assignee): TUYỆT ĐỐI KHÔNG ĐƯỢC TỰ NGHIỆM THU công việc của chính mình (luôn trả về false).
+ *    ("tôi là người làm nhưng tại sao tôi là người nghiệm thu vậy - phải là người giao và người có cấp bậc cao nhất chứ")
+ * 4. NGƯỜI CÓ QUYỀN NGHIỆM THU PHẢI LÀ:
+ *    a. Người giao việc trực tiếp (Direct Assigner / task.assignerId / task.assignerName / createdById / createdByName)
+ *    b. VÀ/HOẶC Người có cấp bậc cao nhất trong công ty (isHighestLevelPerson)
+ *    (Cả 2 đối tượng trên đều phải KHÔNG PHẢI là người làm việc của task này).
+ */
+export const canUserApproveTask = (
+  user: AuthUser | null | undefined,
+  task: Task | null | undefined,
+  engineers?: Engineer[]
+): boolean => {
+  if (!user || !task) return false;
+
+  // 1. Nếu công việc đã Hoàn thành hoặc đã xong thì không thể nghiệm thu tiếp
+  if (task.status === 'Hoàn thành' || task.constrStatus === 'Đã hoàn thành' || task.isDone) {
+    return false;
+  }
+
+  // 2. Chỉ hiện khi công việc đang ở trạng thái Chờ nghiệm thu
+  const isWaiting = task.status === 'Chờ nghiệm thu' || task.constrStatus === 'Chờ nghiệm thu';
+  if (!isWaiting) return false;
+
+  // 3. Người làm việc (Assignee): TUYỆT ĐỐI KHÔNG ĐƯỢC TỰ NGHIỆM THU công việc của chính mình
+  const isAssignee = isUserTaskAssignee(user, task, engineers);
+  if (isAssignee) {
+    return false;
+  }
+
+  // 4. Người có cấp bậc cao nhất luôn có quyền nghiệm thu (nếu không phải là người trực tiếp làm việc)
+  if (isHighestLevelPerson(user) || isDirector(user)) {
+    return true;
+  }
+
+  // 5. Người trực tiếp giao việc có quyền nghiệm thu (nếu không phải là người trực tiếp làm việc)
+  if (isUserDirectAssigner(user, task, engineers)) {
+    return true;
+  }
 
   return false;
 };
