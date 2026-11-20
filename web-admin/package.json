@@ -86,7 +86,10 @@
     "nsis": {
       "oneClick": true,
       "artifactName": "WORKCORE-Company-App-Setup.${ext}",
-      "perMachine": false
+      "perMachine": false,
+      "shortcutName": "WORKCORE Company App",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
     }
   }
 }
