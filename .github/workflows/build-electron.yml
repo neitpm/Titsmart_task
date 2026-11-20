@@ -103,7 +103,9 @@ jobs:
 
     - name: Make Gradlew Executable
       working-directory: ./web-admin/android
-      run: chmod +x gradlew
+      run: |
+        sed -i 's/\r$//' gradlew
+        chmod +x gradlew
 
     - name: Build Android Debug APK
       working-directory: ./web-admin/android
