@@ -47,8 +47,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
   const defaultTaskPath = isAdmin ? '/task-assignment?tab=unassigned' : '/my-tasks';
   const sidebarRef = useRef<HTMLElement>(null);
 
-  const activeCompanyName = companyName?.trim() || 'TITSMART';
-  const activeCompanySlogan = companySlogan?.trim() || 'Project Manager';
+  const activeCompanyName = companyName?.trim() || 'WORKCORE';
+  const activeCompanySlogan = companySlogan?.trim() || 'COMPANY APP';
   const activeCompanyLogo = companyLogo || './logo.png';
 
   // Tự động co giãn cỡ chữ theo độ dài để hiển thị trọn vẹn không bị cắt ba chấm

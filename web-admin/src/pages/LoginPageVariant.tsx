@@ -6,8 +6,8 @@ import { useUIStore } from '../services/uiStore';
 export const LoginPageVariant: React.FC<{ onSwitchStyle?: () => void }> = ({ onSwitchStyle }) => {
   const navigate = useNavigate();
   const login = useAuthStore((state) => state.login);
-  const companyName = useUIStore((state) => state.companyName) || 'TITSMART';
-  const companySlogan = useUIStore((state) => state.companySlogan) || 'HỆ THỐNG QUẢN LÝ CÔNG VIỆC & DỰ ÁN';
+  const companyName = useUIStore((state) => state.companyName) || 'WORKCORE';
+  const companySlogan = useUIStore((state) => state.companySlogan) || 'COMPANY APP';
   const companyLogo = useUIStore((state) => state.companyLogo) || './logo.png';
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');

@@ -9,8 +9,8 @@ import { User, Key, Eye, EyeOff, Lock, ArrowRight, Shield, Zap, Boxes, BarChart3
 export const LoginPage: React.FC<{ onSwitchStyle?: () => void }> = ({ onSwitchStyle }) => {
   const navigate = useNavigate();
   const login = useAuthStore((state) => state.login);
-  const companyName = useUIStore((state) => state.companyName) || 'TITSMART';
-  const companySlogan = useUIStore((state) => state.companySlogan) || 'Project Manager';
+  const companyName = useUIStore((state) => state.companyName) || 'WORKCORE';
+  const companySlogan = useUIStore((state) => state.companySlogan) || 'COMPANY APP';
   const companyLogo = useUIStore((state) => state.companyLogo) || './logo.png';
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');

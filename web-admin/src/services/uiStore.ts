@@ -63,8 +63,8 @@ export const useUIStore = create<UIStoreState>()(
       showChatWidget: true,
       availableUpdateVersion: null,
       isUpdatingApp: false,
-      companyName: 'TITSMART',
-      companySlogan: 'Project Manager',
+      companyName: 'WORKCORE',
+      companySlogan: 'COMPANY APP',
       companyLogo: null,
       companyHotline: '',
       companyAddress: '',
@@ -106,7 +106,7 @@ export const useUIStore = create<UIStoreState>()(
           const config = await api.branding.get();
           if (config) {
             set({
-              companyName: config.companyName?.trim() || get().companyName,
+              companyName: config.companyName?.trim() && config.companyName.trim().toUpperCase() !== 'TITSMART' ? config.companyName.trim() : get().companyName,
               companySlogan: config.companySlogan !== undefined ? config.companySlogan : get().companySlogan,
               companyLogo: config.companyLogo !== undefined ? config.companyLogo : null,
               companyHotline: config.hotline || '',
