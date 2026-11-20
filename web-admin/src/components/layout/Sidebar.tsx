@@ -84,11 +84,28 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
   };
 
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
-  const [isTaskSubOpen, setIsTaskSubOpen] = useState(true);
+  const [openSubMenus, setOpenSubMenus] = useState<Record<string, boolean>>({
+    'Công việc': true,
+    'Chấm công': true,
+    'Tất cả dự án': true
+  });
+
+  const toggleSubMenu = (label: string) => {
+    setOpenSubMenus(prev => ({
+      ...prev,
+      [label]: prev[label] === undefined ? false : !prev[label]
+    }));
+  };
 
   useEffect(() => {
     if (location.pathname === '/task-assignment' || location.pathname === '/my-tasks' || location.pathname === '/work-plan') {
-      setIsTaskSubOpen(true);
+      setOpenSubMenus(prev => ({ ...prev, 'Công việc': true }));
+    }
+    if (location.pathname === '/attendance') {
+      setOpenSubMenus(prev => ({ ...prev, 'Chấm công': true }));
+    }
+    if (location.pathname === '/projects') {
+      setOpenSubMenus(prev => ({ ...prev, 'Tất cả dự án': true }));
     }
   }, [location.pathname]);
 
@@ -141,6 +158,36 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
       }];
     }
 
+    const projectSubItems = [
+      {
+        label: 'Đang triển khai',
+        path: '/projects?status=active',
+        icon: 'play_circle',
+        isActive: (pathname: string, search: string) => {
+          const sp = new URLSearchParams(search);
+          return pathname === '/projects' && sp.get('status') === 'active';
+        }
+      },
+      {
+        label: 'Hoàn thành',
+        path: '/projects?status=completed',
+        icon: 'check_circle',
+        isActive: (pathname: string, search: string) => {
+          const sp = new URLSearchParams(search);
+          return pathname === '/projects' && sp.get('status') === 'completed';
+        }
+      },
+      {
+        label: 'Tất cả',
+        path: '/projects?status=all',
+        icon: 'apps',
+        isActive: (pathname: string, search: string) => {
+          const sp = new URLSearchParams(search);
+          return pathname === '/projects' && (sp.get('status') === 'all' || !sp.get('status'));
+        }
+      }
+    ];
+
     const taskSubItems = [
       {
         label: 'Dự án',
@@ -180,9 +227,45 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
       }
     ];
 
+    const attendanceSubItems = [
+      {
+        label: 'Chấm công',
+        path: '/attendance?tab=attendance',
+        icon: 'fingerprint',
+        isActive: (pathname: string, search: string) => {
+          const sp = new URLSearchParams(search);
+          return pathname === '/attendance' && (sp.get('tab') === 'attendance' || !sp.get('tab'));
+        }
+      },
+      {
+        label: 'Xin nghỉ',
+        path: '/attendance?tab=leave',
+        icon: 'event_busy',
+        isActive: (pathname: string, search: string) => {
+          const sp = new URLSearchParams(search);
+          return pathname === '/attendance' && (sp.get('tab') === 'leave' || sp.get('tab') === 'leaves');
+        }
+      },
+      {
+        label: 'Bù công',
+        path: '/attendance?tab=adjustment',
+        icon: 'edit_calendar',
+        isActive: (pathname: string, search: string) => {
+          const sp = new URLSearchParams(search);
+          return pathname === '/attendance' && (sp.get('tab') === 'adjustment' || sp.get('tab') === 'adjustments' || sp.get('tab') === 'cham-cong-bu');
+        }
+      }
+    ];
+
     const mainItems = [
       { label: 'Tổng quan', path: '/dashboard', icon: 'analytics', req: 'VIEW_PROJECTS' },
-      { label: 'Tất cả dự án', path: '/projects', icon: 'cell_tower', req: 'VIEW_PROJECTS' },
+      { 
+        label: 'Tất cả dự án', 
+        path: '/projects?status=active', 
+        icon: 'cell_tower', 
+        req: 'VIEW_PROJECTS',
+        children: projectSubItems
+      },
       { 
         label: 'Công việc', 
         path: defaultTaskPath, 
@@ -192,7 +275,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
       },
       { label: 'Quản lý hồ sơ', path: '/document-tracking', icon: 'folder_managed', req: 'VIEW_DOCUMENTS' },
       { label: 'Tổng kho', path: '/materials', icon: 'warehouse', req: 'VIEW_MATERIALS' },
-      { label: 'Chấm công', path: '/attendance', icon: 'schedule', req: 'VIEW_TASKS' },
+      { 
+        label: 'Chấm công', 
+        path: '/attendance', 
+        icon: 'schedule', 
+        req: 'VIEW_TASKS',
+        children: attendanceSubItems
+      },
       ...(isDirectorUser ? [{ label: 'Nhân sự', path: '/personnel', icon: 'groups', req: 'VIEW_USERS' }] : [])
     ];
 
@@ -271,8 +360,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
               <div className={`space-y-1 overflow-hidden transition-all duration-200 ${group.collapsible !== false && collapsedGroups[group.title] && isExpanded ? 'max-h-0 opacity-0' : 'max-h-[1200px] opacity-100'}`}>
                 {group.items.map((item: any) => {
                   const hasChildren = Array.isArray(item.children) && item.children.length > 0;
-                  const isTask = (item.label === 'Công việc' || item.path.includes('task')) &&
+                  const isTaskSection = (item.label === 'Công việc' || item.path.includes('task')) &&
                     (location.pathname === '/task-assignment' || location.pathname === '/my-tasks' || location.pathname === '/work-plan');
+                  const isAttendanceSection = item.label === 'Chấm công' && location.pathname === '/attendance';
+                  const isProjectsSection = item.label === 'Tất cả dự án' && location.pathname === '/projects';
+                  const isParentActive = isTaskSection || isAttendanceSection || isProjectsSection;
+                  const isSubOpen = openSubMenus[item.label] ?? true;
                   
                   return (
                     <div key={item.path} className="space-y-0.5">
@@ -282,11 +375,17 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
                           end={item.path === '/'}
                           title={!isExpanded ? item.label : undefined}
                           onClick={() => {
-                            if (hasChildren) setIsTaskSubOpen(true);
+                            if (hasChildren) {
+                              if (isParentActive) {
+                                toggleSubMenu(item.label);
+                              } else {
+                                setOpenSubMenus(prev => ({ ...prev, [item.label]: true }));
+                              }
+                            }
                           }}
                           className={({ isActive }) =>
-                            `flex items-center rounded-lg text-xs transition-colors overflow-hidden whitespace-nowrap h-10 w-full px-1 gap-2 ${
-                              isActive || isTask
+                            `flex items-center rounded-lg text-xs transition-colors overflow-hidden whitespace-nowrap h-10 w-full px-1 gap-2 cursor-pointer select-none ${
+                              isActive || isParentActive
                                 ? 'text-primary bg-blue-100 font-bold shadow-xs'
                                 : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 font-semibold'
                             }`
@@ -299,26 +398,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
                             {item.label}
                           </span>
                         </NavLink>
-
-                        {hasChildren && isExpanded && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              setIsTaskSubOpen(!isTaskSubOpen);
-                            }}
-                            className="absolute right-1 w-6 h-6 flex items-center justify-center text-slate-400 hover:text-primary transition-colors cursor-pointer rounded hover:bg-blue-200/50"
-                            title={isTaskSubOpen ? "Thu gọn tab con" : "Mở rộng tab con"}
-                          >
-                            <span className={`material-symbols-outlined text-[16px] transition-transform duration-200 ${isTaskSubOpen ? 'rotate-180' : ''}`}>
-                              expand_more
-                            </span>
-                          </button>
-                        )}
                       </div>
 
-                      {hasChildren && isExpanded && isTaskSubOpen && (
+                      {hasChildren && isExpanded && isSubOpen && (
                         <div className="pl-3.5 pr-1 py-0.5 space-y-1 border-l-2 border-blue-200/70 ml-5 my-0.5 transition-all">
                           {item.children.map((child: any) => {
                             const active = child.isActive 

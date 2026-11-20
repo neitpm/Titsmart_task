@@ -1322,46 +1322,10 @@ export const AttendancePage: React.FC = () => {
       {/* Header */}
       <header className="sticky top-0 z-30 border-b border-slate-200 bg-white px-2 py-1.5 md:py-0 md:h-12 flex items-center justify-between gap-1.5 shrink-0 pr-14 sm:pr-16">
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-          <div className="hidden xl:flex items-center border-l-4 border-primary pl-1.5">
+          <div className="flex items-center border-l-4 border-primary pl-2">
             <h1 className="page-title text-xs sm:text-sm md:text-base font-extrabold text-slate-900 shrink-0">
               {mainTab === 'attendance' ? 'Chấm công' : mainTab === 'leave' ? 'Nghỉ phép' : 'Chấm công bù'}
             </h1>
-          </div>
-          <div className="inline-flex items-center gap-0.5 bg-slate-100 p-0.5 rounded-lg border border-slate-200 shrink-0">
-            <button
-              type="button"
-              onClick={() => setMainTab('attendance')}
-              className={`px-1.5 py-1 sm:px-2 sm:py-1 text-xs font-semibold rounded-md transition-all flex items-center gap-1 cursor-pointer select-none shrink-0 ${mainTab === 'attendance' ? 'bg-white text-slate-900 shadow-xs font-bold ring-1 ring-slate-200/80' : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'}`}
-            >
-              <span className="material-symbols-outlined text-[15px]">fingerprint</span>
-              <span>Chấm công</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setMainTab('leave')}
-              className={`px-1.5 py-1 sm:px-2 sm:py-1 text-xs font-semibold rounded-md transition-all flex items-center gap-1 cursor-pointer select-none shrink-0 ${mainTab === 'leave' ? 'bg-white text-slate-900 shadow-xs font-bold ring-1 ring-slate-200/80' : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'}`}
-            >
-              <span className="material-symbols-outlined text-[15px]">event_busy</span>
-              <span>Xin nghỉ</span>
-              {leaves.filter(l => l.status === 'PENDING').length > 0 && (
-                <span className="ml-0.5 px-1.5 py-0.2 bg-red-500 text-white rounded-full text-[10px] font-bold">
-                  {leaves.filter(l => l.status === 'PENDING').length}
-                </span>
-              )}
-            </button>
-            <button
-              type="button"
-              onClick={() => setMainTab('adjustment')}
-              className={`px-1.5 py-1 sm:px-2 sm:py-1 text-xs font-semibold rounded-md transition-all flex items-center gap-1 cursor-pointer select-none shrink-0 ${mainTab === 'adjustment' ? 'bg-white text-slate-900 shadow-xs font-bold ring-1 ring-slate-200/80' : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'}`}
-            >
-              <span className="material-symbols-outlined text-[15px]">edit_calendar</span>
-              <span>Bù công</span>
-              {adjustments.filter(a => a.status === 'PENDING' || a.status === 'PENDING_STEP1').length > 0 && (
-                <span className="ml-0.5 px-1.5 py-0.2 bg-amber-500 text-white rounded-full text-[10px] font-bold">
-                  {adjustments.filter(a => a.status === 'PENDING' || a.status === 'PENDING_STEP1').length}
-                </span>
-              )}
-            </button>
           </div>
         </div>
 

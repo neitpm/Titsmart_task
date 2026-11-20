@@ -1,6 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { SharedTaskTabs } from '../components/common/SharedTaskTabs';
 import { CustomSelect } from '../components/common/CustomSelect';
 import { useRealtimeStore, calculateTaskProgressFromStatuses } from '../services/realtimeStore';
 import { useAuthStore } from '../services/authStore';
@@ -18,6 +17,7 @@ export const MyTasksPage: React.FC = () => {
   const updateTask = useRealtimeStore(state => state.updateTask);
   const materialPlans = useRealtimeStore(state => state.materialPlans);
   const user = useAuthStore(state => state.user);
+  const isAdmin = user?.role === 'ADMIN' || user?.role === 'DIRECTOR' || user?.role === 'DEPUTY_DIRECTOR';
   const [searchParams] = useSearchParams();
 
   const [toastState, setToastState] = useState({ show: false, message: '', type: 'success' as 'success' | 'info' | 'warning' });
@@ -492,19 +492,9 @@ export const MyTasksPage: React.FC = () => {
         <div className="flex flex-col sm:flex-row sm:items-center gap-2 md:gap-4 w-full md:w-auto min-w-0">
           <div className="flex items-center justify-between gap-2 shrink-0 h-7 sm:h-8 md:h-auto pr-12 md:pr-0">
             <h1 className="page-title text-sm md:text-base font-extrabold text-slate-900 border-l-4 border-primary pl-2 shrink-0">
-              Công việc
+              {category === 'direct' ? 'Việc phát sinh' : (isAdmin ? 'Công việc của tôi' : 'Công việc dự án')}
             </h1>
           </div>
-          <SharedTaskTabs 
-            activeTab="my-tasks"
-            category={category}
-            onCategoryChange={(newCat) => {
-              setCategory(newCat);
-              const nextParams = new URLSearchParams(searchParams);
-              nextParams.set('category', newCat);
-              navigate({ search: nextParams.toString() }, { replace: true });
-            }}
-          />
         </div>
 
         <div className="flex items-center gap-2 w-full md:w-auto shrink-0 flex-wrap sm:flex-nowrap">

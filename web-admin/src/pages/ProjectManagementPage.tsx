@@ -1,7 +1,7 @@
 
 
 import React, { useMemo, useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useRealtimeStore } from '../services/realtimeStore';
 import { useAuthStore, hasPermission, canManageItem } from '../services/authStore';
 import { Project, Task, isTaskSectionHeaderItem, isTaskActuallyDone, getTaskEffectiveProgress } from '../types';
@@ -143,8 +143,25 @@ export const ProjectManagementPage: React.FC = () => {
 
   const currentUser = useAuthStore(state => state.user);
 
+  const [searchParams, setSearchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'completed' | 'on_hold'>('active');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'completed' | 'on_hold'>(() => {
+    const s = searchParams.get('status');
+    if (s === 'all' || s === 'active' || s === 'completed' || s === 'on_hold') {
+      return s;
+    }
+    return 'active';
+  });
+
+  useEffect(() => {
+    const s = searchParams.get('status');
+    if (s && (s === 'all' || s === 'active' || s === 'completed' || s === 'on_hold')) {
+      if (s !== statusFilter) {
+        setStatusFilter(s);
+      }
+    }
+  }, [searchParams]);
+
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [filterDateFrom, setFilterDateFrom] = useState('');
   const [filterDateTo, setFilterDateTo] = useState('');
@@ -1153,12 +1170,22 @@ export const ProjectManagementPage: React.FC = () => {
         {/* Nhóm bộ lọc bên trái: Tiêu đề + Trạng thái + Phân loại + Ngày */}
         <div className="flex items-center gap-2 flex-wrap min-w-0">
           <div className="border-l-4 border-primary pl-2 flex items-center shrink-0">
-            <h1 className="page-title text-sm md:text-base font-extrabold text-slate-900 shrink-0">{TEXT.projectManagement}</h1>
+            <h1 className="page-title text-sm md:text-base font-extrabold text-slate-900 shrink-0">
+              {statusFilter === 'active' ? 'Dự án đang triển khai' : statusFilter === 'completed' ? 'Dự án hoàn thành' : 'Tất cả dự án'}
+            </h1>
           </div>
 
           <CustomSelect
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as 'all' | 'active' | 'completed' | 'on_hold')}
+            onChange={(e) => {
+              const val = e.target.value as 'all' | 'active' | 'completed' | 'on_hold';
+              setStatusFilter(val);
+              setSearchParams(prev => {
+                const next = new URLSearchParams(prev);
+                next.set('status', val);
+                return next;
+              }, { replace: true });
+            }}
             className="h-[34px] min-w-[130px] sm:min-w-[145px] rounded-lg border border-slate-200 bg-white px-2 text-xs font-bold text-slate-700 shadow-2xs outline-none focus:border-primary shrink-0"
           >
             <option value="all">Tất cả ({counts.all})</option>
