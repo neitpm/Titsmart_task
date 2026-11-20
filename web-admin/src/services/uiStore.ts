@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { platformAuthClient } from './platformAuthClient';
 import { persist } from 'zustand/middleware';
 import { api } from './apiSupabase';
 
@@ -103,6 +104,28 @@ export const useUIStore = create<UIStoreState>()(
 
       fetchBrandingFromCloud: async () => {
         try {
+          const { data: platformSession } = await platformAuthClient.auth.getSession();
+          const platformUser = platformSession.session?.user;
+          const companyId = platformUser?.user_metadata?.company_id;
+          if (companyId) {
+            const token = platformSession.session?.access_token || '';
+            const base = import.meta.env.VITE_PLATFORM_PROVISION_URL || 'http://127.0.0.1:55400';
+            const response = await fetch(`${base}/api/v1/companies/${companyId}/settings`, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            if (response.ok) {
+              const settings = await response.json();
+              set({
+                companyName: settings.name?.trim() || get().companyName,
+                companySlogan: settings.slogan || '',
+                companyLogo: settings.logo_url || null,
+                companyHotline: settings.hotline || '',
+                companyAddress: settings.address || '',
+                companyEmail: settings.contact_email || '',
+              });
+              return;
+            }
+          }
           const config = await api.branding.get();
           if (config) {
             set({
