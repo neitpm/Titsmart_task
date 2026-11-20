@@ -1,10 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-labelledby="title">
   <title id="title">WORKCORE Company App</title>
-  <rect x="10" y="10" width="100" height="100" rx="25" fill="#0b347f"/>
-  <rect x="27" y="29" width="54" height="62" rx="8" fill="#fff" opacity=".96"/>
-  <path d="M35 43h28M35 54h18M35 72l6 6 12-14" fill="none" stroke="#0b347f" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
-  <rect x="68" y="52" width="25" height="36" rx="6" fill="#2563eb"/>
-  <path d="M75 70l5 5 9-11" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="84" cy="34" r="12" fill="#f59e0b"/>
-  <path d="M78 34h12M84 28v12" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+  <path d="M60 7 106 33v54l-46 26L14 87V33z" fill="#0b347f"/>
+  <path d="M32 38 43 82l17-25 17 25 11-44" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="m69 78 8 8 15-18" fill="none" stroke="#f59e0b" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>
