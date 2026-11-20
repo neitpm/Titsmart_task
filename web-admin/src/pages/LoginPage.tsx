@@ -95,7 +95,7 @@ export const LoginPage: React.FC<{ onSwitchStyle?: () => void }> = ({ onSwitchSt
                   <div>
                     {/* Centered Logo & Header */}
                     <div className="flex flex-col items-start mb-6">
-                      <div className="w-14 h-14 rounded-2xl bg-white border border-slate-200 flex items-center justify-center shadow-sm overflow-hidden mb-4 p-2">
+                      <div className="w-16 h-16 flex items-center justify-center overflow-hidden mb-4">
                         <img src={companyLogo} alt={companyName} className="w-full h-full object-contain" />
                       </div>
                       <h1 className="text-3xl font-extrabold text-primary tracking-tight mb-1">{companyName}</h1>
