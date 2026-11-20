@@ -11,7 +11,7 @@ export const LoginPage: React.FC<{ onSwitchStyle?: () => void }> = ({ onSwitchSt
   const login = useAuthStore((state) => state.login);
   const companyName = useUIStore((state) => state.companyName) || 'WORKCORE';
   const companySlogan = useUIStore((state) => state.companySlogan) || 'COMPANY APP';
-  const companyLogo = useUIStore((state) => state.companyLogo) || './logo.png';
+  const companyLogo = useUIStore((state) => state.companyLogo) || './workcore-logo.svg';
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);

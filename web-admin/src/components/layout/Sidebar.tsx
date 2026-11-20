@@ -49,7 +49,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
 
   const activeCompanyName = companyName?.trim() || 'WORKCORE';
   const activeCompanySlogan = companySlogan?.trim() || 'COMPANY APP';
-  const activeCompanyLogo = companyLogo || './logo.png';
+  const activeCompanyLogo = companyLogo || './workcore-logo.svg';
 
   // Tự động co giãn cỡ chữ theo độ dài để hiển thị trọn vẹn không bị cắt ba chấm
   const nameLength = activeCompanyName.length;
