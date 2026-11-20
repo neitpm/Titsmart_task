@@ -76,7 +76,7 @@
     ],
     "win": {
       "target": "nsis",
-      "icon": "public/workcore-app.ico"
+      "icon": "public/workcore-app.png"
     },
     "publish": {
       "provider": "github",
