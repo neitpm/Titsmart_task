@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuthStore } from '../services/authStore';
+import { saveSession, useAuthStore } from '../services/authStore';
 import { useRealtimeStore } from '../services/realtimeStore';
 import { useUIStore } from '../services/uiStore';
 import { platformAuthClient } from '../services/platformAuthClient';
@@ -49,6 +49,22 @@ export const LoginPage: React.FC<{ onSwitchStyle?: () => void }> = ({ onSwitchSt
         if (!platformError) {
           const { data: platformUser } = await platformAuthClient.auth.getUser();
           const companyRole = platformUser.user?.user_metadata?.company_role;
+          const platformUserData = platformUser.user;
+          if (platformUserData) {
+            const appUser = {
+              id: platformUserData.id,
+              username: platformUserData.user_metadata?.name || platformUserData.email || username.trim(),
+              name: platformUserData.user_metadata?.name || platformUserData.email || username.trim(),
+              role: companyRole === 'company_admin' ? 'admin' : 'staff',
+              title: companyRole === 'company_admin' ? 'Company Admin' : 'Nhân viên',
+              email: platformUserData.email || username.trim(),
+              phone: '', projectCodes: [], permissions: [],
+              companyId: platformUserData.user_metadata?.company_id || '',
+              companyRole: companyRole || 'member', platformRole: 'user',
+            } as any;
+            saveSession(appUser);
+            useAuthStore.setState({ user: appUser });
+          }
           navigate(companyRole === 'company_admin' ? '/company-admin' : '/', { replace: true });
         } else {
           setError(result.error || 'Đăng nhập thất bại.');

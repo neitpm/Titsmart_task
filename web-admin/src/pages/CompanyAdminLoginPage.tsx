@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, Eye, EyeOff, Key, Lock, User } from 'lucide-react';
 import { platformAuthClient } from '../services/platformAuthClient';
-import { useAuthStore } from '../services/authStore';
+import { saveSession, useAuthStore } from '../services/authStore';
 
 export const CompanyAdminLoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -23,6 +23,20 @@ export const CompanyAdminLoginPage: React.FC = () => {
     if (!authError) {
       const { data: platformUser } = await platformAuthClient.auth.getUser();
       const companyRole = platformUser.user?.user_metadata?.company_role;
+      const platformUserData = platformUser.user;
+      if (platformUserData) {
+        const appUser = {
+          id: platformUserData.id,
+          username: platformUserData.user_metadata?.name || platformUserData.email || email.trim(),
+          name: platformUserData.user_metadata?.name || platformUserData.email || email.trim(),
+          role: companyRole === 'company_admin' ? 'admin' : 'staff',
+          title: companyRole === 'company_admin' ? 'Company Admin' : 'Nhân viên',
+          email: platformUserData.email || email.trim(), phone: '', projectCodes: [], permissions: [],
+          companyId: platformUserData.user_metadata?.company_id || '', companyRole: companyRole || 'member', platformRole: 'user',
+        } as any;
+        saveSession(appUser);
+        useAuthStore.setState({ user: appUser });
+      }
       navigate(companyRole === 'company_admin' ? '/company-admin' : '/', { replace: true });
       return;
     }
