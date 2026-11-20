@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useUIStore } from '../../services/uiStore';
 import { useAuthStore } from '../../services/authStore';
 import { broadcastRealtimeSync } from '../../services/realtimeStore';
-import { uploadAttachment } from '../../utils/fileUploadHelper';
+import { deleteStorageFiles, uploadAttachment } from '../../utils/fileUploadHelper';
 import { Modal } from './Modal';
 import { ChangePasswordModal } from './ChangePasswordModal';
 import { RoleLevelConfigModal } from './RoleLevelConfigModal';
@@ -329,7 +329,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                           <button
                             type="button"
                             disabled={isSaving}
-                            onClick={() => setInputCompanyLogo(null)}
+                            onClick={() => {
+                              if (inputCompanyLogo) deleteStorageFiles([inputCompanyLogo]);
+                              setInputCompanyLogo(null);
+                            }}
                             className="px-2 py-1.5 rounded-lg border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-semibold transition-all flex items-center gap-1 cursor-pointer disabled:opacity-50"
                             title="Dùng lại logo mặc định"
                           >

@@ -250,3 +250,65 @@ export function getOptimizedImageUrl(url?: string | null, width = 600, quality =
   return trimmed;
 }
 
+/**
+ * Trích xuất đường dẫn file tương đối (object path) trong bucket 'titsmart-images' từ Public URL hoặc transformed URL
+ */
+export function extractStoragePath(url?: string | null): string | null {
+  if (!url || typeof url !== 'string') return null;
+  const trimmed = url.trim();
+  if (!trimmed || trimmed.startsWith('data:') || trimmed.startsWith('blob:')) return null;
+
+  const bucketMarker = 'titsmart-images/';
+  const idx = trimmed.indexOf(bucketMarker);
+  let path = '';
+  if (idx !== -1) {
+    path = trimmed.substring(idx + bucketMarker.length);
+  } else if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://') && trimmed.includes('/')) {
+    path = trimmed;
+  } else {
+    return null;
+  }
+
+  // Bỏ query parameters (?t=... &width=...) và URL fragment (#...)
+  path = path.split('?')[0].split('#')[0];
+  try {
+    path = decodeURIComponent(path);
+  } catch {}
+  return path.trim() || null;
+}
+
+/**
+ * Xóa một hoặc nhiều file/hình ảnh khỏi Supabase Storage bucket 'titsmart-images'
+ * Tự động phân tích danh sách (hỗ trợ single URL, chuỗi JSON array, mảng URLs, relative paths)
+ * Tránh làm đầy dung lượng Storage khi người dùng xóa bản ghi hoặc xóa tệp đính kèm.
+ */
+export async function deleteStorageFiles(urlsOrPaths: (string | null | undefined)[]): Promise<void> {
+  if (!urlsOrPaths || urlsOrPaths.length === 0) return;
+  const pathsToDelete: string[] = [];
+
+  for (const item of urlsOrPaths) {
+    if (!item) continue;
+    const parsed = parseInvoiceUrls(item);
+    for (const u of parsed) {
+      const p = extractStoragePath(u);
+      if (p && !pathsToDelete.includes(p)) {
+        pathsToDelete.push(p);
+      }
+    }
+  }
+
+  if (pathsToDelete.length === 0) return;
+
+  try {
+    const { error } = await supabase.storage.from('titsmart-images').remove(pathsToDelete);
+    if (error) {
+      console.warn('[Storage] Cảnh báo lỗi khi xóa file khỏi Storage:', error);
+    } else {
+      console.log('[Storage] Đã dọn dẹp file thành công khỏi Storage:', pathsToDelete);
+    }
+  } catch (err) {
+    console.warn('[Storage] Ngoại lệ khi xóa file khỏi Storage:', err);
+  }
+}
+
+

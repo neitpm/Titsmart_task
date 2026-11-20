@@ -4,7 +4,7 @@ import { useRealtimeStore } from '../../services/realtimeStore';
 import { useUIStore } from '../../services/uiStore';
 import { DirectMessage, Engineer, Project } from '../../types';
 import { supabase } from '../../lib/supabase';
-import { uploadAttachment } from '../../utils/fileUploadHelper';
+import { deleteStorageFiles, uploadAttachment } from '../../utils/fileUploadHelper';
 import { isUserMemberOfProject } from '../../utils/projectMemberUtils';
 import { sendSystemNotification, requestSystemNotificationPermission } from '../../services/systemNotificationService';
 
@@ -815,7 +815,7 @@ export const ChatWidget: React.FC = () => {
                         </span>
                         <span className="truncate font-medium max-w-[220px]">{selectedFile.name}</span>
                       </div>
-                      <button type="button" onClick={() => setSelectedFile(null)} className="text-red-500 hover:text-red-700 font-bold ml-2">✕</button>
+                      <button type="button" onClick={() => { if (selectedFile?.url) deleteStorageFiles([selectedFile.url]); setSelectedFile(null); }} className="text-red-500 hover:text-red-700 font-bold ml-2">✕</button>
                     </div>
                   )}
 
@@ -1116,7 +1116,7 @@ export const ChatWidget: React.FC = () => {
                             </span>
                             <span className="truncate font-medium max-w-[220px]">{selectedFile.name}</span>
                           </div>
-                          <button type="button" onClick={() => setSelectedFile(null)} className="text-red-500 hover:text-red-700 font-bold ml-2">✕</button>
+                          <button type="button" onClick={() => { if (selectedFile?.url) deleteStorageFiles([selectedFile.url]); setSelectedFile(null); }} className="text-red-500 hover:text-red-700 font-bold ml-2">✕</button>
                         </div>
                       )}
 

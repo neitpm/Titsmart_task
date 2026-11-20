@@ -16,7 +16,7 @@ import { AuditInfoCell } from '../components/common/AuditInfoCell';
 import { TaskDiscussionModal } from '../components/tasks/TaskDiscussionModal';
 import { appendTaskDiscussion, getLatestDiscussion, stripDiscussionThread, parseTaskDiscussions } from '../utils/taskDiscussion';
 import { getEngineersForProject } from '../utils/projectMemberUtils';
-import { uploadAttachment } from '../utils/fileUploadHelper';
+import { deleteStorageFiles, uploadAttachment } from '../utils/fileUploadHelper';
 import { PullToRefresh } from '../components/common/PullToRefresh';
 import { isUserTaskAssignee, isUserTaskAssigner, isUserTaskFollower, isTaskReadyForAssignment, getTaskDiscussionSenderRole } from '../utils/taskPermission';
 import { getTaskTimeBounds } from '../utils/taskPeriodFilter';
@@ -3580,7 +3580,7 @@ const hasSyncedRef = useRef(false);
                   </span>
                   <span className="truncate font-medium max-w-[240px]">{assignSelectedFile.name}</span>
                 </div>
-                <button type="button" onClick={() => setAssignSelectedFile(null)} className="text-red-500 hover:text-red-700 font-bold ml-2 cursor-pointer">✕</button>
+                <button type="button" onClick={() => { if (assignSelectedFile?.url) deleteStorageFiles([assignSelectedFile.url]); setAssignSelectedFile(null); }} className="text-red-500 hover:text-red-700 font-bold ml-2 cursor-pointer">✕</button>
               </div>
             )}
 
@@ -3943,7 +3943,7 @@ const hasSyncedRef = useRef(false);
                       </span>
                       <span className="truncate font-medium max-w-[240px]">{assignSelectedFile.name}</span>
                     </div>
-                    <button type="button" onClick={() => setAssignSelectedFile(null)} className="text-red-500 hover:text-red-700 font-bold ml-2 cursor-pointer">✕</button>
+                    <button type="button" onClick={() => { if (assignSelectedFile?.url) deleteStorageFiles([assignSelectedFile.url]); setAssignSelectedFile(null); }} className="text-red-500 hover:text-red-700 font-bold ml-2 cursor-pointer">✕</button>
                   </div>
                 )}
 

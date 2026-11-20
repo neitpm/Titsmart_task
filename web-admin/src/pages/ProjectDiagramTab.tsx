@@ -8,6 +8,7 @@ import { Toast } from '../components/common/Toast';
 import { Modal } from '../components/common/Modal';
 import { FileViewerItem } from '../components/common/FileViewerItem';
 import { ConfirmModal } from '../components/common/ConfirmModal';
+import { deleteStorageFiles } from '../utils/fileUploadHelper';
 
 export const ProjectDiagramTab: React.FC = () => {
   const { projectId } = useParams();
@@ -130,11 +131,16 @@ export const ProjectDiagramTab: React.FC = () => {
     if (deleteIndex === null || !project) return;
     setIsSaving(true);
     try {
+      const itemToDelete = savedDiagrams[deleteIndex];
       const newSaved = [...savedDiagrams];
       newSaved.splice(deleteIndex, 1);
       const combinedUrls = newSaved.length > 0 ? JSON.stringify(newSaved) : '';
       const updated = await updateProject(project.id, { diagramUrl: combinedUrls });
       if (updated) {
+        if (itemToDelete) {
+          const fileUrl = typeof itemToDelete === 'string' ? itemToDelete : (itemToDelete as any)?.url;
+          if (fileUrl) await deleteStorageFiles([fileUrl]);
+        }
         triggerToast('Đã xóa sơ đồ thành công!', 'success');
       }
     } catch (err) {

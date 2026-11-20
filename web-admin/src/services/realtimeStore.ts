@@ -1618,7 +1618,7 @@ export const useRealtimeStore = create<RealtimeStoreState>((set, get) => {
     deleteTask: async (id) => {
       try {
         const taskToDelete = get().tasks.find(t => t.id === id);
-        await api.tasks.delete(id);
+        await api.tasks.delete(id, taskToDelete?.notes);
         set((state) => {
           const nextTasks = state.tasks.filter((t) => t.id !== id);
           const projectCode = taskToDelete?.projectCode;
@@ -2385,10 +2385,11 @@ export const useRealtimeStore = create<RealtimeStoreState>((set, get) => {
 
     deleteMaterialPlan: async (id) => {
       try {
-        await api.accounting.deleteMaterialPlan(id);
+        const plan = get().materialPlans.find((p) => p.id === id);
+        await api.accounting.deleteMaterialPlan(id, plan);
         set((state) => {
           const nextPlans = state.materialPlans.filter((p) => p.id !== id);
-          const plan = state.materialPlans.find(p=>p.id===id); get().logActivity('Xóa kế hoạch vật tư: ' + (plan?.jobContent || id), 'COMPANY');
+          get().logActivity('Xóa kế hoạch vật tư: ' + (plan?.jobContent || id), 'COMPANY');
           persistAndNotify({ materialPlans: nextPlans });
           return { materialPlans: nextPlans };
         });
@@ -2541,10 +2542,11 @@ export const useRealtimeStore = create<RealtimeStoreState>((set, get) => {
 
     deleteExpense: async (id) => {
       try {
-        await api.accounting.deleteExpense(id);
+        const exp = get().expenses.find((e) => e.id === id);
+        await api.accounting.deleteExpense(id, exp?.invoiceUrl);
         set((state) => {
           const nextExps = state.expenses.filter((e) => e.id !== id);
-          const exp = state.expenses.find(e=>e.id===id); get().logActivity('Xóa chi phí: ' + (exp?.content || id), 'COMPANY');
+          get().logActivity('Xóa chi phí: ' + (exp?.content || id), 'COMPANY');
           persistAndNotify({ expenses: nextExps });
           return { expenses: nextExps };
         });
@@ -2752,10 +2754,11 @@ export const useRealtimeStore = create<RealtimeStoreState>((set, get) => {
 
     deleteDocumentTrack: async (id) => {
       try {
-        await api.accounting.deleteDocumentTrack(id);
+        const doc = get().documentTracks.find((d) => d.id === id);
+        await api.accounting.deleteDocumentTrack(id, doc?.fileUrls);
         set((state) => {
           const nextTracks = state.documentTracks.filter((d) => d.id !== id);
-          const doc = state.documentTracks.find(d=>d.id===id); get().logActivity('Xóa hồ sơ gửi đi: ' + (doc?.contractName || id), 'COMPANY');
+          get().logActivity('Xóa hồ sơ gửi đi: ' + (doc?.contractName || id), 'COMPANY');
           persistAndNotify({ documentTracks: nextTracks });
           return { documentTracks: nextTracks };
         });

@@ -4,7 +4,7 @@ import { TaskDiscussionItem, parseTaskDiscussions, appendTaskDiscussion } from '
 import { useAuthStore } from '../../services/authStore';
 import { useRealtimeStore } from '../../services/realtimeStore';
 import { Modal } from '../common/Modal';
-import { uploadAttachment } from '../../utils/fileUploadHelper';
+import { deleteStorageFiles, uploadAttachment } from '../../utils/fileUploadHelper';
 import { isUserTaskAssignee, isUserTaskAssigner, isUserTaskFollower, getTaskDiscussionSenderRole, isDiscussionSenderAssignee } from '../../utils/taskPermission';
 
 export interface TaskDiscussionModalProps {
@@ -470,7 +470,7 @@ export const TaskDiscussionModal: React.FC<TaskDiscussionModalProps> = ({
                   </span>
                   <span className="truncate font-medium max-w-[280px]">{selectedFile.name}</span>
                 </div>
-                <button type="button" onClick={() => setSelectedFile(null)} className="text-red-500 hover:text-red-700 font-bold ml-2">✕</button>
+                <button type="button" onClick={() => { if (selectedFile?.url) deleteStorageFiles([selectedFile.url]); setSelectedFile(null); }} className="text-red-500 hover:text-red-700 font-bold ml-2">✕</button>
               </div>
             )}
 

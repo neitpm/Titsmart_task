@@ -4,7 +4,7 @@ import { useAuthStore, isSystemAdmin, isDirector, hasPermission } from '../servi
 import { useUIStore } from '../services/uiStore';
 import { useRoleLevelStore, CustomRoleLevel, DEFAULT_ROLE_LEVELS } from '../services/roleLevelStore';
 import { useRealtimeStore } from '../services/realtimeStore';
-import { uploadAttachment } from '../utils/fileUploadHelper';
+import { deleteStorageFiles, uploadAttachment } from '../utils/fileUploadHelper';
 import { Permission } from '../types';
 import { ChangePasswordModal } from '../components/common/ChangePasswordModal';
 import { Toast } from '../components/common/Toast';
@@ -851,6 +851,7 @@ export const SettingsPage: React.FC = () => {
                               <button
                                 type="button"
                                 onClick={() => {
+                                  if (inputCompanyLogo) deleteStorageFiles([inputCompanyLogo]);
                                   setInputCompanyLogo(null);
                                   triggerToast('Đã khôi phục logo mặc định!', 'info');
                                 }}

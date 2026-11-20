@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { parseInvoiceUrls, uploadAttachment } from '../../utils/fileUploadHelper';
+import { deleteStorageFiles, parseInvoiceUrls, uploadAttachment } from '../../utils/fileUploadHelper';
 
 interface ImageUploadProps {
   label: string;
@@ -119,8 +119,12 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({ label, name, value: in
   };
 
   const handleRemove = (indexToRemove: number) => {
+    const removedUrl = localValues[indexToRemove];
     const newValues = localValues.filter((_, idx) => idx !== indexToRemove);
     setLocalValues(newValues);
+    if (removedUrl) {
+      deleteStorageFiles([removedUrl]);
+    }
     if (onChange) {
       onChange(multiple ? newValues : newValues[0] || '');
     }

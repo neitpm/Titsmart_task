@@ -1,6 +1,24 @@
 import { supabase, isCloudSupabase } from '../lib/supabase';
 import { v4 as uuidv4 } from 'uuid';
 import { NotificationItem } from '../types';
+import { deleteStorageFiles, parseInvoiceUrls } from '../utils/fileUploadHelper';
+
+/**
+ * Trích xuất mọi link Storage titsmart-images từ một đối tượng/chuỗi bất kỳ để dọn dẹp Storage
+ */
+const extractStorageUrlsFromRaw = (raw?: any): string[] => {
+  if (!raw) return [];
+  const str = typeof raw === 'string' ? raw : JSON.stringify(raw);
+  const regex = /https?:\/\/[^\s"'\\]+titsmart-images\/[^\s"'\\]+/g;
+  const matches = str.match(regex);
+  if (!matches) return [];
+  const results: string[] = [];
+  for (const m of matches) {
+    const clean = m.replace(/[",)\]]+$/, '');
+    if (!results.includes(clean)) results.push(clean);
+  }
+  return results;
+};
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -418,6 +436,37 @@ export const api = {
 
       // 2. Cascade delete linked items in all related tables
       const codes = [targetCode, id].filter(Boolean);
+
+      // Dọn dẹp Storage liên quan đến dự án (ảnh nhật trình, hóa đơn chi phí, hồ sơ, sơ đồ)
+      try {
+        const fileUrlsToPurge: string[] = [];
+        for (const code of codes) {
+          const [expRes, flRes, dtRes, taskRes] = await Promise.allSettled([
+            supabase.from('expenses').select('invoice_url').eq('project_code', code),
+            supabase.from('field_logs').select('photos').eq('project_code', code),
+            supabase.from('document_tracks').select('file_urls').eq('project_code', code),
+            supabase.from('tasks').select('notes').eq('project_code', code),
+          ]);
+          if (expRes.status === 'fulfilled' && expRes.value.data) {
+            fileUrlsToPurge.push(...extractStorageUrlsFromRaw(expRes.value.data));
+          }
+          if (flRes.status === 'fulfilled' && flRes.value.data) {
+            fileUrlsToPurge.push(...extractStorageUrlsFromRaw(flRes.value.data));
+          }
+          if (dtRes.status === 'fulfilled' && dtRes.value.data) {
+            fileUrlsToPurge.push(...extractStorageUrlsFromRaw(dtRes.value.data));
+          }
+          if (taskRes.status === 'fulfilled' && taskRes.value.data) {
+            fileUrlsToPurge.push(...extractStorageUrlsFromRaw(taskRes.value.data));
+          }
+        }
+        if (fileUrlsToPurge.length > 0) {
+          await deleteStorageFiles(fileUrlsToPurge);
+        }
+      } catch (stErr) {
+        console.warn('[Storage] Cảnh báo lỗi dọn dẹp Storage khi xóa dự án:', stErr);
+      }
+
       const deletePromises: PromiseLike<any>[] = [];
 
       codes.forEach((code) => {
@@ -865,7 +914,22 @@ export const api = {
       }
       throw lastError;
     },
-    delete: async (id: string) => {
+    delete: async (id: string, knownNotes?: string) => {
+      // Dọn dẹp triệt để các hình ảnh/tài liệu đính kèm trong trao đổi & ghi chú của công việc
+      try {
+        let rawContent: any = knownNotes;
+        if (!rawContent) {
+          const { data: tRow } = await supabase.from('tasks').select('notes, attachments').eq('id', id).maybeSingle();
+          if (tRow) rawContent = tRow;
+        }
+        if (rawContent) {
+          const urls = extractStorageUrlsFromRaw(rawContent);
+          if (urls.length > 0) await deleteStorageFiles(urls);
+        }
+      } catch (stErr) {
+        console.warn('[Storage] Cảnh báo lỗi dọn dẹp file công việc:', stErr);
+      }
+
       const { error } = await supabase.from('tasks').delete().eq('id', id);
       if (error) throw error;
       return { success: true };
@@ -1639,7 +1703,22 @@ export const api = {
         return { id, ...data };
       }
     },
-    deleteMaterialPlan: async (id: string) => {
+    deleteMaterialPlan: async (id: string, knownPlan?: any) => {
+      // Dọn dẹp triệt để các file chứng chỉ CO-CQ/file đính kèm khỏi Storage
+      try {
+        let rawData = knownPlan;
+        if (!rawData) {
+          const { data: mpRow } = await supabase.from('material_plans').select('models, file_urls').eq('id', id).maybeSingle();
+          if (mpRow) rawData = mpRow;
+        }
+        if (rawData) {
+          const urls = extractStorageUrlsFromRaw(rawData);
+          if (urls.length > 0) await deleteStorageFiles(urls);
+        }
+      } catch (stErr) {
+        console.warn('[Storage] Cảnh báo lỗi dọn dẹp file kế hoạch vật tư:', stErr);
+      }
+
       const { error } = await supabase.from('material_plans').delete().eq('id', id);
       if (error) throw error;
       return { success: true };
@@ -1842,6 +1921,24 @@ export const api = {
       return (result || []).map(toCamelCase);
     },
     updateExpense: async (id: string, data: any) => {
+      // Tự động dọn dẹp Storage nếu người dùng xóa bớt ảnh/file hóa đơn khi chỉnh sửa
+      if (data.invoiceUrl !== undefined || data.invoice_url !== undefined) {
+        try {
+          const nextUrl = data.invoice_url ?? data.invoiceUrl ?? '';
+          const { data: oldRow } = await supabase.from('expenses').select('invoice_url').eq('id', id).maybeSingle();
+          if (oldRow && oldRow.invoice_url) {
+            const oldList = parseInvoiceUrls(oldRow.invoice_url);
+            const nextList = parseInvoiceUrls(nextUrl);
+            const removed = oldList.filter(u => !nextList.includes(u));
+            if (removed.length > 0) {
+              await deleteStorageFiles(removed);
+            }
+          }
+        } catch (e) {
+          console.warn('[Storage] Cảnh báo lỗi dọn dẹp ảnh hóa đơn bị gỡ bỏ:', e);
+        }
+      }
+
       const payload = toSnakeCase(data);
       delete payload.id;
       delete payload.auto_balance;
@@ -1863,7 +1960,22 @@ export const api = {
       }
       return toCamelCase(result);
     },
-    deleteExpense: async (id: string) => {
+    deleteExpense: async (id: string, knownInvoiceUrl?: string) => {
+      // Dọn dẹp triệt để file/ảnh hóa đơn, chứng từ, UNC khỏi Storage để tránh đầy bộ nhớ
+      try {
+        let invoiceUrl = knownInvoiceUrl;
+        if (!invoiceUrl) {
+          const { data: expRow } = await supabase.from('expenses').select('invoice_url').eq('id', id).maybeSingle();
+          if (expRow && expRow.invoice_url) invoiceUrl = expRow.invoice_url;
+        }
+        if (invoiceUrl) {
+          const urls = parseInvoiceUrls(invoiceUrl);
+          await deleteStorageFiles(urls);
+        }
+      } catch (stErr) {
+        console.warn('[Storage] Cảnh báo lỗi dọn dẹp file chi phí:', stErr);
+      }
+
       const { error } = await supabase.from('expenses').delete().eq('id', id);
       if (error) throw error;
       return { success: true };
@@ -2220,7 +2332,22 @@ export const api = {
         updatedAt: res?.updated_at || new Date().toISOString()
       };
     },
-    deleteDocumentTrack: async (id: string) => {
+    deleteDocumentTrack: async (id: string, knownFileUrls?: any) => {
+      // Dọn dẹp triệt để file đính kèm/hồ sơ khỏi Storage để tránh đầy bộ nhớ
+      try {
+        let fileUrls = knownFileUrls;
+        if (!fileUrls) {
+          const { data: docRow } = await supabase.from('document_tracks').select('file_urls').eq('id', id).maybeSingle();
+          if (docRow && docRow.file_urls) fileUrls = docRow.file_urls;
+        }
+        if (fileUrls) {
+          const list = Array.isArray(fileUrls) ? fileUrls : parseInvoiceUrls(fileUrls);
+          await deleteStorageFiles(list);
+        }
+      } catch (stErr) {
+        console.warn('[Storage] Cảnh báo lỗi dọn dẹp file theo dõi hồ sơ:', stErr);
+      }
+
       try {
         await supabase.from('document_tracks').delete().eq('id', id);
       } catch {
@@ -2301,8 +2428,7 @@ export const api = {
     delete: async (id: string) => {
       const { data } = await supabase.from('field_logs').select('photos').eq('id', id).single();
       if (data && data.photos && data.photos.length > 0) {
-        const paths = data.photos.map((url: any) => typeof url === 'string' ? url.split('titsmart-images/')[1] : null).filter(Boolean);
-        if (paths.length > 0) await supabase.storage.from('titsmart-images').remove(paths);
+        await deleteStorageFiles(data.photos);
       }
       const { error } = await supabase.from('field_logs').delete().eq('id', id);
       if (error) throw error;
@@ -2319,8 +2445,7 @@ export const api = {
         if (oldData && oldData.photos) {
            const removed = oldData.photos.filter((url: any) => !payload.photos.includes(url));
            if (removed.length > 0) {
-              const paths = removed.map((url: any) => typeof url === 'string' ? url.split('titsmart-images/')[1] : null).filter(Boolean);
-              if (paths.length > 0) await supabase.storage.from('titsmart-images').remove(paths);
+              await deleteStorageFiles(removed);
            }
         }
       }
@@ -2574,6 +2699,15 @@ export const api = {
       return { id: data.id, ...payloadData } as any;
     },
     delete: async (id: string) => {
+      try {
+        const { data } = await supabase.from('activity_logs').select('action').eq('id', id).maybeSingle();
+        if (data && data.action) {
+          const urls = extractStorageUrlsFromRaw(data.action);
+          if (urls.length > 0) await deleteStorageFiles(urls);
+        }
+      } catch (stErr) {
+        console.warn('[Storage] Cảnh báo lỗi dọn dẹp ảnh chấm công:', stErr);
+      }
       const { error } = await supabase.from('activity_logs').delete().eq('id', id);
       if (error) throw error;
       return { success: true };
@@ -2714,6 +2848,15 @@ export const api = {
       return { id: data.id, ...payloadData } as any;
     },
     delete: async (id: string) => {
+      try {
+        const { data } = await supabase.from('activity_logs').select('action').eq('id', id).maybeSingle();
+        if (data && data.action) {
+          const urls = extractStorageUrlsFromRaw(data.action);
+          if (urls.length > 0) await deleteStorageFiles(urls);
+        }
+      } catch (stErr) {
+        console.warn('[Storage] Cảnh báo lỗi dọn dẹp ảnh chấm công:', stErr);
+      }
       const { error } = await supabase.from('activity_logs').delete().eq('id', id);
       if (error) throw error;
       return { success: true };
@@ -2858,6 +3001,15 @@ export const api = {
       return { id: data.id, ...payloadData } as any;
     },
     delete: async (id: string) => {
+      try {
+        const { data } = await supabase.from('activity_logs').select('action').eq('id', id).maybeSingle();
+        if (data && data.action) {
+          const urls = extractStorageUrlsFromRaw(data.action);
+          if (urls.length > 0) await deleteStorageFiles(urls);
+        }
+      } catch (stErr) {
+        console.warn('[Storage] Cảnh báo lỗi dọn dẹp ảnh chấm công:', stErr);
+      }
       const { error } = await supabase.from('activity_logs').delete().eq('id', id);
       if (error) throw error;
       return { success: true };
@@ -3099,6 +3251,15 @@ export const api = {
       return { id: rpcData.id || id, ...actionObj };
     },
     delete: async (id: string) => {
+      try {
+        const { data } = await supabase.from('activity_logs').select('action').eq('id', id).maybeSingle();
+        if (data && data.action) {
+          const urls = extractStorageUrlsFromRaw(data.action);
+          if (urls.length > 0) await deleteStorageFiles(urls);
+        }
+      } catch (stErr) {
+        console.warn('[Storage] Cảnh báo lỗi dọn dẹp ảnh chấm công:', stErr);
+      }
       const { error } = await supabase.from('activity_logs').delete().eq('id', id);
       if (error) throw error;
       return { success: true };

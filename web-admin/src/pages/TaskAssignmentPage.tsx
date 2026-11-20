@@ -11,7 +11,7 @@ import { Task, isTaskActuallyDone, isTaskSectionHeaderItem } from '../types';
 import { TaskDiscussionModal } from '../components/tasks/TaskDiscussionModal';
 import { appendTaskDiscussion, parseTaskDiscussions, getLatestDiscussion, stripDiscussionThread } from '../utils/taskDiscussion';
 import { getEngineersForProject } from '../utils/projectMemberUtils';
-import { uploadAttachment } from '../utils/fileUploadHelper';
+import { deleteStorageFiles, uploadAttachment } from '../utils/fileUploadHelper';
 import { Toast } from '../components/common/Toast';
 import { isUserTaskAssignee, isUserTaskAssigner, isUserTaskFollower, getTaskFollowerNames, isTaskReadyForAssignment, getTaskDiscussionSenderRole } from '../utils/taskPermission';
 import { EmployeePeriodToolbar } from '../components/tasks/EmployeePeriodToolbar';
@@ -2488,7 +2488,7 @@ export const TaskAssignmentPage: React.FC = () => {
                       </span>
                       <span className="truncate font-medium max-w-[240px]">{selectedFile.name}</span>
                     </div>
-                    <button type="button" onClick={() => setSelectedFile(null)} className="text-red-500 hover:text-red-700 font-bold ml-2 cursor-pointer">✕</button>
+                    <button type="button" onClick={() => { if (selectedFile?.url) deleteStorageFiles([selectedFile.url]); setSelectedFile(null); }} className="text-red-500 hover:text-red-700 font-bold ml-2 cursor-pointer">✕</button>
                   </div>
                 )}
 
