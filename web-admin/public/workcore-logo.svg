@@ -1,7 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-labelledby="title">
   <title id="title">WORKCORE Company App</title>
-  <rect x="22" y="18" width="76" height="88" rx="12" fill="#0b347f"/>
-  <rect x="38" y="10" width="44" height="20" rx="8" fill="#2563eb"/>
-  <path d="M38 48l7 7 13-15M38 75l7 7 13-15" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M68 48h16M68 75h16" stroke="#bfdbfe" stroke-width="6" stroke-linecap="round"/>
+  <rect x="10" y="10" width="100" height="100" rx="25" fill="#0b347f"/>
+  <rect x="27" y="29" width="54" height="62" rx="8" fill="#fff" opacity=".96"/>
+  <path d="M35 43h28M35 54h18M35 72l6 6 12-14" fill="none" stroke="#0b347f" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="68" y="52" width="25" height="36" rx="6" fill="#2563eb"/>
+  <path d="M75 70l5 5 9-11" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="84" cy="34" r="12" fill="#f59e0b"/>
+  <path d="M78 34h12M84 28v12" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
 </svg>
