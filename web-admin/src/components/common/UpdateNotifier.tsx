@@ -46,12 +46,12 @@ export const UpdateNotifier: React.FC = () => {
     setAvailableUpdateVersion(ver);
 
     // Gửi thông báo hệ thống ra ngoài ứng dụng (Desktop Windows / Mobile Phone)
-    const hasNotifiedKey = `titsmart_notified_ver_${ver}`;
+    const hasNotifiedKey = `workcore_notified_ver_${ver}`;
     if (!sessionStorage.getItem(hasNotifiedKey)) {
       sessionStorage.setItem(hasNotifiedKey, 'true');
       sendSystemNotification({
         id: `update-${ver}`,
-        title: `TITSMART có phiên bản mới v${ver}`,
+        title: `WORKCORE có phiên bản mới v${ver}`,
         body: `Bản cập nhật v${ver} đã sẵn sàng. Mở ứng dụng để cập nhật ngay!`,
       });
     }
@@ -103,7 +103,7 @@ export const UpdateNotifier: React.FC = () => {
       if (latestTag && compareVersions(latestTag, currentVerEnv) > 0) {
         const apkAsset = data.assets?.find((a: any) => a.name.toLowerCase().endsWith('.apk'));
         const downloadUrl = apkAsset?.browser_download_url 
-          || `https://github.com/neitpm/Titsmart_task/releases/download/v${latestTag}/TITSMART-v${latestTag}.apk`;
+          || `https://github.com/neitpm/Titsmart_task/releases/download/v${latestTag}/WORKCORE-v${latestTag}.apk`;
 
         notifyNewVersion(latestTag, 'web', downloadUrl);
       }
@@ -161,7 +161,7 @@ export const UpdateNotifier: React.FC = () => {
     if (isCapacitorNative) {
       const downloadUrl = (state.message && state.message.startsWith('http')) 
         ? state.message 
-        : `https://github.com/neitpm/Titsmart_task/releases/download/v${state.version || availableUpdateVersion}/TITSMART-v${state.version || availableUpdateVersion}.apk`;
+        : `https://github.com/neitpm/Titsmart_task/releases/download/v${state.version || availableUpdateVersion}/WORKCORE-v${state.version || availableUpdateVersion}.apk`;
       try {
         window.open(downloadUrl, '_system');
       } catch (_) {

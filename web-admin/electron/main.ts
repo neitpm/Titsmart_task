@@ -40,8 +40,8 @@ function getAppIcon() {
     path.join(__dirname, '../public/favicon.ico'),
     path.join(__dirname, '../dist/favicon.ico'),
     path.join(process.resourcesPath || '', 'favicon.ico'),
-    path.join(__dirname, '../public/logo.png'),
-    path.join(__dirname, '../dist/logo.png'),
+    path.join(__dirname, '../public/workcore-logo.svg'),
+    path.join(__dirname, '../dist/workcore-logo.svg'),
   ];
   for (const p of iconPaths) {
     if (fs.existsSync(p)) {
