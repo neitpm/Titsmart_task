@@ -3,6 +3,7 @@ import { Navigate, useNavigate } from 'react-router-dom';
 import { platformAuthClient } from '../services/platformAuthClient';
 import { fetchPlatformEntitlements, PlatformCompanyEntitlements } from '../services/platformEntitlements';
 import { getCompanySettings, updateCompanySettings } from '../services/companySettingsService';
+import { saveSession, useAuthStore } from '../services/authStore';
 
 const apiBase = import.meta.env.VITE_PLATFORM_PROVISION_URL || 'http://127.0.0.1:55400';
 const authToken = async () => (await platformAuthClient.auth.getSession()).data.session?.access_token || '';
@@ -252,6 +253,11 @@ export const CompanyAdminPortalPage: React.FC = () => {
   useEffect(() => {
     platformAuthClient.auth.getUser().then(async ({ data: result, error: authError }) => {
       if (authError || !result.user?.email) { setLoading(false); return; }
+      if (result.user.user_metadata?.company_role !== 'company_admin') {
+        navigate('/', { replace: true });
+        setLoading(false);
+        return;
+      }
       try {
         const entitlements = await fetchPlatformEntitlements({ email: result.user.email });
         setData(entitlements);
@@ -1100,7 +1106,7 @@ export const CompanyAdminPortalPage: React.FC = () => {
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <header className="flex h-16 items-center justify-between border-b bg-white px-6">
         <div className="flex items-center gap-3"><img src={brand.logo_url || '/workcore-logo.svg'} className="h-10 w-10 rounded object-contain" /><div><div className="text-sm font-extrabold tracking-wide text-blue-900">{brand.name || data?.company.name || 'WORKCORE'}</div><div className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">Company App</div></div></div>
-        <button className="rounded-lg border px-4 py-2 font-semibold hover:bg-slate-50" onClick={() => platformAuthClient.auth.signOut().then(() => navigate('/company-admin/login'))}>Đăng xuất</button>
+        <button className="rounded-lg border px-4 py-2 font-semibold hover:bg-slate-50" onClick={async () => { await platformAuthClient.auth.signOut(); saveSession(null); useAuthStore.setState({ user: null }); navigate('/login', { replace: true }); }}>Đăng xuất</button>
       </header>
       <div className="mx-auto flex max-w-[1500px] gap-6 p-6">
         <aside className="flex w-64 shrink-0 flex-col rounded-xl border bg-white p-3">
