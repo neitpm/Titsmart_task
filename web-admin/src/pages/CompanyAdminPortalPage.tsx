@@ -649,27 +649,19 @@ export const CompanyAdminPortalPage: React.FC = () => {
       </div>
 
       {/* Logo section */}
-      <div className="mt-6 border bg-slate-50 p-4">
-        <h3 className="mb-3 font-bold text-slate-700">Logo công ty</h3>
-        <div className="grid gap-4 md:grid-cols-2">
+      <div className="mt-6 rounded-xl border bg-slate-50 p-5">
+        <h3 className="mb-4 font-bold text-slate-700">Logo công ty</h3>
+        <div className="flex items-center gap-5 rounded-lg border bg-white p-4">
+          <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-lg border bg-white p-2">
+            <img src={logoPreview || '/workcore-logo.svg'} alt="Logo công ty" className="max-h-full max-w-full object-contain" />
+          </div>
           <div>
-            <p className="mb-2 text-sm font-semibold text-slate-600">Upload file (JPG/PNG/WebP, tối đa 2MB)</p>
-            <input
-              ref={logoInputRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              className="block w-full text-sm text-slate-600 file:mr-4 file:rounded file:border file:border-slate-300 file:bg-white file:px-3 file:py-1.5 file:text-sm file:font-semibold"
-              onChange={handleLogoFileChange}
-            />
-            {logoFile && <p className="mt-1 text-xs text-slate-400">Chọn: {logoFile.name}</p>}
+            <input ref={logoInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleLogoFileChange} />
+            <button type="button" onClick={() => logoInputRef.current?.click()} className="rounded-lg border border-blue-200 bg-white px-4 py-2 font-bold text-blue-800 hover:bg-blue-50">{logoFile || logoPreview ? 'Đổi ảnh' : 'Tải lên logo'}</button>
+            <p className="mt-2 text-xs text-slate-400">PNG, JPG hoặc WebP, tối đa 2MB. Nếu không tải lên, hệ thống dùng logo WORKCORE mặc định.</p>
+            {logoFile && <p className="mt-1 text-xs font-semibold text-emerald-700">Đã chọn: {logoFile.name}</p>}
           </div>
         </div>
-        {logoPreview && (
-          <div className="mt-4">
-            <p className="mb-2 text-xs text-slate-500">Preview logo:</p>
-            <img src={logoPreview} alt="Logo preview" className="h-20 w-20 border object-contain bg-white" />
-          </div>
-        )}
       </div>
 
       <button disabled={saving} onClick={saveBrand} className="mt-6 bg-blue-800 px-5 py-2.5 font-bold text-white disabled:opacity-60">
