@@ -112,6 +112,7 @@ function createWindow() {
   const icon = getAppIcon();
 
   mainWindow = new BrowserWindow({
+    title: 'WORKCORE Company App',
     width: 1200,
     height: 800,
     minWidth: 900,
