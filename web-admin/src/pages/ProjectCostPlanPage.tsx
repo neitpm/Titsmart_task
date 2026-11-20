@@ -87,12 +87,31 @@ const parseDateValue = (dStr?: string) => {
   return new Date(s).getTime() || 0;
 };
 
+const isTechnicalAdminUser = (u: any): boolean => {
+  if (!u) return false;
+  const username = String(u.username || '').trim().toLowerCase();
+  const name = String(u.name || '').trim().toLowerCase();
+  const role = String(u.role || '').trim().toLowerCase();
+  const title = String((u as any).title || '').trim().toLowerCase();
+  return (
+    username === 'admin' ||
+    name === 'admin' ||
+    role === 'admin' ||
+    role === 'quản trị hệ thống' ||
+    role === 'quản trị viên' ||
+    title === 'quản trị viên' ||
+    title === 'quản trị hệ thống' ||
+    u.id === 'admin'
+  );
+};
+
 const isHighestLevelPerson = (u: any): boolean => {
   if (!u) return false;
+  // Bỏ tài khoản admin kỹ thuật: không coi admin là nhân sự lãnh đạo cấp cao
+  if (isTechnicalAdminUser(u)) return false;
   if (isDirector(u)) return true;
   const role = String(u.role || '').toLowerCase();
   const title = String((u as any).title || '').toLowerCase();
-  const username = String(u.username || '').toLowerCase();
   if (
     role.includes('giám đốc') ||
     role.includes('ban giám đốc') ||
@@ -108,7 +127,7 @@ const isHighestLevelPerson = (u: any): boolean => {
   ) {
     return true;
   }
-  if (u.companyRole === 'company_admin' || role === 'admin' || username === 'admin' || isSystemAdmin(u)) {
+  if (u.companyRole === 'company_admin') {
     return true;
   }
   if (u.roleLevel === 'level1' || u.role_level === 'level1') {
@@ -5289,9 +5308,16 @@ export const ProjectCostPlanPage: React.FC = () => {
           // Nếu chọn thẳng người cấp cao nhất hoặc duyệt trực tiếp thì chuyển thẳng sang Chờ duyệt (CHECKED_WAITING_APPROVAL)
           const initialStatus = (isCheckerHighest || (allowDirect && !fundRequestForm.checkerId)) ? 'CHECKED_WAITING_APPROVAL' : 'PENDING_CHECK';
 
-          const finalReviewerId = (isCheckerHighest && !fundRequestForm.reviewerId) ? (selectedChecker?.id || fundRequestForm.checkerId) : fundRequestForm.reviewerId;
-          const finalReviewerName = (isCheckerHighest && !fundRequestForm.reviewerName) ? (selectedChecker?.name || fundRequestForm.checkerName) : fundRequestForm.reviewerName;
-          const finalReviewerTitle = (isCheckerHighest && !fundRequestForm.reviewerTitle) ? (selectedChecker?.title || selectedChecker?.role || fundRequestForm.checkerTitle || 'Lãnh đạo') : fundRequestForm.reviewerTitle;
+          const highestLeader = engineers.find(e => !isTechnicalAdminUser(e) && !e.isLocked && !(e as any).is_locked && isHighestLevelPerson(e));
+          const finalReviewerId = (isCheckerHighest && !fundRequestForm.reviewerId)
+            ? (selectedChecker?.id || fundRequestForm.checkerId || highestLeader?.id || '')
+            : (fundRequestForm.reviewerId || highestLeader?.id || '');
+          const finalReviewerName = (isCheckerHighest && !fundRequestForm.reviewerName)
+            ? (selectedChecker?.name || fundRequestForm.checkerName || highestLeader?.name || 'Lãnh đạo')
+            : (fundRequestForm.reviewerName || highestLeader?.name || 'Lãnh đạo');
+          const finalReviewerTitle = (isCheckerHighest && !fundRequestForm.reviewerTitle)
+            ? (selectedChecker?.title || selectedChecker?.role || fundRequestForm.checkerTitle || highestLeader?.title || highestLeader?.role || 'Lãnh đạo')
+            : (fundRequestForm.reviewerTitle || highestLeader?.title || highestLeader?.role || 'Lãnh đạo');
 
           let createdRequest: any;
           try {
@@ -5472,6 +5498,8 @@ export const ProjectCostPlanPage: React.FC = () => {
                 {engineers
                   .filter(eng => {
                     if (eng.isLocked || (eng as any).is_locked) return false;
+                    // Loại bỏ hoàn toàn tài khoản admin kỹ thuật
+                    if (isTechnicalAdminUser(eng)) return false;
                     // Không hiển thị người tạo (kiểm tra đầy đủ id, auth_user_id, username, name)
                     const isCreator = Boolean(
                       (user?.id && (eng.id === user.id || (eng as any).auth_user_id === user.id || (user.id.startsWith('user-') && eng.id === user.id.replace('user-', '')))) ||
@@ -5530,6 +5558,8 @@ export const ProjectCostPlanPage: React.FC = () => {
                       {engineers
                         .filter(eng => {
                           if (eng.isLocked || (eng as any).is_locked) return false;
+                          // Loại bỏ hoàn toàn tài khoản admin kỹ thuật
+                          if (isTechnicalAdminUser(eng)) return false;
                           // Không hiển thị người tạo
                           const isCreator = Boolean(
                             (user?.id && (eng.id === user.id || (eng as any).auth_user_id === user.id || (user.id.startsWith('user-') && eng.id === user.id.replace('user-', '')))) ||
@@ -5546,16 +5576,16 @@ export const ProjectCostPlanPage: React.FC = () => {
                           const isExec = String(eng.role || '').toLowerCase().includes('giám đốc') || String(eng.role || '').toLowerCase().includes('lãnh đạo') || String(eng.title || '').toLowerCase().includes('giám đốc');
                           const isPureAccountant = String(eng.role || '').toLowerCase().includes('kế toán') || String(eng.title || '').toLowerCase().includes('kế toán');
                           if (isPureAccountant && !hasApprovePerm) return false;
-                          // Loại trừ tài khoản admin kỹ thuật thuần túy khỏi danh sách người duyệt kinh doanh
-                          const isTechAdmin = String(eng.role || '').toLowerCase().includes('quản trị hệ thống') || eng.username === 'admin';
-                          if (isTechAdmin && !hasApprovePerm && !isExec) return false;
                           return hasApprovePerm || isExec || isHighestLevelPerson(eng);
                         })
-                        .map(eng => (
-                          <option key={eng.id} value={eng.id}>
-                            {eng.name} ({eng.title || eng.role || 'Lãnh đạo'})
-                          </option>
-                        ))}
+                        .map(eng => {
+                          const isHighest = isHighestLevelPerson(eng);
+                          return (
+                            <option key={eng.id} value={eng.id}>
+                              {eng.name} ({eng.title || eng.role || 'Lãnh đạo'}{isHighest ? ' - Cấp cao nhất' : ''})
+                            </option>
+                          );
+                        })}
                     </CustomSelect>
                   </>
                 );
@@ -7099,12 +7129,13 @@ export const ProjectCostPlanPage: React.FC = () => {
                   {engineers
                     .filter(eng => {
                       if (eng.isLocked || (eng as any).is_locked) return false;
+                      // Loại bỏ hoàn toàn tài khoản admin kỹ thuật
+                      if (isTechnicalAdminUser(eng)) return false;
                       const perms = eng.permissions || [];
                       const hasPerm = perms.includes('PROCESS_FUND_TRANSFER');
                       const isAccountantRole =
                         String(eng.role || '').toLowerCase().includes('kế toán') ||
-                        String(eng.title || '').toLowerCase().includes('kế toán') ||
-                        String(eng.role || '').toLowerCase().includes('admin');
+                        String(eng.title || '').toLowerCase().includes('kế toán');
                       return hasPerm || isAccountantRole;
                     })
                     .map(eng => (
