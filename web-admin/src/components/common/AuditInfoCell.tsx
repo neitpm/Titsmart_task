@@ -504,7 +504,7 @@ export const AuditInfoCell: React.FC<{
   updatedAt?: string; 
   projectCode?: string; 
   itemTitle?: string;
-  taskDiscussions?: Array<{ senderName: string; senderRole?: string; type: string; content: string; createdAt: string }>;
+  taskDiscussions?: Array<{ senderName: string; senderRole?: string; type: string; content: string; createdAt: string; fileUrl?: string; fileName?: string; fileType?: string }>;
   className?: string;
   forceOpen?: boolean;
   onForceOpenHandled?: () => void;
@@ -574,14 +574,18 @@ export const AuditInfoCell: React.FC<{
         const u = normalizeUser(disc.senderName || 'Người tham gia');
         const logTimeMs = parseAuditTime(disc.createdAt);
         const displayTime = formatAuditDateTime(disc.createdAt);
+        const fileDesc = disc.fileType === 'image' 
+          ? 'Đã gửi hình ảnh đính kèm' 
+          : (disc.fileName ? `Đã đính kèm tệp: ${disc.fileName}` : (disc.fileUrl ? 'Đã gửi tệp đính kèm' : ''));
+        const bodyText = disc.content || fileDesc || '';
         let actionLabel = 'Trao đổi / Thảo luận công việc';
-        if (disc.type === 'question') actionLabel = `Thắc mắc: "${disc.content}"`;
-        else if (disc.type === 'reply') actionLabel = `Phản hồi hướng dẫn: "${disc.content}"`;
-        else if (disc.type === 'assign_note') actionLabel = `Ghi chú giao việc: "${disc.content}"`;
-        else if (disc.type === 'system' || disc.content.toLowerCase().includes('nghiệm thu') || disc.content.toLowerCase().includes('hoàn thành') || disc.content.toLowerCase().includes('nhận việc')) {
-          actionLabel = disc.content;
+        if (disc.type === 'question') actionLabel = `Thắc mắc: "${bodyText}"`;
+        else if (disc.type === 'reply') actionLabel = `Phản hồi hướng dẫn: "${bodyText}"`;
+        else if (disc.type === 'assign_note') actionLabel = `Ghi chú giao việc: "${bodyText}"`;
+        else if (disc.type === 'system' || bodyText.toLowerCase().includes('nghiệm thu') || bodyText.toLowerCase().includes('hoàn thành') || bodyText.toLowerCase().includes('nhận việc')) {
+          actionLabel = bodyText;
         } else {
-          actionLabel = `Ghi chú: "${disc.content}"`;
+          actionLabel = `Ghi chú: "${bodyText}"`;
         }
 
         if (!map.has(u)) {

@@ -210,13 +210,25 @@ export const stripDiscussionThread = (notes?: string | null): string => {
 };
 
 /**
- * Get latest message in discussion thread
+ * Get latest message in discussion thread (prefers actual user discussions: question, reply, note, assign_note)
  */
-export const getLatestDiscussion = (notes?: string, issue?: string): TaskDiscussionItem | null => {
+export const getLatestDiscussion = (notes?: string, issue?: string, includeSystem = false): TaskDiscussionItem | null => {
   const list = parseTaskDiscussions(notes, issue).filter(item => {
-    if (!item.content) return false;
-    if (item.content.includes('[FOLLOWERS:') || item.content.includes('[ASSIGNER:') || item.content.includes('[START_DATE:') || item.content.includes('[DUE_DATE:')) return false;
+    // Chấp nhận nếu có nội dung văn bản HOẶC file đính kèm HOẶC danh sách ảnh
+    const hasBody = Boolean(item.content?.trim() || item.fileUrl || (item.images && item.images.length > 0));
+    if (!hasBody) return false;
+    if (item.content && (item.content.includes('[FOLLOWERS:') || item.content.includes('[ASSIGNER:') || item.content.includes('[START_DATE:') || item.content.includes('[DUE_DATE:'))) return false;
     return true;
   });
-  return list.length > 0 ? list[list.length - 1] : null;
+  if (list.length === 0) return null;
+
+  if (!includeSystem) {
+    // Ưu tiên tin nhắn trao đổi thật của con người (bỏ qua system events như "Đã xác nhận nhận công việc")
+    const userMessages = list.filter(item => item.type !== 'system');
+    if (userMessages.length > 0) {
+      return userMessages[userMessages.length - 1];
+    }
+  }
+
+  return list[list.length - 1];
 };

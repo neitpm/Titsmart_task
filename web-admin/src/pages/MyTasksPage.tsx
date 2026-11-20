@@ -857,14 +857,14 @@ export const MyTasksPage: React.FC = () => {
                           <div className="flex items-center justify-between text-[11px] font-bold mb-0.5">
                             <span className="flex items-center gap-1">
                               <span className={`material-symbols-outlined text-[13px] ${latestDiscussion.type === 'question' ? 'text-orange-600' : 'text-blue-600'}`}>
-                                {latestDiscussion.type === 'question' ? 'help_center' : latestDiscussion.type === 'assign_note' ? 'assignment' : 'chat'}
+                                {latestDiscussion.type === 'question' ? 'help_center' : latestDiscussion.type === 'assign_note' ? 'assignment' : (latestDiscussion.fileUrl ? 'attach_file' : 'chat')}
                               </span>
                               {latestDiscussion.type === 'assign_note' ? 'Ghi chú giao việc' : latestDiscussion.type === 'question' ? 'Thắc mắc' : 'Phản hồi người giao'}
                             </span>
                             <span className="text-[10px] text-blue-600 font-semibold underline">Xem trao đổi</span>
                           </div>
                           <p className="text-xs font-medium line-clamp-2 italic">
-                            "{latestDiscussion.content}"
+                            "{latestDiscussion.content || (latestDiscussion.fileType === 'image' ? 'Đã gửi 1 hình ảnh đính kèm' : (latestDiscussion.fileName ? `Tệp đính kèm: ${latestDiscussion.fileName}` : 'Đã đính kèm tệp tin'))}"
                           </p>
                         </div>
                       )}

@@ -3023,13 +3023,14 @@ const hasSyncedRef = useRef(false);
                             {(() => {
                               const latestDisc = getLatestDiscussion(t.notes, t.issue);
                               if (t.status !== 'Có thắc mắc' && !latestDisc && !t.issue) return null;
-                              // Bỏ qua nếu là sự kiện hệ thống (nghiệm thu, nhận việc)
-                              if (latestDisc?.type === 'system') return null;
                               // Bỏ qua nếu nội dung là các tag kỹ thuật ẩn
                               const rawContent = latestDisc?.content || t.issue || '';
                               if (rawContent.includes('[tech-status:') || rawContent.includes('[FOLLOWERS:') || rawContent.includes('[ASSIGNER:')) return null;
                               const isQuestion = t.status === 'Có thắc mắc' || (latestDisc && (latestDisc.type === 'question' || latestDisc.senderRole === 'Người nhận việc')) || Boolean(t.issue);
-                              const displayContent = rawContent || 'Cần làm rõ yêu cầu công việc';
+                              const fileDesc = latestDisc?.fileType === 'image' 
+                                ? 'Đã đính kèm hình ảnh' 
+                                : (latestDisc?.fileName ? `Đính kèm tệp: ${latestDisc.fileName}` : (latestDisc?.fileUrl ? 'Đã đính kèm tệp tin' : ''));
+                              const displayContent = rawContent || fileDesc || 'Cần làm rõ yêu cầu công việc';
                               return (
                                 <div 
                                   onClick={(e) => {
@@ -3039,7 +3040,7 @@ const hasSyncedRef = useRef(false);
                                   className="mt-0.5 p-1 bg-amber-50 hover:bg-amber-100/80 border border-amber-300 rounded text-[11px] text-amber-950 font-normal flex items-center gap-1 cursor-pointer shadow-2xs transition-colors"
                                   title="Nhấn để xem chi tiết thắc mắc / trao đổi và phản hồi"
                                 >
-                                  <span className="material-symbols-outlined text-[13px] text-amber-600 shrink-0">{isQuestion ? 'help_center' : 'forum'}</span>
+                                  <span className="material-symbols-outlined text-[13px] text-amber-600 shrink-0">{isQuestion ? 'help_center' : (latestDisc?.fileUrl ? 'attach_file' : 'forum')}</span>
                                   <span className="truncate">
                                     <strong className="text-amber-800">{isQuestion ? 'Thắc mắc:' : 'Trao đổi:'}</strong> {displayContent}
                                   </span>

@@ -1834,7 +1834,7 @@ export const TaskAssignmentPage: React.FC = () => {
                                     >
                                       <span className="material-symbols-outlined text-[14px] text-amber-600 shrink-0">help_center</span>
                                       <span className="truncate">
-                                        <strong>Thắc mắc:</strong> {latestDisc?.content || t.issue || 'Cần làm rõ yêu cầu công việc'}
+                                        <strong>Thắc mắc:</strong> {latestDisc?.content || (latestDisc?.fileType === 'image' ? 'Đã gửi hình ảnh đính kèm' : (latestDisc?.fileName ? `Tệp: ${latestDisc.fileName}` : '')) || t.issue || 'Cần làm rõ yêu cầu công việc'}
                                       </span>
                                       <span className="text-[10px] text-amber-700 font-bold underline shrink-0 ml-auto">Xem</span>
                                     </div>

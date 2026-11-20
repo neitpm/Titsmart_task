@@ -66,6 +66,7 @@ export const TaskDiscussionModal: React.FC<TaskDiscussionModalProps> = ({
   const [isUploading, setIsUploading] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -79,7 +80,11 @@ export const TaskDiscussionModal: React.FC<TaskDiscussionModalProps> = ({
       setShowAttachMenu(false);
       setIsSubmitting(false);
       setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        if (scrollContainerRef.current) {
+          scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+        } else {
+          messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }
       }, 100);
     }
   }, [isOpen, task?.id, discussions.length]);
@@ -312,12 +317,16 @@ export const TaskDiscussionModal: React.FC<TaskDiscussionModalProps> = ({
             <div className="flex items-center gap-1.5">
               <span className="material-symbols-outlined text-base text-amber-600">person_add</span>
               <span className="text-slate-500">Người giao:</span>
-              <strong className="text-slate-800">{task.assignerName || 'Quản lý'}</strong>
+              <strong className="text-slate-800">
+                {task.assignerName || engineers.find(e => e.id === task.assignerId)?.name || 'Quản lý'}
+              </strong>
             </div>
             <div className="flex items-center gap-1.5">
               <span className="material-symbols-outlined text-base text-primary">engineering</span>
               <span className="text-slate-500">Người nhận:</span>
-              <strong className="text-primary">{task.assignedEngineerName?.split('|')[0] || 'Chưa có'}</strong>
+              <strong className="text-primary">
+                {task.assignedEngineerName?.split('|')[0] || engineers.find(e => e.id === task.assignedEngineerId)?.name || 'Chưa có'}
+              </strong>
             </div>
           </div>
         </div>
@@ -338,7 +347,10 @@ export const TaskDiscussionModal: React.FC<TaskDiscussionModalProps> = ({
               )}
             </div>
 
-            <div className="border border-slate-200 rounded-xl p-3.5 bg-slate-50/50 space-y-3 max-h-64 overflow-y-auto custom-scrollbar">
+            <div 
+              ref={scrollContainerRef}
+              className="border border-slate-200 rounded-xl p-3.5 bg-slate-50/50 space-y-3 min-h-[140px] max-h-[460px] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-300 hover:scrollbar-thumb-slate-400"
+            >
               {discussions.map((msg, idx) => {
                 const isMsgFromMe = (msg.senderId && activeUserId && msg.senderId.toLowerCase() === activeUserId.toLowerCase()) ||
                   (msg.senderName && activeUserName && msg.senderName.toLowerCase().includes(activeUserName.toLowerCase()));
