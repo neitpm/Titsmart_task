@@ -5279,7 +5279,12 @@ export const ProjectCostPlanPage: React.FC = () => {
           const curProjectObj = projects.find(p => p.code === selectedProject);
           const pName = curProjectObj?.name || selectedProject || 'Dự án';
           const requesterName = user?.name || user?.username || 'Nhân sự';
-          const formattedAmount = Number(fundRequestForm.amount).toLocaleString('vi-VN');
+          const numericAmount = Number(String(fundRequestForm.amount).replace(/\D/g, '')) || 0;
+          if (numericAmount <= 0) {
+            triggerToast('Vui lòng nhập số tiền đề nghị hợp lệ (> 0)!', 'warning');
+            return;
+          }
+          const formattedAmount = numericAmount.toLocaleString('vi-VN');
 
           // Nếu chọn thẳng người cấp cao nhất hoặc duyệt trực tiếp thì chuyển thẳng sang Chờ duyệt (CHECKED_WAITING_APPROVAL)
           const initialStatus = (isCheckerHighest || (allowDirect && !fundRequestForm.checkerId)) ? 'CHECKED_WAITING_APPROVAL' : 'PENDING_CHECK';
@@ -5293,7 +5298,7 @@ export const ProjectCostPlanPage: React.FC = () => {
             createdRequest = await api.fundRequests.create({
               projectCode: selectedProject || '',
               projectName: pName,
-              amount: Number(fundRequestForm.amount) || 0,
+              amount: numericAmount,
               type: fundRequestForm.type,
               purpose: fundRequestForm.purpose,
               neededDate: fundRequestForm.neededDate,
@@ -5373,16 +5378,35 @@ export const ProjectCostPlanPage: React.FC = () => {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-bold mb-1">Số tiền đề nghị *</label>
-              <input
-                required
-                type="number"
-                min="0"
-                placeholder="VD: 5000000"
-                value={fundRequestForm.amount}
-                onChange={e => setFundRequestForm({ ...fundRequestForm, amount: e.target.value })}
-                className="w-full border rounded-lg p-2 text-sm focus:ring-1 focus:ring-primary focus:border-primary"
-              />
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-bold text-slate-800">Số tiền đề nghị *</label>
+                {(() => {
+                  const num = Number(String(fundRequestForm.amount || '').replace(/\D/g, ''));
+                  return num > 0 ? (
+                    <span className="text-xs font-black text-emerald-600">
+                      {num.toLocaleString('vi-VN')} đ
+                    </span>
+                  ) : null;
+                })()}
+              </div>
+              <div className="relative">
+                <input
+                  required
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="VD: 50.000.000 hoặc 5000000"
+                  value={fundRequestForm.amount}
+                  onChange={e => {
+                    const raw = e.target.value.replace(/\D/g, '');
+                    const formatted = raw ? Number(raw).toLocaleString('vi-VN') : '';
+                    setFundRequestForm({ ...fundRequestForm, amount: formatted });
+                  }}
+                  className="w-full border rounded-lg p-2 pr-8 text-sm font-bold text-slate-800 focus:ring-1 focus:ring-primary focus:border-primary"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 pointer-events-none">
+                  đ
+                </span>
+              </div>
             </div>
             <div>
               <label className="block text-xs font-bold mb-1">Ngày cần tiền *</label>
@@ -6148,7 +6172,7 @@ export const ProjectCostPlanPage: React.FC = () => {
                                     setFundRequestTransferModal({
                                       isOpen: true,
                                       req,
-                                      actualAmount: String(req.amount || ''),
+                                      actualAmount: req.amount ? Number(req.amount).toLocaleString('vi-VN') : '',
                                       transferDate: new Date().toISOString().split('T')[0],
                                       txCode: '',
                                       docUrl: req.transferDocUrl || '',
@@ -6172,7 +6196,7 @@ export const ProjectCostPlanPage: React.FC = () => {
                                     isOpen: true,
                                     req,
                                     receiptStatus: 'FULL',
-                                    actualReceivedAmount: String(req.amount || ''),
+                                    actualReceivedAmount: req.amount ? Number(req.amount).toLocaleString('vi-VN') : '',
                                     note: ''
                                   });
                                 }}
@@ -6642,7 +6666,7 @@ export const ProjectCostPlanPage: React.FC = () => {
                                 setFundRequestTransferModal({
                                   isOpen: true,
                                   req,
-                                  actualAmount: String(req.amount || ''),
+                                  actualAmount: req.amount ? Number(req.amount).toLocaleString('vi-VN') : '',
                                   transferDate: new Date().toISOString().split('T')[0],
                                   txCode: '',
                                   docUrl: req.transferDocUrl || '',
@@ -6665,7 +6689,7 @@ export const ProjectCostPlanPage: React.FC = () => {
                                 isOpen: true,
                                 req,
                                 receiptStatus: 'FULL',
-                                actualReceivedAmount: String(req.amount || ''),
+                                actualReceivedAmount: req.amount ? Number(req.amount).toLocaleString('vi-VN') : '',
                                 note: ''
                               });
                             }}
@@ -7233,7 +7257,7 @@ export const ProjectCostPlanPage: React.FC = () => {
               triggerToast(`Đã xác nhận nhận đủ tiền và nạp ${targetAmount.toLocaleString('vi-VN')} đ vào quỹ dự án!`, 'success');
             } else {
               // Nhận thiếu hoặc chưa nhận được tiền -> Ghi nhận phản hồi và gửi thông báo cho Kế toán & Lãnh đạo đối soát
-              const recAmount = Number(fundRequestConfirmModal.actualReceivedAmount || 0);
+              const recAmount = Number(String(fundRequestConfirmModal.actualReceivedAmount || '').replace(/\D/g, '')) || 0;
               const statusDesc = fundRequestConfirmModal.receiptStatus === 'PARTIAL'
                 ? `Nhận thiếu (Thực nhận: ${recAmount.toLocaleString('vi-VN')} đ / Đề nghị: ${targetAmount.toLocaleString('vi-VN')} đ)`
                 : `Chưa nhận được tiền`;
@@ -7355,17 +7379,37 @@ export const ProjectCostPlanPage: React.FC = () => {
 
           {fundRequestConfirmModal.receiptStatus === 'PARTIAL' && (
             <div>
-              <label className="block text-xs font-bold text-slate-800 mb-1">
-                Số tiền thực nhận (VNĐ) *
-              </label>
-              <input
-                type="number"
-                required
-                className="w-full border border-slate-300 rounded-lg p-2.5 text-xs focus:ring-1 focus:ring-primary focus:border-primary outline-none"
-                placeholder="Nhập số tiền thực tế nhận được..."
-                value={fundRequestConfirmModal.actualReceivedAmount}
-                onChange={e => setFundRequestConfirmModal(prev => ({ ...prev, actualReceivedAmount: e.target.value }))}
-              />
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-bold text-slate-800">
+                  Số tiền thực nhận (VNĐ) *
+                </label>
+                {(() => {
+                  const num = Number(String(fundRequestConfirmModal.actualReceivedAmount || '').replace(/\D/g, ''));
+                  return num > 0 ? (
+                    <span className="text-xs font-black text-emerald-600">
+                      {num.toLocaleString('vi-VN')} đ
+                    </span>
+                  ) : null;
+                })()}
+              </div>
+              <div className="relative">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  required
+                  className="w-full border border-slate-300 rounded-lg p-2.5 pr-8 text-xs font-bold text-slate-800 focus:ring-1 focus:ring-primary focus:border-primary outline-none"
+                  placeholder="Nhập số tiền thực tế nhận được..."
+                  value={fundRequestConfirmModal.actualReceivedAmount}
+                  onChange={e => {
+                    const raw = e.target.value.replace(/\D/g, '');
+                    const formatted = raw ? Number(raw).toLocaleString('vi-VN') : '';
+                    setFundRequestConfirmModal(prev => ({ ...prev, actualReceivedAmount: formatted }));
+                  }}
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 pointer-events-none">
+                  đ
+                </span>
+              </div>
             </div>
           )}
 
@@ -7565,20 +7609,37 @@ export const ProjectCostPlanPage: React.FC = () => {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-bold text-slate-800 mb-1">
-                Số tiền thực chuyển (VNĐ) *
-              </label>
-              <input
-                type="text"
-                required
-                className="w-full border border-slate-300 rounded-lg p-2 text-xs focus:ring-1 focus:ring-primary focus:border-primary outline-none"
-                placeholder="Nhập số tiền..."
-                value={fundRequestTransferModal.actualAmount}
-                onChange={e => {
-                  const val = e.target.value.replace(/[^0-9]/g, '');
-                  setFundRequestTransferModal(prev => ({ ...prev, actualAmount: val }));
-                }}
-              />
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-bold text-slate-800">
+                  Số tiền thực chuyển (VNĐ) *
+                </label>
+                {(() => {
+                  const num = Number(String(fundRequestTransferModal.actualAmount || '').replace(/\D/g, ''));
+                  return num > 0 ? (
+                    <span className="text-xs font-black text-emerald-600">
+                      {num.toLocaleString('vi-VN')} đ
+                    </span>
+                  ) : null;
+                })()}
+              </div>
+              <div className="relative">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  required
+                  className="w-full border border-slate-300 rounded-lg p-2 pr-8 text-xs font-bold text-slate-800 focus:ring-1 focus:ring-primary focus:border-primary outline-none"
+                  placeholder="Nhập số tiền..."
+                  value={fundRequestTransferModal.actualAmount}
+                  onChange={e => {
+                    const raw = e.target.value.replace(/\D/g, '');
+                    const formatted = raw ? Number(raw).toLocaleString('vi-VN') : '';
+                    setFundRequestTransferModal(prev => ({ ...prev, actualAmount: formatted }));
+                  }}
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 pointer-events-none">
+                  đ
+                </span>
+              </div>
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-800 mb-1">
