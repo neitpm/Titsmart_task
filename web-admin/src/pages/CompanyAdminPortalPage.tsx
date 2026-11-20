@@ -743,7 +743,7 @@ export const CompanyAdminPortalPage: React.FC = () => {
                   >
                     {provisioningId === p.id ? '...' : 'Tạo TK Auth'}
                   </button>
-                  {p.role !== 'company_admin' && (
+                  {p.email !== data.company.admin_email && (
                     <button
                       onClick={() => removePerson(p)}
                       className="rounded-sm bg-red-100 px-3 py-1 text-xs font-bold text-red-700 hover:bg-red-200"
