@@ -87,6 +87,40 @@ const parseDateValue = (dStr?: string) => {
   return new Date(s).getTime() || 0;
 };
 
+const isHighestLevelPerson = (u: any): boolean => {
+  if (!u) return false;
+  if (isDirector(u)) return true;
+  const role = String(u.role || '').toLowerCase();
+  const title = String((u as any).title || '').toLowerCase();
+  const username = String(u.username || '').toLowerCase();
+  if (
+    role.includes('giám đốc') ||
+    role.includes('ban giám đốc') ||
+    role === 'director' ||
+    role.includes('lãnh đạo') ||
+    role.includes('chủ tịch') ||
+    role.includes('tổng giám đốc') ||
+    title.includes('giám đốc') ||
+    title.includes('ban giám đốc') ||
+    title.includes('lãnh đạo') ||
+    title.includes('chủ tịch') ||
+    title.includes('tổng giám đốc')
+  ) {
+    return true;
+  }
+  if (u.companyRole === 'company_admin' || role === 'admin' || username === 'admin' || isSystemAdmin(u)) {
+    return true;
+  }
+  if (u.roleLevel === 'level1' || u.role_level === 'level1') {
+    return true;
+  }
+  const perms = u.permissions || [];
+  if (perms.includes('APPROVE_LEAVE_FINAL') && perms.includes('DELETE_PROJECTS')) {
+    return true;
+  }
+  return false;
+};
+
 const formatDateForInput = (d?: string) => {
   if (!d) return '';
   const str = String(d).trim();
@@ -5221,19 +5255,23 @@ export const ProjectCostPlanPage: React.FC = () => {
           const defaultAccId = useUIStore.getState().defaultAccountantId || '';
           const defaultAccName = useUIStore.getState().defaultAccountantName || '';
 
+          const selectedChecker = engineers.find(e => e.id === fundRequestForm.checkerId);
+          const isCheckerHighest = isHighestLevelPerson(selectedChecker);
+
           // Kiểm tra Người kiểm tra nếu không bật duyệt trực tiếp
           if (!allowDirect && !fundRequestForm.checkerId) {
             triggerToast('Vui lòng chọn Người kiểm tra yêu cầu!', 'warning');
             return;
           }
 
-          if (!fundRequestForm.reviewerId) {
+          // Nếu người nhận/kiểm tra là người có cấp cao nhất thì không cần chọn Người duyệt cuối cùng
+          if (!fundRequestForm.reviewerId && !isCheckerHighest) {
             triggerToast('Vui lòng chọn Người duyệt cuối cùng!', 'warning');
             return;
           }
 
-          // Ràng buộc Người kiểm tra và Người duyệt không được là cùng một người trừ khi bật cho phép kiêm nhiệm
-          if (fundRequestForm.checkerId && fundRequestForm.reviewerId && fundRequestForm.checkerId === fundRequestForm.reviewerId && !allowDirect && !allowDualRole) {
+          // Ràng buộc Người kiểm tra và Người duyệt không được là cùng một người trừ khi bật cho phép kiêm nhiệm hoặc chọn thẳng người cấp cao nhất
+          if (fundRequestForm.checkerId && fundRequestForm.reviewerId && fundRequestForm.checkerId === fundRequestForm.reviewerId && !allowDirect && !allowDualRole && !isCheckerHighest) {
             triggerToast('Người kiểm tra và Người duyệt cuối cùng không được là cùng một người!', 'warning');
             return;
           }
@@ -5243,7 +5281,12 @@ export const ProjectCostPlanPage: React.FC = () => {
           const requesterName = user?.name || user?.username || 'Nhân sự';
           const formattedAmount = Number(fundRequestForm.amount).toLocaleString('vi-VN');
 
-          const initialStatus = allowDirect && !fundRequestForm.checkerId ? 'CHECKED_WAITING_APPROVAL' : 'PENDING_CHECK';
+          // Nếu chọn thẳng người cấp cao nhất hoặc duyệt trực tiếp thì chuyển thẳng sang Chờ duyệt (CHECKED_WAITING_APPROVAL)
+          const initialStatus = (isCheckerHighest || (allowDirect && !fundRequestForm.checkerId)) ? 'CHECKED_WAITING_APPROVAL' : 'PENDING_CHECK';
+
+          const finalReviewerId = (isCheckerHighest && !fundRequestForm.reviewerId) ? (selectedChecker?.id || fundRequestForm.checkerId) : fundRequestForm.reviewerId;
+          const finalReviewerName = (isCheckerHighest && !fundRequestForm.reviewerName) ? (selectedChecker?.name || fundRequestForm.checkerName) : fundRequestForm.reviewerName;
+          const finalReviewerTitle = (isCheckerHighest && !fundRequestForm.reviewerTitle) ? (selectedChecker?.title || selectedChecker?.role || fundRequestForm.checkerTitle || 'Lãnh đạo') : fundRequestForm.reviewerTitle;
 
           let createdRequest: any;
           try {
@@ -5260,9 +5303,9 @@ export const ProjectCostPlanPage: React.FC = () => {
               checkerId: fundRequestForm.checkerId,
               checkerName: fundRequestForm.checkerName,
               checkerTitle: fundRequestForm.checkerTitle || '',
-              reviewerId: fundRequestForm.reviewerId,
-              reviewerName: fundRequestForm.reviewerName,
-              reviewerTitle: fundRequestForm.reviewerTitle || '',
+              reviewerId: finalReviewerId,
+              reviewerName: finalReviewerName,
+              reviewerTitle: finalReviewerTitle || '',
               accountantId: '',
               accountantName: '',
               note: fundRequestForm.note || '',
@@ -5277,10 +5320,10 @@ export const ProjectCostPlanPage: React.FC = () => {
           cachedFundRequests = [createdRequest, ...cachedFundRequests.filter(r => r.id !== createdRequest.id)];
           setFundRequests((items) => [createdRequest, ...items.filter(r => r.id !== createdRequest.id)]);
 
-          // Gửi thông báo đến Người kiểm tra (hoặc Người duyệt nếu duyệt trực tiếp)
+          // Gửi thông báo đến Người kiểm tra (hoặc Người duyệt nếu chuyển thẳng cấp cao nhất / duyệt trực tiếp)
           if (addNotification) {
-            const targetId = (initialStatus === 'PENDING_CHECK' && fundRequestForm.checkerId) ? fundRequestForm.checkerId : fundRequestForm.reviewerId;
-            const targetName = (initialStatus === 'PENDING_CHECK' && fundRequestForm.checkerName) ? fundRequestForm.checkerName : fundRequestForm.reviewerName;
+            const targetId = (initialStatus === 'PENDING_CHECK' && fundRequestForm.checkerId) ? fundRequestForm.checkerId : finalReviewerId;
+            const targetName = (initialStatus === 'PENDING_CHECK' && fundRequestForm.checkerName) ? fundRequestForm.checkerName : finalReviewerName;
             const nowTimeStr = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) + ' ' + new Date().toLocaleDateString('vi-VN');
             const targetProjectCode = selectedProject || createdRequest.projectCode || '';
             const linkUrl = targetProjectCode
@@ -5385,11 +5428,17 @@ export const ProjectCostPlanPage: React.FC = () => {
                 onChange={e => {
                   const targetId = e.target.value;
                   const eng = engineers.find(item => item.id === targetId);
+                  const isEngHighest = isHighestLevelPerson(eng);
                   setFundRequestForm({
                     ...fundRequestForm,
                     checkerId: targetId,
                     checkerName: eng?.name || '',
-                    checkerTitle: eng?.title || eng?.role || ''
+                    checkerTitle: eng?.title || eng?.role || '',
+                    ...(isEngHighest ? {
+                      reviewerId: targetId,
+                      reviewerName: eng?.name || '',
+                      reviewerTitle: eng?.title || eng?.role || ''
+                    } : {})
                   });
                 }}
                 searchable={true}
@@ -5408,67 +5457,85 @@ export const ProjectCostPlanPage: React.FC = () => {
                     if (isCreator) return false;
                     return true;
                   })
-                  .map(eng => (
-                    <option key={eng.id} value={eng.id}>
-                      {eng.name} ({eng.title || eng.role || 'Nhân sự'})
-                    </option>
-                  ))}
+                  .map(eng => {
+                    const isHighest = isHighestLevelPerson(eng);
+                    return (
+                      <option key={eng.id} value={eng.id}>
+                        {eng.name} ({eng.title || eng.role || 'Nhân sự'}{isHighest ? ' - Cấp cao nhất' : ''})
+                      </option>
+                    );
+                  })}
               </CustomSelect>
             </div>
 
             <div>
-              <label className="block text-xs font-bold mb-1 text-slate-800 flex items-center justify-between">
-                <span className="flex items-center gap-1.5">
-                  <span className="material-symbols-outlined text-[16px] text-primary">verified_user</span>
-                  <span>Người duyệt cuối cùng *</span>
-                </span>
-              </label>
-              <CustomSelect
-                value={fundRequestForm.reviewerId}
-                onChange={e => {
-                  const targetId = e.target.value;
-                  const eng = engineers.find(item => item.id === targetId);
-                  setFundRequestForm({
-                    ...fundRequestForm,
-                    reviewerId: targetId,
-                    reviewerName: eng?.name || '',
-                    reviewerTitle: eng?.title || eng?.role || ''
-                  });
-                }}
-                searchable={true}
-                className="w-full border rounded-lg p-2 text-sm bg-white"
-              >
-                <option value="">-- Chọn người duyệt --</option>
-                {engineers
-                  .filter(eng => {
-                    if (eng.isLocked || (eng as any).is_locked) return false;
-                    // Không hiển thị người tạo
-                    const isCreator = Boolean(
-                      (user?.id && (eng.id === user.id || (eng as any).auth_user_id === user.id || (user.id.startsWith('user-') && eng.id === user.id.replace('user-', '')))) ||
-                      (user?.username && eng.username && String(eng.username).trim().toLowerCase() === String(user.username).trim().toLowerCase()) ||
-                      (user?.name && eng.name && normalizeStr(eng.name) === normalizeStr(user.name))
-                    );
-                    if (isCreator) return false;
-                    // Không trùng người kiểm tra (trừ khi bật kiêm nhiệm)
-                    const allowDual = useUIStore.getState().allowDualCheckerReviewerRole;
-                    if (!allowDual && fundRequestForm.checkerId && eng.id === fundRequestForm.checkerId) return false;
-                    // Loại trừ kế toán thuần túy (PROCESS_FUND_TRANSFER mà không có APPROVE_FUND_REQUEST)
-                    const perms = eng.permissions || [];
-                    const hasApprovePerm = perms.includes('APPROVE_FUND_REQUEST');
-                    const isExec = String(eng.role || '').toLowerCase().includes('giám đốc') || String(eng.role || '').toLowerCase().includes('lãnh đạo') || String(eng.title || '').toLowerCase().includes('giám đốc');
-                    const isPureAccountant = String(eng.role || '').toLowerCase().includes('kế toán') || String(eng.title || '').toLowerCase().includes('kế toán');
-                    if (isPureAccountant && !hasApprovePerm) return false;
-                    // Loại trừ tài khoản admin kỹ thuật thuần túy khỏi danh sách người duyệt kinh doanh
-                    const isTechAdmin = String(eng.role || '').toLowerCase().includes('quản trị hệ thống') || eng.username === 'admin';
-                    if (isTechAdmin && !hasApprovePerm && !isExec) return false;
-                    return hasApprovePerm || isExec;
-                  })
-                  .map(eng => (
-                    <option key={eng.id} value={eng.id}>
-                      {eng.name} ({eng.title || eng.role || 'Lãnh đạo'})
-                    </option>
-                  ))}
-              </CustomSelect>
+              {(() => {
+                const selectedChecker = engineers.find(item => item.id === fundRequestForm.checkerId);
+                const isCheckerHighest = isHighestLevelPerson(selectedChecker);
+
+                return (
+                  <>
+                    <label className="block text-xs font-bold mb-1 text-slate-800 flex items-center justify-between">
+                      <span className="flex items-center gap-1.5">
+                        <span className="material-symbols-outlined text-[16px] text-primary">verified_user</span>
+                        <span>Người duyệt cuối cùng {isCheckerHighest ? <span className="text-slate-400 font-normal">(Không bắt buộc)</span> : <span className="text-rose-500">*</span>}</span>
+                      </span>
+                      {isCheckerHighest && (
+                        <span className="text-[10px] text-emerald-700 font-semibold bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded flex items-center gap-1">
+                          <span className="material-symbols-outlined text-[12px]">verified</span>
+                          Đã chọn thẳng người có cấp cao nhất
+                        </span>
+                      )}
+                    </label>
+                    <CustomSelect
+                      value={fundRequestForm.reviewerId}
+                      onChange={e => {
+                        const targetId = e.target.value;
+                        const eng = engineers.find(item => item.id === targetId);
+                        setFundRequestForm({
+                          ...fundRequestForm,
+                          reviewerId: targetId,
+                          reviewerName: eng?.name || '',
+                          reviewerTitle: eng?.title || eng?.role || ''
+                        });
+                      }}
+                      searchable={true}
+                      className={`w-full border rounded-lg p-2 text-sm ${isCheckerHighest ? 'bg-slate-50' : 'bg-white'}`}
+                    >
+                      <option value="">{isCheckerHighest ? `-- Không cần chọn (Đã chuyển thẳng ${selectedChecker?.name || 'Cấp cao nhất'} duyệt) --` : '-- Chọn người duyệt --'}</option>
+                      {engineers
+                        .filter(eng => {
+                          if (eng.isLocked || (eng as any).is_locked) return false;
+                          // Không hiển thị người tạo
+                          const isCreator = Boolean(
+                            (user?.id && (eng.id === user.id || (eng as any).auth_user_id === user.id || (user.id.startsWith('user-') && eng.id === user.id.replace('user-', '')))) ||
+                            (user?.username && eng.username && String(eng.username).trim().toLowerCase() === String(user.username).trim().toLowerCase()) ||
+                            (user?.name && eng.name && normalizeStr(eng.name) === normalizeStr(user.name))
+                          );
+                          if (isCreator) return false;
+                          // Không trùng người kiểm tra (trừ khi bật kiêm nhiệm hoặc người kiểm tra là cấp cao nhất)
+                          const allowDual = useUIStore.getState().allowDualCheckerReviewerRole;
+                          if (!allowDual && !isCheckerHighest && fundRequestForm.checkerId && eng.id === fundRequestForm.checkerId) return false;
+                          // Loại trừ kế toán thuần túy (PROCESS_FUND_TRANSFER mà không có APPROVE_FUND_REQUEST)
+                          const perms = eng.permissions || [];
+                          const hasApprovePerm = perms.includes('APPROVE_FUND_REQUEST');
+                          const isExec = String(eng.role || '').toLowerCase().includes('giám đốc') || String(eng.role || '').toLowerCase().includes('lãnh đạo') || String(eng.title || '').toLowerCase().includes('giám đốc');
+                          const isPureAccountant = String(eng.role || '').toLowerCase().includes('kế toán') || String(eng.title || '').toLowerCase().includes('kế toán');
+                          if (isPureAccountant && !hasApprovePerm) return false;
+                          // Loại trừ tài khoản admin kỹ thuật thuần túy khỏi danh sách người duyệt kinh doanh
+                          const isTechAdmin = String(eng.role || '').toLowerCase().includes('quản trị hệ thống') || eng.username === 'admin';
+                          if (isTechAdmin && !hasApprovePerm && !isExec) return false;
+                          return hasApprovePerm || isExec || isHighestLevelPerson(eng);
+                        })
+                        .map(eng => (
+                          <option key={eng.id} value={eng.id}>
+                            {eng.name} ({eng.title || eng.role || 'Lãnh đạo'})
+                          </option>
+                        ))}
+                    </CustomSelect>
+                  </>
+                );
+              })()}
             </div>
           </div>
 
@@ -6818,7 +6885,9 @@ export const ProjectCostPlanPage: React.FC = () => {
             const req = fundRequestApproveModal.req;
             if (!req) return;
 
-            if (!fundRequestApproveModal.selectedAccountantId) {
+            const isApproverHighest = isHighestLevelPerson(user);
+
+            if (!fundRequestApproveModal.selectedAccountantId && !isApproverHighest) {
               triggerToast('Vui lòng chọn Kế toán phụ trách xử lý chuyển khoản!', 'warning');
               return;
             }
@@ -6832,6 +6901,9 @@ export const ProjectCostPlanPage: React.FC = () => {
             const allowDirectApproval = useUIStore.getState().allowDirectFundApproval;
             const isDirect = allowDirectApproval && (req.status === 'PENDING_CHECK' || req.status === 'PENDING');
 
+            const hasSpecificAccountant = Boolean(fundRequestApproveModal.selectedAccountantId);
+            const assignedAccountantName = fundRequestApproveModal.selectedAccountantName || '';
+
             const auditEntry = {
               action: 'LÃNH ĐẠO PHÊ DUYỆT',
               actorId: user?.id || '',
@@ -6839,8 +6911,10 @@ export const ProjectCostPlanPage: React.FC = () => {
               actorRole: 'Lãnh đạo / Người duyệt',
               timestamp: nowIso,
               note: fundRequestApproveModal.note
-                ? `${fundRequestApproveModal.note} (Chỉ định kế toán: ${fundRequestApproveModal.selectedAccountantName})`
-                : `Phê duyệt cấp quỹ thành công. Chỉ định kế toán xử lý: ${fundRequestApproveModal.selectedAccountantName}`
+                ? `${fundRequestApproveModal.note} (${hasSpecificAccountant ? `Chỉ định kế toán: ${assignedAccountantName}` : 'Chuyển Bộ phận Kế toán'})`
+                : (hasSpecificAccountant
+                  ? `Phê duyệt cấp quỹ thành công. Chỉ định kế toán xử lý: ${assignedAccountantName}`
+                  : `Phê duyệt cấp quỹ thành công. Chuyển Bộ phận Kế toán xử lý.`)
             };
 
             // 1. Gọi API cập nhật server trước
@@ -6851,8 +6925,8 @@ export const ProjectCostPlanPage: React.FC = () => {
                   reviewerId: user?.id,
                   reviewerName,
                   reviewedAt: nowIso,
-                  accountantId: fundRequestApproveModal.selectedAccountantId,
-                  accountantName: fundRequestApproveModal.selectedAccountantName,
+                  accountantId: fundRequestApproveModal.selectedAccountantId || null,
+                  accountantName: assignedAccountantName || null,
                   isDirectApproval: isDirect,
                   auditEntry
                 });
@@ -6875,8 +6949,8 @@ export const ProjectCostPlanPage: React.FC = () => {
               status: 'APPROVED_WAITING_ACCOUNTING',
               reviewedAt: nowIso,
               reviewedBy: reviewerName,
-              accountantId: fundRequestApproveModal.selectedAccountantId,
-              accountantName: fundRequestApproveModal.selectedAccountantName,
+              accountantId: fundRequestApproveModal.selectedAccountantId || '',
+              accountantName: assignedAccountantName,
               history: [...(r.history || []), auditEntry]
             } : r);
             setFundRequests(prev => prev.map(r => r.id === req.id ? {
@@ -6884,12 +6958,12 @@ export const ProjectCostPlanPage: React.FC = () => {
               status: 'APPROVED_WAITING_ACCOUNTING',
               reviewedAt: nowIso,
               reviewedBy: reviewerName,
-              accountantId: fundRequestApproveModal.selectedAccountantId,
-              accountantName: fundRequestApproveModal.selectedAccountantName,
+              accountantId: fundRequestApproveModal.selectedAccountantId || '',
+              accountantName: assignedAccountantName,
               history: [...(r.history || []), auditEntry]
             } : r));
 
-            // 3. Bắn thông báo cho Kế toán được chọn & Người tạo đơn (kèm projectCode & fundId chuẩn)
+            // 3. Bắn thông báo cho Kế toán được chọn (hoặc tất cả Kế toán) & Người tạo đơn
             if (addNotification) {
               const nowTimeStr = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) + ' ' + new Date().toLocaleDateString('vi-VN');
               const pCodeParam = req.projectCode || selectedProject || '';
@@ -6897,22 +6971,44 @@ export const ProjectCostPlanPage: React.FC = () => {
                 ? `/projects/${encodeURIComponent(pCodeParam)}/cost-plan?tab=EXPENSE&openFundRequests=true&fundId=${encodeURIComponent(req.id)}`
                 : `/cost-plan?tab=EXPENSE&openFundRequests=true&fundId=${encodeURIComponent(req.id)}`;
 
-              // Gửi kế toán được chỉ định
-              await addNotification({
-                title: `Lãnh đạo đã duyệt cấp quỹ: ${pName}`,
-                message: `Lãnh đạo: ${reviewerName} phê duyệt lúc ${nowTimeStr}. Số tiền: ${numericAmount.toLocaleString('vi-VN')} đ cho ${req.creatorName}. Trạng thái: Đã duyệt - Chờ chuyển tiền. Chỉ định bạn xử lý chuyển khoản & đính kèm UNC.`,
-                type: `fund_request_pending:::${fundRequestApproveModal.selectedAccountantId}:::${fundRequestApproveModal.selectedAccountantName}`,
-                icon: 'account_balance',
-                link: linkBase,
-                senderId: user?.id,
-                senderName: reviewerName
-              }).catch(() => {});
+              if (hasSpecificAccountant) {
+                // Gửi kế toán được chỉ định
+                await addNotification({
+                  title: `Lãnh đạo đã duyệt cấp quỹ: ${pName}`,
+                  message: `Lãnh đạo: ${reviewerName} phê duyệt lúc ${nowTimeStr}. Số tiền: ${numericAmount.toLocaleString('vi-VN')} đ cho ${req.creatorName}. Trạng thái: Đã duyệt - Chờ chuyển tiền. Chỉ định bạn xử lý chuyển khoản & đính kèm UNC.`,
+                  type: `fund_request_pending:::${fundRequestApproveModal.selectedAccountantId}:::${assignedAccountantName}`,
+                  icon: 'account_balance',
+                  link: linkBase,
+                  senderId: user?.id,
+                  senderName: reviewerName
+                }).catch(() => {});
+              } else {
+                // Cấp cao nhất để trống kế toán -> Gửi cho tất cả nhân sự Kế toán
+                const targetAccountants = engineers.filter(eng => {
+                  if (eng.isLocked || (eng as any).is_locked) return false;
+                  const perms = eng.permissions || [];
+                  return perms.includes('PROCESS_FUND_TRANSFER') ||
+                    String(eng.role || '').toLowerCase().includes('kế toán') ||
+                    String(eng.title || '').toLowerCase().includes('kế toán');
+                });
+                for (const acc of targetAccountants) {
+                  await addNotification({
+                    title: `Lãnh đạo đã duyệt cấp quỹ: ${pName}`,
+                    message: `Lãnh đạo: ${reviewerName} phê duyệt lúc ${nowTimeStr}. Số tiền: ${numericAmount.toLocaleString('vi-VN')} đ cho ${req.creatorName}. Trạng thái: Đã duyệt - Chờ chuyển tiền. Vui lòng tiếp nhận xử lý chuyển khoản & đính kèm UNC.`,
+                    type: `fund_request_pending:::${acc.id}:::${acc.name}`,
+                    icon: 'account_balance',
+                    link: linkBase,
+                    senderId: user?.id,
+                    senderName: reviewerName
+                  }).catch(() => {});
+                }
+              }
 
               // Gửi người tạo
               if (req.creatorId) {
                 await addNotification({
                   title: `Yêu cầu cấp quỹ đã được Lãnh đạo phê duyệt: ${pName}`,
-                  message: `Lãnh đạo: ${reviewerName} phê duyệt lúc ${nowTimeStr}. Số tiền: ${numericAmount.toLocaleString('vi-VN')} đ. Trạng thái: Đã duyệt - Chờ chuyển tiền. Kế toán ${fundRequestApproveModal.selectedAccountantName} đang xử lý chuyển tiền.`,
+                  message: `Lãnh đạo: ${reviewerName} phê duyệt lúc ${nowTimeStr}. Số tiền: ${numericAmount.toLocaleString('vi-VN')} đ. Trạng thái: Đã duyệt - Chờ chuyển tiền. ${hasSpecificAccountant ? `Kế toán ${assignedAccountantName} đang xử lý chuyển tiền.` : 'Bộ phận Kế toán đang tiếp nhận xử lý chuyển tiền.'}`,
                   type: `fund_request_approved:::${req.creatorId}:::${req.creatorName}`,
                   icon: 'check_circle',
                   link: linkBase,
@@ -6923,7 +7019,9 @@ export const ProjectCostPlanPage: React.FC = () => {
             }
 
             setFundRequestApproveModal({ isOpen: false, req: null, selectedAccountantId: '', selectedAccountantName: '', note: '' });
-            triggerToast(`Đã duyệt yêu cầu cấp quỹ ${numericAmount.toLocaleString('vi-VN')} đ và chuyển kế toán ${fundRequestApproveModal.selectedAccountantName}!`, 'success');
+            triggerToast(hasSpecificAccountant
+              ? `Đã duyệt yêu cầu cấp quỹ ${numericAmount.toLocaleString('vi-VN')} đ và chuyển kế toán ${assignedAccountantName}!`
+              : `Đã duyệt yêu cầu cấp quỹ ${numericAmount.toLocaleString('vi-VN')} đ và chuyển Bộ phận Kế toán!`, 'success');
           }}
         >
           <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs space-y-1.5">
@@ -6943,47 +7041,62 @@ export const ProjectCostPlanPage: React.FC = () => {
             </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-bold text-slate-800 mb-1 flex items-center gap-1.5">
-              <span className="material-symbols-outlined text-[16px] text-purple-600">person_search</span>
-              <span>Chỉ định Kế toán xử lý chuyển khoản *</span>
-            </label>
-            <CustomSelect
-              value={fundRequestApproveModal.selectedAccountantId}
-              onChange={e => {
-                const targetId = e.target.value;
-                const eng = engineers.find(item => item.id === targetId);
-                setFundRequestApproveModal(prev => ({
-                  ...prev,
-                  selectedAccountantId: targetId,
-                  selectedAccountantName: eng?.name || ''
-                }));
-              }}
-              searchable={true}
-              className="w-full border rounded-lg p-2.5 text-xs bg-white focus:ring-1 focus:ring-primary focus:border-primary"
-            >
-              <option value="">-- Chọn Kế toán xử lý --</option>
-              {engineers
-                .filter(eng => {
-                  if (eng.isLocked || (eng as any).is_locked) return false;
-                  const perms = eng.permissions || [];
-                  const hasPerm = perms.includes('PROCESS_FUND_TRANSFER');
-                  const isAccountantRole =
-                    String(eng.role || '').toLowerCase().includes('kế toán') ||
-                    String(eng.title || '').toLowerCase().includes('kế toán') ||
-                    String(eng.role || '').toLowerCase().includes('admin');
-                  return hasPerm || isAccountantRole;
-                })
-                .map(eng => (
-                  <option key={eng.id} value={eng.id}>
-                    {eng.name} ({eng.title || eng.role || 'Kế toán'})
-                  </option>
-                ))}
-            </CustomSelect>
-            <p className="text-[11px] text-slate-500 mt-1">
-              Chỉ các nhân sự có quyền <code>PROCESS_FUND_TRANSFER</code> hoặc vai trò Kế toán mới được phân công.
-            </p>
-          </div>
+          {(() => {
+            const isApproverHighest = isHighestLevelPerson(user);
+            return (
+              <div>
+                <label className="block text-xs font-bold text-slate-800 mb-1 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-[16px] text-purple-600">person_search</span>
+                    <span>Chỉ định Kế toán xử lý chuyển khoản {isApproverHighest ? <span className="text-slate-400 font-normal">(Không bắt buộc)</span> : <span className="text-rose-500">*</span>}</span>
+                  </span>
+                  {isApproverHighest && (
+                    <span className="text-[10px] text-emerald-700 font-semibold bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded flex items-center gap-1">
+                      <span className="material-symbols-outlined text-[12px]">verified</span>
+                      Cấp cao nhất - Tùy chọn chỉ định
+                    </span>
+                  )}
+                </label>
+                <CustomSelect
+                  value={fundRequestApproveModal.selectedAccountantId}
+                  onChange={e => {
+                    const targetId = e.target.value;
+                    const eng = engineers.find(item => item.id === targetId);
+                    setFundRequestApproveModal(prev => ({
+                      ...prev,
+                      selectedAccountantId: targetId,
+                      selectedAccountantName: eng?.name || ''
+                    }));
+                  }}
+                  searchable={true}
+                  className="w-full border rounded-lg p-2.5 text-xs bg-white focus:ring-1 focus:ring-primary focus:border-primary"
+                >
+                  <option value="">{isApproverHighest ? '-- Để trống để tất cả Kế toán cùng nhận việc --' : '-- Chọn Kế toán xử lý --'}</option>
+                  {engineers
+                    .filter(eng => {
+                      if (eng.isLocked || (eng as any).is_locked) return false;
+                      const perms = eng.permissions || [];
+                      const hasPerm = perms.includes('PROCESS_FUND_TRANSFER');
+                      const isAccountantRole =
+                        String(eng.role || '').toLowerCase().includes('kế toán') ||
+                        String(eng.title || '').toLowerCase().includes('kế toán') ||
+                        String(eng.role || '').toLowerCase().includes('admin');
+                      return hasPerm || isAccountantRole;
+                    })
+                    .map(eng => (
+                      <option key={eng.id} value={eng.id}>
+                        {eng.name} ({eng.title || eng.role || 'Kế toán'})
+                      </option>
+                    ))}
+                </CustomSelect>
+                <p className="text-[11px] text-slate-500 mt-1">
+                  {isApproverHighest
+                    ? 'Là cấp cao nhất, bạn có thể chỉ định 1 kế toán cụ thể hoặc để trống để tất cả kế toán cùng nhận việc và hỗ trợ chuyển khoản.'
+                    : <>Chỉ các nhân sự có quyền <code>PROCESS_FUND_TRANSFER</code> hoặc vai trò Kế toán mới được phân công.</>}
+                </p>
+              </div>
+            );
+          })()}
 
           <div>
             <label className="block text-xs font-bold text-slate-800 mb-1">
