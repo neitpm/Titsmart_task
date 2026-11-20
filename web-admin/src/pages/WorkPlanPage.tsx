@@ -26,6 +26,100 @@ const formatDateVN = (dateStr?: string): string => {
   return dateStr;
 };
 
+export interface DeadlineAlertConfig {
+  days: number;
+  hours: number;
+  minutes: number;
+}
+
+const DEFAULT_ALERT_CONFIG: DeadlineAlertConfig = {
+  days: 3,
+  hours: 0,
+  minutes: 0,
+};
+
+const ALERT_PRESETS = [
+  { label: '30 phút', days: 0, hours: 0, minutes: 30 },
+  { label: '1 giờ', days: 0, hours: 1, minutes: 0 },
+  { label: '2 giờ', days: 0, hours: 2, minutes: 0 },
+  { label: '12 giờ', days: 0, hours: 12, minutes: 0 },
+  { label: '1 ngày', days: 1, hours: 0, minutes: 0 },
+  { label: '2 ngày', days: 2, hours: 0, minutes: 0 },
+  { label: '3 ngày', days: 3, hours: 0, minutes: 0 },
+  { label: '7 ngày', days: 7, hours: 0, minutes: 0 },
+];
+
+const loadAlertConfig = (): DeadlineAlertConfig => {
+  try {
+    const savedConfig = localStorage.getItem('titsmart_deadline_alert_config');
+    if (savedConfig) {
+      const parsed = JSON.parse(savedConfig);
+      const days = Math.max(0, parseInt(parsed.days, 10) || 0);
+      const hours = Math.max(0, Math.min(23, parseInt(parsed.hours, 10) || 0));
+      const minutes = Math.max(0, Math.min(59, parseInt(parsed.minutes, 10) || 0));
+      if (days > 0 || hours > 0 || minutes > 0) {
+        return { days, hours, minutes };
+      }
+    }
+    const legacyDays = localStorage.getItem('titsmart_deadline_alert_days');
+    if (legacyDays) {
+      const d = parseInt(legacyDays, 10);
+      if (!isNaN(d) && d > 0) return { days: d, hours: 0, minutes: 0 };
+    }
+  } catch {}
+  return DEFAULT_ALERT_CONFIG;
+};
+
+const formatAlertConfigLabel = (config: DeadlineAlertConfig): string => {
+  const parts: string[] = [];
+  if (config.days > 0) parts.push(`${config.days} ngày`);
+  if (config.hours > 0) parts.push(`${config.hours} giờ`);
+  if (config.minutes > 0) parts.push(`${config.minutes} phút`);
+  return parts.length > 0 ? parts.join(' ') : '0 phút';
+};
+
+const getAlertConfigTotalMinutes = (config: DeadlineAlertConfig): number => {
+  return (config.days * 24 * 60) + (config.hours * 60) + config.minutes;
+};
+
+const parseTargetDueDate = (dueStr?: string | null): Date | null => {
+  if (!dueStr) return null;
+  const s = String(dueStr).trim();
+  if (!s) return null;
+
+  if (s.includes('T')) {
+    const d = new Date(s);
+    if (!isNaN(d.getTime())) return d;
+  }
+  if (s.includes(' ')) {
+    const d = new Date(s.replace(' ', 'T'));
+    if (!isNaN(d.getTime())) return d;
+  }
+
+  const ymdParts = s.split('-');
+  if (ymdParts.length === 3) {
+    const y = parseInt(ymdParts[0], 10);
+    const m = parseInt(ymdParts[1], 10) - 1;
+    const d = parseInt(ymdParts[2], 10);
+    if (!isNaN(y) && !isNaN(m) && !isNaN(d)) {
+      return new Date(y, m, d, 23, 59, 59, 999);
+    }
+  }
+
+  const dmyParts = s.split('/');
+  if (dmyParts.length === 3) {
+    const d = parseInt(dmyParts[0], 10);
+    const m = parseInt(dmyParts[1], 10) - 1;
+    const y = parseInt(dmyParts[2], 10);
+    if (!isNaN(y) && !isNaN(m) && !isNaN(d)) {
+      return new Date(y, m, d, 23, 59, 59, 999);
+    }
+  }
+
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? null : d;
+};
+
 const getDiffDays = (targetYMD: string, baseYMD: string): number => {
   const target = new Date(`${targetYMD}T00:00:00Z`).getTime();
   const base = new Date(`${baseYMD}T00:00:00Z`).getTime();
@@ -43,27 +137,35 @@ export const WorkPlanPage: React.FC = () => {
   const logActivity = useRealtimeStore((state) => state.logActivity);
   const user = useAuthStore((state) => state.user);
 
-  // User configurable deadline alert threshold (in days)
-  const [alertDays, setAlertDays] = useState<number>(() => {
-    try {
-      const saved = localStorage.getItem('titsmart_deadline_alert_days');
-      if (saved) {
-        const parsed = parseInt(saved, 10);
-        if (!isNaN(parsed) && parsed > 0) return parsed;
-      }
-    } catch {}
-    return 3; // Default 3 days
-  });
-
+  // User configurable deadline alert threshold (days, hours, minutes)
+  const [alertConfig, setAlertConfig] = useState<DeadlineAlertConfig>(loadAlertConfig);
+  const [tempConfig, setTempConfig] = useState<DeadlineAlertConfig>(alertConfig);
   const [showAlertSetting, setShowAlertSetting] = useState(false);
 
-  const handleUpdateAlertDays = (days: number) => {
-    setAlertDays(days);
+  useEffect(() => {
+    if (showAlertSetting) {
+      setTempConfig(alertConfig);
+    }
+  }, [showAlertSetting, alertConfig]);
+
+  const handleSaveAlertConfig = () => {
+    const totalMin = getAlertConfigTotalMinutes(tempConfig);
+    if (totalMin <= 0) {
+      triggerToast('Vui lòng nhập thời gian cảnh báo trước lớn hơn 0!', 'warning');
+      return;
+    }
+    setAlertConfig(tempConfig);
     try {
-      localStorage.setItem('titsmart_deadline_alert_days', days.toString());
+      localStorage.setItem('titsmart_deadline_alert_config', JSON.stringify(tempConfig));
+      const totalDays = tempConfig.days + (tempConfig.hours / 24) + (tempConfig.minutes / 1440);
+      localStorage.setItem('titsmart_deadline_alert_days', String(Math.ceil(totalDays) || 1));
     } catch {}
-    triggerToast(`Đã lưu mức cảnh báo: Sắp đến hạn trước ${days} ngày`, 'success');
+    triggerToast(`Đã lưu mức cảnh báo: Sắp đến hạn trước ${formatAlertConfigLabel(tempConfig)}`, 'success');
     setShowAlertSetting(false);
+  };
+
+  const handleQuickPreset = (preset: { days: number; hours: number; minutes: number }) => {
+    setTempConfig(preset);
   };
 
   // View mode
@@ -242,28 +344,38 @@ export const WorkPlanPage: React.FC = () => {
   // Map and analyze tasks
   const analyzedTasks = useMemo(() => {
     const list = tasks.filter((t) => !t.isSectionHeader && t.name && t.name.trim());
+    const totalAlertMin = getAlertConfigTotalMinutes(alertConfig);
+    const now = new Date();
 
     return list.map((task) => {
       const bounds = getTaskTimeBounds(task);
       const isDone = isTaskActuallyDone(task);
+      const rawDue = task.dueDate || bounds.dueDate || '';
       const dueYMD = bounds.dueDate || (task.dueDate ? String(task.dueDate).split('T')[0] : '');
       const startYMD = bounds.acceptedDate || (task.startDate ? String(task.startDate).split('T')[0] : '');
 
       let diffDays: number | null = null;
+      let diffMinutes: number | null = null;
       let deadlineStatus: 'overdue' | 'due_today' | 'due_soon' | 'upcoming' | 'completed' | 'no_due' = 'no_due';
 
       if (isDone) {
         deadlineStatus = 'completed';
-      } else if (dueYMD) {
-        diffDays = getDiffDays(dueYMD, todayStr);
-        if (diffDays < 0) {
-          deadlineStatus = 'overdue';
-        } else if (diffDays === 0) {
-          deadlineStatus = 'due_today';
-        } else if (diffDays <= alertDays) {
-          deadlineStatus = 'due_soon';
-        } else {
-          deadlineStatus = 'upcoming';
+      } else if (rawDue) {
+        const targetDate = parseTargetDueDate(rawDue);
+        if (targetDate) {
+          const diffMs = targetDate.getTime() - now.getTime();
+          diffMinutes = Math.floor(diffMs / 60000);
+          diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+          if (diffMs < 0) {
+            deadlineStatus = 'overdue';
+          } else if (diffMinutes <= totalAlertMin) {
+            deadlineStatus = 'due_soon';
+          } else if (targetDate.toDateString() === now.toDateString()) {
+            deadlineStatus = 'due_today';
+          } else {
+            deadlineStatus = 'upcoming';
+          }
         }
       }
 
@@ -273,10 +385,11 @@ export const WorkPlanPage: React.FC = () => {
         startYMD,
         isDone,
         diffDays,
+        diffMinutes,
         deadlineStatus
       };
     });
-  }, [tasks, todayStr, alertDays]);
+  }, [tasks, todayStr, alertConfig]);
 
   // Statistics for KPIs & Alerts
   const stats = useMemo(() => {
@@ -613,46 +726,141 @@ export const WorkPlanPage: React.FC = () => {
                   ? 'bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100'
                   : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
               }`}
-              title="Tùy chỉnh thời gian cảnh báo sắp đến thời hạn công việc"
+              title="Tùy chỉnh thời gian cảnh báo sắp đến thời hạn công việc (Ngày - Giờ - Phút)"
             >
               <span className="material-symbols-outlined text-base text-amber-500">notifications_active</span>
-              <span>Cảnh báo: <span className="font-black text-primary underline">{alertDays} ngày</span></span>
+              <span>Cảnh báo: <span className="font-black text-primary underline">{formatAlertConfigLabel(alertConfig)}</span></span>
               <span className="material-symbols-outlined text-sm">tune</span>
             </button>
 
             {/* Alert setting popover */}
             {showAlertSetting && (
-              <div className="absolute right-0 top-full mt-2 w-72 bg-white rounded-lg shadow-lg border border-slate-200 p-3 z-50 animate-in fade-in zoom-in-95 duration-150">
+              <div className="absolute right-0 top-full mt-2 w-[340px] max-w-[95vw] bg-white rounded-xl shadow-2xl border border-slate-200 p-3.5 z-50 animate-in fade-in zoom-in-95 duration-150">
                 <div className="text-xs font-bold text-slate-800 mb-2 flex items-center justify-between">
-                  <span>Cài đặt cảnh báo thời hạn</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-amber-500 text-base">notifications_active</span>
+                    <span>Cài đặt cảnh báo thời hạn</span>
+                  </div>
                   <button
                     type="button"
                     onClick={() => setShowAlertSetting(false)}
-                    className="text-slate-400 hover:text-slate-600"
+                    className="text-slate-400 hover:text-slate-600 p-0.5 rounded cursor-pointer"
                   >
                     <span className="material-symbols-outlined text-sm">close</span>
                   </button>
                 </div>
-                <p className="text-[11px] text-slate-500 mb-3">
+                <p className="text-[11px] text-slate-500 mb-3 leading-relaxed">
                   Hệ thống sẽ chủ động cảnh báo màu vàng cam khi công việc còn cách hạn hoàn thành:
                 </p>
-                <div className="grid grid-cols-3 gap-1.5 mb-2">
-                  {[1, 2, 3, 5, 7, 14].map((d) => (
-                    <button
-                      key={d}
-                      type="button"
-                      onClick={() => handleUpdateAlertDays(d)}
-                      className={`px-2 py-1.5 rounded text-xs font-bold transition-all ${
-                        alertDays === d
-                          ? 'bg-primary text-white shadow-xs'
-                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                      }`}
-                    >
-                      {d} ngày
-                    </button>
-                  ))}
+
+                {/* Tùy biến Ngày - Giờ - Phút */}
+                <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-200 mb-3">
+                  <div className="text-[11px] font-semibold text-slate-700 mb-2 flex items-center justify-between">
+                    <span>Tùy chỉnh thời gian trước hạn:</span>
+                    <span className="text-primary font-bold">{formatAlertConfigLabel(tempConfig)}</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <label className="block text-[10px] font-medium text-slate-500 mb-1 text-center">Ngày</label>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          min="0"
+                          max="365"
+                          value={tempConfig.days === 0 ? '' : tempConfig.days}
+                          placeholder="0"
+                          onChange={(e) => {
+                            const val = e.target.value === '' ? 0 : Math.max(0, parseInt(e.target.value) || 0);
+                            setTempConfig(prev => ({ ...prev, days: val }));
+                          }}
+                          className="w-full text-center px-1 py-1.5 pr-6 rounded-md border border-slate-300 bg-white text-xs font-bold text-slate-800 focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                        />
+                        <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 pointer-events-none">ng</span>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-medium text-slate-500 mb-1 text-center">Giờ</label>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          min="0"
+                          max="23"
+                          value={tempConfig.hours === 0 ? '' : tempConfig.hours}
+                          placeholder="0"
+                          onChange={(e) => {
+                            const val = e.target.value === '' ? 0 : Math.max(0, Math.min(23, parseInt(e.target.value) || 0));
+                            setTempConfig(prev => ({ ...prev, hours: val }));
+                          }}
+                          className="w-full text-center px-1 py-1.5 pr-6 rounded-md border border-slate-300 bg-white text-xs font-bold text-slate-800 focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                        />
+                        <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 pointer-events-none">giờ</span>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-medium text-slate-500 mb-1 text-center">Phút</label>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          min="0"
+                          max="59"
+                          value={tempConfig.minutes === 0 ? '' : tempConfig.minutes}
+                          placeholder="0"
+                          onChange={(e) => {
+                            const val = e.target.value === '' ? 0 : Math.max(0, Math.min(59, parseInt(e.target.value) || 0));
+                            setTempConfig(prev => ({ ...prev, minutes: val }));
+                          }}
+                          className="w-full text-center px-1 py-1.5 pr-6 rounded-md border border-slate-300 bg-white text-xs font-bold text-slate-800 focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                        />
+                        <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 pointer-events-none">ph</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div className="text-[10px] text-slate-400 italic text-center">
+
+                {/* Chọn nhanh */}
+                <div className="mb-3">
+                  <div className="text-[10px] text-slate-500 mb-1.5 font-medium">Hoặc bấm chọn nhanh mốc phổ biến:</div>
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {ALERT_PRESETS.map((p) => {
+                      const isSel = tempConfig.days === p.days && tempConfig.hours === p.hours && tempConfig.minutes === p.minutes;
+                      return (
+                        <button
+                          key={p.label}
+                          type="button"
+                          onClick={() => handleQuickPreset(p)}
+                          className={`px-1.5 py-1 rounded text-[10px] font-bold transition-all text-center cursor-pointer ${
+                            isSel
+                              ? 'bg-primary text-white shadow-xs'
+                              : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                          }`}
+                        >
+                          {p.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Nút thao tác */}
+                <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => setShowAlertSetting(false)}
+                    className="flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors cursor-pointer text-center"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveAlertConfig}
+                    className="flex-1 py-1.5 px-3 rounded-lg text-xs font-bold text-white bg-primary hover:bg-primary/90 shadow-xs transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-sm">check</span>
+                    Lưu cài đặt
+                  </button>
+                </div>
+
+                <div className="text-[10px] text-slate-400 italic text-center mt-2">
                   Cài đặt lưu riêng cho tài khoản của bạn
                 </div>
               </div>
@@ -730,7 +938,7 @@ export const WorkPlanPage: React.FC = () => {
                   )}
                   {stats.dueSoon > 0 && (
                     <span className="px-2 py-0.5 rounded bg-blue-600 text-white text-[11px] font-bold">
-                      {stats.dueSoon} Sắp đến hạn (≤ {alertDays} ngày)
+                      {stats.dueSoon} Sắp đến hạn (≤ {formatAlertConfigLabel(alertConfig)})
                     </span>
                   )}
                 </div>
@@ -815,7 +1023,7 @@ export const WorkPlanPage: React.FC = () => {
               <span className="material-symbols-outlined text-blue-600 text-lg">alarm</span>
             </div>
             <div className="text-2xl font-black text-blue-700 mt-1">{stats.dueSoon}</div>
-            <div className="text-[10px] text-blue-600 font-medium mt-0.5">Trong vòng ≤ {alertDays} ngày</div>
+            <div className="text-[10px] text-blue-600 font-medium mt-0.5">Trong vòng ≤ {formatAlertConfigLabel(alertConfig)}</div>
           </button>
 
           {/* Card: Kế hoạch tương lai */}
@@ -911,7 +1119,7 @@ export const WorkPlanPage: React.FC = () => {
               <option value="all">Tất cả trạng thái</option>
               <option value="overdue">Quá hạn</option>
               <option value="due_today">Hạn hôm nay</option>
-              <option value="due_soon">Sắp đến hạn (≤ {alertDays} ngày)</option>
+              <option value="due_soon">Sắp đến hạn (≤ {formatAlertConfigLabel(alertConfig)})</option>
               <option value="in_progress">Đang thực hiện</option>
               <option value="completed">Đã hoàn thành</option>
             </select>

@@ -385,6 +385,22 @@ const generateTaskDueNotifications = (tasksList: Task[], existingNotifications: 
   const nowIso = new Date().toISOString();
   const newNotifs: NotificationItem[] = [];
 
+  let alertDaysThreshold = 3;
+  try {
+    const savedConfig = typeof window !== 'undefined' ? localStorage.getItem('titsmart_deadline_alert_config') : null;
+    if (savedConfig) {
+      const parsed = JSON.parse(savedConfig);
+      const m = (parsed.days || 0) * 1440 + (parsed.hours || 0) * 60 + (parsed.minutes || 0);
+      if (m > 0) alertDaysThreshold = Math.ceil(m / 1440);
+    } else {
+      const savedDays = typeof window !== 'undefined' ? localStorage.getItem('titsmart_deadline_alert_days') : null;
+      if (savedDays) {
+        const d = parseFloat(savedDays);
+        if (!isNaN(d) && d > 0) alertDaysThreshold = Math.ceil(d);
+      }
+    }
+  } catch {}
+
   tasksList.forEach(task => {
     if (task.isSectionHeader || task.status === 'Hoàn thành' || task.status === 'Chờ nghiệm thu' || task.isDone) return;
     if (!task.dueDate) return;
@@ -422,7 +438,7 @@ const generateTaskDueNotifications = (tasksList: Task[], existingNotifications: 
         icon: 'warning',
         link: taskLink
       });
-    } else if (diffDays <= 2) {
+    } else if (diffDays <= alertDaysThreshold) {
       const notifKey = `due-task-${task.id}-${diffDays}-${task.dueDate}`;
       newNotifs.push({
         id: notifKey,
