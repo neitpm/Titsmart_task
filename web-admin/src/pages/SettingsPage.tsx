@@ -851,9 +851,23 @@ onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/workco
                             {inputCompanyLogo && (
                               <button
                                 type="button"
-                                onClick={() => {
+                                onClick={async () => {
                                   setInputCompanyLogo(null);
-                                  triggerToast('Đã khôi phục logo mặc định!', 'info');
+                                  if (!isAdmin) return;
+                                  try {
+                                    await saveBrandingToCloud({
+                                      companyName: inputCompanyName.trim() || 'TITSMART',
+                                      companySlogan: inputCompanySlogan.trim() || 'Project Manager',
+                                      companyLogo: null,
+                                      hotline: inputCompanyHotline.trim(),
+                                      address: inputCompanyAddress.trim(),
+                                      adminEmail: inputCompanyEmail.trim(),
+                                      updatedBy: user?.username || 'Admin',
+                                    });
+                                    triggerToast('Đã xóa logo cũ và khôi phục logo WORKCORE mặc định!', 'success');
+                                  } catch (err: any) {
+                                    triggerToast(`Không thể khôi phục logo: ${err?.message || err}`, 'error');
+                                  }
                                 }}
                                 className="px-3 py-1.5 rounded-lg border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-semibold transition-all flex items-center gap-1 cursor-pointer"
                               >
