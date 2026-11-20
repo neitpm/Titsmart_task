@@ -424,22 +424,20 @@ BEGIN
       RAISE EXCEPTION 'Phân quyền: Bạn không phải người duyệt được chỉ định hoặc không có quyền APPROVE_FUND_REQUEST.';
     END IF;
 
-    -- XÁC MINH NGƯỜI ĐƯỢC CHỈ ĐỊNH THẬT SỰ LÀ KẾ TOÁN
+    -- XÁC MINH NGƯỜI ĐƯỢC CHỈ ĐỊNH (NẾU CÓ CHỈ ĐỊNH ĐÍCH DANH) THẬT SỰ LÀ KẾ TOÁN
     IF p_target_status = 'APPROVED_WAITING_ACCOUNTING' THEN
-      IF p_accountant_id IS NULL OR trim(p_accountant_id) = '' THEN
-        RAISE EXCEPTION 'Nghiệp vụ: Lãnh đạo bắt buộc phải chọn 1 Kế toán xử lý chuyển khoản khi phê duyệt.';
-      END IF;
+      IF p_accountant_id IS NOT NULL AND trim(p_accountant_id) <> '' THEN
+        SELECT role, permissions INTO v_target_acc_role, v_target_acc_perms
+        FROM public.engineers
+        WHERE id::text = p_accountant_id OR auth_user_id::text = p_accountant_id
+        LIMIT 1;
 
-      SELECT role, permissions INTO v_target_acc_role, v_target_acc_perms
-      FROM public.engineers
-      WHERE id::text = p_accountant_id OR auth_user_id::text = p_accountant_id
-      LIMIT 1;
+        v_target_acc_perms := COALESCE(v_target_acc_perms, '[]'::jsonb);
+        v_target_is_acc := (v_target_acc_perms ? 'PROCESS_FUND_TRANSFER') OR lower(COALESCE(v_target_acc_role, '')) LIKE '%kế toán%';
 
-      v_target_acc_perms := COALESCE(v_target_acc_perms, '[]'::jsonb);
-      v_target_is_acc := (v_target_acc_perms ? 'PROCESS_FUND_TRANSFER') OR lower(COALESCE(v_target_acc_role, '')) LIKE '%kế toán%';
-
-      IF NOT v_target_is_acc THEN
-        RAISE EXCEPTION 'Nghiệp vụ: Nhân sự được chọn (ID: %) không có quyền PROCESS_FUND_TRANSFER hoặc vai trò Kế toán.', p_accountant_id;
+        IF NOT v_target_is_acc THEN
+          RAISE EXCEPTION 'Nghiệp vụ: Nhân sự được chọn (ID: %) không có quyền PROCESS_FUND_TRANSFER hoặc vai trò Kế toán.', p_accountant_id;
+        END IF;
       END IF;
     END IF;
   END IF;

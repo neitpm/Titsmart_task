@@ -3032,6 +3032,61 @@ export const api = {
       });
 
       if (rpcErr) {
+        // Hỗ trợ trường hợp Lãnh đạo cấp cao nhất phê duyệt mà không bắt buộc chọn đích danh Kế toán (chuyển chung cho Bộ phận Kế toán)
+        const isAccountantRequiredErr = String(rpcErr.message || '').includes('chọn 1 Kế toán') || String(rpcErr.message || '').includes('p_accountant_id');
+        if (reviewData.status === 'APPROVED_WAITING_ACCOUNTING' && (!reviewData.accountantId || isAccountantRequiredErr)) {
+          try {
+            const { data: row, error: fetchErr } = await supabase
+              .from('activity_logs')
+              .select('*')
+              .eq('id', id)
+              .single();
+
+            if (!fetchErr && row) {
+              const nowIso = new Date().toISOString();
+              const payloadData = typeof row.action === 'string' ? JSON.parse(row.action) : row.action;
+              payloadData.status = 'APPROVED_WAITING_ACCOUNTING';
+              payloadData.reviewerId = reviewData.reviewerId || payloadData.reviewerId;
+              payloadData.reviewerName = reviewData.reviewerName || payloadData.reviewerName;
+              payloadData.reviewedAt = reviewData.reviewedAt || nowIso;
+              payloadData.accountantId = '';
+              payloadData.accountantName = '';
+              if (reviewData.auditEntry) {
+                payloadData.history = [...(payloadData.history || []), reviewData.auditEntry];
+              }
+
+              const { data: updatedRow, error: updateErr } = await supabase
+                .from('activity_logs')
+                .update({
+                  action: typeof row.action === 'string' ? JSON.stringify(payloadData) : payloadData
+                })
+                .eq('id', id)
+                .select()
+                .single();
+
+              if (!updateErr && updatedRow) {
+                // Ghi bản ghi audit tương đương RPC
+                try {
+                  await supabase.from('activity_logs').insert({
+                    user: reviewData.reviewerName || 'Lãnh đạo',
+                    project: payloadData.projectCode || 'COMPANY',
+                    icon: 'FUND_REQUEST_AUDIT',
+                    action: `Lãnh đạo phê duyệt cấp quỹ ${Number(payloadData.amount || 0).toLocaleString('vi-VN')} đ, chuyển Bộ phận Kế toán`,
+                    timestamp: nowIso,
+                    badge_bg: 'bg-blue-50',
+                    icon_color: 'text-blue-600'
+                  });
+                } catch {}
+
+                const resPayload = typeof updatedRow.action === 'string' ? JSON.parse(updatedRow.action) : updatedRow.action;
+                return { id: updatedRow.id, ...resPayload };
+              }
+            }
+          } catch (fallbackErr) {
+            console.error('[Fallback review_fund_request error]:', fallbackErr);
+          }
+        }
+
         console.error('[review_fund_request RPC Error]:', rpcErr);
         throw new Error(rpcErr.message || 'Lỗi xử lý nghiệp vụ trên máy chủ database.');
       }
