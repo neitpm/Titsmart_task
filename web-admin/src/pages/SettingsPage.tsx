@@ -802,7 +802,7 @@ export const SettingsPage: React.FC = () => {
                     <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Xem trước thương hiệu hiển thị</div>
                     <div className="flex items-center gap-3 bg-white p-3 rounded-xl border border-slate-200 shadow-2xs">
                       <div className="w-10 h-10 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center p-1 overflow-hidden shrink-0">
-<img src={inputCompanyLogo || '/workcore-logo.svg'} alt="Logo" className="w-full h-full object-contain" />
+<img src={inputCompanyLogo || '/workcore-logo.svg'} alt="Logo" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/workcore-logo.svg'; }} className="w-full h-full object-contain" />
                       </div>
                       <div>
                         <div className="text-sm font-extrabold text-slate-900">{inputCompanyName || 'TÊN CÔNG TY'}</div>
@@ -825,6 +825,7 @@ export const SettingsPage: React.FC = () => {
                       <div className="w-16 h-16 rounded-2xl bg-white border border-slate-200 flex items-center justify-center p-2 shadow-2xs overflow-hidden shrink-0">
                         <img
 src={inputCompanyLogo || '/workcore-logo.svg'}
+onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/workcore-logo.svg'; }}
                           alt="Logo Preview"
                           className="w-full h-full object-contain"
                         />
