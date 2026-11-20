@@ -21,6 +21,7 @@ import { CustomSelect } from '@/components/common/CustomSelect';
 import { PullToRefresh } from '../components/common/PullToRefresh';
 import { FileViewerItem } from '../components/common/FileViewerItem';
 import { parseInvoiceUrls, serializeInvoiceUrls } from '../utils/fileUploadHelper';
+import { isHighestLevelPerson, isTechnicalAdminUser, getHighestRankLeader } from '../utils/taskPermission';
 
 
 const romanToNumber = (value?: string) => {
@@ -87,58 +88,7 @@ const parseDateValue = (dStr?: string) => {
   return new Date(s).getTime() || 0;
 };
 
-const isTechnicalAdminUser = (u: any): boolean => {
-  if (!u) return false;
-  const username = String(u.username || '').trim().toLowerCase();
-  const name = String(u.name || '').trim().toLowerCase();
-  const role = String(u.role || '').trim().toLowerCase();
-  const title = String((u as any).title || '').trim().toLowerCase();
-  return (
-    username === 'admin' ||
-    name === 'admin' ||
-    role === 'admin' ||
-    role === 'quản trị hệ thống' ||
-    role === 'quản trị viên' ||
-    title === 'quản trị viên' ||
-    title === 'quản trị hệ thống' ||
-    u.id === 'admin'
-  );
-};
 
-const isHighestLevelPerson = (u: any): boolean => {
-  if (!u) return false;
-  // Bỏ tài khoản admin kỹ thuật: không coi admin là nhân sự lãnh đạo cấp cao
-  if (isTechnicalAdminUser(u)) return false;
-  if (isDirector(u)) return true;
-  const role = String(u.role || '').toLowerCase();
-  const title = String((u as any).title || '').toLowerCase();
-  if (
-    role.includes('giám đốc') ||
-    role.includes('ban giám đốc') ||
-    role === 'director' ||
-    role.includes('lãnh đạo') ||
-    role.includes('chủ tịch') ||
-    role.includes('tổng giám đốc') ||
-    title.includes('giám đốc') ||
-    title.includes('ban giám đốc') ||
-    title.includes('lãnh đạo') ||
-    title.includes('chủ tịch') ||
-    title.includes('tổng giám đốc')
-  ) {
-    return true;
-  }
-  if (u.companyRole === 'company_admin') {
-    return true;
-  }
-  if (u.roleLevel === 'level1' || u.role_level === 'level1') {
-    return true;
-  }
-  const perms = u.permissions || [];
-  if (perms.includes('APPROVE_LEAVE_FINAL') && perms.includes('DELETE_PROJECTS')) {
-    return true;
-  }
-  return false;
-};
 
 const formatDateForInput = (d?: string) => {
   if (!d) return '';
@@ -5371,7 +5321,7 @@ export const ProjectCostPlanPage: React.FC = () => {
           // Nếu chọn thẳng người cấp cao nhất hoặc duyệt trực tiếp thì chuyển thẳng sang Chờ duyệt (CHECKED_WAITING_APPROVAL)
           const initialStatus = (isCheckerHighest || (allowDirect && !fundRequestForm.checkerId)) ? 'CHECKED_WAITING_APPROVAL' : 'PENDING_CHECK';
 
-          const highestLeader = engineers.find(e => !isTechnicalAdminUser(e) && !e.isLocked && !(e as any).is_locked && isHighestLevelPerson(e));
+          const highestLeader = getHighestRankLeader(engineers);
           const finalReviewerId = (isCheckerHighest && !fundRequestForm.reviewerId)
             ? (selectedChecker?.id || fundRequestForm.checkerId || highestLeader?.id || '')
             : (fundRequestForm.reviewerId || highestLeader?.id || '');

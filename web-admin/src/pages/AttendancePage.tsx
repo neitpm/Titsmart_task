@@ -13,7 +13,7 @@ import * as XLSX from 'xlsx';
 import { exportToStyledExcel } from '../utils/excelExportUtils';
 import { exportMonthlyAttendanceTitsmart } from '../utils/exportMonthlyAttendance';
 import { calculateYearLeaveAccrual, YearLeaveBalanceSummary } from '../utils/leaveAccrualRules';
-import { isHighestLevelPerson, isTechnicalAdminUser } from '../utils/taskPermission';
+import { isHighestLevelPerson, isTechnicalAdminUser, getHighestRankLeader } from '../utils/taskPermission';
 
 import { LeaveRequest, LeaveType, AttendanceAdjustmentRequest, AttendanceAdjustmentType } from '../types';
 import { PullToRefresh } from '../components/common/PullToRefresh';
@@ -182,9 +182,9 @@ export const AttendancePage: React.FC = () => {
   const [reviewNote, setReviewNote] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Người có cấp bậc cao nhất trong công ty (loại trừ tài khoản admin kỹ thuật)
+  // Người có cấp bậc cao nhất trong công ty (ưu tiên Giám đốc, loại trừ tài khoản admin kỹ thuật)
   const highestLeader = React.useMemo(() => {
-    return (engineers || []).find(e => !isTechnicalAdminUser(e) && !e.isLocked && !(e as any).is_locked && isHighestLevelPerson(e));
+    return getHighestRankLeader(engineers);
   }, [engineers]);
 
   const highestRankDisplayName = highestLeader?.name || 'Ban Giám Đốc';
@@ -192,7 +192,7 @@ export const AttendancePage: React.FC = () => {
   const getStep2ReviewerDisplayName = (name?: string | null) => {
     if (!name) return highestRankDisplayName;
     const nLow = name.trim().toLowerCase();
-    if (nLow === 'admin' || nLow === 'quản trị viên' || nLow === 'quản trị' || nLow === 'administrator') {
+    if (nLow === 'admin' || nLow === 'quản trị viên' || nLow === 'quản trị' || nLow === 'administrator' || nLow === 'mai văn tùng') {
       return highestRankDisplayName;
     }
     return name;

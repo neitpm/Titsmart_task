@@ -278,22 +278,38 @@ export const isHighestLevelPerson = (u: any): boolean => {
   if (!u) return false;
   // Bỏ tài khoản admin kỹ thuật: không coi admin là nhân sự lãnh đạo cấp cao
   if (isTechnicalAdminUser(u)) return false;
-  if (isDirector(u)) return true;
   const role = String(u.role || '').toLowerCase();
   const title = String((u as any).title || '').toLowerCase();
+
+  // Loại trừ các vai trò tổ đội / lãnh đạo tổ (Lãnh đạo TO, Tổ trưởng,...)
   if (
+    role.includes('lãnh đạo to') || 
+    title.includes('lãnh đạo to') || 
+    role.includes('tổ đội') || 
+    title.includes('tổ đội') || 
+    role.includes('lãnh đạo tổ') || 
+    title.includes('lãnh đạo tổ')
+  ) {
+    return false;
+  }
+
+  if (isDirector(u)) return true;
+  if (
+    role === 'giám đốc' ||
+    title === 'giám đốc' ||
     role.includes('giám đốc') ||
     role.includes('ban giám đốc') ||
     role === 'director' ||
-    role.includes('lãnh đạo') ||
     role.includes('chủ tịch') ||
     role.includes('tổng giám đốc') ||
     title.includes('giám đốc') ||
     title.includes('ban giám đốc') ||
-    title.includes('lãnh đạo') ||
     title.includes('chủ tịch') ||
     title.includes('tổng giám đốc')
   ) {
+    return true;
+  }
+  if (role === 'lãnh đạo' || title === 'lãnh đạo' || role.includes('ban lãnh đạo') || title.includes('ban lãnh đạo')) {
     return true;
   }
   if (u.companyRole === 'company_admin') {
@@ -307,6 +323,56 @@ export const isHighestLevelPerson = (u: any): boolean => {
     return true;
   }
   return false;
+};
+
+/**
+ * Lấy nhân sự có cấp bậc cao nhất trong công ty (ưu tiên Giám đốc, Tổng giám đốc, Chủ tịch)
+ */
+export const getHighestRankLeader = (engineers: any[]): any | null => {
+  if (!Array.isArray(engineers) || engineers.length === 0) return null;
+
+  const candidates = engineers.filter(e => e && !isTechnicalAdminUser(e) && !e.isLocked && !(e as any).is_locked);
+  if (candidates.length === 0) return null;
+
+  // 1. Ưu tiên cao nhất: Giám đốc / Tổng giám đốc / Chủ tịch / Ban Giám Đốc
+  const directors = candidates.filter(e => {
+    const role = String(e.role || '').toLowerCase();
+    const title = String((e as any).title || '').toLowerCase();
+    return (
+      role === 'giám đốc' ||
+      title === 'giám đốc' ||
+      role.includes('tổng giám đốc') ||
+      title.includes('tổng giám đốc') ||
+      role.includes('chủ tịch') ||
+      title.includes('chủ tịch') ||
+      role.includes('ban giám đốc') ||
+      title.includes('ban giám đốc') ||
+      role === 'director'
+    );
+  });
+
+  if (directors.length > 0) {
+    const exactDirector = directors.find(e => {
+      const r = String(e.role || '').trim().toLowerCase();
+      const t = String((e as any).title || '').trim().toLowerCase();
+      return r === 'giám đốc' || t === 'giám đốc' || r.includes('tổng giám đốc') || t.includes('tổng giám đốc');
+    });
+    return exactDirector || directors[0];
+  }
+
+  // 2. Ưu tiên kế tiếp: isDirector(e)
+  const isDir = candidates.find(e => isDirector(e));
+  if (isDir) return isDir;
+
+  // 3. Ưu tiên company_admin / roleLevel level1
+  const adminLevel = candidates.find(e => e.companyRole === 'company_admin' || e.roleLevel === 'level1' || (e as any).role_level === 'level1');
+  if (adminLevel) return adminLevel;
+
+  // 4. Các chức danh lãnh đạo khác (loại trừ lãnh đạo tổ / tổ đội)
+  const otherExec = candidates.find(e => isHighestLevelPerson(e));
+  if (otherExec) return otherExec;
+
+  return candidates[0] || null;
 };
 
 /**
