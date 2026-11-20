@@ -2624,7 +2624,7 @@ export const AttendancePage: React.FC = () => {
                   searchable={true}
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-white font-medium"
                 >
-                  <option value="">-- Không qua quản lý (Ban Giám Đốc duyệt) --</option>
+                  <option value="">-- Để trống (Chuyển thẳng lên người có cấp bậc cao nhất duyệt) --</option>
                   {step1Reviewers.map(r => (
                     <option key={r.id} value={r.id}>
                       {r.name} ({r.title || r.role || 'Quản lý'})
@@ -2632,7 +2632,7 @@ export const AttendancePage: React.FC = () => {
                   ))}
                 </CustomSelect>
               </div>
-              <p className="text-[10px] text-slate-400 italic mt-1">* Ban Giám Đốc mặc định duyệt cuối</p>
+              <p className="text-[10px] text-slate-400 italic mt-1">* Để trống thì chuyển thẳng lên người có cấp bậc cao nhất duyệt</p>
             </div>
 
             {/* Ô Người theo dõi (Follow / CC) */}
@@ -2917,7 +2917,7 @@ export const AttendancePage: React.FC = () => {
                   searchable={true}
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-white font-medium"
                 >
-                  <option value="">-- Không qua quản lý (Ban Giám Đốc duyệt) --</option>
+                  <option value="">-- Để trống (Chuyển thẳng lên người có cấp bậc cao nhất duyệt) --</option>
                   {step1Reviewers.map(r => (
                     <option key={r.id} value={r.id}>
                       {r.name} ({r.title || r.role || 'Quản lý'})
@@ -2925,7 +2925,7 @@ export const AttendancePage: React.FC = () => {
                   ))}
                 </CustomSelect>
               </div>
-              <p className="text-[10px] text-slate-400 italic mt-1">* Ban Giám Đốc mặc định duyệt cuối</p>
+              <p className="text-[10px] text-slate-400 italic mt-1">* Để trống thì chuyển thẳng lên người có cấp bậc cao nhất duyệt</p>
             </div>
 
             {/* Ô Người theo dõi (Follow / CC) */}
