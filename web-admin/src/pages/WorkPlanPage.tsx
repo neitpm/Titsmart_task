@@ -159,6 +159,7 @@ export const WorkPlanPage: React.FC = () => {
       localStorage.setItem('titsmart_deadline_alert_config', JSON.stringify(tempConfig));
       const totalDays = tempConfig.days + (tempConfig.hours / 24) + (tempConfig.minutes / 1440);
       localStorage.setItem('titsmart_deadline_alert_days', String(Math.ceil(totalDays) || 1));
+      window.dispatchEvent(new Event('titsmart_alert_config_changed'));
     } catch {}
     triggerToast(`Đã lưu mức cảnh báo: Sắp đến hạn trước ${formatAlertConfigLabel(tempConfig)}`, 'success');
     setShowAlertSetting(false);

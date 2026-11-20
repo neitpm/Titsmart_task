@@ -285,13 +285,27 @@ const parseFlexibleDate = (dateStr?: string | null): Date | null => {
   const trimmed = dateStr.trim();
   if (!trimmed) return null;
 
+  // Check if string has time part (T or space followed by HH:mm)
+  let timeHours = 23;
+  let timeMinutes = 59;
+  let timeSeconds = 59;
+  let hasTime = false;
+
+  const timeMatch = trimmed.match(/[T\s](\d{1,2}):(\d{1,2})(?::(\d{1,2}))?/);
+  if (timeMatch) {
+    timeHours = parseInt(timeMatch[1], 10);
+    timeMinutes = parseInt(timeMatch[2], 10);
+    timeSeconds = timeMatch[3] ? parseInt(timeMatch[3], 10) : 0;
+    hasTime = true;
+  }
+
   // DD/MM/YYYY or DD-MM-YYYY
   const dmyMatch = trimmed.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
   if (dmyMatch) {
     const day = parseInt(dmyMatch[1], 10);
     const month = parseInt(dmyMatch[2], 10) - 1;
     const year = parseInt(dmyMatch[3], 10);
-    const d = new Date(year, month, day);
+    const d = new Date(year, month, day, timeHours, timeMinutes, timeSeconds);
     if (!isNaN(d.getTime())) return d;
   }
 
@@ -301,12 +315,18 @@ const parseFlexibleDate = (dateStr?: string | null): Date | null => {
     const year = parseInt(ymdMatch[1], 10);
     const month = parseInt(ymdMatch[2], 10) - 1;
     const day = parseInt(ymdMatch[3], 10);
-    const d = new Date(year, month, day);
+    const d = new Date(year, month, day, timeHours, timeMinutes, timeSeconds);
     if (!isNaN(d.getTime())) return d;
   }
 
   const d = new Date(trimmed);
-  return isNaN(d.getTime()) ? null : d;
+  if (!isNaN(d.getTime())) {
+    if (!hasTime) {
+      d.setHours(23, 59, 59, 999);
+    }
+    return d;
+  }
+  return null;
 };
 
 const generateDocumentDueNotifications = (tracks: DocumentTrack[], existingNotifications: NotificationItem[]) => {
@@ -379,24 +399,23 @@ const generateDocumentDueNotifications = (tracks: DocumentTrack[], existingNotif
   return newNotifs.filter(n => !existingIds.has(n.id) && !existingKeys.has(`${n.id}:::${n.title}:::${n.message}`));
 };
 
-const generateTaskDueNotifications = (tasksList: Task[], existingNotifications: NotificationItem[]) => {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const nowIso = new Date().toISOString();
+export const generateTaskDueNotifications = (tasksList: Task[], existingNotifications: NotificationItem[]): NotificationItem[] => {
+  const now = new Date();
+  const nowIso = now.toISOString();
   const newNotifs: NotificationItem[] = [];
 
-  let alertDaysThreshold = 3;
+  let alertTotalMinutes = 3 * 24 * 60; // Mặc định 3 ngày
   try {
     const savedConfig = typeof window !== 'undefined' ? localStorage.getItem('titsmart_deadline_alert_config') : null;
     if (savedConfig) {
       const parsed = JSON.parse(savedConfig);
-      const m = (parsed.days || 0) * 1440 + (parsed.hours || 0) * 60 + (parsed.minutes || 0);
-      if (m > 0) alertDaysThreshold = Math.ceil(m / 1440);
+      const m = (Number(parsed.days) || 0) * 1440 + (Number(parsed.hours) || 0) * 60 + (Number(parsed.minutes) || 0);
+      if (m > 0) alertTotalMinutes = m;
     } else {
       const savedDays = typeof window !== 'undefined' ? localStorage.getItem('titsmart_deadline_alert_days') : null;
       if (savedDays) {
         const d = parseFloat(savedDays);
-        if (!isNaN(d) && d > 0) alertDaysThreshold = Math.ceil(d);
+        if (!isNaN(d) && d > 0) alertTotalMinutes = Math.round(d * 1440);
       }
     }
   } catch {}
@@ -407,10 +426,9 @@ const generateTaskDueNotifications = (tasksList: Task[], existingNotifications: 
 
     const due = parseFlexibleDate(task.dueDate);
     if (!due) return;
-    due.setHours(0, 0, 0, 0);
 
-    const diffTime = due.getTime() - today.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const diffMs = due.getTime() - now.getTime();
+    const diffMinutes = Math.floor(diffMs / (1000 * 60));
     const pCode = task.projectCode || 'PROJECT';
     const taskName = task.name || 'Công việc';
 
@@ -425,27 +443,60 @@ const generateTaskDueNotifications = (tasksList: Task[], existingNotifications: 
     const targetIdList = Array.from(new Set([task.assignerId || 'admin', ...assignedIds, ...(task.followerIds || [])])).filter(Boolean);
     const targetNameList = Array.from(new Set([task.assignerName || 'Quản lý', ...assignedNames, ...(task.followerNames || [])])).filter(Boolean);
 
-    if (diffDays < 0) {
-      const absDays = Math.abs(diffDays);
-      const notifKey = `overdue-task-${task.id}-${absDays}-${task.dueDate}`;
+    if (diffMinutes < 0) {
+      const absMinutes = Math.abs(diffMinutes);
+      let overdueText = '';
+      let overdueBucket = 0;
+      if (absMinutes >= 1440) {
+        const absDays = Math.floor(absMinutes / 1440);
+        overdueText = `${absDays} ngày`;
+        overdueBucket = absDays;
+      } else if (absMinutes >= 60) {
+        const absHours = Math.floor(absMinutes / 60);
+        overdueText = `${absHours} giờ`;
+        overdueBucket = absHours;
+      } else {
+        overdueText = `${absMinutes} phút`;
+        overdueBucket = Math.floor(absMinutes / 15);
+      }
+
+      const notifKey = `overdue-task-${task.id}-b${overdueBucket}-${task.dueDate}`;
       newNotifs.push({
         id: notifKey,
         title: 'Công việc quá hạn hoàn thành',
-        message: `[${pCode}] Công việc "${taskName}" đã quá hạn ${absDays} ngày (Hạn: ${task.dueDate}).`,
+        message: `[${pCode}] Công việc "${taskName}" đã quá hạn ${overdueText} (Hạn: ${task.dueDate}).`,
         timestamp: nowIso,
         read: false,
         type: `task_due:::${targetIdList.join(',')}:::${targetNameList.join(',')}`,
         icon: 'warning',
         link: taskLink
       });
-    } else if (diffDays <= alertDaysThreshold) {
-      const notifKey = `due-task-${task.id}-${diffDays}-${task.dueDate}`;
+    } else if (diffMinutes <= alertTotalMinutes) {
+      let remainingText = '';
+      let timeBucket = 0;
+
+      if (diffMinutes >= 1440) {
+        const days = Math.floor(diffMinutes / 1440);
+        const remH = Math.floor((diffMinutes % 1440) / 60);
+        remainingText = remH > 0 ? `${days} ngày ${remH} giờ` : `${days} ngày`;
+        timeBucket = days;
+      } else if (diffMinutes >= 60) {
+        const hours = Math.floor(diffMinutes / 60);
+        const remM = diffMinutes % 60;
+        remainingText = remM > 0 ? `${hours} giờ ${remM} phút` : `${hours} giờ`;
+        timeBucket = hours;
+      } else {
+        remainingText = diffMinutes <= 1 ? 'dưới 1 phút' : `${diffMinutes} phút`;
+        timeBucket = Math.max(1, Math.floor(diffMinutes / 10));
+      }
+
+      const notifKey = `due-task-${task.id}-tb${timeBucket}-${task.dueDate}`;
       newNotifs.push({
         id: notifKey,
         title: 'Nhắc hạn công việc',
-        message: diffDays === 0
-          ? `[${pCode}] Công việc "${taskName}" đến hạn hoàn thành hôm nay!`
-          : `[${pCode}] Công việc "${taskName}" sắp đến hạn hoàn thành (Còn ${diffDays} ngày).`,
+        message: diffMinutes <= 0
+          ? `[${pCode}] Công việc "${taskName}" đến hạn hoàn thành ngay bây giờ! (Hạn: ${task.dueDate})`
+          : `[${pCode}] Công việc "${taskName}" sắp đến hạn hoàn thành (Còn ${remainingText} - Hạn: ${task.dueDate}).`,
         timestamp: nowIso,
         read: false,
         type: `task_due:::${targetIdList.join(',')}:::${targetNameList.join(',')}`,

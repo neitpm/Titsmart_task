@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useRealtimeStore } from '../../services/realtimeStore';
+import { useRealtimeStore, generateTaskDueNotifications } from '../../services/realtimeStore';
 import { useAuthStore, isSystemAdmin, isDirector } from '../../services/authStore';
 import { useUIStore } from '../../services/uiStore';
 import { sendSystemNotification, requestSystemNotificationPermission } from '../../services/systemNotificationService';
@@ -774,7 +774,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ isSidebar = 
       if ((window as any).electronAPI?.installUpdate) {
         (window as any).electronAPI.installUpdate();
       } else if (isCapacitorNative) {
-        const downloadUrl = `https://github.com/kennhope13/Titsmart_task/releases/download/v${availableUpdateVersion}/TITSMART-v${availableUpdateVersion}.apk`;
+        const downloadUrl = `https://github.com/neitpm/Titsmart_task/releases/download/v${availableUpdateVersion}/TITSMART-v${availableUpdateVersion}.apk`;
         try {
           window.open(downloadUrl, '_system');
         } catch (_) {
@@ -1248,6 +1248,37 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ isSidebar = 
 
     return style;
   }, [position]);
+
+  // ─── ĐỊNH KỲ QUÉT CẢNH BÁO HẠN CÔNG VIỆC THEO MỐC NGÀY - GIỜ - PHÚT ───
+  useEffect(() => {
+    const scanDeadlines = () => {
+      try {
+        const store = useRealtimeStore.getState();
+        const tasks = store.tasks || [];
+        const currentNotifs = store.notifications || [];
+        if (tasks.length === 0) return;
+
+        const newDueNotifs = generateTaskDueNotifications(tasks, currentNotifs);
+        if (newDueNotifs.length > 0) {
+          useRealtimeStore.setState({
+            notifications: [...newDueNotifs, ...currentNotifs]
+          });
+        }
+      } catch (err) {
+        console.warn('Deadline scan error:', err);
+      }
+    };
+
+    const timer = setTimeout(scanDeadlines, 2000);
+    const interval = setInterval(scanDeadlines, 60000);
+    window.addEventListener('titsmart_alert_config_changed', scanDeadlines);
+
+    return () => {
+      clearTimeout(timer);
+      clearInterval(interval);
+      window.removeEventListener('titsmart_alert_config_changed', scanDeadlines);
+    };
+  }, []);
 
   // ─── TỰ ĐỘNG BẮN THÔNG BÁO RA HỆ ĐIỀU HÀNH (DESKTOP BANNER + MOBILE LOCKSCREEN) ───
   const isInitialNotifLoadRef = useRef(true);

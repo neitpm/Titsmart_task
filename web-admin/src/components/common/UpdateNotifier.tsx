@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import type { UpdateStatusPayload } from '@/types/electron';
 import { useUIStore } from '../../services/uiStore';
+import { useRealtimeStore } from '../../services/realtimeStore';
 import { sendSystemNotification } from '../../services/systemNotificationService';
 
 type UiState = {
@@ -55,6 +56,25 @@ export const UpdateNotifier: React.FC = () => {
         body: `Bản cập nhật v${ver} đã sẵn sàng. Mở ứng dụng để cập nhật ngay!`,
       });
     }
+
+    // Đưa thông báo cập nhật vào danh sách Thông báo (Quả chuông) để người dùng thấy rõ ràng
+    try {
+      const updateNotifId = `app-update-notif-${ver}`;
+      const curNotifs = useRealtimeStore.getState().notifications || [];
+      if (!curNotifs.some(n => n.id === updateNotifId)) {
+        const updateNotifItem = {
+          id: updateNotifId,
+          title: `Cập nhật phần mềm TITSMART v${ver}`,
+          message: `Đã có bản phát hành mới v${ver}. Bấm vào đây để khởi động lại và cập nhật ứng dụng ngay!`,
+          timestamp: new Date().toISOString(),
+          read: false,
+          type: 'app_update',
+          icon: 'system_update',
+          link: '__RESTART_UPDATE__'
+        };
+        useRealtimeStore.setState({ notifications: [updateNotifItem, ...curNotifs] });
+      }
+    } catch (_) {}
   }, [setAvailableUpdateVersion]);
 
   // Cho phép kiểm tra hiển thị nút demo qua url ?demo_update=1 hoặc hash
