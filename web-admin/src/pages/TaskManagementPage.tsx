@@ -2848,7 +2848,7 @@ const hasSyncedRef = useRef(false);
           }}
           className="w-full overflow-x-auto overflow-y-auto flex-1 custom-scrollbar"
         >
-          <table className="min-w-[1200px] w-full text-left border-collapse text-[11px] table-fixed" style={{ "--stt-width": `${maxSttWidth}px` } as React.CSSProperties}>
+          <table className="min-w-[1350px] w-full text-left border-collapse text-[11px] table-fixed" style={{ "--stt-width": `${maxSttWidth}px` } as React.CSSProperties}>
             <colgroup>
               <col style={{ width: "var(--stt-width)" }} />
               <col />
@@ -2859,10 +2859,10 @@ const hasSyncedRef = useRef(false);
               <col style={{ width: 125 }} />
                {(hasPermission(authStore.user, 'ASSIGN_TASKS') || tasks.some(task => isUserTaskAssignee(authStore.user, task, engineers))) && (
                 <>
+                  <col style={{ width: 165 }} />
                   <col style={{ width: 130 }} />
                   <col style={{ width: 120 }} />
                   <col style={{ width: 110 }} />
-                  <col style={{ width: 100 }} />
                 </>
               )}
               <col style={{ width: 90 }} />
@@ -2879,10 +2879,10 @@ const hasSyncedRef = useRef(false);
                 <th className="py-2 px-2 w-[125px] min-w-[125px] text-center border-b border-r border-slate-200 whitespace-nowrap">TĐ THI CÔNG</th>
                  {(hasPermission(authStore.user, 'ASSIGN_TASKS') || tasks.some(task => isUserTaskAssignee(authStore.user, task, engineers))) && (
                     <>
-                      <th className="py-2 px-1 w-[130px] min-w-[130px] text-center border-b border-r border-slate-200 whitespace-nowrap">GIAO VIỆC</th>
-                      <th className="py-2 px-1 w-[120px] min-w-[120px] text-center border-b border-r border-slate-200 whitespace-nowrap">BẮT ĐẦU NHẬN VIỆC</th>
-                      <th className="py-2 px-1 w-[110px] min-w-[110px] text-center border-b border-r border-slate-200 whitespace-nowrap">HẠN HOÀN THÀNH</th>
-                      <th className="py-2 px-1 w-[100px] min-w-[100px] text-center border-b border-r border-slate-200 whitespace-nowrap">HOÀN THÀNH</th>
+                      <th className="py-2 px-2 w-[165px] min-w-[165px] text-center border-b border-r border-slate-200 whitespace-nowrap">GIAO VIỆC</th>
+                      <th className="py-2 px-2 w-[130px] min-w-[130px] text-center border-b border-r border-slate-200 whitespace-nowrap">BẮT ĐẦU NHẬN VIỆC</th>
+                      <th className="py-2 px-2 w-[120px] min-w-[120px] text-center border-b border-r border-slate-200 whitespace-nowrap">HẠN HOÀN THÀNH</th>
+                      <th className="py-2 px-2 w-[110px] min-w-[110px] text-center border-b border-r border-slate-200 whitespace-nowrap">HOÀN THÀNH</th>
                     </>
                   )}
                 <th className="bg-slate-50 py-2 px-1 w-[90px] min-w-[85px] border-b border-r border-slate-200 whitespace-nowrap text-center">GHI CHÚ</th>
@@ -3115,7 +3115,7 @@ const hasSyncedRef = useRef(false);
                       </td>
                        {(hasPermission(authStore.user, 'ASSIGN_TASKS') || isUserTaskAssignee(authStore.user, t, engineers)) && (
                           <td 
-                            className="py-1.5 px-1 text-center whitespace-nowrap border-r border-slate-200 transition-colors cursor-pointer hover:bg-slate-50"
+                            className="py-1.5 px-1.5 text-center whitespace-nowrap border-r border-slate-200 transition-colors cursor-pointer hover:bg-slate-50 overflow-hidden"
                             onClick={(e) => {
                               e.stopPropagation();
                               if (hasAssignment) {
@@ -3125,16 +3125,16 @@ const hasSyncedRef = useRef(false);
                               }
                             }}
                           >
-                          <div className="flex flex-col gap-1 items-center justify-center pointer-events-auto">
+                          <div className="flex flex-col gap-1 items-center justify-center pointer-events-auto w-full max-w-full">
                             {hasAssignment ? (
-                              <div className="flex items-center justify-center gap-1 w-full max-w-[125px]">
+                              <div className="flex items-center justify-center gap-1 w-full max-w-[155px]">
                                 <div
                                   onClick={(e) => { e.stopPropagation(); setDiscussionTask(t); }}
                                   className="flex-1 min-w-0 flex flex-col items-center cursor-pointer group/name"
                                   title="Nhấn để mở Trao đổi & Hướng dẫn công việc"
                                 >
                                   {resolvedAssignedNames.map((name: string, i: number) => (
-                                    <span key={i} className="text-[10px] font-bold text-blue-700 bg-blue-50 group-hover/name:bg-blue-100 group-hover/name:text-blue-900 border border-blue-200 px-1 py-0.5 rounded truncate w-full max-w-[100px] flex items-center justify-center gap-0.5 transition-colors">
+                                    <span key={i} className="text-[10px] font-bold text-blue-700 bg-blue-50 group-hover/name:bg-blue-100 group-hover/name:text-blue-900 border border-blue-200 px-1.5 py-0.5 rounded truncate w-full max-w-[125px] flex items-center justify-center gap-0.5 transition-colors">
                                       <span className="material-symbols-outlined text-[10px] text-blue-600">chat</span>
                                       <span className="truncate">{name.trim()}</span>
                                     </span>
@@ -3155,7 +3155,7 @@ const hasSyncedRef = useRef(false);
                               const readiness = isTaskReadyForAssignment(t, materialPlans);
                               if (!readiness.ready) {
                                 return (
-                                  <span className="text-[9px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-1 py-0.5 rounded truncate w-full max-w-[105px] block leading-tight" title={readiness.reason}>
+                                  <span className="text-[9px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded truncate w-full max-w-[130px] block leading-tight" title={readiness.reason}>
                                     Chưa đủ ĐK giao
                                   </span>
                                 );
@@ -3178,7 +3178,7 @@ const hasSyncedRef = useRef(false);
                             {t.status === 'Có thắc mắc' && (
                               <button 
                                 onClick={(e) => { e.stopPropagation(); setDiscussionTask(t); }} 
-                                className="text-[9px] bg-amber-500 hover:bg-amber-600 text-white px-2 py-0.5 rounded shadow-sm w-full flex items-center justify-center gap-0.5 font-bold animate-pulse cursor-pointer"
+                                className="text-[9px] bg-amber-500 hover:bg-amber-600 text-white px-2 py-0.5 rounded shadow-xs w-full max-w-[155px] flex items-center justify-center gap-0.5 font-bold animate-pulse cursor-pointer"
                                 title="Xem thắc mắc của nhân sự và phản hồi"
                               >
                                 <span className="material-symbols-outlined text-[11px]">question_answer</span>
@@ -3192,9 +3192,9 @@ const hasSyncedRef = useRef(false);
                               t.constrStatus !== 'Đã hoàn thành' && 
                               t.status !== 'Hoàn thành' && 
                               (t.status === 'Chờ nhận việc' || t.status === 'Có thắc mắc' || (t.status === 'Chưa làm' && t.assignedEngineerId)) && (
-                              <div className="flex items-center gap-1 w-full max-w-[120px]">
-                                <button onClick={(e) => { e.stopPropagation(); handleAcceptTask(t); }} className="text-[9px] bg-emerald-500 hover:bg-emerald-600 text-white px-1 py-0.5 rounded shadow-sm flex-1 font-bold cursor-pointer whitespace-nowrap">Nhận việc</button>
-                                <button onClick={(e) => { e.stopPropagation(); setDiscussionTask(t); }} className="text-[9px] bg-amber-500 hover:bg-amber-600 text-white px-1 py-0.5 rounded shadow-sm flex-1 font-bold cursor-pointer whitespace-nowrap">Thắc mắc</button>
+                              <div className="flex items-center justify-center gap-1 w-full max-w-[155px]">
+                                <button onClick={(e) => { e.stopPropagation(); handleAcceptTask(t); }} className="text-[9px] bg-emerald-500 hover:bg-emerald-600 text-white px-1.5 py-0.5 rounded shadow-xs flex-1 font-bold cursor-pointer whitespace-nowrap text-center">Nhận việc</button>
+                                <button onClick={(e) => { e.stopPropagation(); setDiscussionTask(t); }} className="text-[9px] bg-amber-500 hover:bg-amber-600 text-white px-1.5 py-0.5 rounded shadow-xs flex-1 font-bold cursor-pointer whitespace-nowrap text-center">Thắc mắc</button>
                               </div>
                             )}
                             {isUserTaskAssignee(authStore.user, t, engineers) && 
@@ -3202,10 +3202,10 @@ const hasSyncedRef = useRef(false);
                               (t.progress ?? 0) < 1 && 
                               t.constrStatus !== 'Đã hoàn thành' && 
                               t.status === 'Đang làm' && (
-                              <div className="flex items-center gap-1 w-full max-w-[130px]">
+                              <div className="flex items-center justify-center gap-1 w-full max-w-[155px]">
                                 <button 
                                   onClick={(e) => { e.stopPropagation(); setDiscussionTask(t); }} 
-                                  className="text-[9px] bg-amber-500 hover:bg-amber-600 text-white px-1.5 py-0.5 rounded shadow-sm font-bold cursor-pointer whitespace-nowrap flex items-center justify-center gap-0.5"
+                                  className="text-[9px] bg-amber-500 hover:bg-amber-600 text-white px-1.5 py-0.5 rounded shadow-xs font-bold cursor-pointer whitespace-nowrap flex items-center justify-center gap-0.5 shrink-0"
                                   title="Trao đổi hoặc gửi thắc mắc khi đang làm việc"
                                 >
                                   <span className="material-symbols-outlined text-[10px]">chat</span>
@@ -3213,7 +3213,7 @@ const hasSyncedRef = useRef(false);
                                 </button>
                                 <button 
                                   onClick={(e) => { e.stopPropagation(); handleReportDone(t); }} 
-                                  className="text-[9px] bg-blue-500 hover:bg-blue-600 text-white px-1.5 py-0.5 rounded shadow-sm flex-1 font-bold cursor-pointer whitespace-nowrap"
+                                  className="text-[9px] bg-blue-500 hover:bg-blue-600 text-white px-1.5 py-0.5 rounded shadow-xs flex-1 font-bold cursor-pointer whitespace-nowrap text-center"
                                   title="Báo cáo hoàn thành công việc"
                                 >
                                   Báo cáo xong
@@ -3221,7 +3221,7 @@ const hasSyncedRef = useRef(false);
                               </div>
                             )}
                             {canApproveTask(authStore.user, t) && (
-                              <div className="grid grid-cols-2 gap-1 w-full max-w-[125px]">
+                              <div className="grid grid-cols-2 gap-1 w-full max-w-[155px]">
                                 <button onClick={(e) => { e.stopPropagation(); handleApproveTask(t); }} className="text-[9px] bg-purple-600 hover:bg-purple-700 text-white px-1 py-0.5 rounded shadow-xs min-w-0 font-bold flex items-center justify-center gap-0.5 animate-pulse cursor-pointer whitespace-nowrap" title="Nghiệm thu hoàn thành công việc">
                                   Nghiệm thu
                                 </button>
