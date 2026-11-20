@@ -279,6 +279,8 @@ export const ProjectCostPlanPage: React.FC = () => {
   const logActivity = useRealtimeStore(s => s.logActivity);
   const addNotification = useRealtimeStore(s => s.addNotification);
   const notifications = useRealtimeStore(s => s.notifications);
+  const tablePaginationMode = useUIStore(s => s.tablePaginationMode);
+  const tablePageSize = useUIStore(s => s.tablePageSize);
 
   useEffect(() => {
     // Luôn tải lại chi phí / kế toán khi vào trang để đảm bảo dữ liệu mới nhất
@@ -1860,7 +1862,13 @@ export const ProjectCostPlanPage: React.FC = () => {
   const [expenseFilterSpender, setExpenseFilterSpender] = useState('all');
   const [expenseFilterUnit, setExpenseFilterUnit] = useState('all');
   const [expensePage, setExpensePage] = useState(1);
-  const [expensePageSize, setExpensePageSize] = useState(25);
+  const [expensePageSize, setExpensePageSize] = useState(tablePageSize || 25);
+  const [expenseVisibleLimit, setExpenseVisibleLimit] = useState(tablePageSize || 25);
+
+  useEffect(() => {
+    setExpensePageSize(tablePageSize || 25);
+    setExpenseVisibleLimit(tablePageSize || 25);
+  }, [tablePageSize]);
 
   // Labor Tab Filters
   const [laborFilterDateFrom, setLaborFilterDateFrom] = useState('');
@@ -2386,19 +2394,38 @@ export const ProjectCostPlanPage: React.FC = () => {
     return computed.reverse(); // Đảo ngược để hiển thị mới nhất lên đầu
   }, [filteredProjExpenses, filteredProjLabor]);
 
-  const expenseTotalPages = Math.max(1, Math.ceil(combinedCashFlow.length / expensePageSize));
+  const effectiveExpensePageSize = expensePageSize || tablePageSize || 25;
+  const expenseTotalPages = Math.max(1, Math.ceil(combinedCashFlow.length / effectiveExpensePageSize));
   const paginatedCashFlow = useMemo(() => {
-    const start = (expensePage - 1) * expensePageSize;
-    return combinedCashFlow.slice(start, start + expensePageSize);
-  }, [combinedCashFlow, expensePage, expensePageSize]);
+    if (tablePaginationMode === 'infinite') {
+      return combinedCashFlow.slice(0, expenseVisibleLimit);
+    }
+    const start = (expensePage - 1) * effectiveExpensePageSize;
+    return combinedCashFlow.slice(start, start + effectiveExpensePageSize);
+  }, [combinedCashFlow, expensePage, effectiveExpensePageSize, tablePaginationMode, expenseVisibleLimit]);
 
   useEffect(() => {
     setExpensePage(1);
-  }, [selectedProject, expenseFilterSpender, expenseFilterContent, expenseFilterUnit, expenseFilterDateFrom, expenseFilterDateTo, searchQuery, expensePageSize]);
+    setExpenseVisibleLimit(tablePageSize || 25);
+  }, [selectedProject, expenseFilterSpender, expenseFilterContent, expenseFilterUnit, expenseFilterDateFrom, expenseFilterDateTo, searchQuery, expensePageSize, tablePageSize]);
 
   useEffect(() => {
     if (expensePage > expenseTotalPages) setExpensePage(expenseTotalPages);
   }, [expensePage, expenseTotalPages]);
+
+  useEffect(() => {
+    if (tablePaginationMode !== 'infinite' || activeTab !== 'EXPENSE') return;
+    const handleScroll = () => {
+      const scrollY = window.scrollY;
+      const windowHeight = window.innerHeight;
+      const docHeight = document.documentElement.scrollHeight;
+      if (docHeight - (scrollY + windowHeight) < 400) {
+        setExpenseVisibleLimit(prev => (prev < combinedCashFlow.length ? Math.min(combinedCashFlow.length, prev + (tablePageSize || 25)) : prev));
+      }
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [tablePaginationMode, activeTab, combinedCashFlow.length, tablePageSize]);
 
   const expenseContentTypes = useMemo(() => {
     const contents = new Set<string>();
@@ -3083,7 +3110,17 @@ export const ProjectCostPlanPage: React.FC = () => {
 
             {/* 2. CHI TIẾT PHIẾU CHI */}
             <div className="bg-white border-t border-slate-200 overflow-hidden flex-1 flex flex-col">
-              <div className="overflow-x-auto custom-scrollbar flex-1">
+              <div 
+                onScroll={(e) => {
+                  if (tablePaginationMode === 'infinite') {
+                    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+                    if (scrollHeight - (scrollTop + clientHeight) < 350) {
+                      setExpenseVisibleLimit(prev => (prev < combinedCashFlow.length ? Math.min(combinedCashFlow.length, prev + (tablePageSize || 25)) : prev));
+                    }
+                  }
+                }}
+                className="overflow-x-auto overflow-y-auto custom-scrollbar flex-1 max-h-[70vh]"
+              >
                 <table className="w-full text-left border-collapse min-w-[1100px]">
                   <thead className="sticky top-0 z-10 bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-tight">
                   <tr>
@@ -3266,61 +3303,87 @@ export const ProjectCostPlanPage: React.FC = () => {
             </div>
 
             {/* Pagination Controls for Cash Flow / Expenses */}
-            <div className="flex flex-wrap items-center justify-center gap-4 px-4 py-2.5 bg-slate-50 border-t border-slate-200 text-xs text-slate-600 rounded-b-xl select-none">
-              <div className="flex items-center gap-2">
-                <span>Hiển thị {combinedCashFlow.length === 0 ? 0 : (expensePage - 1) * expensePageSize + 1}-{Math.min(expensePage * expensePageSize, combinedCashFlow.length)} / {combinedCashFlow.length} khoản mục</span>
-                <select
-                  value={String(expensePageSize)}
-                  onChange={(e) => {
-                    setExpensePageSize(Number(e.target.value));
-                    setExpensePage(1);
-                  }}
-                  className="rounded border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 outline-none focus:border-sky-500 cursor-pointer"
-                >
-                  <option value="25">25 / trang</option>
-                  <option value="50">50 / trang</option>
-                  <option value="100">100 / trang</option>
-                  <option value="200">200 / trang</option>
-                </select>
-              </div>
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  disabled={expensePage <= 1}
-                  onClick={() => setExpensePage(1)}
-                  className="rounded border border-slate-300 bg-white px-2 py-1 disabled:cursor-not-allowed disabled:opacity-40 hover:bg-slate-50 font-medium"
-                >
-                  Đầu
-                </button>
-                <button
-                  type="button"
-                  disabled={expensePage <= 1}
-                  onClick={() => setExpensePage(p => Math.max(1, p - 1))}
-                  className="rounded border border-slate-300 bg-white px-2 py-1 disabled:cursor-not-allowed disabled:opacity-40 hover:bg-slate-50 font-medium"
-                >
-                  Trước
-                </button>
-                <span className="px-2 font-semibold text-slate-700">
-                  Trang {expensePage} / {expenseTotalPages}
-                </span>
-                <button
-                  type="button"
-                  disabled={expensePage >= expenseTotalPages}
-                  onClick={() => setExpensePage(p => Math.min(expenseTotalPages, p + 1))}
-                  className="rounded border border-slate-300 bg-white px-2 py-1 disabled:cursor-not-allowed disabled:opacity-40 hover:bg-slate-50 font-medium"
-                >
-                  Sau
-                </button>
-                <button
-                  type="button"
-                  disabled={expensePage >= expenseTotalPages}
-                  onClick={() => setExpensePage(expenseTotalPages)}
-                  className="rounded border border-slate-300 bg-white px-2 py-1 disabled:cursor-not-allowed disabled:opacity-40 hover:bg-slate-50 font-medium"
-                >
-                  Cuối
-                </button>
-              </div>
-            </div>
+            {combinedCashFlow.length > 0 && (
+              tablePaginationMode === 'infinite' ? (
+                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-white px-4 py-2.5 text-xs text-slate-600 rounded-b-xl select-none shadow-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-slate-700 whitespace-nowrap">
+                      Hiển thị <span className="text-primary font-bold">{Math.min(expenseVisibleLimit, combinedCashFlow.length)}</span> / {combinedCashFlow.length} khoản mục
+                    </span>
+                    {expenseVisibleLimit < combinedCashFlow.length && (
+                      <span className="hidden sm:inline-flex items-center gap-1 text-[11px] text-slate-400">
+                        • Cuộn xuống để tải thêm...
+                      </span>
+                    )}
+                  </div>
+                  {expenseVisibleLimit < combinedCashFlow.length && (
+                    <button
+                      type="button"
+                      onClick={() => setExpenseVisibleLimit(combinedCashFlow.length)}
+                      className="text-primary font-semibold hover:underline cursor-pointer text-xs"
+                    >
+                      Xem tất cả ({combinedCashFlow.length})
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="flex flex-wrap items-center justify-center gap-4 px-4 py-2.5 bg-slate-50 border-t border-slate-200 text-xs text-slate-600 rounded-b-xl select-none">
+                  <div className="flex items-center gap-2">
+                    <span>Hiển thị {combinedCashFlow.length === 0 ? 0 : (expensePage - 1) * effectiveExpensePageSize + 1}-{Math.min(expensePage * effectiveExpensePageSize, combinedCashFlow.length)} / {combinedCashFlow.length} khoản mục</span>
+                    <select
+                      value={String(expensePageSize)}
+                      onChange={(e) => {
+                        setExpensePageSize(Number(e.target.value));
+                        setExpensePage(1);
+                      }}
+                      className="rounded border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700 outline-none focus:border-sky-500 cursor-pointer"
+                    >
+                      <option value="25">25 / trang</option>
+                      <option value="50">50 / trang</option>
+                      <option value="100">100 / trang</option>
+                      <option value="200">200 / trang</option>
+                    </select>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      disabled={expensePage <= 1}
+                      onClick={() => setExpensePage(1)}
+                      className="rounded border border-slate-300 bg-white px-2 py-1 disabled:cursor-not-allowed disabled:opacity-40 hover:bg-slate-50 font-medium"
+                    >
+                      Đầu
+                    </button>
+                    <button
+                      type="button"
+                      disabled={expensePage <= 1}
+                      onClick={() => setExpensePage(p => Math.max(1, p - 1))}
+                      className="rounded border border-slate-300 bg-white px-2 py-1 disabled:cursor-not-allowed disabled:opacity-40 hover:bg-slate-50 font-medium"
+                    >
+                      Trước
+                    </button>
+                    <span className="px-2 font-semibold text-slate-700">
+                      Trang {expensePage} / {expenseTotalPages}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={expensePage >= expenseTotalPages}
+                      onClick={() => setExpensePage(p => Math.min(expenseTotalPages, p + 1))}
+                      className="rounded border border-slate-300 bg-white px-2 py-1 disabled:cursor-not-allowed disabled:opacity-40 hover:bg-slate-50 font-medium"
+                    >
+                      Sau
+                    </button>
+                    <button
+                      type="button"
+                      disabled={expensePage >= expenseTotalPages}
+                      onClick={() => setExpensePage(expenseTotalPages)}
+                      className="rounded border border-slate-300 bg-white px-2 py-1 disabled:cursor-not-allowed disabled:opacity-40 hover:bg-slate-50 font-medium"
+                    >
+                      Cuối
+                    </button>
+                  </div>
+                </div>
+              )
+            )}
 
             </div>
             </div>
