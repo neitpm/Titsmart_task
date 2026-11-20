@@ -103,7 +103,6 @@ export const LoginPage: React.FC<{ onSwitchStyle?: () => void }> = ({ onSwitchSt
                     </div>
                     
                     <h2 className="text-lg font-extrabold text-slate-900 mb-2">Đăng nhập hệ thống để quản lý công việc</h2>
-                    <p className="text-slate-500 text-sm font-medium">Đăng nhập để quản lý công việc và sử dụng các chức năng được cấp.</p>
                   </div>
 
 
