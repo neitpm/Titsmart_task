@@ -13,7 +13,7 @@ import * as XLSX from 'xlsx';
 import { exportToStyledExcel } from '../utils/excelExportUtils';
 import { exportMonthlyAttendanceTitsmart } from '../utils/exportMonthlyAttendance';
 import { calculateYearLeaveAccrual, YearLeaveBalanceSummary } from '../utils/leaveAccrualRules';
-import { isHighestLevelPerson, isTechnicalAdminUser, getHighestRankLeader } from '../utils/taskPermission';
+import { isHighestLevelPerson, isTechnicalAdminUser, getHighestRankLeader, getUserRankLevel } from '../utils/taskPermission';
 
 import { LeaveRequest, LeaveType, AttendanceAdjustmentRequest, AttendanceAdjustmentType } from '../types';
 import { PullToRefresh } from '../components/common/PullToRefresh';
@@ -182,7 +182,7 @@ export const AttendancePage: React.FC = () => {
   const [reviewNote, setReviewNote] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Người có cấp bậc cao nhất trong công ty (ưu tiên Giám đốc, loại trừ tài khoản admin kỹ thuật)
+  // Người có cấp bậc cao nhất trong công ty (Cấp 1 - Ban Giám Đốc)
   const highestLeader = React.useMemo(() => {
     return getHighestRankLeader(engineers);
   }, [engineers]);
@@ -192,44 +192,34 @@ export const AttendancePage: React.FC = () => {
   const getStep2ReviewerDisplayName = (name?: string | null) => {
     if (!name) return highestRankDisplayName;
     const nLow = name.trim().toLowerCase();
-    if (nLow === 'admin' || nLow === 'quản trị viên' || nLow === 'quản trị' || nLow === 'administrator' || nLow === 'mai văn tùng') {
+    // Nếu dữ liệu cũ lưu tên tài khoản kỹ thuật admin -> hiển thị đại diện Ban Giám Đốc
+    if (nLow === 'admin' || nLow === 'quản trị viên' || nLow === 'quản trị' || nLow === 'administrator') {
       return highestRankDisplayName;
     }
     return name;
   };
 
-  // Danh sách Người duyệt Cấp 2 (Chỉ những người được cấp quyền Cấp 2 / APPROVE_LEAVE_STEP1, không bao gồm Cấp 1 / Admin)
+  // Danh sách Người duyệt Cấp 2 (Quản lý / Chỉ huy trưởng: Cấp 2 hoặc APPROVE_LEAVE_STEP1)
   const step1Reviewers = React.useMemo(() => {
     return engineers.filter(eng => {
-      if (eng.id === user?.id) return false;
-      const perms = eng.permissions || [];
-      // Loại trừ Admin kỹ thuật và người có quyền duyệt Cấp 1
-      if (isTechnicalAdminUser(eng) || perms.includes('APPROVE_LEAVE_FINAL' as any)) return false;
-      const roleStr = String(eng.role || eng.title || '').toLowerCase();
-      return perms.includes('APPROVE_LEAVE_STEP1' as any) ||
-        roleStr.includes('quản lý') ||
-        roleStr.includes('trưởng') ||
-        roleStr.includes('chỉ huy') ||
-        roleStr.includes('pm');
+      if (eng.id === user?.id || eng.isLocked || (eng as any).is_locked) return false;
+      if (isTechnicalAdminUser(eng)) return false;
+      const rank = getUserRankLevel(eng);
+      return rank === 2 || (eng.permissions || []).includes('APPROVE_LEAVE_STEP1' as any);
     });
   }, [engineers, user]);
 
-  // Danh sách Người duyệt Cấp 1 (Ban Giám Đốc có quyền APPROVE_LEAVE_FINAL hoặc vai trò Giám đốc / Cấp cao nhất, loại trừ tài khoản admin kỹ thuật)
+  // Danh sách Người duyệt Cấp 1 (Ban Giám Đốc: Cấp 1 hoặc APPROVE_LEAVE_FINAL)
   const step2Reviewers = React.useMemo(() => {
     return engineers.filter(eng => {
-      const perms = eng.permissions || [];
-      const roleStr = String(eng.role || eng.title || '').toLowerCase();
-      // Loại trừ tài khoản kỹ thuật admin
+      if (eng.id === user?.id || eng.isLocked || (eng as any).is_locked) return false;
       if (isTechnicalAdminUser(eng)) return false;
-      return isHighestLevelPerson(eng) ||
-        perms.includes('APPROVE_LEAVE_FINAL' as any) ||
-        roleStr.includes('giám đốc') ||
-        roleStr.includes('chủ tịch') ||
-        roleStr.includes('lãnh đạo');
+      const rank = getUserRankLevel(eng);
+      return rank === 1 || (eng.permissions || []).includes('APPROVE_LEAVE_FINAL' as any);
     });
-  }, [engineers]);
+  }, [engineers, user]);
 
-  // Kiểm tra quyền duyệt Đơn nghỉ phép đảm bảo bảo mật và phân quyền chính xác
+  // Kiểm tra quyền duyệt Đơn nghỉ phép đảm bảo bảo mật và phân quyền chính xác theo Cấp
   const checkCanReviewLeave = (l: LeaveRequest) => {
     if (!user) return { canReviewStep1: false, canReviewStep2: false };
 
@@ -250,58 +240,37 @@ export const AttendancePage: React.FC = () => {
     const isDesignatedStep1 = Boolean(l.step1ReviewerId && (user.id === l.step1ReviewerId || user.name === l.step1ReviewerName));
     const isDesignatedStep2 = Boolean(l.step2ReviewerId && (user.id === l.step2ReviewerId || user.name === l.step2ReviewerName));
 
-    const roleStr = String(user.role || '').toLowerCase();
-    const titleStr = String((user as any).title || '').toLowerCase();
-    const usernameStr = String(user.username || '').toLowerCase();
-    const isDirectorOrAdmin = (
-      isAdmin ||
-      isHighestLevelPerson(user) ||
-      usernameStr === 'admin' ||
-      roleStr === 'admin' ||
-      roleStr.includes('giám đốc') ||
-      roleStr.includes('quản trị') ||
-      roleStr.includes('lãnh đạo') ||
-      titleStr.includes('giám đốc')
-    );
+    const isLevel1 = getUserRankLevel(user) === 1 || isHighestLevelPerson(user);
+    const isLevel2 = getUserRankLevel(user) === 2 || (user.permissions || []).includes('APPROVE_LEAVE_STEP1' as any);
 
-    // Quyền Quản lý duyệt (Step 1)
+    // Quyền Quản lý duyệt (Step 1 - Cấp 2)
     let canReviewStep1 = false;
     if (l.status === 'PENDING_STEP1' || (l.status === 'PENDING' && l.step1ReviewerId)) {
       if (isDesignatedStep1) {
         canReviewStep1 = true;
       } else if (!l.step1ReviewerId) {
-        if (isDirectorOrAdmin) {
+        if (isLevel1 || (!isFollower && isLevel2)) {
           canReviewStep1 = true;
-        } else if (!isFollower && user.permissions?.includes('APPROVE_LEAVE_STEP1' as any)) {
-          // Chỉ cấp quản lý thực sự mới được duyệt tự do step 1 (loại bỏ nhân viên thuần túy)
-          const isManagerRole = roleStr.includes('quản lý') || roleStr.includes('trưởng') || roleStr.includes('chỉ huy') || roleStr.includes('pm') || titleStr.includes('quản lý') || titleStr.includes('trưởng');
-          if (isManagerRole) {
-            canReviewStep1 = true;
-          }
         }
+      } else if (isLevel1) {
+        canReviewStep1 = true;
       }
     }
 
-    // Quyền Quản trị duyệt (Step 2)
+    // Quyền Lãnh đạo duyệt (Step 2 - Cấp 1)
     let canReviewStep2 = false;
     if (l.status === 'APPROVED_STEP1' || (l.status === 'PENDING' && !l.step1ReviewerId)) {
       if (isDesignatedStep2) {
         canReviewStep2 = true;
-      } else if (isDirectorOrAdmin) {
+      } else if (isLevel1) {
         canReviewStep2 = true;
-      } else if (!isFollower && !l.step2ReviewerId && user.permissions?.includes('APPROVE_LEAVE_FINAL' as any)) {
-        // APPROVE_LEAVE_FINAL chỉ áp dụng cho người không phải là nhân viên thông thường
-        const isOrdinaryStaff = roleStr === 'nhân viên' || roleStr.includes('kỹ sư hiện trường') || roleStr.includes('công nhân');
-        if (!isOrdinaryStaff) {
-          canReviewStep2 = true;
-        }
       }
     }
 
     return { canReviewStep1, canReviewStep2 };
   };
 
-  // Kiểm tra quyền duyệt Chấm công bù
+  // Kiểm tra quyền duyệt Chấm công bù theo Cấp
   const checkCanReviewAdj = (adj: AttendanceAdjustmentRequest) => {
     if (!user) return { canReview1: false, canReview2: false };
 
@@ -313,33 +282,19 @@ export const AttendancePage: React.FC = () => {
     const isDesignated1 = Boolean(adj.step1ReviewerId && (user.id === adj.step1ReviewerId || user.name === adj.step1ReviewerName));
     const isDesignated2 = Boolean(adj.step2ReviewerId && (user.id === adj.step2ReviewerId || user.name === adj.step2ReviewerName));
 
-    const roleStr = String(user.role || '').toLowerCase();
-    const titleStr = String((user as any).title || '').toLowerCase();
-    const usernameStr = String(user.username || '').toLowerCase();
-    const isDirectorOrAdmin = (
-      isAdmin ||
-      isHighestLevelPerson(user) ||
-      usernameStr === 'admin' ||
-      roleStr === 'admin' ||
-      roleStr.includes('giám đốc') ||
-      roleStr.includes('quản trị') ||
-      roleStr.includes('lãnh đạo') ||
-      titleStr.includes('giám đốc')
-    );
+    const isLevel1 = getUserRankLevel(user) === 1 || isHighestLevelPerson(user);
+    const isLevel2 = getUserRankLevel(user) === 2 || (user.permissions || []).includes('APPROVE_LEAVE_STEP1' as any);
 
     let canReview1 = false;
     if (adj.status === 'PENDING_STEP1' || (adj.status === 'PENDING' && adj.step1ReviewerId)) {
       if (isDesignated1) {
         canReview1 = true;
       } else if (!adj.step1ReviewerId) {
-        if (isDirectorOrAdmin) {
+        if (isLevel1 || isLevel2) {
           canReview1 = true;
-        } else if (user.permissions?.includes('APPROVE_LEAVE_STEP1' as any)) {
-          const isManagerRole = roleStr.includes('quản lý') || roleStr.includes('trưởng') || roleStr.includes('chỉ huy') || roleStr.includes('pm') || titleStr.includes('quản lý') || titleStr.includes('trưởng');
-          if (isManagerRole) {
-            canReview1 = true;
-          }
         }
+      } else if (isLevel1) {
+        canReview1 = true;
       }
     }
 
@@ -347,13 +302,8 @@ export const AttendancePage: React.FC = () => {
     if (adj.status === 'APPROVED_STEP1' || (adj.status === 'PENDING' && !adj.step1ReviewerId)) {
       if (isDesignated2) {
         canReview2 = true;
-      } else if (isDirectorOrAdmin) {
+      } else if (isLevel1) {
         canReview2 = true;
-      } else if (!adj.step2ReviewerId && user.permissions?.includes('APPROVE_LEAVE_FINAL' as any)) {
-        const isOrdinaryStaff = roleStr === 'nhân viên' || roleStr.includes('kỹ sư hiện trường') || roleStr.includes('công nhân');
-        if (!isOrdinaryStaff) {
-          canReview2 = true;
-        }
       }
     }
 
@@ -2677,7 +2627,7 @@ export const AttendancePage: React.FC = () => {
                   <option value="">-- Không qua quản lý (Ban Giám Đốc duyệt) --</option>
                   {step1Reviewers.map(r => (
                     <option key={r.id} value={r.id}>
-                      {r.name}
+                      {r.name} ({r.title || r.role || 'Quản lý'})
                     </option>
                   ))}
                 </CustomSelect>
@@ -2970,7 +2920,7 @@ export const AttendancePage: React.FC = () => {
                   <option value="">-- Không qua quản lý (Ban Giám Đốc duyệt) --</option>
                   {step1Reviewers.map(r => (
                     <option key={r.id} value={r.id}>
-                      {r.name}
+                      {r.name} ({r.title || r.role || 'Quản lý'})
                     </option>
                   ))}
                 </CustomSelect>
