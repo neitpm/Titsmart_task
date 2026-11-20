@@ -1097,27 +1097,18 @@ export const CompanyAdminPortalPage: React.FC = () => {
   if (!loading && !data && !error) return <Navigate to="/company-admin/login" replace />;
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <header className="flex items-center justify-between border-b bg-white px-6 py-4">
-        <div>
-          <div className="text-xs font-bold uppercase tracking-widest text-blue-700">Company Admin Portal</div>
-          <h1 className="text-xl font-extrabold">{data?.company.name || 'Cấu hình công ty'}</h1>
-        </div>
-        <button className="border px-4 py-2" onClick={() => platformAuthClient.auth.signOut().then(() => navigate('/company-admin/login'))}>
-          Đăng xuất
-        </button>
+    <div className="min-h-screen bg-slate-50 text-slate-900">
+      <header className="flex h-16 items-center justify-between border-b bg-white px-6">
+        <div className="flex items-center gap-3"><img src={brand.logo_url || '/workcore-logo.svg'} className="h-10 w-10 rounded object-contain" /><div><div className="text-sm font-extrabold tracking-wide text-blue-900">{brand.name || data?.company.name || 'WORKCORE'}</div><div className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">Company App</div></div></div>
+        <button className="rounded-lg border px-4 py-2 font-semibold hover:bg-slate-50" onClick={() => platformAuthClient.auth.signOut().then(() => navigate('/company-admin/login'))}>Đăng xuất</button>
       </header>
-      <div className="mx-auto flex max-w-7xl gap-6 p-6">
-        <aside className="w-64 shrink-0 border bg-white p-3">
-          {TABS.map(([id, label]) => (
-            <button
-              key={id}
-              onClick={() => setTab(id)}
-              className={'block w-full border-b px-3 py-3 text-left font-semibold ' + (tab === id ? 'border-l-4 border-l-blue-700 bg-blue-50 text-blue-800' : 'text-slate-600')}
-            >
-              {label}
-            </button>
-          ))}
+      <div className="mx-auto flex max-w-[1500px] gap-6 p-6">
+        <aside className="flex w-64 shrink-0 flex-col rounded-xl border bg-white p-3">
+          <div className="mb-3 px-3 text-xs font-bold uppercase tracking-wider text-slate-400">Cấu hình công ty & quy trình</div>
+          {TABS.slice(0, 5).map(([id, label]) => <button key={id} onClick={() => setTab(id)} className={'mb-1 w-full rounded-lg px-3 py-3 text-left font-semibold ' + (tab === id ? 'bg-blue-50 text-blue-800' : 'text-slate-600 hover:bg-slate-50')}>{label}</button>)}
+          <div className="mb-2 mt-5 px-3 text-xs font-bold uppercase tracking-wider text-slate-400">Giao diện & tiện ích</div>
+          {TABS.slice(5).map(([id, label]) => <button key={id} onClick={() => setTab(id)} className={'mb-1 w-full rounded-lg px-3 py-3 text-left font-semibold ' + (tab === id ? 'bg-blue-50 text-blue-800' : 'text-slate-600 hover:bg-slate-50')}>{label}</button>)}
+          <div className="mt-auto border-t pt-4"><div className="font-bold">{platformAuthClient ? (data?.company.admin_email || 'Company Admin') : 'Company Admin'}</div><div className="text-xs text-slate-400">Quản trị công ty</div></div>
         </aside>
         <main className="min-w-0 flex-1">
           {loading && <Panel title="Đang tải..." />}
