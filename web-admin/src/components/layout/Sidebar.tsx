@@ -88,7 +88,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
     'Công việc': true,
     'Chấm công': true,
     'Tất cả dự án': true,
-    'Tổng kho': true
+    'Tổng kho': true,
+    'Vật tư & Chi phí': true
   });
 
   const toggleSubMenu = (label: string) => {
@@ -111,6 +112,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
     if (location.pathname === '/materials') {
       setOpenSubMenus(prev => ({ ...prev, 'Tổng kho': true }));
     }
+    if (location.pathname.includes('/cost-plan')) {
+      setOpenSubMenus(prev => ({ ...prev, 'Vật tư & Chi phí': true }));
+    }
   }, [location.pathname]);
 
   const toggleGroup = (title: string) => {
@@ -122,10 +126,62 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
 
   const navGroups = React.useMemo(() => {
     if (currentProject) {
+      const costPlanSubItems = [
+        {
+          label: 'Đặt hàng',
+          path: `/projects/${currentProject.id}/cost-plan?tab=TECH`,
+          icon: 'list_alt',
+          isActive: (pathname: string, search: string) => {
+            if (!pathname.includes('/cost-plan')) return false;
+            const sp = new URLSearchParams(search);
+            const tab = sp.get('tab');
+            return !tab || tab === 'TECH';
+          }
+        },
+        {
+          label: 'Chứng từ',
+          path: `/projects/${currentProject.id}/cost-plan?tab=DOCS`,
+          icon: 'description',
+          isActive: (pathname: string, search: string) => {
+            if (!pathname.includes('/cost-plan')) return false;
+            const sp = new URLSearchParams(search);
+            return sp.get('tab') === 'DOCS';
+          }
+        },
+        ...(user?.role !== 'engineer' ? [
+          {
+            label: 'Thanh toán',
+            path: `/projects/${currentProject.id}/cost-plan?tab=FINANCE`,
+            icon: 'payments',
+            isActive: (pathname: string, search: string) => {
+              if (!pathname.includes('/cost-plan')) return false;
+              const sp = new URLSearchParams(search);
+              return sp.get('tab') === 'FINANCE';
+            }
+          },
+          {
+            label: 'Chi phí',
+            path: `/projects/${currentProject.id}/cost-plan?tab=EXPENSE`,
+            icon: 'receipt_long',
+            isActive: (pathname: string, search: string) => {
+              if (!pathname.includes('/cost-plan')) return false;
+              const sp = new URLSearchParams(search);
+              return sp.get('tab') === 'EXPENSE';
+            }
+          }
+        ] : [])
+      ];
+
       const baseProjectItems = [
           { label: 'Tổng quan', path: `/projects/${currentProject.id}/overview`, icon: 'dashboard', req: 'VIEW_PROJECTS' },
           { label: 'Tiến độ', path: `/projects/${currentProject.id}/tasks`, icon: 'fact_check', req: 'VIEW_TASKS' },
-          { label: 'Vật tư & Chi phí', path: `/projects/${currentProject.id}/cost-plan`, icon: 'account_balance_wallet', req: 'VIEW_FINANCE' },
+          { 
+            label: 'Vật tư & Chi phí', 
+            path: `/projects/${currentProject.id}/cost-plan?tab=TECH`, 
+            icon: 'account_balance_wallet', 
+            req: 'VIEW_FINANCE',
+            children: costPlanSubItems
+          },
           { label: 'Hồ sơ', path: `/projects/${currentProject.id}/documents`, icon: 'file_present', req: 'VIEW_DOCUMENTS' },
           { label: 'Thư viện', path: `/projects/${currentProject.id}/diagram`, icon: 'photo_library', req: 'VIEW_PROJECT_DIAGRAM' },
           { label: 'Kho Dự án', path: `/projects/${currentProject.id}/inventory`, icon: 'inventory_2', req: 'VIEW_MATERIALS' },
@@ -405,7 +461,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
                   const isAttendanceSection = item.label === 'Chấm công' && location.pathname === '/attendance';
                   const isProjectsSection = item.label === 'Tất cả dự án' && location.pathname === '/projects';
                   const isMaterialsSection = item.label === 'Tổng kho' && location.pathname === '/materials';
-                  const isParentActive = isTaskSection || isAttendanceSection || isProjectsSection || isMaterialsSection;
+                  const isCostPlanSection = (item.label === 'Vật tư & Chi phí' || item.path.includes('/cost-plan')) && location.pathname.includes('/cost-plan');
+                  const isParentActive = isTaskSection || isAttendanceSection || isProjectsSection || isMaterialsSection || isCostPlanSection;
                   const isSubOpen = openSubMenus[item.label] ?? true;
                   
                   return (

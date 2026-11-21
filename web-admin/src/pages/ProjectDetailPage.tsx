@@ -14,6 +14,20 @@ export const ProjectDetailPage: React.FC = () => {
   const [subTitle, setSubTitle] = useState('');
   const navigate = useNavigate();
 
+  const costPlanSubTitle = useMemo(() => {
+    if (location.pathname.includes('/cost-plan')) {
+      const sp = new URLSearchParams(location.search);
+      const tab = sp.get('tab');
+      if (tab === 'DOCS') return 'Chứng từ';
+      if (tab === 'FINANCE') return 'Thanh toán';
+      if (tab === 'EXPENSE') return 'Chi phí';
+      return 'Đặt hàng';
+    }
+    return '';
+  }, [location.pathname, location.search]);
+
+  const displaySubTitle = subTitle || costPlanSubTitle;
+
   // Lazy keep-alive: Only mount heavy tab components after the user visits them for the first time in this project
   const [visitedTabs, setVisitedTabs] = useState<Set<string>>(() => {
     const initial = new Set<string>();
@@ -128,10 +142,10 @@ export const ProjectDetailPage: React.FC = () => {
                 <a href={activeTab.path} onClick={(e) => handleTabClick(e, activeTab.path)} className="text-xs font-bold text-slate-600 hover:text-primary transition-colors shrink-0 cursor-pointer leading-tight">
                   {activeTab.label}
                 </a>
-                {subTitle && (
+                {displaySubTitle && (
                   <>
                     <span className="material-symbols-outlined text-slate-400 text-[10px] shrink-0">arrow_forward_ios</span>
-                    <span className="text-xs font-medium text-slate-600 truncate">{subTitle}</span>
+                    <span className="text-xs font-medium text-slate-600 truncate">{displaySubTitle}</span>
                   </>
                 )}
               </div>
@@ -151,10 +165,10 @@ export const ProjectDetailPage: React.FC = () => {
                 </a>
               </>
             )}
-            {subTitle && (
+            {displaySubTitle && (
               <>
                 <span className="material-symbols-outlined text-slate-400 text-[12px] shrink-0">arrow_forward_ios</span>
-                <span className="text-[14px] font-medium text-slate-600 truncate">{subTitle}</span>
+                <span className="text-[14px] font-medium text-slate-600 truncate">{displaySubTitle}</span>
               </>
             )}
           </div>

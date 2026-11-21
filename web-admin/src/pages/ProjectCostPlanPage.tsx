@@ -1518,6 +1518,8 @@ export const ProjectCostPlanPage: React.FC = () => {
     const tabParam = searchParams.get('tab');
     if (tabParam && ['TECH', 'DOCS', 'FINANCE', 'EXPENSE'].includes(tabParam)) {
       setActiveTab(tabParam);
+    } else if (!tabParam) {
+      setActiveTab('TECH');
     }
     const spenderParam = searchParams.get('spender');
     if (spenderParam) {
@@ -2694,65 +2696,6 @@ export const ProjectCostPlanPage: React.FC = () => {
           </div>
         </section>
       )}
-
-      {/* TABS SELECTOR */}
-      <div className="flex items-center justify-between border-b border-slate-200 bg-white px-2 sm:px-4 shadow-xs border-x overflow-x-auto no-scrollbar">
-        <div className="flex items-center justify-between sm:justify-start w-full sm:w-auto gap-1 sm:gap-4 shrink-0">
-          {[
-            { id: 'TECH', label: 'Đặt hàng', icon: 'list_alt', show: true },
-            { id: 'DOCS', label: 'Chứng từ', icon: 'description', show: true },
-            { id: 'FINANCE', label: 'Thanh toán', icon: 'payments', show: user?.role !== 'engineer' },
-            { id: 'EXPENSE', label: 'Chi phí', fullLabel: 'Chi phí', icon: 'receipt_long', show: user?.role !== 'engineer' },
-          ].filter(t => t.show).map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={`flex items-center justify-center gap-1 sm:gap-1.5 py-2 px-1 sm:px-2 text-[11px] sm:text-[12px] font-bold border-b-2 transition-all shrink-0 ${
-                activeTab === tab.id
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'
-              }`}
-            >
-              <span className="material-symbols-outlined text-[15px] sm:text-[16px] flex-shrink-0">{tab.icon}</span>
-              <span className="whitespace-nowrap sm:hidden">{tab.label}</span>
-              <span className="whitespace-nowrap hidden sm:inline">{tab.fullLabel || tab.label}</span>
-            </button>
-          ))}
-        </div>
-
-        {true && (
-          <div className="flex gap-2 pb-1.5">
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleImportExcel}
-              accept=".xlsx,.xls,.csv"
-              className="hidden"
-            />
-
-            {(activeTab !== 'TECH' && activeTab !== 'DOCS' && activeTab !== 'FINANCE' && activeTab !== 'EXPENSE') && activeTab !== 'PURCHASING' && (
-              <button
-                onClick={() => {
-                  if (!selectedProject) {
-                    triggerToast('Vui lòng khởi tạo dự án trước khi thêm dữ liệu!', 'warning');
-                    return;
-                  }
-                  setIsCreatingSectionHeader(false);
-                  if (activeTab === 'EXPENSE') {
-                    if (expenseSubTab === 'LABOR') setIsNewLaborOpen(true);
-                    else setIsNewExpenseOpen(true);
-                  }
-                  else if (activeTab === 'DOCUMENTS') setTriggerAddDoc(true);
-                }}
-                className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg text-[13px] font-bold hover:opacity-90 active:scale-95 shadow-xs"
-              >
-                <span className="material-symbols-outlined text-sm">add</span>
-                Thêm Mới
-              </button>
-            )}
-          </div>
-        )}
-      </div>
 
       {/* TAB CONTENTS */}
       <div className="bg-white border-x border-b border-slate-200 shadow-xs overflow-hidden flex-1">
