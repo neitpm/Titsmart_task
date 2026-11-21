@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 import { exportToStyledExcel } from '../utils/excelExportUtils';
 import { useRealtimeStore } from '../services/realtimeStore';
@@ -352,7 +352,27 @@ export const MaterialTrackingPage: React.FC = () => {
     }
   };
 
-  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'IMPORT' | 'EXPORT'>('OVERVIEW');
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const getInitialTab = (): 'OVERVIEW' | 'IMPORT' | 'EXPORT' => {
+    const t = searchParams.get('tab')?.toUpperCase();
+    if (t === 'IMPORT' || t === 'NHAP_KHO' || t === 'NHAP') return 'IMPORT';
+    if (t === 'EXPORT' || t === 'XUAT_KHO' || t === 'XUAT') return 'EXPORT';
+    return 'OVERVIEW';
+  };
+
+  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'IMPORT' | 'EXPORT'>(getInitialTab);
+
+  useEffect(() => {
+    const t = searchParams.get('tab')?.toUpperCase();
+    if (t === 'IMPORT' || t === 'NHAP_KHO' || t === 'NHAP') {
+      if (activeTab !== 'IMPORT') setActiveTab('IMPORT');
+    } else if (t === 'EXPORT' || t === 'XUAT_KHO' || t === 'XUAT') {
+      if (activeTab !== 'EXPORT') setActiveTab('EXPORT');
+    } else if (t === 'OVERVIEW' || t === 'INVENTORY' || t === 'TON_KHO' || !t) {
+      if (activeTab !== 'OVERVIEW') setActiveTab('OVERVIEW');
+    }
+  }, [searchParams]);
 
   const [isPlaceOrderModalOpen, setIsPlaceOrderModalOpen] = useState(false);
   const [editingMaterial, setEditingMaterial] = useState<Material | null>(null);
@@ -1349,7 +1369,9 @@ export const MaterialTrackingPage: React.FC = () => {
         <section className="sticky top-0 z-30 border-b border-slate-200 bg-white pl-3 pr-12 sm:pr-14 md:pr-16 py-1 md:py-0 md:h-12 shadow-sm">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between h-full">
             <div className="flex items-center gap-3 h-8 md:h-auto mb-1 md:mb-0">
-              <h2 className="page-title text-base md:text-lg font-extrabold text-slate-900 border-l-4 border-primary pl-2 shrink-0">Tổng kho</h2>
+              <h2 className="page-title text-sm md:text-base font-extrabold text-slate-900 border-l-4 border-primary pl-2 shrink-0">
+                {activeTab === 'IMPORT' ? 'Nhật ký nhập kho' : activeTab === 'EXPORT' ? 'Nhật ký xuất kho' : 'Tồn kho tổng hợp'}
+              </h2>
             </div>
 
             <div className="flex items-center gap-2 justify-between md:justify-end w-full md:w-auto pt-0.5 md:pt-0">
@@ -1608,27 +1630,29 @@ export const MaterialTrackingPage: React.FC = () => {
 
         {/* TABS & FILTERS */}
         <div ref={stickyHeaderRef} className="flex flex-col border-b border-slate-200 bg-white z-20">
-          <div className="flex items-center gap-1 md:gap-4 px-2 md:px-4 overflow-x-auto custom-scrollbar">
-            {[
-              { id: 'OVERVIEW', label: 'Tồn Kho Tổng Hợp', shortLabel: 'Tồn Kho', icon: 'inventory' },
-              { id: 'IMPORT', label: 'Nhật Ký Nhập Kho', shortLabel: 'Nhập Kho', icon: 'login' },
-              { id: 'EXPORT', label: 'Nhật Ký Xuất Kho', shortLabel: 'Xuất Kho', icon: 'logout' }
-            ].map(tab => (
-              <button 
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
-                className={`app-tab-button flex items-center gap-1.5 md:gap-2.5 px-2 md:px-3 py-1.5 text-[12px] font-bold border-b-2 transition-all whitespace-nowrap ${
-                  activeTab === tab.id 
-                    ? 'border-primary text-primary' 
-                    : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'
-                }`}
-              >
-                <span className="material-symbols-outlined text-[16px] leading-none">{tab.icon}</span>
-                <span className="hidden md:inline">{tab.label}</span>
-                <span className="inline md:hidden">{tab.shortLabel}</span>
-              </button>
-            ))}
-          </div>
+          {projectId && (
+            <div className="flex items-center gap-1 md:gap-4 px-2 md:px-4 overflow-x-auto custom-scrollbar">
+              {[
+                { id: 'OVERVIEW', label: 'Tồn Kho Tổng Hợp', shortLabel: 'Tồn Kho', icon: 'inventory' },
+                { id: 'IMPORT', label: 'Nhật Ký Nhập Kho', shortLabel: 'Nhập Kho', icon: 'login' },
+                { id: 'EXPORT', label: 'Nhật Ký Xuất Kho', shortLabel: 'Xuất Kho', icon: 'logout' }
+              ].map(tab => (
+                <button 
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id as any)}
+                  className={`app-tab-button flex items-center gap-1.5 md:gap-2.5 px-2 md:px-3 py-1.5 text-[12px] font-bold border-b-2 transition-all whitespace-nowrap ${
+                    activeTab === tab.id 
+                      ? 'border-primary text-primary' 
+                      : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[16px] leading-none">{tab.icon}</span>
+                  <span className="hidden md:inline">{tab.label}</span>
+                  <span className="inline md:hidden">{tab.shortLabel}</span>
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* MOBILE ACTION & SEARCH BAR (Chỉ hiển thị khi đang ở trong tab Kho của Dự án, vì trang Tổng kho độc lập đã có ở Header trên cùng) */}
           {projectId && (

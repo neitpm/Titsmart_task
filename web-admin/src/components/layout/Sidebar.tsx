@@ -87,7 +87,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
   const [openSubMenus, setOpenSubMenus] = useState<Record<string, boolean>>({
     'Công việc': true,
     'Chấm công': true,
-    'Tất cả dự án': true
+    'Tất cả dự án': true,
+    'Tổng kho': true
   });
 
   const toggleSubMenu = (label: string) => {
@@ -106,6 +107,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
     }
     if (location.pathname === '/projects') {
       setOpenSubMenus(prev => ({ ...prev, 'Tất cả dự án': true }));
+    }
+    if (location.pathname === '/materials') {
+      setOpenSubMenus(prev => ({ ...prev, 'Tổng kho': true }));
     }
   }, [location.pathname]);
 
@@ -257,6 +261,36 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
       }
     ];
 
+    const materialSubItems = [
+      {
+        label: 'Tồn kho',
+        path: '/materials?tab=overview',
+        icon: 'inventory_2',
+        isActive: (pathname: string, search: string) => {
+          const sp = new URLSearchParams(search);
+          return pathname === '/materials' && (!sp.get('tab') || sp.get('tab') === 'overview' || sp.get('tab') === 'inventory');
+        }
+      },
+      {
+        label: 'Nhập kho',
+        path: '/materials?tab=import',
+        icon: 'login',
+        isActive: (pathname: string, search: string) => {
+          const sp = new URLSearchParams(search);
+          return pathname === '/materials' && sp.get('tab') === 'import';
+        }
+      },
+      {
+        label: 'Xuất kho',
+        path: '/materials?tab=export',
+        icon: 'logout',
+        isActive: (pathname: string, search: string) => {
+          const sp = new URLSearchParams(search);
+          return pathname === '/materials' && sp.get('tab') === 'export';
+        }
+      }
+    ];
+
     const mainItems = [
       { label: 'Tổng quan', path: '/dashboard', icon: 'analytics', req: 'VIEW_PROJECTS' },
       { 
@@ -274,7 +308,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
         children: taskSubItems
       },
       { label: 'Quản lý hồ sơ', path: '/document-tracking', icon: 'folder_managed', req: 'VIEW_DOCUMENTS' },
-      { label: 'Tổng kho', path: '/materials', icon: 'warehouse', req: 'VIEW_MATERIALS' },
+      { 
+        label: 'Tổng kho', 
+        path: '/materials?tab=overview', 
+        icon: 'warehouse', 
+        req: 'VIEW_MATERIALS',
+        children: materialSubItems
+      },
       { 
         label: 'Chấm công', 
         path: '/attendance', 
@@ -364,7 +404,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
                     (location.pathname === '/task-assignment' || location.pathname === '/my-tasks' || location.pathname === '/work-plan');
                   const isAttendanceSection = item.label === 'Chấm công' && location.pathname === '/attendance';
                   const isProjectsSection = item.label === 'Tất cả dự án' && location.pathname === '/projects';
-                  const isParentActive = isTaskSection || isAttendanceSection || isProjectsSection;
+                  const isMaterialsSection = item.label === 'Tổng kho' && location.pathname === '/materials';
+                  const isParentActive = isTaskSection || isAttendanceSection || isProjectsSection || isMaterialsSection;
                   const isSubOpen = openSubMenus[item.label] ?? true;
                   
                   return (
