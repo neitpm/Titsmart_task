@@ -37,6 +37,7 @@ export const TaskAssignmentPage: React.FC = () => {
   const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedEngineerIds, setSelectedEngineerIds] = useState<string[]>([]);
+  const [assigneeSearchQuery, setAssigneeSearchQuery] = useState('');
   const [batchDueDate, setBatchDueDate] = useState('');
   const [assignNote, setAssignNote] = useState('');
   const [selectedFile, setSelectedFile] = useState<{ url: string; type: 'image' | 'file'; name: string } | null>(null);
@@ -1098,6 +1099,7 @@ export const TaskAssignmentPage: React.FC = () => {
     setSelectedTaskIds([]);
     setIsModalOpen(false);
     setSelectedEngineerIds([]);
+    setAssigneeSearchQuery('');
     setBatchFollowerIds([]);
     setBatchDueDate('');
     setAssignNote('');
@@ -2340,33 +2342,62 @@ export const TaskAssignmentPage: React.FC = () => {
               </div>
               
               <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-bold text-slate-700">Chọn người phụ trách <span className="text-red-500">*</span></label>
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-bold text-slate-700">Chọn người phụ trách <span className="text-red-500">*</span></label>
+                  {assignableEngineers.length > 3 && (
+                    <div className="relative">
+                      <input
+                        type="text"
+                        placeholder="Tìm nhân sự..."
+                        value={assigneeSearchQuery}
+                        onChange={(e) => setAssigneeSearchQuery(e.target.value)}
+                        className="text-xs px-2 py-1 pl-6 border border-slate-200 rounded-md focus:outline-none focus:border-primary w-36 bg-white"
+                      />
+                      <span className="material-symbols-outlined absolute left-1.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none">search</span>
+                      {assigneeSearchQuery && (
+                        <button
+                          type="button"
+                          onClick={() => setAssigneeSearchQuery('')}
+                          className="absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
                 <div className="max-h-48 overflow-y-auto border border-slate-200 rounded-lg p-2 space-y-1 bg-slate-50">
                   {assignableEngineers.length === 0 ? (
                     <div className="p-3 text-center text-xs text-amber-600 font-medium">
                       Dự án này chưa có nhân sự thành viên nào. Vui lòng thêm thành viên trong Quản lý dự án trước khi giao việc.
                     </div>
                   ) : (
-                    assignableEngineers.map(e => {
-                      const isChecked = selectedEngineerIds.includes(e.id);
-                      return (
-                        <label key={e.id} className="flex items-center gap-2 p-1.5 hover:bg-slate-100 rounded cursor-pointer transition-colors">
-                          <input 
-                            type="checkbox" 
-                            checked={isChecked}
-                            onChange={(ev) => {
-                              if (ev.target.checked) setSelectedEngineerIds(prev => [...prev, e.id]);
-                              else setSelectedEngineerIds(prev => prev.filter(id => id !== e.id));
-                            }}
-                            className="rounded border-slate-300 text-primary focus:ring-primary"
-                          />
-                          <div>
-                            <div className="text-sm font-bold text-slate-700">{e.name}</div>
-                            <div className="text-xs text-slate-500">{e.title || 'Nhân viên'}</div>
-                          </div>
-                        </label>
-                      );
-                    })
+                    assignableEngineers
+                      .filter(e => {
+                        if (!assigneeSearchQuery.trim()) return true;
+                        const q = assigneeSearchQuery.trim().toLowerCase();
+                        return e.name?.toLowerCase().includes(q) || (e.title && e.title.toLowerCase().includes(q));
+                      })
+                      .map(e => {
+                        const isChecked = selectedEngineerIds.includes(e.id);
+                        return (
+                          <label key={e.id} className="flex items-center gap-2 p-1.5 hover:bg-slate-100 rounded cursor-pointer transition-colors">
+                            <input 
+                              type="checkbox" 
+                              checked={isChecked}
+                              onChange={(ev) => {
+                                if (ev.target.checked) setSelectedEngineerIds(prev => [...prev, e.id]);
+                                else setSelectedEngineerIds(prev => prev.filter(id => id !== e.id));
+                              }}
+                              className="rounded border-slate-300 text-primary focus:ring-primary"
+                            />
+                            <div>
+                              <div className="text-sm font-bold text-slate-700">{e.name}</div>
+                              <div className="text-xs text-slate-500">{e.title || 'Nhân viên'}</div>
+                            </div>
+                          </label>
+                        );
+                      })
                   )}
                 </div>
               </div>

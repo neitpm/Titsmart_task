@@ -5,6 +5,7 @@ import { useAuthStore } from '../services/authStore';
 import { Task, TaskPriority, TaskStatus, isTaskActuallyDone } from '../types';
 import { Modal } from '../components/common/Modal';
 import { Toast } from '../components/common/Toast';
+import { CustomSelect } from '../components/common/CustomSelect';
 import { getTaskTimeBounds } from '../utils/taskPeriodFilter';
 
 type CalendarViewMode = 'month' | 'week' | 'agenda';
@@ -1080,34 +1081,42 @@ export const WorkPlanPage: React.FC = () => {
             </div>
 
             {/* Filter: Dự án */}
-            <select
-              value={selectedProject}
-              onChange={(e) => setSelectedProject(e.target.value)}
-              className="px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-md font-bold text-slate-700 focus:outline-none focus:border-primary cursor-pointer"
-            >
-              <option value="all">Tất cả dự án</option>
-              <option value="KE_HOACH_CONG_TY">Kế hoạch chung công ty</option>
-              {projects.map((p) => (
-                <option key={p.id} value={p.code}>
-                  {p.code} - {p.name}
-                </option>
-              ))}
-            </select>
+            <div className="w-56 min-w-[180px]">
+              <CustomSelect
+                value={selectedProject}
+                onChange={(e) => setSelectedProject(e.target.value)}
+                searchable={true}
+                placeholder="-- Tất cả dự án --"
+                className="w-full h-[32px] text-xs bg-slate-50 border border-slate-200 rounded-md font-bold text-slate-700"
+              >
+                <option value="all">Tất cả dự án</option>
+                <option value="KE_HOACH_CONG_TY">Kế hoạch chung công ty</option>
+                {projects.map((p) => (
+                  <option key={p.id} value={p.code}>
+                    {p.code} - {p.name}
+                  </option>
+                ))}
+              </CustomSelect>
+            </div>
 
             {/* Filter: Phân công */}
-            <select
-              value={selectedAssignee}
-              onChange={(e) => setSelectedAssignee(e.target.value)}
-              className="px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-md font-bold text-slate-700 focus:outline-none focus:border-primary cursor-pointer"
-            >
-              <option value="all">Tất cả người phụ trách</option>
-              <option value="me">Việc của tôi</option>
-              {engineers.map((eng) => (
-                <option key={eng.id} value={eng.id}>
-                  {eng.name} ({eng.title || eng.role || 'Kỹ sư'})
-                </option>
-              ))}
-            </select>
+            <div className="w-52 min-w-[170px]">
+              <CustomSelect
+                value={selectedAssignee}
+                onChange={(e) => setSelectedAssignee(e.target.value)}
+                searchable={true}
+                placeholder="-- Tất cả người phụ trách --"
+                className="w-full h-[32px] text-xs bg-slate-50 border border-slate-200 rounded-md font-bold text-slate-700"
+              >
+                <option value="all">Tất cả người phụ trách</option>
+                <option value="me">Việc của tôi</option>
+                {engineers.map((eng) => (
+                  <option key={eng.id} value={eng.id}>
+                    {eng.name} ({eng.title || eng.role || 'Kỹ sư'})
+                  </option>
+                ))}
+              </CustomSelect>
+            </div>
 
             {/* Filter: Trạng thái */}
             <select
@@ -1540,12 +1549,14 @@ export const WorkPlanPage: React.FC = () => {
             {/* Thuộc Dự án */}
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
-                Dự án / Phân loại
+                Dự án / Phân loại <span className="text-rose-500">*</span>
               </label>
-              <select
+              <CustomSelect
                 value={formProjectCode}
                 onChange={(e) => setFormProjectCode(e.target.value)}
-                className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-md focus:outline-none focus:border-primary bg-white font-medium cursor-pointer"
+                searchable={true}
+                placeholder="-- Chọn dự án --"
+                className="w-full h-[36px] text-sm border border-slate-300 rounded-md bg-white font-medium"
               >
                 <option value="KE_HOACH_CONG_TY">Kế hoạch chung công ty</option>
                 {projects.map((p) => (
@@ -1553,25 +1564,27 @@ export const WorkPlanPage: React.FC = () => {
                     {p.code} - {p.name}
                   </option>
                 ))}
-              </select>
+              </CustomSelect>
             </div>
 
             {/* Người thực hiện */}
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
-                Người chịu trách nhiệm
+                Người chịu trách nhiệm <span className="text-rose-500">*</span>
               </label>
-              <select
+              <CustomSelect
                 value={formAssigneeId}
                 onChange={(e) => setFormAssigneeId(e.target.value)}
-                className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-md focus:outline-none focus:border-primary bg-white font-medium cursor-pointer"
+                searchable={true}
+                placeholder="-- Chọn người chịu trách nhiệm --"
+                className="w-full h-[36px] text-sm border border-slate-300 rounded-md bg-white font-medium"
               >
                 {engineers.map((eng) => (
                   <option key={eng.id} value={eng.id}>
                     {eng.name} ({eng.title || eng.role || 'Kỹ sư'})
                   </option>
                 ))}
-              </select>
+              </CustomSelect>
             </div>
           </div>
 
