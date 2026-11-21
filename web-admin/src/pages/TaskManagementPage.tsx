@@ -2452,11 +2452,6 @@ const hasSyncedRef = useRef(false);
     // Initialize map with all fullTasks
     fullTasks.forEach((t) => map.set(t.id, { ...t, children: [] }));
 
-    const sttToItemMap = new Map<string, any>();
-    fullTasks.forEach((t) => {
-      if (t.stt) sttToItemMap.set(`${t.projectCode || ''}:::${String(t.stt).trim()}`, t);
-    });
-
     const isMajorSection = (node: any) => {
       const stt = String(node?.stt || '').trim();
       const romanRegex = /^(I|II|III|IV|V|VI|VII|VIII|IX|X|XI|XII|XIII|XIV|XV|XVI|XVII|XVIII|XIX|XX)$/i;
@@ -2478,7 +2473,7 @@ const hasSyncedRef = useRef(false);
 
       const stt = String(item.stt || '').trim();
 
-      // 1. Dotted STT hierarchy (find nearest preceding task in fullTasks with matching parentStt)
+      // 1. Dotted STT hierarchy (find nearest preceding task in fullTasks with matching parentStt strictly within current section)
       if (stt.includes('.')) {
         const parts = stt.split('.');
         while (parts.length > 1) {
@@ -2492,19 +2487,19 @@ const hasSyncedRef = useRef(false);
               return prev.id;
             }
           }
-          const anyParent = sttToItemMap.get(`${item.projectCode || ''}:::${parentStt}`);
-          if (anyParent && anyParent.id !== item.id && map.has(anyParent.id)) return anyParent.id;
         }
       }
 
       // 2. Explicit parent task if valid and not conflicting
       if (item.parentId && item.parentId !== item.id && map.has(item.parentId)) {
         const parent = map.get(item.parentId);
-        if (isMajorSection(parent)) return item.parentId;
-        const isItemInt = /^\d+$/.test(stt);
-        const isParentInt = /^\d+$/.test(String(parent?.stt || '').trim());
-        if (!(isItemInt && isParentInt && stt !== parent?.stt)) {
-          return item.parentId;
+        if ((parent?.projectCode || '') === (item.projectCode || '')) {
+          if (isMajorSection(parent)) return item.parentId;
+          const isItemInt = /^\d+$/.test(stt);
+          const isParentInt = /^\d+$/.test(String(parent?.stt || '').trim());
+          if (!(isItemInt && isParentInt && stt !== parent?.stt)) {
+            return item.parentId;
+          }
         }
       }
 

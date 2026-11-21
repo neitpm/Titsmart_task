@@ -6,7 +6,7 @@
     "jsonwebtoken": "^9.0.3",
     "pg": "^8.23.1"
   },
-  "version": "3.8.484",
+  "version": "3.8.485",
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
     "@types/jsonwebtoken": "^9.0.10",
