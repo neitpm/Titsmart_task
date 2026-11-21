@@ -554,6 +554,7 @@ export interface AttendanceAdjustmentRequest {
 
 export type AttendanceMode = 'time' | 'shift' | 'hybrid'; // Theo thời gian | Theo ca | Kết hợp cả 2
 export type GpsRequirement = 'none' | 'record_only' | 'strict'; // Không yêu cầu GPS | Chỉ ghi nhận vị trí | Bắt buộc trong bán kính
+export type WorkLocationType = 'office' | 'field' | 'remote'; // Tại văn phòng | Tại công trường/dự án | Đi công tác/Khảo sát
 
 export interface WorkShift {
   id: string;
@@ -581,6 +582,7 @@ export interface AttendanceConfig {
   mode: AttendanceMode;
   gpsRequirement: GpsRequirement;
   requirePhoto: boolean;
+  allowFieldWork?: boolean; // Cho phép chấm công đi công trường / công tác ngoài văn phòng
   shifts: WorkShift[];
   locations: AttendanceGpsLocation[];
   updatedAt?: string;
@@ -591,6 +593,7 @@ export const DEFAULT_ATTENDANCE_CONFIG: AttendanceConfig = {
   mode: 'time',
   gpsRequirement: 'record_only',
   requirePhoto: false,
+  allowFieldWork: true,
   shifts: [
     {
       id: 'shift_hc',

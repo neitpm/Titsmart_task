@@ -2694,6 +2694,7 @@ export const api = {
       notes?: string; 
       checkInTime?: string;
       attendanceType?: 'time' | 'shift';
+      workLocationType?: 'office' | 'field' | 'remote';
       shiftId?: string;
       shiftName?: string;
       shiftStatus?: 'on_time' | 'late' | 'early' | 'normal';
@@ -2715,6 +2716,7 @@ export const api = {
         checkOutImage: null,
         notes: input.notes || null,
         attendanceType: input.attendanceType || 'time',
+        workLocationType: input.workLocationType || 'office',
         shiftId: input.shiftId || null,
         shiftName: input.shiftName || null,
         shiftStatus: input.shiftStatus || 'normal',

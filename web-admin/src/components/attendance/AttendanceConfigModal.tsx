@@ -259,6 +259,24 @@ export const AttendanceConfigModal: React.FC<AttendanceConfigModalProps> = ({
                 <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
               </label>
             </div>
+
+            <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+              <div>
+                <div className="text-xs font-bold text-slate-800">Cho phép chấm công ngoài văn phòng</div>
+                <div className="text-[11px] text-slate-500">
+                  Dành cho nhân viên làm việc tại công trường, dự án hoặc đi công tác xa văn phòng (ghi nhận tọa độ thực tế).
+                </div>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formConfig.allowFieldWork !== false}
+                  onChange={(e) => setFormConfig({ ...formConfig, allowFieldWork: e.target.checked })}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+              </label>
+            </div>
           </div>
         )}
 

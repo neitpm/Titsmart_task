@@ -23,7 +23,8 @@ import {
   AttendanceConfig,
   DEFAULT_ATTENDANCE_CONFIG,
   WorkShift,
-  AttendanceGpsLocation
+  AttendanceGpsLocation,
+  WorkLocationType
 } from '../types';
 import { 
   findNearestLocation, 
@@ -50,6 +51,7 @@ interface AttendanceLog {
 
   // Ca làm việc & Loại chấm công
   attendanceType?: 'time' | 'shift';
+  workLocationType?: WorkLocationType;
   shiftId?: string;
   shiftName?: string;
   shiftStatus?: 'on_time' | 'late' | 'early' | 'normal';
@@ -189,6 +191,9 @@ export const AttendancePage: React.FC = () => {
 
   // State chấm công theo ca
   const [selectedShiftId, setSelectedShiftId] = useState<string>('');
+
+  // State hình thức / địa điểm làm việc (văn phòng / công trình / công tác)
+  const [workLocationType, setWorkLocationType] = useState<WorkLocationType>('office');
 
   // State chấm công định vị GPS
   const [gpsData, setGpsData] = useState<{
@@ -771,6 +776,10 @@ export const AttendancePage: React.FC = () => {
           locationName: nearest.nearestLocation?.name || 'Vị trí hiện tại',
           isWithinRadius: nearest.isWithinRadius,
         });
+        // Nếu ở xa văn phòng (> 500m) và cho phép làm việc ngoài văn phòng, tự động chuyển sang "Tại công trình / Dự án"
+        if (nearest.distanceMeters > 500 && attendanceConfig.allowFieldWork !== false) {
+          setWorkLocationType(prev => prev === 'office' ? 'field' : prev);
+        }
         setIsGpsScanning(false);
       },
       (err) => {
@@ -1338,14 +1347,14 @@ export const AttendancePage: React.FC = () => {
   const handleCheckIn = async () => {
     if (!user || isSubmitting) return;
 
-    // 1. Kiểm tra GPS nếu ở chế độ bắt buộc (strict)
-    if (attendanceConfig.gpsRequirement === 'strict') {
+    // 1. Kiểm tra GPS nếu ở chế độ bắt buộc (strict) khi làm việc tại văn phòng
+    if (attendanceConfig.gpsRequirement === 'strict' && workLocationType === 'office') {
       if (isGpsScanning) {
         showToast('Đang quét tọa độ GPS, vui lòng đợi trong giây lát...', 'warning');
         return;
       }
       if (!gpsData || !gpsData.isWithinRadius) {
-        showToast('Bạn đang ở ngoài bán kính cho phép. Vui lòng có mặt tại công ty/công trường để chấm công!', 'error');
+        showToast('Bạn đang ở ngoài bán kính văn phòng. Nếu bạn đang làm việc tại công trường hoặc đi công tác, vui lòng chọn "Tại công trình" hoặc "Đi công tác"!', 'error');
         return;
       }
     }
@@ -1379,6 +1388,12 @@ export const AttendancePage: React.FC = () => {
         }
       }
 
+      const locationLabel = workLocationType === 'field' 
+        ? (proj ? `Công trường: ${proj.name}` : 'Công trường / Dự án')
+        : workLocationType === 'remote' 
+        ? 'Đi công tác / Ra ngoài' 
+        : (gpsData?.locationName || 'Văn phòng');
+
       const result = await api.attendance.checkIn({
         userId: user.id,
         userName: user.name || user.username || 'Unknown',
@@ -1387,15 +1402,16 @@ export const AttendancePage: React.FC = () => {
         checkInImage: checkInImage || undefined,
         notes: notes || undefined,
         attendanceType,
+        workLocationType,
         shiftId,
         shiftName,
         shiftStatus,
         shiftLateMinutes,
         checkInLat: gpsData?.lat,
         checkInLng: gpsData?.lng,
-        checkInLocationName: gpsData?.locationName,
+        checkInLocationName: locationLabel,
         checkInDistanceMeters: gpsData?.distanceMeters,
-        checkInWithinRadius: gpsData?.isWithinRadius,
+        checkInWithinRadius: workLocationType === 'office' ? gpsData?.isWithinRadius : true,
       });
 
       cachedLogs = [result, ...cachedLogs];
@@ -1404,13 +1420,14 @@ export const AttendancePage: React.FC = () => {
       setNotes('');
       setSelectedProject('');
       setGpsData(null);
+      setWorkLocationType('office');
       setShowCheckInModal(false);
       showToast('Chấm công thành công!', 'success');
 
       // Gửi thông báo realtime chỉ đến admin
       await addNotification({
         title: 'Chấm công' + (shiftName ? ` [${shiftName}]` : ''),
-        message: `${user.name} đã chấm công${shiftName ? ` (${shiftName})` : ''}${proj ? ` tại dự án ${proj.name}` : ''} lúc ${formatTime(result.checkInTime)}${gpsData ? ` (Cách ${formatDistance(gpsData.distanceMeters)})` : ''}`,
+        message: `${user.name} đã chấm công [${workLocationType === 'field' ? 'Công trường' : workLocationType === 'remote' ? 'Công tác' : 'Văn phòng'}]${shiftName ? ` (${shiftName})` : ''}${proj ? ` tại dự án ${proj.name}` : ''} lúc ${formatTime(result.checkInTime)}${gpsData ? ` (${formatDistance(gpsData.distanceMeters)})` : ''}`,
         link: '/attendance?tab=attendance&view=all',
         type: 'attendance:::admin',
         icon: 'fingerprint',
@@ -2006,14 +2023,26 @@ export const AttendancePage: React.FC = () => {
                               target="_blank"
                               rel="noreferrer"
                               className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border transition-colors ${
-                                log.checkInWithinRadius === false
+                                log.workLocationType === 'field'
+                                  ? 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100'
+                                  : log.workLocationType === 'remote'
+                                  ? 'bg-purple-50 text-purple-800 border-purple-200 hover:bg-purple-100'
+                                  : log.checkInWithinRadius === false
                                   ? 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
                                   : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
                               }`}
-                              title={`Xem vị trí trên bản đồ (${log.checkInLocationName || ''} - Cách ${formatDistance(log.checkInDistanceMeters)})`}
+                              title={`Xem vị trí trên Google Maps (${log.checkInLocationName || ''} - Cách VP ${formatDistance(log.checkInDistanceMeters)})`}
                             >
-                              <span className="material-symbols-outlined text-[13px]">location_on</span>
-                              <span>{formatDistance(log.checkInDistanceMeters)} {log.checkInWithinRadius === false ? '(Ngoài BK)' : ''}</span>
+                              <span className="material-symbols-outlined text-[13px]">
+                                {log.workLocationType === 'field' ? 'foundation' : log.workLocationType === 'remote' ? 'commute' : 'location_on'}
+                              </span>
+                              <span>
+                                {log.workLocationType === 'field'
+                                  ? '🏗️ Công trường'
+                                  : log.workLocationType === 'remote'
+                                  ? '🚗 Công tác'
+                                  : `${formatDistance(log.checkInDistanceMeters)} ${log.checkInWithinRadius === false ? '(Ngoài BK)' : ''}`}
+                              </span>
                             </a>
                           ) : (
                             <span className="text-slate-300">—</span>
@@ -3493,6 +3522,61 @@ export const AttendancePage: React.FC = () => {
             </div>
           )}
 
+          {/* HÌNH THỨC / ĐỊA ĐIỂM LÀM VIỆC */}
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-[16px] text-primary">domain</span>
+                Địa điểm làm việc:
+              </span>
+              {attendanceConfig.allowFieldWork && (
+                <span className="text-[10px] text-emerald-700 font-medium bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                  Hỗ trợ công trường / ra ngoài
+                </span>
+              )}
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => setWorkLocationType('office')}
+                className={`flex flex-col items-center justify-center p-2 rounded-lg border text-xs font-bold transition-all cursor-pointer ${
+                  workLocationType === 'office'
+                    ? 'bg-blue-50 border-primary text-primary shadow-xs'
+                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                <span className="material-symbols-outlined text-lg mb-0.5">apartment</span>
+                <span>Tại văn phòng</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setWorkLocationType('field')}
+                className={`flex flex-col items-center justify-center p-2 rounded-lg border text-xs font-bold transition-all cursor-pointer ${
+                  workLocationType === 'field'
+                    ? 'bg-amber-50 border-amber-500 text-amber-800 shadow-xs ring-1 ring-amber-400'
+                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                <span className="material-symbols-outlined text-lg mb-0.5 text-amber-600">foundation</span>
+                <span>Tại công trình</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setWorkLocationType('remote')}
+                className={`flex flex-col items-center justify-center p-2 rounded-lg border text-xs font-bold transition-all cursor-pointer ${
+                  workLocationType === 'remote'
+                    ? 'bg-purple-50 border-purple-500 text-purple-800 shadow-xs ring-1 ring-purple-400'
+                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                <span className="material-symbols-outlined text-lg mb-0.5 text-purple-600">commute</span>
+                <span>Đi công tác</span>
+              </button>
+            </div>
+          </div>
+
           {/* ĐỊNH VỊ GPS NẾU YÊU CẦU */}
           {attendanceConfig.gpsRequirement !== 'none' && (
             <div>
@@ -3518,30 +3602,76 @@ export const AttendancePage: React.FC = () => {
                   <span className="text-xs text-blue-800 font-medium">Đang xác định tọa độ GPS của thiết bị...</span>
                 </div>
               ) : gpsData ? (
-                <div className={`p-3 rounded-lg border ${
-                  gpsData.isWithinRadius
-                    ? 'bg-emerald-50/80 border-emerald-300 text-emerald-900'
-                    : attendanceConfig.gpsRequirement === 'strict'
-                    ? 'bg-red-50/80 border-red-300 text-red-900'
-                    : 'bg-amber-50/80 border-amber-300 text-amber-900'
-                }`}>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold flex items-center gap-1.5">
-                      {gpsData.isWithinRadius ? '✅ Vị trí hợp lệ' : attendanceConfig.gpsRequirement === 'strict' ? '❌ Ngoài phạm vi cho phép' : '⚠️ Vị trí chấm công'}
-                    </span>
-                    <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-white/80 border">
-                      Cách: {formatDistance(gpsData.distanceMeters)}
-                    </span>
-                  </div>
-                  <div className="text-[11px] mt-1 opacity-90 truncate">
-                    📍 {gpsData.locationName} ({gpsData.lat.toFixed(5)}, {gpsData.lng.toFixed(5)})
-                  </div>
-                  {!gpsData.isWithinRadius && attendanceConfig.gpsRequirement === 'strict' && (
-                    <div className="text-[10.5px] font-bold text-red-700 mt-1.5 pt-1.5 border-t border-red-200">
-                      Chính sách công ty bắt buộc bạn phải có mặt tại phạm vi công ty hoặc công trường để chấm công.
+                workLocationType === 'field' ? (
+                  <div className="p-3 rounded-lg border bg-amber-50/90 border-amber-300 text-amber-950">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold flex items-center gap-1.5 text-amber-900">
+                        <span className="material-symbols-outlined text-base text-amber-600">foundation</span>
+                        Chấm công tại Công trình / Dự án
+                      </span>
+                      <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300">
+                        Lưu vết thực địa
+                      </span>
                     </div>
-                  )}
-                </div>
+                    <div className="text-[11px] mt-1.5 flex items-center gap-1 text-slate-700">
+                      <span className="material-symbols-outlined text-[14px] text-amber-600">pin_drop</span>
+                      <span>Tọa độ thực tế: <b>{gpsData.lat.toFixed(5)}, {gpsData.lng.toFixed(5)}</b></span>
+                      <span className="text-slate-400">({formatDistance(gpsData.distanceMeters)} so với VP)</span>
+                    </div>
+                    <div className="text-[10.5px] text-amber-800 mt-1.5 bg-amber-100/70 p-1.5 rounded">
+                      💡 Tọa độ thực tế của công trình được lưu vết minh bạch. Vui lòng chọn Dự án bên dưới để gắn kết công việc.
+                    </div>
+                  </div>
+                ) : workLocationType === 'remote' ? (
+                  <div className="p-3 rounded-lg border bg-purple-50/90 border-purple-300 text-purple-950">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold flex items-center gap-1.5 text-purple-900">
+                        <span className="material-symbols-outlined text-base text-purple-600">commute</span>
+                        Đi công tác / Ra ngoài khảo sát
+                      </span>
+                      <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 border border-purple-300">
+                        Lưu vết công tác
+                      </span>
+                    </div>
+                    <div className="text-[11px] mt-1.5 flex items-center gap-1 text-slate-700">
+                      <span className="material-symbols-outlined text-[14px] text-purple-600">pin_drop</span>
+                      <span>Tọa độ: <b>{gpsData.lat.toFixed(5)}, {gpsData.lng.toFixed(5)}</b></span>
+                      <span className="text-slate-400">({formatDistance(gpsData.distanceMeters)} so với VP)</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className={`p-3 rounded-lg border ${
+                    gpsData.isWithinRadius
+                      ? 'bg-emerald-50/80 border-emerald-300 text-emerald-900'
+                      : attendanceConfig.gpsRequirement === 'strict'
+                      ? 'bg-red-50/80 border-red-300 text-red-900'
+                      : 'bg-amber-50/80 border-amber-300 text-amber-900'
+                  }`}>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold flex items-center gap-1.5">
+                        {gpsData.isWithinRadius ? '✅ Vị trí hợp lệ' : attendanceConfig.gpsRequirement === 'strict' ? '❌ Ngoài bán kính văn phòng' : '⚠️ Vị trí chấm công'}
+                      </span>
+                      <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-white/80 border">
+                        Cách: {formatDistance(gpsData.distanceMeters)}
+                      </span>
+                    </div>
+                    <div className="text-[11px] mt-1 opacity-90 truncate">
+                      📍 {gpsData.locationName} ({gpsData.lat.toFixed(5)}, {gpsData.lng.toFixed(5)})
+                    </div>
+                    {!gpsData.isWithinRadius && (
+                      <div className="text-[11px] mt-2 pt-2 border-t border-slate-200/60 flex items-center justify-between">
+                        <span className="text-slate-600">Đang ở công trường / dự án xa?</span>
+                        <button
+                          type="button"
+                          onClick={() => setWorkLocationType('field')}
+                          className="px-2 py-0.5 bg-amber-500 hover:bg-amber-600 text-white rounded font-bold text-[10.5px] cursor-pointer"
+                        >
+                          Chuyển sang Tại công trình
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )
               ) : gpsError ? (
                 <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700 flex items-start gap-2">
                   <span className="material-symbols-outlined text-[18px] shrink-0 text-red-500">warning</span>
@@ -3610,7 +3740,7 @@ export const AttendancePage: React.FC = () => {
             onClick={handleCheckIn} 
             disabled={
               isSubmitting || 
-              (attendanceConfig.gpsRequirement === 'strict' && (!gpsData || !gpsData.isWithinRadius)) ||
+              (attendanceConfig.gpsRequirement === 'strict' && workLocationType === 'office' && (!gpsData || !gpsData.isWithinRadius)) ||
               (attendanceConfig.requirePhoto && !checkInImage)
             }
             className="flex items-center gap-2 px-5 py-2 bg-primary hover:bg-blue-800 text-white font-bold rounded-lg disabled:opacity-50 transition-colors text-sm cursor-pointer shadow-sm"
