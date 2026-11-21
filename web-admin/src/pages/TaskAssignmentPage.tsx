@@ -6,7 +6,7 @@ import { useRealtimeStore, calculateTaskProgressFromStatuses } from '../services
 import { useAuthStore, hasPermission, isDirector, isSystemAdmin } from '../services/authStore';
 import { AuditInfoCell } from '../components/common/AuditInfoCell';
 import { ConfirmModal } from '../components/common/ConfirmModal';
-import { Task, isTaskActuallyDone, isTaskSectionHeaderItem } from '../types';
+import { Task, isTaskActuallyDone, isTaskSectionHeaderItem, getProjectPriorityWeight, getProjectPriorityInfo } from '../types';
 import { TaskDiscussionModal } from '../components/tasks/TaskDiscussionModal';
 import { appendTaskDiscussion, parseTaskDiscussions, getLatestDiscussion, stripDiscussionThread } from '../utils/taskDiscussion';
 import { getEngineersForProject } from '../utils/projectMemberUtils';
@@ -752,10 +752,18 @@ export const TaskAssignmentPage: React.FC = () => {
       map.get(pCode)!.push(t);
     });
 
-    const groups: { project: { code: string; name: string }; tasks: typeof projectDisplayedTasks }[] = [];
+    const groups: { project: { code: string; name: string; priority?: string }; tasks: typeof projectDisplayedTasks }[] = [];
     map.forEach((tList, pCode) => {
-      const proj = projects.find(p => p.code === pCode) || { code: pCode, name: tList[0]?.projectName || pCode };
+      const proj = projects.find(p => p.code === pCode) || { code: pCode, name: tList[0]?.projectName || pCode, priority: 'normal' };
       groups.push({ project: proj, tasks: tList });
+    });
+
+    // Luôn ưu tiên theo cấp bậc dự án (Cấp 1 > Cấp 2 > Cấp 3 > Cấp 4) lên trước
+    groups.sort((a, b) => {
+      const prioA = getProjectPriorityWeight(a.project.priority);
+      const prioB = getProjectPriorityWeight(b.project.priority);
+      if (prioA !== prioB) return prioA - prioB;
+      return a.project.name.localeCompare(b.project.name, 'vi', { numeric: true });
     });
 
     return groups;
@@ -899,13 +907,21 @@ export const TaskAssignmentPage: React.FC = () => {
       map.get(pCode)!.push(t);
     });
 
-    const groups: { project: { code: string; name: string }; tasks: typeof paginatedProjectTasks }[] = [];
+    const groups: { project: { code: string; name: string; priority?: string }; tasks: typeof paginatedProjectTasks }[] = [];
     map.forEach((tList, pCode) => {
       const proj = projects.find(p => p.code === pCode || p.name === pCode);
       groups.push({
-        project: { code: pCode, name: proj?.name || pCode },
+        project: { code: pCode, name: proj?.name || pCode, priority: proj?.priority },
         tasks: tList
       });
+    });
+
+    // Luôn ưu tiên theo cấp bậc dự án (Cấp 1 > Cấp 2 > Cấp 3 > Cấp 4) lên trước
+    groups.sort((a, b) => {
+      const prioA = getProjectPriorityWeight(a.project.priority);
+      const prioB = getProjectPriorityWeight(b.project.priority);
+      if (prioA !== prioB) return prioA - prioB;
+      return a.project.name.localeCompare(b.project.name, 'vi', { numeric: true });
     });
 
     return groups;
@@ -1660,9 +1676,10 @@ export const TaskAssignmentPage: React.FC = () => {
                 className="w-full sm:w-[190px] md:w-[210px] h-[32px] text-xs font-semibold bg-white shrink-0"
               >
                 <option value="all">-- Tất cả Dự án --</option>
-                {projects.map(p => (
-                  <option key={p.id} value={p.code}>{p.name}</option>
-                ))}
+                {projects.map(p => {
+                  const prio = p.priority === 'urgent' ? '🔥 [Cấp 1] ' : (p.priority === 'high' ? '⚡ [Cấp 2] ' : '');
+                  return <option key={p.id} value={p.code}>{prio}{p.name}</option>;
+                })}
               </CustomSelect>
 
               <div className="relative w-full sm:w-60 md:w-72 lg:w-80 shrink-0">
@@ -1747,6 +1764,16 @@ export const TaskAssignmentPage: React.FC = () => {
                                 </span>
                                 <span className="material-symbols-outlined text-primary text-[18px]">folder_open</span>
                                 <span>{group.project.name}</span>
+                                {(() => {
+                                  const prioInfo = getProjectPriorityInfo(group.project.priority);
+                                  if (prioInfo.value === 'urgent') {
+                                    return <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-red-100 text-red-700 border border-red-300 flex items-center gap-1">🔥 {prioInfo.shortLabel}</span>;
+                                  }
+                                  if (prioInfo.value === 'high') {
+                                    return <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-800 border border-amber-300 flex items-center gap-1">⚡ {prioInfo.shortLabel}</span>;
+                                  }
+                                  return null;
+                                })()}
                               </button>
 
                               <div className="flex items-center gap-2 shrink-0">

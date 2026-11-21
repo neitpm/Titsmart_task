@@ -2789,11 +2789,14 @@ const hasSyncedRef = useRef(false);
                   className="h-7 min-w-[120px] max-w-[180px] rounded border border-slate-200 bg-white px-1.5 text-[11px] font-bold text-slate-700 shadow-xs outline-none transition-colors hover:border-blue-200 hover:bg-slate-50 focus:border-primary"
                 >
                   <option value="all">Tất cả dự án</option>
-                  {projects.map((p) => (
-                    <option key={p.id || p.code} value={p.code}>
-                      {p.name || p.code}
-                    </option>
-                  ))}
+                  {projects.map((p) => {
+                    const prio = p.priority === 'urgent' ? '🔥 [Cấp 1] ' : (p.priority === 'high' ? '⚡ [Cấp 2] ' : '');
+                    return (
+                      <option key={p.id || p.code} value={p.code}>
+                        {prio}{p.name || p.code}
+                      </option>
+                    );
+                  })}
                 </CustomSelect>
               </div>
             )}
