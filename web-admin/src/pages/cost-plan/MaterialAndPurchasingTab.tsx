@@ -603,11 +603,23 @@ export const MaterialAndPurchasingTab: React.FC<MaterialAndPurchasingTabProps> =
       return text.split(/[.\-]/).map(p => { const n = parseInt(p, 10); return isNaN(n) ? Infinity : n; });
     };
 
+    const hasMajorSections = filtered.some(r => {
+      const s = String(r.stt || '').trim().toUpperCase();
+      return (/^[A-Z]{1,2}$/.test(s) && !s.includes('.')) || /^(I|II|III|IV|V|VI|VII|VIII|IX|X|XI|XII|XIII|XIV|XV|XVI|XVII|XVIII|XIX|XX)$/i.test(s);
+    });
+
     const isRootSectionRow = (plan: ProjectMaterialPlan) => {
       const stt = String(plan.stt || '').trim().toUpperCase();
       if (stt.includes('.')) return false;
-      // Root sections are letters (A, B) or Roman (I, II) or explicitly marked sections without parentId
-      return /^[A-Z]{1,2}$/.test(stt) || /^(I|II|III|IV|V|VI|VII|VIII|IX|X|XI|XII|XIII|XIV|XV|XVI|XVII|XVIII|XIX|XX)$/i.test(stt) || (isParentRow(plan) && !plan.parentId);
+      // Root sections are letters (A, B) or Roman (I, II)
+      if (/^[A-Z]{1,2}$/.test(stt) || /^(I|II|III|IV|V|VI|VII|VIII|IX|X|XI|XII|XIII|XIV|XV|XVI|XVII|XVIII|XIX|XX)$/i.test(stt)) {
+        return true;
+      }
+      // If there are no major letter/Roman sections, then root numeric items without parent can be root
+      if (!hasMajorSections && isParentRow(plan) && !plan.parentId) {
+        return true;
+      }
+      return false;
     };
 
     const orderTagValue = (notes?: string): number | null => {
@@ -639,20 +651,22 @@ export const MaterialAndPurchasingTab: React.FC<MaterialAndPurchasingTabProps> =
       .forEach((r, i) => sectionOrder.set(r.id, i));
 
     const resolveParentId = (plan: ProjectMaterialPlan): string | undefined => {
+      if (plan.parentId && filtered.some(r => r.id === plan.parentId)) return plan.parentId;
       if (plan.stt && plan.stt.includes('.')) {
         const parts = plan.stt.split('.');
         parts.pop();
         const parentStt = parts.join('.');
-        const parentItem = filtered.find(r => r.stt === parentStt);
-        if (parentItem) return parentItem.id;
+        const myPos = originalOrderMap.get(plan.id) ?? Infinity;
+        const candidates = filtered.filter(r => r.stt === parentStt && (originalOrderMap.get(r.id) ?? 0) <= myPos);
+        if (candidates.length > 0) return candidates[candidates.length - 1].id;
       }
       if (plan.parentId) return plan.parentId;
-      // Fallback for STT like 33.1: if no direct parent with stt "33", find closest section header preceding this item
+      // Fallback for items without parent: find closest section header preceding this item
       const myPos = originalOrderMap.get(plan.id) ?? Infinity;
       let bestSecId: string | undefined = undefined;
       let bestSecPos = -1;
       filtered.forEach(r => {
-        if (isParentRow(r)) {
+        if (isRootSectionRow(r) || isParentRow(r)) {
           const secPos = originalOrderMap.get(r.id) ?? Infinity;
           if (secPos <= myPos && secPos > bestSecPos) {
             bestSecPos = secPos;
@@ -1027,16 +1041,28 @@ export const MaterialAndPurchasingTab: React.FC<MaterialAndPurchasingTabProps> =
 
     // Resolve parent globally
     const resolveParentIdGlobal = (item: any) => {
-      // Prioritize hierarchical STT matching if available (e.g., 35.1.1 -> 35.1, 35.1 -> 35)
-      // to avoid corrupt/stale parentId pointing across unrelated top-level sections
+      // 1. If valid parentId exists, trust it!
+      if (item.parentId && item.parentId !== item.id && map.has(item.parentId)) return item.parentId;
+
+      // 2. If STT is dotted (e.g. 1.1, 2.1), look for parent with matching STT in preceding items
       if (item.stt && String(item.stt).includes('.')) {
         const parts = String(item.stt).split('.');
         parts.pop();
         const parentStt = parts.join('.');
-        const parentItem = sttToItemMap.get(`${item.projectCode || ''}:::${parentStt}`);
-        if (parentItem && parentItem.id !== item.id && map.has(parentItem.id)) return parentItem.id;
+        const orderTagValue = (notes?: string): number | null => {
+          const m = String(notes || '').match(/\[order:([\d.]+)\]/);
+          return m ? parseFloat(m[1]) : null;
+        };
+        const myOrder = orderTagValue(item.notes);
+        const candidates = fullTasks.filter(t =>
+          (t.projectCode || '') === (item.projectCode || '') &&
+          t.id !== item.id &&
+          String(t.stt || '').trim() === parentStt &&
+          map.has(t.id) &&
+          (myOrder === null || (orderTagValue(t.notes) ?? 0) <= myOrder)
+        );
+        if (candidates.length > 0) return candidates[candidates.length - 1].id;
       }
-      if (item.parentId && item.parentId !== item.id && map.has(item.parentId)) return item.parentId;
       if (!isParentRow(item) && item.sectionName && String(item.sectionName).trim().length > 0) {
         const secHeader = fullTasks.find(x => 
           (x.projectCode || '') === (item.projectCode || '') &&
@@ -1066,8 +1092,6 @@ export const MaterialAndPurchasingTab: React.FC<MaterialAndPurchasingTabProps> =
       if (currentDepth > 15) return; // Safety guard against OOM crash
 
       nodes.sort((a, b) => {
-        const sttCompare = compareTaskStt(a.stt, b.stt);
-        if (sttCompare !== 0) return sttCompare;
         const orderTagValue = (notes?: string): number | null => {
           const m = String(notes || '').match(/\[order:([\d.]+)\]/);
           return m ? parseFloat(m[1]) : null;
@@ -1077,6 +1101,8 @@ export const MaterialAndPurchasingTab: React.FC<MaterialAndPurchasingTabProps> =
         if (orderA !== null && orderB !== null && orderA !== orderB) {
           return orderA - orderB;
         }
+        const sttCompare = compareTaskStt(a.stt, b.stt);
+        if (sttCompare !== 0) return sttCompare;
         return (a.jobContent || a.name || '').localeCompare(b.jobContent || b.name || '', 'vi', { numeric: true, sensitivity: 'base' });
       });
 

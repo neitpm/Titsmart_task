@@ -947,11 +947,15 @@ export const ProjectCostPlanPage: React.FC = () => {
               const cleanUnitVal = String(row[unitCol] || '').replace(/^[-–—_.\s]+$/, '').trim();
               const hasNoVolumeAndUnit = (volumeContract === 0 || !volumeContract) && (!cleanUnitVal || cleanUnitVal === '');
 
-              const isSectionPattern = isRoman || /^[A-Z]{1,2}$/i.test(cleanStt) || /^\d+$/.test(cleanStt) || startsWithPhan || isMainSectionName(content);
-              const isSection = isSectionPattern && hasNoVolumeAndUnit;
+              // Major Section (Level 1 Root): A, B, C, D, E or Roman I, II, III... or "PHẦN ..." when has no volume & unit
+              const isLetterSection = /^[A-Z]{1,2}$/i.test(cleanStt);
+              const isMajorSection = (isLetterSection || isRoman || startsWithPhan || isMainSectionName(content)) && hasNoVolumeAndUnit;
+              // Sub-Section (Level 2/3): Section header under a major section with no volume & unit (e.g. "1", "2.8")
+              const isSubSection = !isMajorSection && hasNoVolumeAndUnit && (/^\d+(\.\d+)*$/.test(cleanStt) || startsWithPhan || isMainSectionName(content));
+              const isSection = isMajorSection || isSubSection;
 
               if (stt.startsWith('26') || stt.startsWith('27')) {
-                debugLogs.push(`[DEBUG] Row:${index + headerRowIndex + 2} | STT:${stt} | isSec:${isSection} | vol:${volumeContract} | unit:${cleanUnitVal} | hasNoVolUnit:${hasNoVolumeAndUnit} | content:${content.substring(0,30)}`);
+                debugLogs.push(`[DEBUG] Row:${index + headerRowIndex + 2} | STT:${stt} | isSec:${isSection} | isMaj:${isMajorSection} | vol:${volumeContract} | unit:${cleanUnitVal} | hasNoVolUnit:${hasNoVolumeAndUnit} | content:${content.substring(0,30)}`);
               }
 
               let effectiveStt = stt;
@@ -964,31 +968,46 @@ export const ProjectCostPlanPage: React.FC = () => {
               const supplyScope = isSection ? currentSectionSupplyScope : (rowSupplyScope !== 'unknown' ? rowSupplyScope : currentSectionSupplyScope);
 
               const rowId = crypto.randomUUID();
-              if (stt) sttIdMap.set(stt, rowId);
+              let parentId: string | undefined = undefined;
 
-              let parentId = undefined;
-              if (isSection) {
+              if (isMajorSection) {
                 currentMainSectionId = rowId;
                 currentSubSectionId = undefined;
+                parentId = undefined;
+              } else if (isSubSection) {
+                if (cleanStt.includes('.')) {
+                  const parts = cleanStt.split('.');
+                  parts.pop();
+                  const parentStt = parts.join('.');
+                  const scopedKey = `${currentMainSectionId || 'root'}:::${parentStt}`;
+                  parentId = sttIdMap.get(scopedKey) || sttIdMap.get(parentStt) || currentSubSectionId || currentMainSectionId;
+                } else {
+                  parentId = currentMainSectionId;
+                }
+                currentSubSectionId = rowId;
               } else {
                 let isSubFolder = false;
                 const nextRow = parsedRows[index + 1];
                 if (nextRow) {
                   const nextStt = String(nextRow[sttCol] || '').trim();
-                  if (nextStt && nextStt.startsWith(stt + '.')) {
+                  if (nextStt && nextStt.startsWith(cleanStt + '.')) {
                     isSubFolder = true;
                   }
                 }
                 if (isSubFolder) {
-                  parentId = currentMainSectionId;
+                  parentId = currentSubSectionId || currentMainSectionId;
                   currentSubSectionId = rowId;
                 } else {
                   let foundDottedParent = false;
-                  if (stt.includes('.')) {
-                    const parts = stt.split('.');
+                  if (cleanStt.includes('.')) {
+                    const parts = cleanStt.split('.');
                     parts.pop();
                     const parentStt = parts.join('.');
-                    if (sttIdMap.has(parentStt)) {
+                    const scopedKey = `${currentMainSectionId || 'root'}:::${parentStt}`;
+                    if (sttIdMap.has(scopedKey)) {
+                      parentId = sttIdMap.get(scopedKey);
+                      foundDottedParent = true;
+                    } else if (sttIdMap.has(parentStt)) {
                       parentId = sttIdMap.get(parentStt);
                       foundDottedParent = true;
                     }
@@ -997,6 +1016,11 @@ export const ProjectCostPlanPage: React.FC = () => {
                     parentId = currentSubSectionId || currentMainSectionId;
                   }
                 }
+              }
+
+              if (cleanStt) {
+                sttIdMap.set(`${currentMainSectionId || 'root'}:::${cleanStt}`, rowId);
+                sttIdMap.set(cleanStt, rowId);
               }
 
               // Lưu thứ tự tuyệt đối vào notes dạng [order:NNN] để sort đúng sau khi load

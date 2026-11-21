@@ -119,11 +119,21 @@ export const PurchasingTab: React.FC<PurchasingTabProps> = ({
     return text.split(/[.\-]/).map(p => { const n = parseInt(p, 10); return isNaN(n) ? Infinity : n; });
   };
 
-  // Sort sections by their stt: Roman sections by Roman value, numeric sections
-  // by numeric parts (e.g. '33' < '34' < '105'). Strategy: assign each record a
-  // composite key (sectionIndex, numericParts) via a single pass over the data.
+  const hasMajorSections = data.some(r => {
+    const s = String(r.stt || '').trim().toUpperCase();
+    return (/^[A-Z]{1,2}$/.test(s) && !s.includes('.')) || /^(I|II|III|IV|V|VI|VII|VIII|IX|X|XI|XII|XIII|XIV|XV|XVI|XVII|XVIII|XIX|XX)$/i.test(s);
+  });
+
   const isRootSectionRow = (pur: ProjectPurchasing) => {
-    return isSectionRow(pur) && (pur.parentId === null || !pur.parentId);
+    const stt = String(pur.stt || '').trim().toUpperCase();
+    if (stt.includes('.')) return false;
+    if (/^[A-Z]{1,2}$/.test(stt) || /^(I|II|III|IV|V|VI|VII|VIII|IX|X|XI|XII|XIII|XIV|XV|XVI|XVII|XVIII|XIX|XX)$/i.test(stt)) {
+      return true;
+    }
+    if (!hasMajorSections && isSectionRow(pur) && !pur.parentId) {
+      return true;
+    }
+    return false;
   };
 
   const sectionSortKey = (r: ProjectPurchasing): number[] => {
@@ -136,6 +146,13 @@ export const PurchasingTab: React.FC<PurchasingTabProps> = ({
   [...data]
     .filter(r => isRootSectionRow(r))
     .sort((a, b) => {
+      const orderTagValue = (notes?: string): number | null => {
+        const m = String(notes || '').match(/\[order:([\d.]+)\]/);
+        return m ? parseFloat(m[1]) : null;
+      };
+      const orderA = orderTagValue(a.notes);
+      const orderB = orderTagValue(b.notes);
+      if (orderA !== null && orderB !== null && orderA !== orderB) return orderA - orderB;
       const ka = sectionSortKey(a), kb = sectionSortKey(b);
       for (let i = 0; i < Math.max(ka.length, kb.length); i++) {
         const diff = (ka[i] ?? Infinity) - (kb[i] ?? Infinity);
@@ -157,14 +174,30 @@ export const PurchasingTab: React.FC<PurchasingTabProps> = ({
   const originalOrderMap = new Map<string, number>(data.map((r, i) => [r.id, orderTagValue(r.notes) ?? (1000000 - i)]));
 
   const resolveParentId = (pur: ProjectPurchasing): string | undefined => {
+    if (pur.parentId && data.some(r => r.id === pur.parentId)) return pur.parentId;
     if (pur.stt && pur.stt.includes('.')) {
       const parts = pur.stt.split('.');
       parts.pop();
       const parentStt = parts.join('.');
-      const parentItem = data.find(r => r.stt === parentStt);
-      if (parentItem) return parentItem.id;
+      const myPos = originalOrderMap.get(pur.id) ?? Infinity;
+      const candidates = data.filter(r => r.stt === parentStt && (originalOrderMap.get(r.id) ?? 0) <= myPos);
+      if (candidates.length > 0) return candidates[candidates.length - 1].id;
     }
-    return pur.parentId;
+    if (pur.parentId) return pur.parentId;
+    // Fallback: find closest section header preceding this item
+    const myPos = originalOrderMap.get(pur.id) ?? Infinity;
+    let bestSecId: string | undefined = undefined;
+    let bestSecPos = -1;
+    data.forEach(r => {
+      if (isRootSectionRow(r) || isSectionRow(r)) {
+        const secPos = originalOrderMap.get(r.id) ?? Infinity;
+        if (secPos <= myPos && secPos > bestSecPos) {
+          bestSecPos = secPos;
+          bestSecId = r.id;
+        }
+      }
+    });
+    return bestSecId;
   };
 
   const sectionIndexCache = new Map<string, number>();
@@ -524,6 +557,15 @@ export const PurchasingTab: React.FC<PurchasingTabProps> = ({
 
               const flattenTree = (nodes: any[], currentDepth: number = 0, prefix: string = '', visited = new Set<string>()) => {
                 nodes.sort((a, b) => {
+                  const orderTagValue = (notes?: string): number | null => {
+                    const m = String(notes || '').match(/\[order:([\d.]+)\]/);
+                    return m ? parseFloat(m[1]) : null;
+                  };
+                  const orderA = orderTagValue(a.notes);
+                  const orderB = orderTagValue(b.notes);
+                  if (orderA !== null && orderB !== null && orderA !== orderB) {
+                    return orderA - orderB;
+                  }
                   const sttCompare = compareTaskStt(a.stt, b.stt);
                   if (sttCompare !== 0) return sttCompare;
                   return (a.content || '').localeCompare(b.content || '', 'vi', { numeric: true, sensitivity: 'base' });

@@ -160,8 +160,21 @@ export const MaterialPlanTab: React.FC<MaterialPlanTabProps> = ({
       return text.split(/[.\-]/).map(p => { const n = parseInt(p, 10); return isNaN(n) ? Infinity : n; });
     };
 
+    const hasMajorSections = filtered.some(r => {
+      const s = String(r.stt || '').trim().toUpperCase();
+      return (/^[A-Z]{1,2}$/.test(s) && !s.includes('.')) || /^(I|II|III|IV|V|VI|VII|VIII|IX|X|XI|XII|XIII|XIV|XV|XVI|XVII|XVIII|XIX|XX)$/i.test(s);
+    });
+
     const isRootSectionRow = (plan: ProjectMaterialPlan) => {
-      return isParentRow(plan) && (plan.parentId === null || !plan.parentId);
+      const stt = String(plan.stt || '').trim().toUpperCase();
+      if (stt.includes('.')) return false;
+      if (/^[A-Z]{1,2}$/.test(stt) || /^(I|II|III|IV|V|VI|VII|VIII|IX|X|XI|XII|XIII|XIV|XV|XVI|XVII|XVIII|XIX|XX)$/i.test(stt)) {
+        return true;
+      }
+      if (!hasMajorSections && isParentRow(plan) && !plan.parentId) {
+        return true;
+      }
+      return false;
     };
 
     const orderTagValue = (notes?: string): number | null => {
@@ -193,20 +206,22 @@ export const MaterialPlanTab: React.FC<MaterialPlanTabProps> = ({
       .forEach((r, i) => sectionOrder.set(r.id, i));
 
     const resolveParentId = (plan: ProjectMaterialPlan): string | undefined => {
+      if (plan.parentId && filtered.some(r => r.id === plan.parentId)) return plan.parentId;
       if (plan.stt && plan.stt.includes('.')) {
         const parts = plan.stt.split('.');
         parts.pop();
         const parentStt = parts.join('.');
-        const parentItem = filtered.find(r => r.stt === parentStt);
-        if (parentItem) return parentItem.id;
+        const myPos = originalOrderMap.get(plan.id) ?? Infinity;
+        const candidates = filtered.filter(r => r.stt === parentStt && (originalOrderMap.get(r.id) ?? 0) <= myPos);
+        if (candidates.length > 0) return candidates[candidates.length - 1].id;
       }
       if (plan.parentId) return plan.parentId;
-      // Fallback for STT like 33.1: if no direct parent with stt "33", find closest section header preceding this item
+      // Fallback: find closest section header preceding this item
       const myPos = originalOrderMap.get(plan.id) ?? Infinity;
       let bestSecId: string | undefined = undefined;
       let bestSecPos = -1;
       filtered.forEach(r => {
-        if (isParentRow(r)) {
+        if (isRootSectionRow(r) || isParentRow(r)) {
           const secPos = originalOrderMap.get(r.id) ?? Infinity;
           if (secPos <= myPos && secPos > bestSecPos) {
             bestSecPos = secPos;
@@ -575,6 +590,15 @@ export const MaterialPlanTab: React.FC<MaterialPlanTabProps> = ({
 
               const flattenTree = (nodes: any[], currentDepth: number = 0, prefix: string = '', visited = new Set<string>()) => {
                 nodes.sort((a, b) => {
+                  const orderTagValue = (notes?: string): number | null => {
+                    const m = String(notes || '').match(/\[order:([\d.]+)\]/);
+                    return m ? parseFloat(m[1]) : null;
+                  };
+                  const orderA = orderTagValue(a.notes);
+                  const orderB = orderTagValue(b.notes);
+                  if (orderA !== null && orderB !== null && orderA !== orderB) {
+                    return orderA - orderB;
+                  }
                   const sttCompare = compareTaskStt(a.stt, b.stt);
                   if (sttCompare !== 0) return sttCompare;
                   return (a.jobContent || '').localeCompare(b.jobContent || '', 'vi', { numeric: true, sensitivity: 'base' });

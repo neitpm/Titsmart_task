@@ -44,6 +44,10 @@ export const extractLeadingRomanNumber = (text: string): number | null => {
   if (!match) return null;
 
   const roman = match[1].toUpperCase();
+  // Standalone single letters C, D, L, M are alphabetical section letters (e.g. section C, D), not Roman numerals 100, 500, 50, 1000
+  if (/^[CDLM]$/.test(roman)) {
+    return null;
+  }
   return toRoman(fromRoman(roman)) === roman ? fromRoman(roman) : null;
 };
 
@@ -61,20 +65,23 @@ export const compareTaskStt = (a?: string, b?: string) => {
   const romanA = extractLeadingRomanNumber(textA);
   const romanB = extractLeadingRomanNumber(textB);
 
-  // 1. If both are valid Roman numerals, compare their numerical value (III=3 < XI=11)
-  if (romanA !== null && romanB !== null) {
-    if (romanA !== romanB) return romanA - romanB;
-  }
+  // Check if standard Roman numeral section header (I, II, III, IV, V, VI, VII, VIII, IX, X... up to XX)
+  const romanPattern = /^(I|II|III|IV|V|VI|VII|VIII|IX|X|XI|XII|XIII|XIV|XV|XVI|XVII|XVIII|XIX|XX)$/i;
+  const isRomanHeadingA = romanPattern.test(textA);
+  const isRomanHeadingB = romanPattern.test(textB);
 
-  // 2. Single/Double Letter headers (A, B, C, AA, BB) get priority if not Roman
-  const isLetterA = /^[A-Z]{1,2}$/i.test(textA) && romanA === null;
-  const isLetterB = /^[A-Z]{1,2}$/i.test(textB) && romanB === null;
+  // Single/Double Letter headers (A, B, C, D, E, AA, BB) get priority if not Roman heading (I, II, III...)
+  const isLetterA = /^[A-Z]{1,2}$/i.test(textA) && !isRomanHeadingA;
+  const isLetterB = /^[A-Z]{1,2}$/i.test(textB) && !isRomanHeadingB;
 
   if (isLetterA && isLetterB) return textA.localeCompare(textB, 'en', { sensitivity: 'base' });
   if (isLetterA && !isLetterB) return -1;
   if (!isLetterA && isLetterB) return 1;
-  
-  if (romanA !== null && romanB === null) {
+
+  // 1. If both are valid Roman numerals, compare their numerical value (III=3 < XI=11)
+  if (romanA !== null && romanB !== null) {
+    if (romanA !== romanB) return romanA - romanB;
+  } else if (romanA !== null && romanB === null) {
     return -1;
   } else if (romanA === null && romanB !== null) {
     return 1;
