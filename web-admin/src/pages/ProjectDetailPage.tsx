@@ -26,7 +26,18 @@ export const ProjectDetailPage: React.FC = () => {
     return '';
   }, [location.pathname, location.search]);
 
-  const displaySubTitle = subTitle || costPlanSubTitle;
+  const inventorySubTitle = useMemo(() => {
+    if (location.pathname.includes('/inventory')) {
+      const sp = new URLSearchParams(location.search);
+      const tab = sp.get('tab');
+      if (tab === 'import') return 'Nhật ký nhập kho';
+      if (tab === 'export') return 'Nhật ký xuất kho';
+      return 'Tồn kho tổng hợp';
+    }
+    return '';
+  }, [location.pathname, location.search]);
+
+  const displaySubTitle = subTitle || costPlanSubTitle || inventorySubTitle;
 
   // Lazy keep-alive: Only mount heavy tab components after the user visits them for the first time in this project
   const [visitedTabs, setVisitedTabs] = useState<Set<string>>(() => {

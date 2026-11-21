@@ -1630,30 +1630,6 @@ export const MaterialTrackingPage: React.FC = () => {
 
         {/* TABS & FILTERS */}
         <div ref={stickyHeaderRef} className="flex flex-col border-b border-slate-200 bg-white z-20">
-          {projectId && (
-            <div className="flex items-center gap-1 md:gap-4 px-2 md:px-4 overflow-x-auto custom-scrollbar">
-              {[
-                { id: 'OVERVIEW', label: 'Tồn Kho Tổng Hợp', shortLabel: 'Tồn Kho', icon: 'inventory' },
-                { id: 'IMPORT', label: 'Nhật Ký Nhập Kho', shortLabel: 'Nhập Kho', icon: 'login' },
-                { id: 'EXPORT', label: 'Nhật Ký Xuất Kho', shortLabel: 'Xuất Kho', icon: 'logout' }
-              ].map(tab => (
-                <button 
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id as any)}
-                  className={`app-tab-button flex items-center gap-1.5 md:gap-2.5 px-2 md:px-3 py-1.5 text-[12px] font-bold border-b-2 transition-all whitespace-nowrap ${
-                    activeTab === tab.id 
-                      ? 'border-primary text-primary' 
-                      : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'
-                  }`}
-                >
-                  <span className="material-symbols-outlined text-[16px] leading-none">{tab.icon}</span>
-                  <span className="hidden md:inline">{tab.label}</span>
-                  <span className="inline md:hidden">{tab.shortLabel}</span>
-                </button>
-              ))}
-            </div>
-          )}
-
           {/* MOBILE ACTION & SEARCH BAR (Chỉ hiển thị khi đang ở trong tab Kho của Dự án, vì trang Tổng kho độc lập đã có ở Header trên cùng) */}
           {projectId && (
             <div className="md:hidden flex items-center gap-1.5 p-2 border-t border-slate-100 bg-white">

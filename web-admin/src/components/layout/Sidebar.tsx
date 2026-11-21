@@ -89,7 +89,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
     'Chấm công': true,
     'Tất cả dự án': true,
     'Tổng kho': true,
-    'Vật tư & Chi phí': true
+    'Vật tư & Chi phí': true,
+    'Kho Dự án': true
   });
 
   const toggleSubMenu = (label: string) => {
@@ -114,6 +115,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
     }
     if (location.pathname.includes('/cost-plan')) {
       setOpenSubMenus(prev => ({ ...prev, 'Vật tư & Chi phí': true }));
+    }
+    if (location.pathname.includes('/inventory')) {
+      setOpenSubMenus(prev => ({ ...prev, 'Kho Dự án': true }));
     }
   }, [location.pathname]);
 
@@ -172,6 +176,40 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
         ] : [])
       ];
 
+      const inventorySubItems = [
+        {
+          label: 'Tồn kho',
+          path: `/projects/${currentProject.id}/inventory?tab=overview`,
+          icon: 'inventory_2',
+          isActive: (pathname: string, search: string) => {
+            if (!pathname.includes('/inventory')) return false;
+            const sp = new URLSearchParams(search);
+            const tab = sp.get('tab');
+            return !tab || tab === 'overview' || tab === 'inventory';
+          }
+        },
+        {
+          label: 'Nhập kho',
+          path: `/projects/${currentProject.id}/inventory?tab=import`,
+          icon: 'login',
+          isActive: (pathname: string, search: string) => {
+            if (!pathname.includes('/inventory')) return false;
+            const sp = new URLSearchParams(search);
+            return sp.get('tab') === 'import';
+          }
+        },
+        {
+          label: 'Xuất kho',
+          path: `/projects/${currentProject.id}/inventory?tab=export`,
+          icon: 'logout',
+          isActive: (pathname: string, search: string) => {
+            if (!pathname.includes('/inventory')) return false;
+            const sp = new URLSearchParams(search);
+            return sp.get('tab') === 'export';
+          }
+        }
+      ];
+
       const baseProjectItems = [
           { label: 'Tổng quan', path: `/projects/${currentProject.id}/overview`, icon: 'dashboard', req: 'VIEW_PROJECTS' },
           { label: 'Tiến độ', path: `/projects/${currentProject.id}/tasks`, icon: 'fact_check', req: 'VIEW_TASKS' },
@@ -184,7 +222,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
           },
           { label: 'Hồ sơ', path: `/projects/${currentProject.id}/documents`, icon: 'file_present', req: 'VIEW_DOCUMENTS' },
           { label: 'Thư viện', path: `/projects/${currentProject.id}/diagram`, icon: 'photo_library', req: 'VIEW_PROJECT_DIAGRAM' },
-          { label: 'Kho Dự án', path: `/projects/${currentProject.id}/inventory`, icon: 'inventory_2', req: 'VIEW_MATERIALS' },
+          { 
+            label: 'Kho Dự án', 
+            path: `/projects/${currentProject.id}/inventory?tab=overview`, 
+            icon: 'inventory_2', 
+            req: 'VIEW_MATERIALS',
+            children: inventorySubItems
+          },
           { label: 'Hiện trường', path: `/projects/${currentProject.id}/field-logs`, icon: 'add_a_photo', req: 'VIEW_FIELD_LOGS' }
         ];
 
@@ -462,7 +506,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
                   const isProjectsSection = item.label === 'Tất cả dự án' && location.pathname === '/projects';
                   const isMaterialsSection = item.label === 'Tổng kho' && location.pathname === '/materials';
                   const isCostPlanSection = (item.label === 'Vật tư & Chi phí' || item.path.includes('/cost-plan')) && location.pathname.includes('/cost-plan');
-                  const isParentActive = isTaskSection || isAttendanceSection || isProjectsSection || isMaterialsSection || isCostPlanSection;
+                  const isInventorySection = (item.label === 'Kho Dự án' || item.path.includes('/inventory')) && location.pathname.includes('/inventory');
+                  const isParentActive = isTaskSection || isAttendanceSection || isProjectsSection || isMaterialsSection || isCostPlanSection || isInventorySection;
                   const isSubOpen = openSubMenus[item.label] ?? true;
                   
                   return (
