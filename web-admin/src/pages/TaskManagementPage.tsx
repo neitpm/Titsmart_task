@@ -2502,11 +2502,15 @@ const hasSyncedRef = useRef(false);
       if (currentDepth > 15) return; // Safety guard: max 15 depth level to prevent OOM crash
 
       nodes.sort((a, b) => {
-        const ordA = orderMap.get(a.id) ?? 999999;
-        const ordB = orderMap.get(b.id) ?? 999999;
-        if (ordA !== ordB) return ordA - ordB;
         const sttCompare = compareTaskStt(a.stt, b.stt);
         if (sttCompare !== 0) return sttCompare;
+        const matchA = String(a.notes || '').match(/\[order:(\d+)\]/i);
+        const matchB = String(b.notes || '').match(/\[order:(\d+)\]/i);
+        if (matchA && matchB) {
+          const ordA = parseInt(matchA[1], 10);
+          const ordB = parseInt(matchB[1], 10);
+          if (ordA !== ordB) return ordA - ordB;
+        }
         return String(a.name || '').localeCompare(String(b.name || ''), 'vi', { numeric: true, sensitivity: 'base' });
       });
 
