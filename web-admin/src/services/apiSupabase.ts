@@ -1,6 +1,6 @@
 import { supabase, isCloudSupabase } from '../lib/supabase';
 import { v4 as uuidv4 } from 'uuid';
-import { NotificationItem, getProjectPriorityWeight } from '../types';
+import { NotificationItem, getProjectPriorityWeight, AttendanceConfig, DEFAULT_ATTENDANCE_CONFIG } from '../types';
 import { deleteStorageFiles, parseInvoiceUrls } from '../utils/fileUploadHelper';
 
 /**
@@ -2685,7 +2685,25 @@ export const api = {
         return [];
       }
     },
-    checkIn: async (input: { userId: string; userName: string; projectId?: string; projectName?: string; checkInImage?: string; notes?: string; checkInTime?: string }) => {
+    checkIn: async (input: { 
+      userId: string; 
+      userName: string; 
+      projectId?: string; 
+      projectName?: string; 
+      checkInImage?: string; 
+      notes?: string; 
+      checkInTime?: string;
+      attendanceType?: 'time' | 'shift';
+      shiftId?: string;
+      shiftName?: string;
+      shiftStatus?: 'on_time' | 'late' | 'early' | 'normal';
+      shiftLateMinutes?: number;
+      checkInLat?: number;
+      checkInLng?: number;
+      checkInLocationName?: string;
+      checkInDistanceMeters?: number;
+      checkInWithinRadius?: boolean;
+    }) => {
       const payloadData = {
         userId: input.userId,
         userName: input.userName,
@@ -2696,6 +2714,16 @@ export const api = {
         checkInImage: input.checkInImage || null,
         checkOutImage: null,
         notes: input.notes || null,
+        attendanceType: input.attendanceType || 'time',
+        shiftId: input.shiftId || null,
+        shiftName: input.shiftName || null,
+        shiftStatus: input.shiftStatus || 'normal',
+        shiftLateMinutes: input.shiftLateMinutes || 0,
+        checkInLat: input.checkInLat || null,
+        checkInLng: input.checkInLng || null,
+        checkInLocationName: input.checkInLocationName || null,
+        checkInDistanceMeters: input.checkInDistanceMeters || null,
+        checkInWithinRadius: input.checkInWithinRadius !== undefined ? input.checkInWithinRadius : null,
       };
       const payload: any = {
         user: input.userName,
@@ -2719,17 +2747,81 @@ export const api = {
       }
       return { id: data?.id || `att-${Date.now()}`, ...payloadData } as any;
     },
-    checkOut: async (id: string, input: { checkOutImage?: string; notes?: string }) => {
+    checkOut: async (id: string, input: { 
+      checkOutImage?: string; 
+      notes?: string;
+      checkOutLat?: number;
+      checkOutLng?: number;
+      checkOutLocationName?: string;
+      checkOutDistanceMeters?: number;
+      checkOutWithinRadius?: boolean;
+    }) => {
       const { data: row, error: fetchErr } = await supabase.from('activity_logs').select('action').eq('id', id).single();
       if (fetchErr) throw fetchErr;
       const payloadData = typeof row.action === 'string' ? JSON.parse(row.action) : row.action;
       payloadData.checkOutTime = new Date().toISOString();
       if (input.checkOutImage) payloadData.checkOutImage = input.checkOutImage;
       if (input.notes) payloadData.notes = payloadData.notes ? payloadData.notes + ' | ' + input.notes : input.notes;
+      if (input.checkOutLat !== undefined) payloadData.checkOutLat = input.checkOutLat;
+      if (input.checkOutLng !== undefined) payloadData.checkOutLng = input.checkOutLng;
+      if (input.checkOutLocationName) payloadData.checkOutLocationName = input.checkOutLocationName;
+      if (input.checkOutDistanceMeters !== undefined) payloadData.checkOutDistanceMeters = input.checkOutDistanceMeters;
+      if (input.checkOutWithinRadius !== undefined) payloadData.checkOutWithinRadius = input.checkOutWithinRadius;
       
       const { data, error } = await supabase.from('activity_logs').update({ action: JSON.stringify(payloadData) }).eq('id', id).select().single();
       if (error) throw error;
       return { id: data.id, ...payloadData } as any;
+    },
+    getConfig: async (): Promise<AttendanceConfig> => {
+      try {
+        const { data, error } = await supabase
+          .from('activity_logs')
+          .select('id, action, timestamp')
+          .eq('icon', 'ATTENDANCE_CONFIG')
+          .order('timestamp', { ascending: false })
+          .limit(1);
+        if (!error && data && data.length > 0) {
+          const row = data[0];
+          const payload = typeof row.action === 'string' ? JSON.parse(row.action) : row.action;
+          return {
+            ...DEFAULT_ATTENDANCE_CONFIG,
+            ...payload,
+            shifts: Array.isArray(payload.shifts) && payload.shifts.length > 0 ? payload.shifts : DEFAULT_ATTENDANCE_CONFIG.shifts,
+            locations: Array.isArray(payload.locations) && payload.locations.length > 0 ? payload.locations : DEFAULT_ATTENDANCE_CONFIG.locations,
+          };
+        }
+      } catch (err) {
+        console.warn('[AttendanceConfig] Lỗi đọc cấu hình chấm công từ cloud:', err);
+      }
+      return DEFAULT_ATTENDANCE_CONFIG;
+    },
+    saveConfig: async (config: AttendanceConfig, updatedBy?: string): Promise<AttendanceConfig> => {
+      try {
+        const companyId = getCurrentCompanyId();
+        const payloadData = {
+          ...config,
+          updatedAt: new Date().toISOString(),
+          updatedBy: updatedBy || 'Admin'
+        };
+        const payload: any = {
+          user: updatedBy || 'Admin',
+          project: 'SYSTEM_SETTINGS',
+          icon: 'ATTENDANCE_CONFIG',
+          action: JSON.stringify(payloadData),
+          timestamp: payloadData.updatedAt
+        };
+        if (companyId) payload.company_id = companyId;
+
+        let { error } = await supabase.from('activity_logs').insert(payload);
+        if (error) {
+          delete payload.company_id;
+          await supabase.from('activity_logs').insert(payload);
+        }
+        return payloadData;
+      } catch (err) {
+        console.error('[AttendanceConfig] Lỗi lưu cấu hình chấm công:', err);
+        throw err;
+      }
     },
     delete: async (id: string) => {
       try {

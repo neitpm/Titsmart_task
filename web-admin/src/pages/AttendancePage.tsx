@@ -15,7 +15,24 @@ import { exportMonthlyAttendanceTitsmart } from '../utils/exportMonthlyAttendanc
 import { calculateYearLeaveAccrual, YearLeaveBalanceSummary } from '../utils/leaveAccrualRules';
 import { isHighestLevelPerson, isTechnicalAdminUser, getHighestRankLeader, getUserRankLevel } from '../utils/taskPermission';
 
-import { LeaveRequest, LeaveType, AttendanceAdjustmentRequest, AttendanceAdjustmentType } from '../types';
+import { 
+  LeaveRequest, 
+  LeaveType, 
+  AttendanceAdjustmentRequest, 
+  AttendanceAdjustmentType,
+  AttendanceConfig,
+  DEFAULT_ATTENDANCE_CONFIG,
+  WorkShift,
+  AttendanceGpsLocation
+} from '../types';
+import { 
+  findNearestLocation, 
+  formatDistance, 
+  getGoogleMapsLink, 
+  evaluateShiftStatus, 
+  suggestBestShift 
+} from '../utils/attendanceUtils';
+import { AttendanceConfigModal } from '../components/attendance/AttendanceConfigModal';
 import { PullToRefresh } from '../components/common/PullToRefresh';
 
 interface AttendanceLog {
@@ -30,6 +47,27 @@ interface AttendanceLog {
   checkOutImage?: string;
   notes?: string;
   createdAt?: string;
+
+  // Ca làm việc & Loại chấm công
+  attendanceType?: 'time' | 'shift';
+  shiftId?: string;
+  shiftName?: string;
+  shiftStatus?: 'on_time' | 'late' | 'early' | 'normal';
+  shiftLateMinutes?: number;
+
+  // Định vị GPS khi Check-in
+  checkInLat?: number;
+  checkInLng?: number;
+  checkInLocationName?: string;
+  checkInDistanceMeters?: number;
+  checkInWithinRadius?: boolean;
+
+  // Định vị GPS khi Check-out
+  checkOutLat?: number;
+  checkOutLng?: number;
+  checkOutLocationName?: string;
+  checkOutDistanceMeters?: number;
+  checkOutWithinRadius?: boolean;
 }
 
 const formatDateTime = (iso: string) => {
@@ -144,6 +182,24 @@ export const AttendancePage: React.FC = () => {
   const [checkInImage, setCheckInImage] = useState<string | null>(null);
   const [viewImage, setViewImage] = useState<string | null>(null);
   const [showCheckInModal, setShowCheckInModal] = useState(false);
+  
+  // Cấu hình hình thức chấm công (Admin Setup)
+  const [attendanceConfig, setAttendanceConfig] = useState<AttendanceConfig>(DEFAULT_ATTENDANCE_CONFIG);
+  const [showConfigModal, setShowConfigModal] = useState(false);
+
+  // State chấm công theo ca
+  const [selectedShiftId, setSelectedShiftId] = useState<string>('');
+
+  // State chấm công định vị GPS
+  const [gpsData, setGpsData] = useState<{
+    lat: number;
+    lng: number;
+    distanceMeters: number;
+    locationName: string;
+    isWithinRadius: boolean;
+  } | null>(null);
+  const [isGpsScanning, setIsGpsScanning] = useState(false);
+  const [gpsError, setGpsError] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleteLeaveId, setDeleteLeaveId] = useState<string | null>(null);
   const [showExportMenu, setShowExportMenu] = useState(false);
@@ -676,11 +732,74 @@ export const AttendancePage: React.FC = () => {
     localStorage.setItem('titsmart_attendance_adjustments', JSON.stringify(data));
   };
 
+  const fetchAttendanceConfig = async () => {
+    try {
+      const cfg = await api.attendance.getConfig();
+      setAttendanceConfig(cfg);
+    } catch (e) {
+      console.warn('[AttendanceConfig] Lỗi tải cấu hình:', e);
+    }
+  };
+
+  const handleSaveAttendanceConfig = async (newConfig: AttendanceConfig) => {
+    try {
+      const saved = await api.attendance.saveConfig(newConfig, user?.name || user?.username || 'Admin');
+      setAttendanceConfig(saved);
+      showToast('Đã lưu cấu hình hình thức chấm công thành công!', 'success');
+    } catch (e: any) {
+      showToast('Lỗi lưu cấu hình: ' + (e.message || 'Không thể lưu'), 'error');
+      throw e;
+    }
+  };
+
+  const handleTriggerGpsScan = () => {
+    if (!navigator.geolocation) {
+      setGpsError('Thiết bị hoặc trình duyệt không hỗ trợ định vị GPS');
+      return;
+    }
+    setIsGpsScanning(true);
+    setGpsError(null);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        const nearest = findNearestLocation(lat, lng, attendanceConfig.locations);
+        setGpsData({
+          lat,
+          lng,
+          distanceMeters: nearest.distanceMeters,
+          locationName: nearest.nearestLocation?.name || 'Vị trí hiện tại',
+          isWithinRadius: nearest.isWithinRadius,
+        });
+        setIsGpsScanning(false);
+      },
+      (err) => {
+        setIsGpsScanning(false);
+        setGpsError(err.message || 'Không thể lấy vị trí GPS. Vui lòng bật quyền truy cập vị trí trên trình duyệt.');
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
+
+  useEffect(() => {
+    if (showCheckInModal) {
+      // 1. Tự động gợi ý ca làm việc phù hợp nhất
+      const best = suggestBestShift(attendanceConfig.shifts);
+      if (best) setSelectedShiftId(best.id);
+
+      // 2. Kích hoạt GPS nếu được cấu hình
+      if (attendanceConfig.gpsRequirement !== 'none') {
+        handleTriggerGpsScan();
+      }
+    }
+  }, [showCheckInModal, attendanceConfig]);
+
   useEffect(() => {
     // Nạp dữ liệu ban đầu
     fetchLogs(false);
     fetchLeaves(false);
     fetchAdjustments();
+    fetchAttendanceConfig();
 
     // ⚡ 1. LẮNG NGHE REALTIME DATABASE TỨC THÌ CHO NGHỈ PHÉP, CHẤM CÔNG VÀ CHẤM CÔNG BÙ
     const attendanceChannel = supabase
@@ -697,6 +816,9 @@ export const AttendancePage: React.FC = () => {
           }
           if (!icon || icon === 'ATTENDANCE_ADJUSTMENT') {
             fetchAdjustments();
+          }
+          if (icon === 'ATTENDANCE_CONFIG') {
+            fetchAttendanceConfig();
           }
         }
       )
@@ -1215,9 +1337,48 @@ export const AttendancePage: React.FC = () => {
 
   const handleCheckIn = async () => {
     if (!user || isSubmitting) return;
+
+    // 1. Kiểm tra GPS nếu ở chế độ bắt buộc (strict)
+    if (attendanceConfig.gpsRequirement === 'strict') {
+      if (isGpsScanning) {
+        showToast('Đang quét tọa độ GPS, vui lòng đợi trong giây lát...', 'warning');
+        return;
+      }
+      if (!gpsData || !gpsData.isWithinRadius) {
+        showToast('Bạn đang ở ngoài bán kính cho phép. Vui lòng có mặt tại công ty/công trường để chấm công!', 'error');
+        return;
+      }
+    }
+
+    // 2. Kiểm tra bắt buộc chụp ảnh nếu được bật
+    if (attendanceConfig.requirePhoto && !checkInImage) {
+      showToast('Chính sách công ty bắt buộc chụp ảnh khuôn mặt khi chấm công!', 'warning');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const proj = projects.find(p => p.id === selectedProject);
+      const nowIso = new Date().toISOString();
+
+      let attendanceType: 'time' | 'shift' = 'time';
+      let shiftId: string | undefined = undefined;
+      let shiftName: string | undefined = undefined;
+      let shiftStatus: 'on_time' | 'late' | 'early' | 'normal' = 'normal';
+      let shiftLateMinutes = 0;
+
+      if (attendanceConfig.mode === 'shift' || (attendanceConfig.mode === 'hybrid' && selectedShiftId)) {
+        attendanceType = 'shift';
+        const shiftObj = attendanceConfig.shifts.find(s => s.id === selectedShiftId);
+        if (shiftObj) {
+          shiftId = shiftObj.id;
+          shiftName = shiftObj.name;
+          const evalShift = evaluateShiftStatus(nowIso, shiftObj);
+          shiftStatus = evalShift.status;
+          shiftLateMinutes = evalShift.lateMinutes;
+        }
+      }
+
       const result = await api.attendance.checkIn({
         userId: user.id,
         userName: user.name || user.username || 'Unknown',
@@ -1225,19 +1386,31 @@ export const AttendancePage: React.FC = () => {
         projectName: proj?.name,
         checkInImage: checkInImage || undefined,
         notes: notes || undefined,
+        attendanceType,
+        shiftId,
+        shiftName,
+        shiftStatus,
+        shiftLateMinutes,
+        checkInLat: gpsData?.lat,
+        checkInLng: gpsData?.lng,
+        checkInLocationName: gpsData?.locationName,
+        checkInDistanceMeters: gpsData?.distanceMeters,
+        checkInWithinRadius: gpsData?.isWithinRadius,
       });
+
       cachedLogs = [result, ...cachedLogs];
       setLogs(prev => [result, ...prev]);
       setCheckInImage(null);
       setNotes('');
       setSelectedProject('');
+      setGpsData(null);
       setShowCheckInModal(false);
       showToast('Chấm công thành công!', 'success');
 
       // Gửi thông báo realtime chỉ đến admin
       await addNotification({
-        title: 'Chấm công',
-        message: `${user.name} đã chấm công${proj ? ` tại dự án ${proj.name}` : ''} lúc ${formatTime(result.checkInTime)}`,
+        title: 'Chấm công' + (shiftName ? ` [${shiftName}]` : ''),
+        message: `${user.name} đã chấm công${shiftName ? ` (${shiftName})` : ''}${proj ? ` tại dự án ${proj.name}` : ''} lúc ${formatTime(result.checkInTime)}${gpsData ? ` (Cách ${formatDistance(gpsData.distanceMeters)})` : ''}`,
         link: '/attendance?tab=attendance&view=all',
         type: 'attendance:::admin',
         icon: 'fingerprint',
@@ -1462,6 +1635,18 @@ export const AttendancePage: React.FC = () => {
                     </div>
                   )}
                 </div>
+              )}
+
+              {canViewAll && (
+                <button
+                  type="button"
+                  onClick={() => setShowConfigModal(true)}
+                  className="flex items-center justify-center gap-1.5 px-2.5 sm:px-3 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs rounded-lg border border-indigo-200 transition-colors shrink-0 h-8 cursor-pointer shadow-xs active:scale-95"
+                  title="Cài đặt hình thức chấm công (Theo ca / GPS / Thời gian)"
+                >
+                  <span className="material-symbols-outlined text-[16px]">tune</span>
+                  <span className="hidden sm:inline">Cài đặt chấm công</span>
+                </button>
               )}
 
               <button
@@ -1717,6 +1902,17 @@ export const AttendancePage: React.FC = () => {
                 </div>
               ) : <div />}
 
+              {canViewAll && (
+                <button
+                  type="button"
+                  onClick={() => setShowConfigModal(true)}
+                  className="flex items-center justify-center p-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded-lg border border-indigo-200 transition-colors shrink-0 h-8 cursor-pointer active:scale-95"
+                  title="Cài đặt hình thức chấm công"
+                >
+                  <span className="material-symbols-outlined text-[16px]">tune</span>
+                </button>
+              )}
+
               <button
                 onClick={() => setShowCheckInModal(true)}
                 className="flex items-center justify-center gap-1.5 px-2.5 sm:px-3 py-1 bg-primary hover:bg-blue-800 text-white font-bold text-xs rounded-lg shadow-sm transition-colors shrink-0 h-8 cursor-pointer active:scale-95"
@@ -1768,7 +1964,9 @@ export const AttendancePage: React.FC = () => {
                   <thead>
                     <tr className="border-b border-slate-200 bg-slate-100/70 text-slate-600 font-bold uppercase sticky top-0 z-10 text-[10px] sm:text-xs">
                       <th className="px-2 py-2 sm:p-3 leading-tight break-words">Nhân viên</th>
+                      <th className="px-2 py-2 sm:p-3 leading-tight break-words">Hình thức / Ca</th>
                       <th className="px-2 py-2 sm:p-3 leading-tight break-words">Thời gian</th>
+                      <th className="px-2 py-2 sm:p-3 leading-tight break-words">Vị trí GPS</th>
                       <th className="px-2 py-2 sm:p-3 leading-tight break-words">Dự án</th>
                       <th className="px-2 py-2 sm:p-3 leading-tight break-words">Ghi chú</th>
                       <th className="px-2 py-2 sm:p-3 text-center leading-tight break-words">Hình ảnh</th>
@@ -1779,8 +1977,47 @@ export const AttendancePage: React.FC = () => {
                     {filteredLogs.map((log) => (
                       <tr key={log.id} className="hover:bg-slate-50 transition-colors">
                         <td className="p-3 font-bold text-slate-800">{log.userName}</td>
+                        <td className="p-3 whitespace-nowrap">
+                          {log.shiftName ? (
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-bold text-slate-800 text-xs">{log.shiftName}</span>
+                              {log.shiftStatus === 'late' && (
+                                <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                                  Trễ {log.shiftLateMinutes || ''}p
+                                </span>
+                              )}
+                              {log.shiftStatus === 'on_time' && (
+                                <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                  Đúng giờ
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-slate-500 font-medium text-xs">Theo giờ</span>
+                          )}
+                        </td>
                         <td className="p-3 text-slate-700 font-medium whitespace-nowrap">
                           {formatDateTime(log.checkInTime)}
+                        </td>
+                        <td className="p-3 whitespace-nowrap">
+                          {log.checkInLat && log.checkInLng ? (
+                            <a
+                              href={getGoogleMapsLink(log.checkInLat, log.checkInLng)}
+                              target="_blank"
+                              rel="noreferrer"
+                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border transition-colors ${
+                                log.checkInWithinRadius === false
+                                  ? 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
+                                  : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                              }`}
+                              title={`Xem vị trí trên bản đồ (${log.checkInLocationName || ''} - Cách ${formatDistance(log.checkInDistanceMeters)})`}
+                            >
+                              <span className="material-symbols-outlined text-[13px]">location_on</span>
+                              <span>{formatDistance(log.checkInDistanceMeters)} {log.checkInWithinRadius === false ? '(Ngoài BK)' : ''}</span>
+                            </a>
+                          ) : (
+                            <span className="text-slate-300">—</span>
+                          )}
                         </td>
                         <td className="p-3 text-slate-600 max-w-[200px] truncate" title={log.projectName}>
                           {log.projectName || <span className="text-slate-400">—</span>}
@@ -3192,8 +3429,135 @@ export const AttendancePage: React.FC = () => {
           <p className="text-sm text-slate-600">
             Thời gian chấm công: <span className="font-bold text-slate-800">{formatTime(new Date().toISOString())} {formatDate(new Date().toISOString())}</span>
           </p>
+
+          {/* CHỌN CA LÀM VIỆC (NẾU BẬT CHẾ ĐỘ SHIFT HOẶC HYBRID) */}
+          {(attendanceConfig.mode === 'shift' || attendanceConfig.mode === 'hybrid') && (
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-bold text-slate-700">
+                  Ca làm việc {attendanceConfig.mode === 'shift' ? '(*)' : '(tùy chọn)'}:
+                </label>
+                {attendanceConfig.mode === 'hybrid' && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedShiftId(selectedShiftId ? '' : (attendanceConfig.shifts[0]?.id || ''))}
+                    className="text-[11px] text-primary hover:underline font-semibold"
+                  >
+                    {selectedShiftId ? 'Đổi sang chấm theo giờ' : 'Chọn ca làm việc'}
+                  </button>
+                )}
+              </div>
+
+              {selectedShiftId ? (
+                <div className="grid grid-cols-2 gap-2">
+                  {attendanceConfig.shifts.filter(s => s.isActive).map(s => {
+                    const isSelected = selectedShiftId === s.id;
+                    const evalRes = evaluateShiftStatus(new Date().toISOString(), s);
+                    return (
+                      <div
+                        key={s.id}
+                        onClick={() => setSelectedShiftId(s.id)}
+                        className={`p-2.5 rounded-lg border-2 cursor-pointer transition-all ${
+                          isSelected
+                            ? 'border-primary bg-blue-50/80 shadow-xs'
+                            : 'border-slate-200 hover:border-slate-300 bg-white'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-slate-800">{s.name}</span>
+                          {evalRes.status === 'on_time' ? (
+                            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded">Đúng giờ</span>
+                          ) : (
+                            <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.2 rounded">Trễ {evalRes.lateMinutes}p</span>
+                          )}
+                        </div>
+                        <div className="text-[11px] text-slate-500 mt-0.5">
+                          {s.startTime} - {s.endTime} ({s.workWeight} công)
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="p-2.5 rounded-lg border border-dashed border-slate-300 bg-slate-50 text-xs text-slate-600 flex items-center justify-between">
+                  <span>Chấm công theo thời gian thực (Giờ vào: {formatTime(new Date().toISOString())})</span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedShiftId(attendanceConfig.shifts[0]?.id || '')}
+                    className="text-primary font-bold hover:underline"
+                  >
+                    Chọn ca
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ĐỊNH VỊ GPS NẾU YÊU CẦU */}
+          {attendanceConfig.gpsRequirement !== 'none' && (
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-[16px] text-primary">location_on</span>
+                  Định vị GPS:
+                </label>
+                <button
+                  type="button"
+                  onClick={handleTriggerGpsScan}
+                  disabled={isGpsScanning}
+                  className="text-[11px] font-bold text-primary hover:text-blue-800 flex items-center gap-1 cursor-pointer"
+                >
+                  <span className={`material-symbols-outlined text-[14px] ${isGpsScanning ? 'animate-spin' : ''}`}>sync</span>
+                  {isGpsScanning ? 'Đang quét...' : 'Lấy lại vị trí'}
+                </button>
+              </div>
+
+              {isGpsScanning ? (
+                <div className="p-3 bg-blue-50/70 border border-blue-200 rounded-lg flex items-center gap-3">
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent shrink-0" />
+                  <span className="text-xs text-blue-800 font-medium">Đang xác định tọa độ GPS của thiết bị...</span>
+                </div>
+              ) : gpsData ? (
+                <div className={`p-3 rounded-lg border ${
+                  gpsData.isWithinRadius
+                    ? 'bg-emerald-50/80 border-emerald-300 text-emerald-900'
+                    : attendanceConfig.gpsRequirement === 'strict'
+                    ? 'bg-red-50/80 border-red-300 text-red-900'
+                    : 'bg-amber-50/80 border-amber-300 text-amber-900'
+                }`}>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold flex items-center gap-1.5">
+                      {gpsData.isWithinRadius ? '✅ Vị trí hợp lệ' : attendanceConfig.gpsRequirement === 'strict' ? '❌ Ngoài phạm vi cho phép' : '⚠️ Vị trí chấm công'}
+                    </span>
+                    <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-white/80 border">
+                      Cách: {formatDistance(gpsData.distanceMeters)}
+                    </span>
+                  </div>
+                  <div className="text-[11px] mt-1 opacity-90 truncate">
+                    📍 {gpsData.locationName} ({gpsData.lat.toFixed(5)}, {gpsData.lng.toFixed(5)})
+                  </div>
+                  {!gpsData.isWithinRadius && attendanceConfig.gpsRequirement === 'strict' && (
+                    <div className="text-[10.5px] font-bold text-red-700 mt-1.5 pt-1.5 border-t border-red-200">
+                      Chính sách công ty bắt buộc bạn phải có mặt tại phạm vi công ty hoặc công trường để chấm công.
+                    </div>
+                  )}
+                </div>
+              ) : gpsError ? (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700 flex items-start gap-2">
+                  <span className="material-symbols-outlined text-[18px] shrink-0 text-red-500">warning</span>
+                  <div>
+                    <div className="font-bold">Không thể lấy vị trí GPS</div>
+                    <div className="text-[11px] text-red-600 mt-0.5">{gpsError}</div>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          )}
+
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">Ảnh hiện trường / hình ảnh (tùy chọn)</label>
+            <label className="block text-xs font-bold text-slate-700 mb-1">
+              Ảnh hiện trường / hình ảnh {attendanceConfig.requirePhoto ? '(*)' : '(tùy chọn)'}
+            </label>
             <div className="flex items-center gap-3">
               {checkInImage ? (
                 <div className="relative w-16 h-16 rounded-lg overflow-hidden border border-slate-200">
@@ -3206,7 +3570,7 @@ export const AttendancePage: React.FC = () => {
                 <button onClick={() => fileInputRef.current?.click()}
                   className="flex items-center gap-1.5 px-3 py-2 border-2 border-dashed border-slate-300 rounded-lg text-slate-400 hover:text-primary hover:border-primary transition text-xs cursor-pointer">
                   <span className="material-symbols-outlined text-base">add_a_photo</span>
-                  Chọn ảnh
+                  Chọn ảnh {attendanceConfig.requirePhoto ? 'bắt buộc' : ''}
                 </button>
               )}
               <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileSelect} />
@@ -3242,13 +3606,28 @@ export const AttendancePage: React.FC = () => {
             className="px-4 py-2 bg-slate-100 text-slate-700 font-bold rounded-lg hover:bg-slate-200 transition-colors text-sm cursor-pointer">
             Hủy
           </button>
-          <button onClick={handleCheckIn} disabled={isSubmitting}
-            className="flex items-center gap-2 px-5 py-2 bg-primary hover:bg-blue-800 text-white font-bold rounded-lg disabled:opacity-50 transition-colors text-sm cursor-pointer shadow-sm">
+          <button 
+            onClick={handleCheckIn} 
+            disabled={
+              isSubmitting || 
+              (attendanceConfig.gpsRequirement === 'strict' && (!gpsData || !gpsData.isWithinRadius)) ||
+              (attendanceConfig.requirePhoto && !checkInImage)
+            }
+            className="flex items-center gap-2 px-5 py-2 bg-primary hover:bg-blue-800 text-white font-bold rounded-lg disabled:opacity-50 transition-colors text-sm cursor-pointer shadow-sm"
+          >
             {isSubmitting ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" /> : <span className="material-symbols-outlined text-lg">fingerprint</span>}
             Xác nhận Chấm công
           </button>
         </div>
       </Modal>
+
+      {/* Admin Attendance Config Modal */}
+      <AttendanceConfigModal
+        isOpen={showConfigModal}
+        onClose={() => setShowConfigModal(false)}
+        config={attendanceConfig}
+        onSave={handleSaveAttendanceConfig}
+      />
 
       <ConfirmModal
         isOpen={deleteId !== null}

@@ -552,6 +552,104 @@ export interface AttendanceAdjustmentRequest {
   updatedAt?: string;
 }
 
+export type AttendanceMode = 'time' | 'shift' | 'hybrid'; // Theo thời gian | Theo ca | Kết hợp cả 2
+export type GpsRequirement = 'none' | 'record_only' | 'strict'; // Không yêu cầu GPS | Chỉ ghi nhận vị trí | Bắt buộc trong bán kính
+
+export interface WorkShift {
+  id: string;
+  name: string; // Tên ca, vd: "Ca hành chính", "Ca sáng", "Ca chiều", "Ca đêm"
+  startTime: string; // "08:00"
+  endTime: string; // "17:30"
+  lateGraceMinutes: number; // Phút cho phép đi trễ (vd: 15)
+  earlyLeaveGraceMinutes: number; // Phút cho phép về sớm (vd: 15)
+  workWeight: number; // Số công chuẩn (vd: 1.0, 0.5)
+  description?: string;
+  isActive: boolean;
+}
+
+export interface AttendanceGpsLocation {
+  id: string;
+  name: string; // Tên vị trí (vd: "Văn phòng TITSMART", "Dự án TBA Đăk Mil")
+  address?: string;
+  latitude: number;
+  longitude: number;
+  radiusMeters: number; // Bán kính cho phép (mét, vd: 300)
+  isActive: boolean;
+}
+
+export interface AttendanceConfig {
+  mode: AttendanceMode;
+  gpsRequirement: GpsRequirement;
+  requirePhoto: boolean;
+  shifts: WorkShift[];
+  locations: AttendanceGpsLocation[];
+  updatedAt?: string;
+  updatedBy?: string;
+}
+
+export const DEFAULT_ATTENDANCE_CONFIG: AttendanceConfig = {
+  mode: 'time',
+  gpsRequirement: 'record_only',
+  requirePhoto: false,
+  shifts: [
+    {
+      id: 'shift_hc',
+      name: 'Ca hành chính',
+      startTime: '08:00',
+      endTime: '17:30',
+      lateGraceMinutes: 15,
+      earlyLeaveGraceMinutes: 15,
+      workWeight: 1.0,
+      description: 'Ca làm việc tiêu chuẩn: 08:00 - 17:30',
+      isActive: true,
+    },
+    {
+      id: 'shift_sang',
+      name: 'Ca sáng',
+      startTime: '08:00',
+      endTime: '12:00',
+      lateGraceMinutes: 15,
+      earlyLeaveGraceMinutes: 15,
+      workWeight: 0.5,
+      description: 'Nửa ca buổi sáng: 08:00 - 12:00',
+      isActive: true,
+    },
+    {
+      id: 'shift_chieu',
+      name: 'Ca chiều',
+      startTime: '13:30',
+      endTime: '17:30',
+      lateGraceMinutes: 15,
+      earlyLeaveGraceMinutes: 15,
+      workWeight: 0.5,
+      description: 'Nửa ca buổi chiều: 13:30 - 17:30',
+      isActive: true,
+    },
+    {
+      id: 'shift_dem',
+      name: 'Ca đêm / Tăng ca',
+      startTime: '18:00',
+      endTime: '22:00',
+      lateGraceMinutes: 15,
+      earlyLeaveGraceMinutes: 15,
+      workWeight: 0.5,
+      description: 'Ca tối / ngoài giờ: 18:00 - 22:00',
+      isActive: true,
+    }
+  ],
+  locations: [
+    {
+      id: 'loc_office_default',
+      name: 'Văn phòng TITSMART',
+      address: 'Trụ sở chính công ty',
+      latitude: 10.7769,
+      longitude: 106.7009,
+      radiusMeters: 300,
+      isActive: true,
+    }
+  ]
+};
+
 export interface DirectMessage {
   id: string;
   senderId: string;

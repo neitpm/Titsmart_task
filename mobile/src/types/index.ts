@@ -215,3 +215,39 @@ export const constructionProgressScore = (status?: string) => {
 
 export const calculateAutoProgressPercent = (purchaseStatus?: string, constrStatus?: string) =>
   Math.round((purchaseProgressScore(purchaseStatus) * 0.5 + constructionProgressScore(constrStatus) * 0.5) * 100);
+
+export type AttendanceMode = 'time' | 'shift' | 'hybrid';
+export type GpsRequirement = 'none' | 'record_only' | 'strict';
+
+export interface WorkShift {
+  id: string;
+  name: string;
+  startTime: string;
+  endTime: string;
+  lateGraceMinutes: number;
+  earlyLeaveGraceMinutes: number;
+  workWeight: number;
+  description?: string;
+  isActive: boolean;
+}
+
+export interface AttendanceGpsLocation {
+  id: string;
+  name: string;
+  address?: string;
+  latitude: number;
+  longitude: number;
+  radiusMeters: number;
+  isActive: boolean;
+}
+
+export interface AttendanceConfig {
+  mode: AttendanceMode;
+  gpsRequirement: GpsRequirement;
+  requirePhoto: boolean;
+  shifts: WorkShift[];
+  locations: AttendanceGpsLocation[];
+  updatedAt?: string;
+  updatedBy?: string;
+}
+
