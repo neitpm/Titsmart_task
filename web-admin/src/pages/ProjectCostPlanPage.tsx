@@ -3,7 +3,7 @@ import * as XLSX from 'xlsx';
 import { exportToStyledExcel } from '../utils/excelExportUtils';
 import { cleanNotes } from '../utils/cleanNotesUtils';
 import { useParams, useOutletContext, useSearchParams } from 'react-router-dom';
-import { useRealtimeStore } from '../services/realtimeStore';
+import { useRealtimeStore, broadcastRealtimeSync } from '../services/realtimeStore';
 import { useAuthStore, isSystemAdmin, isDirector, hasPermission } from '../services/authStore';
 import { useUIStore } from '../services/uiStore';
 import { CostPlanSummaryTable } from './cost-plan/CostPlanSummaryTable';
@@ -1628,6 +1628,79 @@ export const ProjectCostPlanPage: React.FC = () => {
     fetchFundRequests(1, false);
   }, [selectedProject, fundRequestListOpen]);
 
+  // 1. Lắng nghe Realtime trực tiếp từ Supabase trên bảng activity_logs (icon=FUND_REQUEST)
+  useEffect(() => {
+    const channelName = `realtime-fund-requests-${Date.now()}`;
+    const fundChannel = supabase
+      .channel(channelName)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'activity_logs',
+        },
+        (payload: any) => {
+          const newRow = payload.new;
+          const oldRow = payload.old;
+          if (
+            newRow?.icon === 'FUND_REQUEST' ||
+            oldRow?.icon === 'FUND_REQUEST' ||
+            String(newRow?.icon || '').startsWith('FUND_REQUEST') ||
+            String(oldRow?.icon || '').startsWith('FUND_REQUEST')
+          ) {
+            fetchFundRequests(1, false);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(fundChannel);
+    };
+  }, []);
+
+  // 2. Tự động làm mới danh sách cấp quỹ ngay khi nhận thông báo liên quan đến cấp quỹ
+  const latestNotification = notifications?.[0];
+  useEffect(() => {
+    if (!latestNotification) return;
+    const typeStr = String(latestNotification.type || '').toLowerCase();
+    const titleStr = String(latestNotification.title || '').toLowerCase();
+    const msgStr = String(latestNotification.message || '').toLowerCase();
+    const linkStr = String(latestNotification.link || '').toLowerCase();
+
+    if (
+      typeStr.includes('fund_request') ||
+      titleStr.includes('cấp quỹ') ||
+      msgStr.includes('cấp quỹ') ||
+      linkStr.includes('fundid=')
+    ) {
+      fetchFundRequests(1, false);
+    }
+  }, [latestNotification?.id, latestNotification?.timestamp]);
+
+  // 3. Tự động làm mới khi người dùng chuyển tab/quay lại cửa sổ hoặc có sự kiện đồng bộ
+  useEffect(() => {
+    const handleSync = () => {
+      fetchFundRequests(1, false);
+    };
+    window.addEventListener('focus', handleSync);
+    window.addEventListener('titsmart_fund_requests_updated', handleSync);
+    return () => {
+      window.removeEventListener('focus', handleSync);
+      window.removeEventListener('titsmart_fund_requests_updated', handleSync);
+    };
+  }, []);
+
+  // 4. Polling tự động làm mới mỗi 8 giây khi modal Danh sách yêu cầu cấp quỹ đang mở
+  useEffect(() => {
+    if (!fundRequestListOpen) return;
+    const interval = setInterval(() => {
+      fetchFundRequests(1, false);
+    }, 8000);
+    return () => clearInterval(interval);
+  }, [fundRequestListOpen]);
+
   useEffect(() => {
     try {
       localStorage.setItem('titsmart_fund_requests', JSON.stringify(fundRequests));
@@ -1769,6 +1842,47 @@ export const ProjectCostPlanPage: React.FC = () => {
         };
       }
 
+      // Tự động nhận diện trạng thái mới nhất từ các notifications tức thì (kể cả khi DB đang re-fetch)
+      let dynamicStatus = req.status;
+      let dynamicChecker = req.checkerName;
+      let dynamicReviewer = req.reviewerName;
+
+      const relatedNotifs = (notifications || []).filter(n => {
+        if (!n) return false;
+        if (n.link && (n.link.includes(`fundId=${encodeURIComponent(req.id)}`) || n.link.includes(`fundId=${req.id}`))) return true;
+        if (n.type && n.type.includes(req.id)) return true;
+        return false;
+      });
+
+      for (const n of relatedNotifs) {
+        const t = String(n.title || '').toLowerCase();
+        const m = String(n.message || '').toLowerCase();
+        if (t.includes('đã kiểm tra') || m.includes('đã kiểm tra')) {
+          if (dynamicStatus === 'PENDING_CHECK' || dynamicStatus === 'WAITING_CHECK' || !dynamicStatus) {
+            dynamicStatus = 'CHECKED_WAITING_APPROVAL';
+            if (n.senderName) dynamicChecker = n.senderName;
+          }
+        }
+        if (t.includes('đã duyệt') || t.includes('đã được duyệt') || m.includes('đã duyệt')) {
+          if (dynamicStatus === 'PENDING_CHECK' || dynamicStatus === 'WAITING_CHECK' || dynamicStatus === 'CHECKED_WAITING_APPROVAL') {
+            dynamicStatus = 'APPROVED_WAITING_TRANSFER';
+            if (n.senderName) dynamicReviewer = n.senderName;
+          }
+        }
+        if (t.includes('chuyển khoản') || m.includes('chuyển khoản')) {
+          dynamicStatus = 'TRANSFERRED_WAITING_CONFIRMATION';
+        }
+        if (t.includes('hoàn tất') || t.includes('nhận tiền') || m.includes('nhận tiền')) {
+          dynamicStatus = 'COMPLETED';
+        }
+        if (t.includes('từ chối') || m.includes('từ chối')) {
+          dynamicStatus = 'REJECTED';
+        }
+        if (t.includes('bổ sung') || m.includes('bổ sung')) {
+          dynamicStatus = 'NEED_MORE_INFO';
+        }
+      }
+
       // Đối chiếu tự động với bảng Chi phí / Quỹ: chỉ đánh dấu COMPLETED nếu khoản chi phí này có liên kết trực tiếp bằng fundRequestId hoặc [FUND_ID:...]
       const isApprovedInExpenses = expenses.some(exp => {
         if (exp.fundRequestId && (exp.fundRequestId === req.id || (req.notificationId && exp.fundRequestId === req.notificationId))) {
@@ -1784,13 +1898,20 @@ export const ProjectCostPlanPage: React.FC = () => {
         return {
           ...req,
           status: 'COMPLETED',
+          checkerName: dynamicChecker || req.checkerName,
+          reviewerName: dynamicReviewer || req.reviewerName,
           confirmedAt: req.neededDate || new Date().toISOString(),
           reviewedAt: req.neededDate || new Date().toISOString(),
           reviewedBy: req.reviewedBy || 'Quản trị viên'
         };
       }
 
-      return req;
+      return {
+        ...req,
+        status: dynamicStatus,
+        checkerName: dynamicChecker || req.checkerName,
+        reviewerName: dynamicReviewer || req.reviewerName
+      };
     });
   }, [fundRequests, notifications, projects, selectedProject, reviewedFundActions, expenses]);
   const [showExpenseActionMenu, setShowExpenseActionMenu] = useState(false);
@@ -5376,6 +5497,8 @@ export const ProjectCostPlanPage: React.FC = () => {
             note: ''
           });
           setFundRequestOpen(false);
+          broadcastRealtimeSync('activity_logs');
+          window.dispatchEvent(new CustomEvent('titsmart_fund_requests_updated'));
           triggerToast('Đã gửi yêu cầu cấp quỹ thành công!', 'success');
         }}>
           <div className="rounded-lg bg-blue-50 border border-blue-100 p-3 text-xs text-blue-800">
@@ -6005,6 +6128,8 @@ export const ProjectCostPlanPage: React.FC = () => {
                                       }).catch(() => {});
                                     }
 
+                                    broadcastRealtimeSync('activity_logs');
+                                    window.dispatchEvent(new CustomEvent('titsmart_fund_requests_updated'));
                                     triggerToast('Đã xác nhận kiểm tra và gửi Lãnh đạo duyệt!', 'success');
                                   }}
                                   className="px-2 py-1 rounded bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[10px] shadow-xs active:scale-95 transition-all"
@@ -6857,6 +6982,8 @@ export const ProjectCostPlanPage: React.FC = () => {
             }
 
             setFundRequestRejectModal({ isOpen: false, req: null, reason: '', actionType: 'REJECT' });
+            broadcastRealtimeSync('activity_logs');
+            window.dispatchEvent(new CustomEvent('titsmart_fund_requests_updated'));
             triggerToast(fundRequestRejectModal.actionType === 'NEED_MORE_INFO' ? 'Đã gửi yêu cầu bổ sung!' : 'Đã từ chối yêu cầu cấp quỹ!', 'info');
           }}
         >
@@ -7053,6 +7180,8 @@ export const ProjectCostPlanPage: React.FC = () => {
             }
 
             setFundRequestApproveModal({ isOpen: false, req: null, selectedAccountantId: '', selectedAccountantName: '', note: '' });
+            broadcastRealtimeSync('activity_logs');
+            window.dispatchEvent(new CustomEvent('titsmart_fund_requests_updated'));
             triggerToast(hasSpecificAccountant
               ? `Đã duyệt yêu cầu cấp quỹ ${numericAmount.toLocaleString('vi-VN')} đ và chuyển kế toán ${assignedAccountantName}!`
               : `Đã duyệt yêu cầu cấp quỹ ${numericAmount.toLocaleString('vi-VN')} đ và chuyển Bộ phận Kế toán!`, 'success');

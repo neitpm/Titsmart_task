@@ -3021,7 +3021,10 @@ export function setupRealtimeSync() {
           });
         }
         if (payload.table === 'direct_messages') store.fetchDirectMessages();
-        if (payload.table === 'notifications') store.fetchNotifications();
+        if (payload.table === 'notifications') {
+          store.fetchNotifications();
+          window.dispatchEvent(new CustomEvent('titsmart_fund_requests_updated'));
+        }
       }, 600);
       return;
     }
@@ -3058,7 +3061,10 @@ export function setupRealtimeSync() {
         store.fetchFieldLogs();
       }
 
-      if (tables.includes('activity_logs')) store.fetchActivityLogs();
+      if (tables.includes('activity_logs')) {
+        store.fetchActivityLogs();
+        window.dispatchEvent(new CustomEvent('titsmart_fund_requests_updated'));
+      }
     }, 2000);
   };
 
