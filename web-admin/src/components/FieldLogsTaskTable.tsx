@@ -238,10 +238,12 @@ export const FieldLogsTaskTable: React.FC<FieldLogsTaskTableProps> = ({ selected
       if (item.parentId && map.has(item.parentId)) return item.parentId;
       if (item.stt && item.stt.includes('.')) {
         const parts = item.stt.split('.');
-        parts.pop();
-        const parentStt = parts.join('.');
-        const parentItem = fullTasks.find((r) => r.stt === parentStt && (r.sectionName === item.sectionName || isTaskSectionHeader(r)));
-        if (parentItem && map.has(parentItem.id)) return parentItem.id;
+        while (parts.length > 1) {
+          parts.pop();
+          const parentStt = parts.join('.');
+          const parentItem = fullTasks.find((r) => r.stt === parentStt && (r.sectionName === item.sectionName || isTaskSectionHeader(r)));
+          if (parentItem && map.has(parentItem.id)) return parentItem.id;
+        }
       }
       if (!isTaskSectionHeader(item) && item.sectionName && item.sectionName.trim().length > 0) {
         const secHeader = fullTasks.find(x => 

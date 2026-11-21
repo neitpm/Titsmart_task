@@ -1482,10 +1482,16 @@ const hasSyncedRef = useRef(false);
 
             // Bỏ qua dòng tiêu đề phụ hoặc dòng rác / tổng giá trị
             const itemNameClean = String(itemName).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            const sttValClean = String(sttVal).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
             if (sttVal.toLowerCase() === 'stt' || 
                 itemNameClean.includes('mo ta cong viec moi thau') ||
                 itemNameClean.includes('tong gia tri') ||
                 itemNameClean.includes('thue vat') ||
+                itemNameClean.includes('tien thue') ||
+                itemNameClean.includes('bang chu') ||
+                sttValClean.includes('bang chu') ||
+                sttValClean.includes('tong gia tri') ||
+                sttValClean.includes('thue vat') ||
                 itemNameClean.startsWith('cong ')) continue;
 
             const romanRegex = /^(I|II|III|IV|V|VI|VII|VIII|IX|X|XI|XII|XIII|XIV|XV|XVI|XVII|XVIII|XIX|XX|MỤC\s+[A-Z0-9]+)$/i;
@@ -1499,15 +1505,32 @@ const hasSyncedRef = useRef(false);
             const hasNoVolumeAndUnit = (volVal === 0 || !volVal) && (!cleanUnitVal || cleanUnitVal === '' || cleanUnitVal === '-' || cleanUnitVal === '–' || cleanUnitVal === '—');
             const isLetterHeader = /^[A-Z]{1,2}$/i.test(cleanStt);
 
+            // Kiểm tra xem dòng tiếp theo có phải là con của dòng này không (ví dụ STT "2" theo sau bởi "2.1")
+            let hasSubItemsFollowing = false;
+            for (let nextIdx = i + 1; nextIdx < Math.min(rows.length, i + 5); nextIdx++) {
+              const nextR = rows[nextIdx];
+              if (!nextR) continue;
+              const nextStt = String(nextR[sttCol] || '').trim().replace(/\.$/, '');
+              if (nextStt) {
+                if (cleanStt && nextStt.startsWith(cleanStt + '.')) {
+                  hasSubItemsFollowing = true;
+                }
+                break;
+              }
+            }
+
             // Đầu mục chính cấp 1 (A, B, C hoặc I, II, III hoặc "PHẦN ..." khi chưa có main section)
             const isMajorSection = (isLetterHeader || isRoman || (startsWithPhan && !currentMainSectionId)) && (hasNoVolumeAndUnit || isLetterHeader || isRoman);
             
-            // Hạng mục con cấp 2 (1, 2, 3.. hoặc 1.1 khi không có khối lượng/đơn vị)
-            const isSubSection = !isMajorSection && hasNoVolumeAndUnit && (
-              /^\d+(\.\d+)*$/.test(cleanStt) || 
-              startsWithPhan || 
-              isMainSectionName(actualName) || 
-              endsWithColon
+            // Hạng mục con cấp 2 (1, 2, 3.. hoặc 1.1 khi không có khối lượng/đơn vị HOẶC là folder cha có con theo sau)
+            const isSubSection = !isMajorSection && (
+              (hasNoVolumeAndUnit && (
+                /^\d+(\.\d+)*$/.test(cleanStt) || 
+                startsWithPhan || 
+                isMainSectionName(actualName) || 
+                endsWithColon
+              )) ||
+              hasSubItemsFollowing
             );
             
             const isSection = isMajorSection || isSubSection;
@@ -1535,10 +1558,20 @@ const hasSyncedRef = useRef(false);
                } else {
                  if (cleanStt.includes('.')) {
                    const parts = cleanStt.split('.');
-                   parts.pop();
-                   const parentStt = parts.join('.');
-                   parentId = sttIdMap.get(`${currentMainSectionId || 'root'}:::${parentStt}`) || sttIdMap.get(parentStt) || currentSubSectionId || currentMainSectionId;
+                   while (parts.length > 1) {
+                     parts.pop();
+                     const parentStt = parts.join('.');
+                     const scopedKey = `${currentMainSectionId || 'root'}:::${parentStt}`;
+                     if (sttIdMap.has(scopedKey)) {
+                       parentId = sttIdMap.get(scopedKey);
+                       break;
+                     }
+                   }
+                   if (!parentId) {
+                     parentId = currentSubSectionId || currentMainSectionId;
+                   }
                  } else {
+                   // Sub section cấp 1 không có chấm (ví dụ "1", "2", "3") -> Trực thuộc Main Section cha (A, B, C...)
                    parentId = currentMainSectionId;
                  }
                  currentSubSectionId = taskId;
@@ -1547,15 +1580,15 @@ const hasSyncedRef = useRef(false);
                let foundDottedParent = false;
                if (cleanStt.includes('.')) {
                  const parts = cleanStt.split('.');
-                 parts.pop();
-                 const parentStt = parts.join('.');
-                 const scopedKey = `${currentMainSectionId || 'root'}:::${parentStt}`;
-                 if (sttIdMap.has(scopedKey)) {
-                   parentId = sttIdMap.get(scopedKey);
-                   foundDottedParent = true;
-                 } else if (sttIdMap.has(parentStt)) {
-                   parentId = sttIdMap.get(parentStt);
-                   foundDottedParent = true;
+                 while (parts.length > 1) {
+                   parts.pop();
+                   const parentStt = parts.join('.');
+                   const scopedKey = `${currentMainSectionId || 'root'}:::${parentStt}`;
+                   if (sttIdMap.has(scopedKey)) {
+                     parentId = sttIdMap.get(scopedKey);
+                     foundDottedParent = true;
+                     break;
+                   }
                  }
                }
                
@@ -1566,7 +1599,6 @@ const hasSyncedRef = useRef(false);
 
             if (cleanStt) {
               sttIdMap.set(`${currentMainSectionId || 'root'}:::${cleanStt}`, taskId);
-              sttIdMap.set(cleanStt, taskId);
             }
 
             const priceVal = priceCol >= 0 ? (typeof r[priceCol] === 'number' ? r[priceCol] : (parseFloat(String(r[priceCol]).replace(/,/g, '')) || 0)) : 0;
@@ -1615,10 +1647,22 @@ const hasSyncedRef = useRef(false);
               } else {
                 if (cleanStt.includes('.')) {
                   const parts = cleanStt.split('.');
-                  parts.pop();
-                  const parentStt = parts.join('.');
-                  matParentId = matSttIdMap.get(`${currentMainMatId || 'root'}:::${parentStt}`) || matSttIdMap.get(parentStt) || currentSubMatId || currentMainMatId;
-                  purParentId = purSttIdMap.get(`${currentMainPurId || 'root'}:::${parentStt}`) || purSttIdMap.get(parentStt) || currentSubPurId || currentMainPurId;
+                  while (parts.length > 1) {
+                    parts.pop();
+                    const parentStt = parts.join('.');
+                    const scopedMatKey = `${currentMainMatId || 'root'}:::${parentStt}`;
+                    const scopedPurKey = `${currentMainPurId || 'root'}:::${parentStt}`;
+                    if (matSttIdMap.has(scopedMatKey)) {
+                      matParentId = matSttIdMap.get(scopedMatKey);
+                      break;
+                    }
+                    if (purSttIdMap.has(scopedPurKey)) {
+                      purParentId = purSttIdMap.get(scopedPurKey);
+                      break;
+                    }
+                  }
+                  if (!matParentId) matParentId = currentSubMatId || currentMainMatId;
+                  if (!purParentId) purParentId = currentSubPurId || currentMainPurId;
                 } else {
                   matParentId = currentMainMatId;
                   purParentId = currentMainPurId;
@@ -1631,23 +1675,21 @@ const hasSyncedRef = useRef(false);
               let foundPurDotted = false;
               if (cleanStt.includes('.')) {
                 const parts = cleanStt.split('.');
-                parts.pop();
-                const parentStt = parts.join('.');
-                const scopedMatKey = `${currentMainMatId || 'root'}:::${parentStt}`;
-                const scopedPurKey = `${currentMainPurId || 'root'}:::${parentStt}`;
-                if (matSttIdMap.has(scopedMatKey)) {
-                  matParentId = matSttIdMap.get(scopedMatKey);
-                  foundMatDotted = true;
-                } else if (matSttIdMap.has(parentStt)) {
-                  matParentId = matSttIdMap.get(parentStt);
-                  foundMatDotted = true;
-                }
-                if (purSttIdMap.has(scopedPurKey)) {
-                  purParentId = purSttIdMap.get(scopedPurKey);
-                  foundPurDotted = true;
-                } else if (purSttIdMap.has(parentStt)) {
-                  purParentId = purSttIdMap.get(parentStt);
-                  foundPurDotted = true;
+                while (parts.length > 1) {
+                  parts.pop();
+                  const parentStt = parts.join('.');
+                  const scopedMatKey = `${currentMainMatId || 'root'}:::${parentStt}`;
+                  const scopedPurKey = `${currentMainPurId || 'root'}:::${parentStt}`;
+                  if (matSttIdMap.has(scopedMatKey)) {
+                    matParentId = matSttIdMap.get(scopedMatKey);
+                    foundMatDotted = true;
+                    break;
+                  }
+                  if (purSttIdMap.has(scopedPurKey)) {
+                    purParentId = purSttIdMap.get(scopedPurKey);
+                    foundPurDotted = true;
+                    break;
+                  }
                 }
               }
               if (!foundMatDotted) matParentId = currentSubMatId || currentMainMatId;
@@ -1656,9 +1698,7 @@ const hasSyncedRef = useRef(false);
 
             if (cleanStt) {
               matSttIdMap.set(`${currentMainMatId || 'root'}:::${cleanStt}`, matId);
-              matSttIdMap.set(cleanStt, matId);
               purSttIdMap.set(`${currentMainPurId || 'root'}:::${cleanStt}`, purId);
-              purSttIdMap.set(cleanStt, purId);
             }
 
             if (isSection) {
@@ -2441,16 +2481,20 @@ const hasSyncedRef = useRef(false);
       // 1. Dotted STT hierarchy (find nearest preceding task in fullTasks with matching parentStt)
       if (stt.includes('.')) {
         const parts = stt.split('.');
-        parts.pop();
-        const parentStt = parts.join('.');
-        for (let j = idx - 1; j >= 0; j--) {
-          const prev = fullTasks[j];
-          if ((prev.projectCode || '') === (item.projectCode || '') && String(prev.stt || '').trim() === parentStt) {
-            return prev.id;
+        while (parts.length > 1) {
+          parts.pop();
+          const parentStt = parts.join('.');
+          for (let j = idx - 1; j >= 0; j--) {
+            const prev = fullTasks[j];
+            if ((prev.projectCode || '') !== (item.projectCode || '')) continue;
+            if (isMajorSection(prev)) break; // Do not cross major section boundary!
+            if (String(prev.stt || '').trim() === parentStt) {
+              return prev.id;
+            }
           }
+          const anyParent = sttToItemMap.get(`${item.projectCode || ''}:::${parentStt}`);
+          if (anyParent && anyParent.id !== item.id && map.has(anyParent.id)) return anyParent.id;
         }
-        const anyParent = sttToItemMap.get(`${item.projectCode || ''}:::${parentStt}`);
-        if (anyParent && anyParent.id !== item.id && map.has(anyParent.id)) return anyParent.id;
       }
 
       // 2. Explicit parent task if valid and not conflicting
@@ -2471,7 +2515,9 @@ const hasSyncedRef = useRef(false);
           x.id !== item.id &&
           isTaskSectionHeader(x) &&
           (x.name?.trim().toLowerCase() === item.sectionName.trim().toLowerCase() ||
-           x.sectionName?.trim().toLowerCase() === item.sectionName.trim().toLowerCase())
+           x.sectionName?.trim().toLowerCase() === item.sectionName.trim().toLowerCase() ||
+           (x.stt && item.sectionName.trim().toLowerCase().startsWith(x.stt.trim().toLowerCase() + ' -')) ||
+           (x.stt && item.sectionName.trim().toLowerCase().startsWith(x.stt.trim().toLowerCase() + '.')))
         );
         if (secHeader && map.has(secHeader.id)) return secHeader.id;
       }

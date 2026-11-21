@@ -217,6 +217,8 @@ const isTotalOrNoiseRow = (name: string) => {
   return isTotalSummary || 
          lookup.includes('bang chi tiet') || 
          lookup.includes('gia tri hop dong') || 
+         lookup.includes('bang chu') ||
+         lookup.includes('tien thue') ||
          /\bthue\b/.test(lookup) || 
          lookup.includes('chiet khau') || 
          /^[\d\s.,]+$/.test(lookup) || 
@@ -228,7 +230,7 @@ const isNoiseStt = (sttStr: string) => {
   const lookup = normalizeLookupText(sttStr).trim();
   const isCompanyReference = lookup.includes('tong cong ty') || lookup.includes('tong cong trinh') || lookup.includes('kho tong cong ty');
   if (isCompanyReference) return false;
-  return lookup.includes('tong cong') || lookup === 'cong' || /\bthue\b/.test(lookup) || lookup.includes('chiet khau');
+  return lookup.includes('tong cong') || lookup === 'cong' || /\bthue\b/.test(lookup) || lookup.includes('chiet khau') || lookup.includes('bang chu') || lookup.includes('tong gia tri');
 };
 
 type SupplyScope = 'contractor' | 'owner' | 'unknown';
@@ -692,7 +694,20 @@ const parseSpreadsheetDirectly = async (file: File): Promise<WebOcrExtractedData
       const hasVolumeOrUnit = (volume > 0) || (cleanUnitVal !== '');
       const endsWithColon = name.trim().endsWith(':');
       const isSubSectionStt = /^\d+\.\d+$/.test(cleanStt);
+      let hasSubItemsFollowing = false;
+      for (let nextIdx = i + 1; nextIdx < Math.min(rows.length, i + 5); nextIdx++) {
+        const nextCells = rows[nextIdx];
+        if (!nextCells) continue;
+        const nextStt = String(nextCells[sttCol] || '').trim().replace(/\.$/, '');
+        if (nextStt) {
+          if (cleanStt && nextStt.startsWith(cleanStt + '.')) {
+            hasSubItemsFollowing = true;
+          }
+          break;
+        }
+      }
       const isSectionHeader = (stt === '' && !hasVolumeOrUnit) || 
+        hasSubItemsFollowing ||
         (!hasVolumeOrUnit && (isRomanOrAlphaSection || endsWithColon || hasNoDot || isSubSectionStt || (name === name.toUpperCase() && /[A-ZÀ-Ỹ]/.test(name))));
 
       const explicitSupplyScope = supplyCol >= 0 ? detectSupplyScope(cells[supplyCol]) : 'unknown';
