@@ -1172,26 +1172,11 @@ export const ProjectManagementPage: React.FC = () => {
           <div className="border-l-4 border-primary pl-2 flex items-center shrink-0">
             <h1 className="page-title text-sm md:text-base font-extrabold text-slate-900 shrink-0">
               {statusFilter === 'active' ? 'Dự án đang triển khai' : statusFilter === 'completed' ? 'Dự án hoàn thành' : 'Tất cả dự án'}
+              <span className="ml-1.5 text-xs font-bold text-slate-500">
+                ({statusFilter === 'active' ? counts.active : statusFilter === 'completed' ? counts.completed : counts.all})
+              </span>
             </h1>
           </div>
-
-          <CustomSelect
-            value={statusFilter}
-            onChange={(e) => {
-              const val = e.target.value as 'all' | 'active' | 'completed' | 'on_hold';
-              setStatusFilter(val);
-              setSearchParams(prev => {
-                const next = new URLSearchParams(prev);
-                next.set('status', val);
-                return next;
-              }, { replace: true });
-            }}
-            className="h-[34px] min-w-[130px] sm:min-w-[145px] rounded-lg border border-slate-200 bg-white px-2 text-xs font-bold text-slate-700 shadow-2xs outline-none focus:border-primary shrink-0"
-          >
-            <option value="all">Tất cả ({counts.all})</option>
-            <option value="active">Đang triển khai ({counts.active})</option>
-            <option value="completed">Hoàn thành ({counts.completed})</option>
-          </CustomSelect>
 
           {/* Bộ lọc phân loại dự án */}
           <CustomSelect
