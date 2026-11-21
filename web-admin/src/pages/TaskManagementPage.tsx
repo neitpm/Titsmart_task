@@ -1488,7 +1488,7 @@ const hasSyncedRef = useRef(false);
                 itemNameClean.includes('thue vat') ||
                 itemNameClean.startsWith('cong ')) continue;
 
-            const romanRegex = /^(I|II|III|IV|V|VI|VII|VIII|IX|X|XI|XII|MỤC\s+[A-Z0-9]+)$/i;
+            const romanRegex = /^(I|II|III|IV|V|VI|VII|VIII|IX|X|XI|XII|XIII|XIV|XV|XVI|XVII|XVIII|XIX|XX|MỤC\s+[A-Z0-9]+)$/i;
             const cleanUnitVal = unitVal.replace(/^[-–—_.\s]+$/, '').trim();
             const cleanStt = String(sttVal || '').trim().replace(/\.$/, '');
             const hasNoDot = !cleanStt.includes('.');
@@ -1497,11 +1497,21 @@ const hasSyncedRef = useRef(false);
             const startsWithPhan = actualName.trim().toUpperCase().startsWith('PHẦN ');
             const endsWithColon = actualName.trim().endsWith(':');
             const hasNoVolumeAndUnit = (volVal === 0 || !volVal) && (!cleanUnitVal || cleanUnitVal === '' || cleanUnitVal === '-' || cleanUnitVal === '–' || cleanUnitVal === '—');
-            const isSubSectionStt = /^\d+\.\d+$/.test(cleanStt);
-            const isSection = (isRoman || startsWithPhan || isMainSectionName(actualName) || endsWithColon || (hasNoVolumeAndUnit && (hasNoDot || isSubSectionStt))) && (hasNoVolumeAndUnit || isRoman || startsWithPhan);
-
             const isLetterHeader = /^[A-Z]{1,2}$/i.test(cleanStt);
-            const isMainLevelSection = isSection && (isLetterHeader || isRoman || startsWithPhan || (hasNoDot && !cleanStt.includes('.')));
+
+            // Đầu mục chính cấp 1 (A, B, C hoặc I, II, III hoặc "PHẦN ..." khi chưa có main section)
+            const isMajorSection = (isLetterHeader || isRoman || (startsWithPhan && !currentMainSectionId)) && (hasNoVolumeAndUnit || isLetterHeader || isRoman);
+            
+            // Hạng mục con cấp 2 (1, 2, 3.. hoặc 1.1 khi không có khối lượng/đơn vị)
+            const isSubSection = !isMajorSection && hasNoVolumeAndUnit && (
+              /^\d+(\.\d+)*$/.test(cleanStt) || 
+              startsWithPhan || 
+              isMainSectionName(actualName) || 
+              endsWithColon
+            );
+            
+            const isSection = isMajorSection || isSubSection;
+            const isMainLevelSection = isMajorSection;
 
             if (isSection) {
               currentSection = `${sttVal ? sttVal + '. ' : ''}${actualName}`;
@@ -1515,25 +1525,35 @@ const hasSyncedRef = useRef(false);
             const finalProgress = progressCol >= 0 && rawProgress > 0 ? importedProgress : autoProgress;
             
             const taskId = crypto.randomUUID();
-            if (sttVal) sttIdMap.set(sttVal, taskId);
-            
-            let parentId = undefined;
+            let parentId: string | undefined = undefined;
+
             if (isSection) {
                if (isMainLevelSection) {
                  currentMainSectionId = taskId;
                  currentSubSectionId = undefined; // Reset sub section khi gặp Main Section mới (VD: B)
                  parentId = undefined;
                } else {
+                 if (cleanStt.includes('.')) {
+                   const parts = cleanStt.split('.');
+                   parts.pop();
+                   const parentStt = parts.join('.');
+                   parentId = sttIdMap.get(`${currentMainSectionId || 'root'}:::${parentStt}`) || sttIdMap.get(parentStt) || currentSubSectionId || currentMainSectionId;
+                 } else {
+                   parentId = currentMainSectionId;
+                 }
                  currentSubSectionId = taskId;
-                 parentId = currentMainSectionId;
                }
             } else {
                let foundDottedParent = false;
-               if (sttVal.includes('.')) {
-                 const parts = sttVal.split('.');
+               if (cleanStt.includes('.')) {
+                 const parts = cleanStt.split('.');
                  parts.pop();
                  const parentStt = parts.join('.');
-                 if (sttIdMap.has(parentStt)) {
+                 const scopedKey = `${currentMainSectionId || 'root'}:::${parentStt}`;
+                 if (sttIdMap.has(scopedKey)) {
+                   parentId = sttIdMap.get(scopedKey);
+                   foundDottedParent = true;
+                 } else if (sttIdMap.has(parentStt)) {
                    parentId = sttIdMap.get(parentStt);
                    foundDottedParent = true;
                  }
@@ -1542,6 +1562,11 @@ const hasSyncedRef = useRef(false);
                if (!foundDottedParent) {
                  parentId = currentSubSectionId || currentMainSectionId;
                }
+            }
+
+            if (cleanStt) {
+              sttIdMap.set(`${currentMainSectionId || 'root'}:::${cleanStt}`, taskId);
+              sttIdMap.set(cleanStt, taskId);
             }
 
             const priceVal = priceCol >= 0 ? (typeof r[priceCol] === 'number' ? r[priceCol] : (parseFloat(String(r[priceCol]).replace(/,/g, '')) || 0)) : 0;
@@ -1571,18 +1596,13 @@ const hasSyncedRef = useRef(false);
               isSectionHeader: isSection,
               sectionName: currentSection,
               parentId: parentId,
-              notes: '',
+              notes: isSection ? `[section] [order:${i}]` : `[order:${i}]`,
               assignedEngineerId: '',
               assignedEngineerName: '',
             });
 
             const matId = crypto.randomUUID();
             const purId = crypto.randomUUID();
-            if (sttVal) {
-              matSttIdMap.set(sttVal, matId);
-              purSttIdMap.set(sttVal, purId);
-            }
-
             let matParentId: string | undefined = undefined;
             let purParentId: string | undefined = undefined;
 
@@ -1593,29 +1613,52 @@ const hasSyncedRef = useRef(false);
                 currentMainPurId = purId;
                 currentSubPurId = undefined;
               } else {
+                if (cleanStt.includes('.')) {
+                  const parts = cleanStt.split('.');
+                  parts.pop();
+                  const parentStt = parts.join('.');
+                  matParentId = matSttIdMap.get(`${currentMainMatId || 'root'}:::${parentStt}`) || matSttIdMap.get(parentStt) || currentSubMatId || currentMainMatId;
+                  purParentId = purSttIdMap.get(`${currentMainPurId || 'root'}:::${parentStt}`) || purSttIdMap.get(parentStt) || currentSubPurId || currentMainPurId;
+                } else {
+                  matParentId = currentMainMatId;
+                  purParentId = currentMainPurId;
+                }
                 currentSubMatId = matId;
-                matParentId = currentMainMatId;
                 currentSubPurId = purId;
-                purParentId = currentMainPurId;
               }
             } else {
               let foundMatDotted = false;
               let foundPurDotted = false;
-              if (sttVal.includes('.')) {
-                const parts = sttVal.split('.');
+              if (cleanStt.includes('.')) {
+                const parts = cleanStt.split('.');
                 parts.pop();
                 const parentStt = parts.join('.');
-                if (matSttIdMap.has(parentStt)) {
+                const scopedMatKey = `${currentMainMatId || 'root'}:::${parentStt}`;
+                const scopedPurKey = `${currentMainPurId || 'root'}:::${parentStt}`;
+                if (matSttIdMap.has(scopedMatKey)) {
+                  matParentId = matSttIdMap.get(scopedMatKey);
+                  foundMatDotted = true;
+                } else if (matSttIdMap.has(parentStt)) {
                   matParentId = matSttIdMap.get(parentStt);
                   foundMatDotted = true;
                 }
-                if (purSttIdMap.has(parentStt)) {
+                if (purSttIdMap.has(scopedPurKey)) {
+                  purParentId = purSttIdMap.get(scopedPurKey);
+                  foundPurDotted = true;
+                } else if (purSttIdMap.has(parentStt)) {
                   purParentId = purSttIdMap.get(parentStt);
                   foundPurDotted = true;
                 }
               }
               if (!foundMatDotted) matParentId = currentSubMatId || currentMainMatId;
               if (!foundPurDotted) purParentId = currentSubPurId || currentMainPurId;
+            }
+
+            if (cleanStt) {
+              matSttIdMap.set(`${currentMainMatId || 'root'}:::${cleanStt}`, matId);
+              matSttIdMap.set(cleanStt, matId);
+              purSttIdMap.set(`${currentMainPurId || 'root'}:::${cleanStt}`, purId);
+              purSttIdMap.set(cleanStt, purId);
             }
 
             if (isSection) {
@@ -2374,32 +2417,55 @@ const hasSyncedRef = useRef(false);
       if (t.stt) sttToItemMap.set(`${t.projectCode || ''}:::${String(t.stt).trim()}`, t);
     });
 
+    const isMajorSection = (node: any) => {
+      const stt = String(node?.stt || '').trim();
+      const romanRegex = /^(I|II|III|IV|V|VI|VII|VIII|IX|X|XI|XII|XIII|XIV|XV|XVI|XVII|XVIII|XIX|XX)$/i;
+      return /^[A-Z]{1,2}$/i.test(stt) || romanRegex.test(stt);
+    };
+
+    const orderMap = new Map<string, number>();
+    fullTasks.forEach((t, i) => {
+      let ord = i;
+      const match = String(t.notes || '').match(/\[order:(\d+)\]/i);
+      if (match) ord = parseInt(match[1], 10);
+      orderMap.set(t.id, ord);
+    });
+
     // Resolve parent globally for all tasks (strictly within same project)
-    const resolveParentId = (item: any) => {
-      // 1. Dotted STT hierarchy (e.g. 35.1 must belong to 35, never accidentally attached to 34 via bad parentId)
-      if (item.stt && String(item.stt).includes('.')) {
-        const parts = String(item.stt).split('.');
+    const resolveParentId = (item: any, idx: number) => {
+      // 0. Major section is always root
+      if (isMajorSection(item)) return undefined;
+
+      const stt = String(item.stt || '').trim();
+
+      // 1. Dotted STT hierarchy (find nearest preceding task in fullTasks with matching parentStt)
+      if (stt.includes('.')) {
+        const parts = stt.split('.');
         parts.pop();
         const parentStt = parts.join('.');
-        const sameSecParent = fullTasks.find(x => 
-          (x.projectCode || '') === (item.projectCode || '') && 
-          x.id !== item.id &&
-          String(x.stt || '').trim() === parentStt &&
-          (x.sectionName === item.sectionName || isTaskSectionHeader(x))
-        );
-        if (sameSecParent && map.has(sameSecParent.id)) return sameSecParent.id;
-
+        for (let j = idx - 1; j >= 0; j--) {
+          const prev = fullTasks[j];
+          if ((prev.projectCode || '') === (item.projectCode || '') && String(prev.stt || '').trim() === parentStt) {
+            return prev.id;
+          }
+        }
         const anyParent = sttToItemMap.get(`${item.projectCode || ''}:::${parentStt}`);
         if (anyParent && anyParent.id !== item.id && map.has(anyParent.id)) return anyParent.id;
       }
 
-      // 2. Explicit parent task
+      // 2. Explicit parent task if valid and not conflicting
       if (item.parentId && item.parentId !== item.id && map.has(item.parentId)) {
-        return item.parentId;
+        const parent = map.get(item.parentId);
+        if (isMajorSection(parent)) return item.parentId;
+        const isItemInt = /^\d+$/.test(stt);
+        const isParentInt = /^\d+$/.test(String(parent?.stt || '').trim());
+        if (!(isItemInt && isParentInt && stt !== parent?.stt)) {
+          return item.parentId;
+        }
       }
 
-      // 3. If item is NOT a section header, attach it to its section header in the same project
-      if (!isTaskSectionHeader(item) && item.sectionName && item.sectionName.trim().length > 0) {
+      // 3. Match sectionName to an explicit section header in the same project
+      if (item.sectionName && item.sectionName.trim().length > 0) {
         const secHeader = fullTasks.find(x => 
           (x.projectCode || '') === (item.projectCode || '') &&
           x.id !== item.id &&
@@ -2410,11 +2476,19 @@ const hasSyncedRef = useRef(false);
         if (secHeader && map.has(secHeader.id)) return secHeader.id;
       }
 
+      // 4. Fallback to nearest preceding Major Section in same project
+      for (let j = idx - 1; j >= 0; j--) {
+        const prev = fullTasks[j];
+        if ((prev.projectCode || '') === (item.projectCode || '') && isMajorSection(prev)) {
+          return prev.id;
+        }
+      }
+
       return undefined;
     };
 
-    fullTasks.forEach((t) => {
-      const resolvedParentId = resolveParentId(t);
+    fullTasks.forEach((t, idx) => {
+      const resolvedParentId = resolveParentId(t, idx);
       if (resolvedParentId && map.has(resolvedParentId)) {
         map.get(resolvedParentId)!.children.push(map.get(t.id));
       } else {
@@ -2428,6 +2502,9 @@ const hasSyncedRef = useRef(false);
       if (currentDepth > 15) return; // Safety guard: max 15 depth level to prevent OOM crash
 
       nodes.sort((a, b) => {
+        const ordA = orderMap.get(a.id) ?? 999999;
+        const ordB = orderMap.get(b.id) ?? 999999;
+        if (ordA !== ordB) return ordA - ordB;
         const sttCompare = compareTaskStt(a.stt, b.stt);
         if (sttCompare !== 0) return sttCompare;
         return String(a.name || '').localeCompare(String(b.name || ''), 'vi', { numeric: true, sensitivity: 'base' });
