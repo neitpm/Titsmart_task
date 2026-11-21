@@ -38,7 +38,25 @@ export const api = {
     getAll: async () => {
       const { data, error } = await supabase.from('projects').select('*');
       if (error) throw error;
-      return mapArray(data || []);
+      const list = mapArray(data || []).map((p: any) => {
+        const rawNotes = String(p.notes || '');
+        const prioMatch = rawNotes.match(/\[PRIORITY:([^\]]*)\]/i);
+        const priority = prioMatch ? prioMatch[1].trim() : (p.priority || 'normal');
+        return { ...p, priority };
+      });
+      return list.sort((a: any, b: any) => {
+        const getWeight = (pr?: string) => {
+          const s = String(pr || '').toLowerCase().trim();
+          if (s === 'urgent' || s === 'cấp 1' || s === 'cap 1' || s === '1') return 1;
+          if (s === 'high' || s === 'cấp 2' || s === 'cap 2' || s === '2') return 2;
+          if (s === 'low' || s === 'cấp 4' || s === 'cap 4' || s === '4') return 4;
+          return 3;
+        };
+        const wA = getWeight(a.priority);
+        const wB = getWeight(b.priority);
+        if (wA !== wB) return wA - wB;
+        return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+      });
     },
     getById: async (id: string) => {
       const { data, error } = await supabase.from('projects').select('*').eq('id', id).single();

@@ -135,6 +135,116 @@ export interface Task {
   updatedAt?: string;
 }
 
+export type ProjectPriority = 'urgent' | 'high' | 'normal' | 'low';
+
+export const getProjectPriorityWeight = (priority?: string): number => {
+  if (!priority) return 3;
+  const p = String(priority).toLowerCase().trim();
+  if (p === 'urgent' || p === 'cấp 1' || p === 'cap 1' || p === 'level_1' || p === '1' || p === 'critical') return 1;
+  if (p === 'high' || p === 'cấp 2' || p === 'cap 2' || p === 'level_2' || p === '2') return 2;
+  if (p === 'normal' || p === 'cấp 3' || p === 'cap 3' || p === 'level_3' || p === '3' || p === 'medium') return 3;
+  if (p === 'low' || p === 'cấp 4' || p === 'cap 4' || p === 'level_4' || p === '4') return 4;
+  return 3;
+};
+
+export const getProjectPriorityInfo = (priority?: string) => {
+  const weight = getProjectPriorityWeight(priority);
+  switch (weight) {
+    case 1:
+      return {
+        value: 'urgent' as ProjectPriority,
+        shortLabel: 'Cấp 1',
+        label: 'Cấp 1 - Khẩn cấp / Trọng điểm',
+        subLabel: 'Trọng điểm',
+        badgeClass: 'bg-red-100 text-red-700 border-red-300 dark:bg-red-950/60 dark:text-red-300 dark:border-red-800',
+        badgeBg: 'bg-red-500',
+        dotClass: 'bg-red-500',
+        borderClass: 'border-l-4 border-l-red-500',
+        icon: 'local_fire_department',
+        textClass: 'text-red-700 dark:text-red-400',
+      };
+    case 2:
+      return {
+        value: 'high' as ProjectPriority,
+        shortLabel: 'Cấp 2',
+        label: 'Cấp 2 - Ưu tiên cao',
+        subLabel: 'Ưu tiên cao',
+        badgeClass: 'bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800',
+        badgeBg: 'bg-amber-500',
+        dotClass: 'bg-amber-500',
+        borderClass: 'border-l-4 border-l-amber-500',
+        icon: 'bolt',
+        textClass: 'text-amber-700 dark:text-amber-400',
+      };
+    case 4:
+      return {
+        value: 'low' as ProjectPriority,
+        shortLabel: 'Cấp 4',
+        label: 'Cấp 4 - Ưu tiên thấp',
+        subLabel: 'Ưu tiên thấp',
+        badgeClass: 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700',
+        badgeBg: 'bg-slate-400',
+        dotClass: 'bg-slate-400',
+        borderClass: 'border-l-4 border-l-slate-300',
+        icon: 'arrow_downward',
+        textClass: 'text-slate-600 dark:text-slate-400',
+      };
+    case 3:
+    default:
+      return {
+        value: 'normal' as ProjectPriority,
+        shortLabel: 'Cấp 3',
+        label: 'Cấp 3 - Tiêu chuẩn (Bình thường)',
+        subLabel: 'Tiêu chuẩn',
+        badgeClass: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800',
+        badgeBg: 'bg-blue-500',
+        dotClass: 'bg-blue-500',
+        borderClass: '',
+        icon: 'flag',
+        textClass: 'text-blue-700 dark:text-blue-400',
+      };
+  }
+};
+
+export const PROJECT_PRIORITY_OPTIONS = [
+  {
+    value: 'urgent' as ProjectPriority,
+    shortLabel: 'Cấp 1',
+    label: 'Cấp 1 - Khẩn cấp / Trọng điểm',
+    subLabel: 'Trọng điểm',
+    activeBg: 'bg-red-50 text-red-700 border-red-300',
+    ring: 'ring-red-400',
+    icon: 'local_fire_department',
+  },
+  {
+    value: 'high' as ProjectPriority,
+    shortLabel: 'Cấp 2',
+    label: 'Cấp 2 - Ưu tiên cao',
+    subLabel: 'Ưu tiên cao',
+    activeBg: 'bg-amber-50 text-amber-700 border-amber-300',
+    ring: 'ring-amber-400',
+    icon: 'bolt',
+  },
+  {
+    value: 'normal' as ProjectPriority,
+    shortLabel: 'Cấp 3',
+    label: 'Cấp 3 - Tiêu chuẩn',
+    subLabel: 'Tiêu chuẩn',
+    activeBg: 'bg-blue-50 text-blue-700 border-blue-300',
+    ring: 'ring-blue-400',
+    icon: 'flag',
+  },
+  {
+    value: 'low' as ProjectPriority,
+    shortLabel: 'Cấp 4',
+    label: 'Cấp 4 - Ưu tiên thấp',
+    subLabel: 'Ưu tiên thấp',
+    activeBg: 'bg-slate-100 text-slate-700 border-slate-300',
+    ring: 'ring-slate-400',
+    icon: 'arrow_downward',
+  },
+];
+
 export interface Project {
   diagramUrl?: string;
   id: string;
@@ -143,6 +253,7 @@ export interface Project {
   client?: string; // Chủ đầu tư
   location: string;
   category?: string; // Phân loại dự án
+  priority?: ProjectPriority; // Mức độ ưu tiên theo cấp bậc: Cấp 1 (urgent) > Cấp 2 (high) > Cấp 3 (normal) > Cấp 4 (low)
   contractValue?: number;
   notes?: string;
   progressPercent: number;

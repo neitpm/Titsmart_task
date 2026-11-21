@@ -35,6 +35,7 @@ export interface Project {
   diagramUrl?: string; id: string; code: string; name: string;
   client?: string; location: string; contractValue?: number; notes?: string;
   progressPercent: number; status: 'active' | 'completed' | 'on_hold';
+  priority?: string;
   activeTeams?: number; totalTasks: number; completedTasks: number;
   issueTasksCount: number; managerId?: string; memberIds?: string[];
   managerName: string; members?: string[];

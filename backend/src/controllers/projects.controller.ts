@@ -29,13 +29,23 @@ const mapToPrisma = (data: any) => {
   ].filter(Boolean).join(' | ');
   if (extraNotes) mapped.notes = [mapped.notes, extraNotes].filter(Boolean).join(' | ');
 
+  if (data.priority !== undefined) {
+    const raw = String(mapped.notes || '');
+    const clean = raw.replace(/\[PRIORITY:[^\]]*\]/gi, '').trim();
+    mapped.notes = data.priority ? (clean ? `${clean} [PRIORITY:${data.priority}]` : `[PRIORITY:${data.priority}]`) : clean;
+  }
+
   return mapped;
 };
 
 const mapToFrontend = (project: any) => {
   if (!project) return project;
+  const rawNotes = String(project.notes || '');
+  const prioMatch = rawNotes.match(/\[PRIORITY:([^\]]*)\]/i);
+  const priority = prioMatch ? prioMatch[1].trim() : (project.priority || 'normal');
   return {
     ...project,
+    priority,
     managerId: project.manager_id,
     managerName: project.manager_name,
     startDate: project.start_date,
@@ -57,7 +67,21 @@ export const getProjects = async (req: Request, res: Response) => {
       },
       orderBy: { created_at: 'desc' },
     });
-    res.json(projects.map(mapToFrontend));
+    const mapped = projects.map(mapToFrontend);
+    const getWeight = (prio?: string) => {
+      const p = String(prio || '').toLowerCase().trim();
+      if (p === 'urgent' || p === 'cấp 1' || p === 'cap 1' || p === '1') return 1;
+      if (p === 'high' || p === 'cấp 2' || p === 'cap 2' || p === '2') return 2;
+      if (p === 'low' || p === 'cấp 4' || p === 'cap 4' || p === '4') return 4;
+      return 3;
+    };
+    mapped.sort((a, b) => {
+      const wA = getWeight(a.priority);
+      const wB = getWeight(b.priority);
+      if (wA !== wB) return wA - wB;
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+    res.json(mapped);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to fetch projects' });

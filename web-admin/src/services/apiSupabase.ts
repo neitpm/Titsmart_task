@@ -1,6 +1,6 @@
 import { supabase, isCloudSupabase } from '../lib/supabase';
 import { v4 as uuidv4 } from 'uuid';
-import { NotificationItem } from '../types';
+import { NotificationItem, getProjectPriorityWeight } from '../types';
 import { deleteStorageFiles, parseInvoiceUrls } from '../utils/fileUploadHelper';
 
 /**
@@ -264,17 +264,32 @@ const parseNotificationMeta = (n: any) => {
 
 let cachedDocTracksSchemaType: 'modern' | 'prisma' | 'legacy' | null = null;
 
-const encodeProjectMetadata = (notes: string | undefined, memberIds: string[], category?: string): string => {
-  let cleanNotes = String(notes || '')
+const encodeProjectMetadata = (notes: string | undefined, memberIds?: string[], category?: string, priority?: string): string => {
+  const raw = String(notes || '');
+  const existingPrio = (raw.match(/\[PRIORITY:([^\]]*)\]/i) || [])[1];
+  const finalPrio = priority !== undefined ? priority : existingPrio;
+
+  const existingCat = (raw.match(/\[CATEGORY:([^\]]*)\]/i) || [])[1];
+  const finalCat = category !== undefined ? category : existingCat;
+
+  const existingMems = (raw.match(/\[MEMBERS:([^\]]+)\]/i) || [])[1];
+  const finalMems = memberIds !== undefined ? memberIds : (existingMems ? existingMems.split(',') : []);
+
+  let cleanNotes = raw
     .replace(/\[MEMBERS:[^\]]+\]/gi, '')
     .replace(/\[CATEGORY:[^\]]*\]/gi, '')
+    .replace(/\[PRIORITY:[^\]]*\]/gi, '')
     .trim();
+
   const tags: string[] = [];
-  if (category && category.trim()) {
-    tags.push(`[CATEGORY:${category.trim()}]`);
+  if (finalPrio && finalPrio.trim()) {
+    tags.push(`[PRIORITY:${finalPrio.trim()}]`);
   }
-  if (memberIds && memberIds.length > 0) {
-    tags.push(`[MEMBERS:${memberIds.join(',')}]`);
+  if (finalCat && finalCat.trim()) {
+    tags.push(`[CATEGORY:${finalCat.trim()}]`);
+  }
+  if (finalMems && finalMems.length > 0) {
+    tags.push(`[MEMBERS:${finalMems.join(',')}]`);
   }
   if (tags.length === 0) return cleanNotes;
   const tagString = tags.join(' ');
@@ -286,7 +301,14 @@ const parseProjectMetadata = (proj: any) => {
   const rawNotes = String(proj.notes || '');
   let members = Array.isArray(proj.members) ? proj.members : (Array.isArray(proj.memberIds) ? proj.memberIds : []);
   let category = proj.category || '';
+  let priority = proj.priority || '';
   let cleanNotes = rawNotes;
+
+  const prioMatch = rawNotes.match(/\[PRIORITY:([^\]]*)\]/i);
+  if (prioMatch) {
+    priority = prioMatch[1].trim();
+    cleanNotes = cleanNotes.replace(/\[PRIORITY:[^\]]*\]/gi, '').trim();
+  }
 
   const catMatch = rawNotes.match(/\[CATEGORY:([^\]]*)\]/i);
   if (catMatch) {
@@ -306,6 +328,7 @@ const parseProjectMetadata = (proj: any) => {
   // Chỉ fallback category sang cleanNotes nếu dự án không có tag [CATEGORY:...] và cleanNotes không phải là hạng mục thuần túy
   return {
     ...proj,
+    priority: priority || 'normal',
     category: category || undefined,
     notes: cleanNotes,
     members,
@@ -326,6 +349,12 @@ export const api = {
         if (error) throw error;
         const list = mapArray(data || []).map(parseProjectMetadata);
         return list.sort((a: any, b: any) => {
+          // Luôn ưu tiên theo cấp bậc ưu tiên (Cấp 1 > Cấp 2 > Cấp 3 > Cấp 4) lên trước
+          const prioWeightA = getProjectPriorityWeight(a.priority);
+          const prioWeightB = getProjectPriorityWeight(b.priority);
+          if (prioWeightA !== prioWeightB) {
+            return prioWeightA - prioWeightB;
+          }
           const timeA = new Date(a.createdAt || a.created_at || a.startDate || 0).getTime();
           const timeB = new Date(b.createdAt || b.created_at || b.startDate || 0).getTime();
           return timeB - timeA;
@@ -343,11 +372,13 @@ export const api = {
     create: async (data: any) => {
       const memberIds = Array.isArray(data.members) ? data.members : (Array.isArray(data.memberIds) ? data.memberIds : []);
       const category = data.category || '';
+      const priority = data.priority || 'normal';
       const payload = toSnakeCase(data);
       delete payload.members;
       delete payload.member_ids;
       delete payload.category;
-      payload.notes = encodeProjectMetadata(payload.notes, memberIds, category);
+      delete payload.priority;
+      payload.notes = encodeProjectMetadata(payload.notes, memberIds, category, priority);
       if (!payload.manager_id || typeof payload.manager_id !== 'string' || payload.manager_id.length < 36) {
          payload.manager_id = null;
       }
@@ -375,12 +406,14 @@ export const api = {
     update: async (id: string, data: any) => {
       const memberIds = Array.isArray(data.members) ? data.members : (Array.isArray(data.memberIds) ? data.memberIds : undefined);
       const category = data.category !== undefined ? data.category : undefined;
+      const priority = data.priority !== undefined ? data.priority : undefined;
       const payload = toSnakeCase(data);
       delete payload.members;
       delete payload.member_ids;
       delete payload.category;
-      if (memberIds !== undefined || category !== undefined) {
-        payload.notes = encodeProjectMetadata(payload.notes, memberIds || [], category);
+      delete payload.priority;
+      if (memberIds !== undefined || category !== undefined || priority !== undefined) {
+        payload.notes = encodeProjectMetadata(payload.notes, memberIds, category, priority);
       }
       if (!payload.manager_id || typeof payload.manager_id !== 'string' || payload.manager_id.length < 36) {
          payload.manager_id = null;

@@ -4,7 +4,17 @@ import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useRealtimeStore } from '../services/realtimeStore';
 import { useAuthStore, hasPermission, canManageItem } from '../services/authStore';
-import { Project, Task, isTaskSectionHeaderItem, isTaskActuallyDone, getTaskEffectiveProgress } from '../types';
+import {
+  Project,
+  Task,
+  isTaskSectionHeaderItem,
+  isTaskActuallyDone,
+  getTaskEffectiveProgress,
+  ProjectPriority,
+  getProjectPriorityWeight,
+  getProjectPriorityInfo,
+  PROJECT_PRIORITY_OPTIONS
+} from '../types';
 import { Modal } from '../components/common/Modal';
 import { Toast } from '../components/common/Toast';
 import { OcrUploadPanel } from '../components/common/OcrUploadPanel';
@@ -185,6 +195,10 @@ export const ProjectManagementPage: React.FC = () => {
   const [projectToEdit, setProjectToEdit] = useState<Project | null>(null);
   const [notifOpenProjectId, setNotifOpenProjectId] = useState<string | null>(null);
   const suppressProjectCardNavigationRef = useRef(false);
+  const [priorityFilter, setPriorityFilter] = useState<'all' | ProjectPriority>('all');
+  const [newProjPriority, setNewProjPriority] = useState<ProjectPriority>('normal');
+  const [editProjPriority, setEditProjPriority] = useState<ProjectPriority>('normal');
+  const [quickPriorityMenuProjectId, setQuickPriorityMenuProjectId] = useState<string | null>(null);
   const [isNewProjectModalOpen, setIsNewProjectModalOpen] = useState(false);
   const [toastState, setToastState] = useState({ show: false, message: '', type: 'success' as 'success' | 'info' | 'warning' });
   const [newProjName, setNewProjName] = useState('');
@@ -213,6 +227,28 @@ export const ProjectManagementPage: React.FC = () => {
     toastTimeoutRef.current = setTimeout(() => {
       setToastState(prev => ({ ...prev, show: false }));
     }, 5000);
+  };
+
+  useEffect(() => {
+    if (!quickPriorityMenuProjectId) return;
+    const handleOutsideClick = () => setQuickPriorityMenuProjectId(null);
+    window.addEventListener('click', handleOutsideClick);
+    return () => window.removeEventListener('click', handleOutsideClick);
+  }, [quickPriorityMenuProjectId]);
+
+  const handleQuickChangePriority = async (projectId: string, priority: ProjectPriority, e?: React.MouseEvent) => {
+    if (e) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+    setQuickPriorityMenuProjectId(null);
+    try {
+      await updateProject(projectId, { priority });
+      triggerToast(`Đã đổi mức độ ưu tiên dự án sang "${getProjectPriorityInfo(priority).label}"`, 'success');
+    } catch (err) {
+      console.error(err);
+      triggerToast('Lỗi khi đổi mức độ ưu tiên dự án', 'warning');
+    }
   };
 
   const resolveProjectMemberNames = (project: Project) => {
@@ -402,6 +438,7 @@ export const ProjectManagementPage: React.FC = () => {
     const q = normalizeLabel(searchQuery.trim());
     const filteredBySearch = allEnhancedProjects.filter((project) => {
       if (!isProjectInDateRange(project, filterDateFrom, filterDateTo)) return false;
+      if (priorityFilter !== 'all' && (project.priority || 'normal') !== priorityFilter) return false;
       if (categoryFilter !== 'all') {
         const pCat = (project.category || '').trim().toLowerCase();
         if (pCat !== categoryFilter.toLowerCase()) return false;
@@ -415,7 +452,7 @@ export const ProjectManagementPage: React.FC = () => {
       active: filteredBySearch.filter(p => p.status === 'active').length,
       completed: filteredBySearch.filter(p => p.status === 'completed').length,
     };
-  }, [allEnhancedProjects, searchQuery, filterDateFrom, filterDateTo, categoryFilter]);
+  }, [allEnhancedProjects, searchQuery, filterDateFrom, filterDateTo, categoryFilter, priorityFilter]);
 
   const enhancedProjects = useMemo(() => {
     const q = normalizeLabel(searchQuery.trim());
@@ -423,6 +460,7 @@ export const ProjectManagementPage: React.FC = () => {
     return allEnhancedProjects.filter((project) => {
       const matchStatus = statusFilter === 'all' || project.status === statusFilter;
       if (!matchStatus) return false;
+      if (priorityFilter !== 'all' && (project.priority || 'normal') !== priorityFilter) return false;
       if (!isProjectInDateRange(project, filterDateFrom, filterDateTo)) return false;
       if (categoryFilter !== 'all') {
         const pCat = (project.category || '').trim().toLowerCase();
@@ -433,6 +471,13 @@ export const ProjectManagementPage: React.FC = () => {
       return [project.name, project.code, project.location, project.client, project.category, project.notes, project.managerName, project.memberNames.join(' ')]
         .some((value) => normalizeLabel(String(value || '')).includes(q));
     }).sort((a, b) => {
+      // 1. Luôn ưu tiên theo cấp bậc ưu tiên (Cấp 1 > Cấp 2 > Cấp 3 > Cấp 4) lên trước
+      const prioWeightA = getProjectPriorityWeight(a.priority);
+      const prioWeightB = getProjectPriorityWeight(b.priority);
+      if (prioWeightA !== prioWeightB) {
+        return prioWeightA - prioWeightB;
+      }
+
       if (sortBy === 'progress_desc') return (b.progress || 0) - (a.progress || 0);
       if (sortBy === 'progress_asc') return (a.progress || 0) - (b.progress || 0);
       if (sortBy === 'name_asc') return (a.name || '').localeCompare(b.name || '', 'vi', { numeric: true });
@@ -456,13 +501,13 @@ export const ProjectManagementPage: React.FC = () => {
       }
       return (a.name || '').localeCompare(b.name || '', 'vi', { numeric: true });
     });
-  }, [allEnhancedProjects, searchQuery, statusFilter, categoryFilter, filterDateFrom, filterDateTo, sortBy]);
+  }, [allEnhancedProjects, searchQuery, statusFilter, categoryFilter, filterDateFrom, filterDateTo, sortBy, priorityFilter]);
 
   // Reset về trang 1 khi thay đổi bất kỳ bộ lọc hoặc chế độ sắp xếp nào
   useEffect(() => {
     setCurrentPage(1);
     setProjectVisibleLimit(24);
-  }, [searchQuery, statusFilter, categoryFilter, filterDateFrom, filterDateTo, sortBy, pageSize]);
+  }, [searchQuery, statusFilter, categoryFilter, priorityFilter, filterDateFrom, filterDateTo, sortBy, pageSize]);
 
   const totalPages = Math.max(1, Math.ceil(enhancedProjects.length / pageSize));
   const safeCurrentPage = Math.min(currentPage, totalPages);
@@ -535,6 +580,7 @@ export const ProjectManagementPage: React.FC = () => {
       client: newProjClient.trim() || undefined,
       location: newProjLocation.trim(),
       category: newProjCategory.trim() || undefined,
+      priority: newProjPriority || 'normal',
       notes: newProjNotes.trim() || undefined,
       progressPercent: 0,
       status: 'active',
@@ -844,6 +890,7 @@ export const ProjectManagementPage: React.FC = () => {
     setEditProjLocation(project.location || '');
     setEditProjClient(project.client || '');
     setEditProjCategory(project.category || '');
+    setEditProjPriority(project.priority || 'normal');
     setEditProjNotes(project.notes || '');
 
     // Resolve engineers from the engineers array by ID, code, or name matching
@@ -893,6 +940,7 @@ export const ProjectManagementPage: React.FC = () => {
         location: editProjLocation.trim(),
         client: editProjClient.trim() || undefined,
         category: editProjCategory.trim() || undefined,
+        priority: editProjPriority || 'normal',
         notes: editProjNotes.trim() || undefined,
         managerId: managerId,
         managerName: managerName,
@@ -1193,6 +1241,20 @@ export const ProjectManagementPage: React.FC = () => {
             ))}
           </CustomSelect>
 
+          {/* Bộ lọc mức độ ưu tiên (Cấp bậc) */}
+          <CustomSelect
+            value={priorityFilter}
+            onChange={(e) => setPriorityFilter(e.target.value as any)}
+            className="h-[34px] min-w-[135px] max-w-[165px] rounded-lg border border-slate-200 bg-white px-2 text-xs font-bold text-slate-700 shadow-2xs outline-none focus:border-primary shrink-0"
+            title="Lọc theo mức độ ưu tiên dự án"
+          >
+            <option value="all">-- Ưu tiên: Tất cả --</option>
+            <option value="urgent">🔥 Cấp 1 - Trọng điểm</option>
+            <option value="high">⚡ Cấp 2 - Ưu tiên cao</option>
+            <option value="normal">Cấp 3 - Tiêu chuẩn</option>
+            <option value="low">Cấp 4 - Ưu tiên thấp</option>
+          </CustomSelect>
+
           {/* Bộ lọc dải ngày (Từ ngày ... Đến ngày ...) */}
           <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-lg px-2 py-0.5 h-[34px] shadow-2xs text-xs shrink-0">
             <span className="text-slate-400 font-medium whitespace-nowrap text-[11px] ml-0.5">Từ</span>
@@ -1270,6 +1332,7 @@ export const ProjectManagementPage: React.FC = () => {
                 setNewProjLocation('');
                 setNewProjClient('');
                 setNewProjCategory('');
+                setNewProjPriority('normal');
                 setNewProjNotes('');
                 setNewProjManagerId('');
                 setSelectedEngineerIds([]);
@@ -1317,6 +1380,7 @@ export const ProjectManagementPage: React.FC = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3 sm:gap-4">
                 {paginatedProjects.map((project, idx) => {
                   const globalIdx = (safeCurrentPage - 1) * pageSize + idx;
+                  const prioInfo = getProjectPriorityInfo(project.priority);
                   const barColor = project.progress >= 100 ? 'bg-emerald-500'
                     : project.progress >= 60 ? 'bg-blue-500'
                     : project.progress >= 30 ? 'bg-amber-400' : 'bg-slate-300';
@@ -1343,7 +1407,13 @@ export const ProjectManagementPage: React.FC = () => {
                       role="button"
                       tabIndex={0}
                       onKeyDown={(e) => { if (e.key === 'Enter') openProjectTasks(project); }}
-                      className="group relative flex flex-col bg-white rounded-xl border border-slate-200 shadow-xs hover:shadow-md hover:border-blue-300 cursor-pointer transition-all duration-200 overflow-hidden"
+                      className={`group relative flex flex-col bg-white rounded-xl border ${
+                        prioInfo.value === 'urgent'
+                          ? 'border-red-300 ring-1 ring-red-400/80 shadow-xs shadow-red-100'
+                          : prioInfo.value === 'high'
+                            ? 'border-amber-300 ring-1 ring-amber-400/60'
+                            : 'border-slate-200 shadow-xs'
+                      } hover:shadow-md hover:border-blue-300 cursor-pointer transition-all duration-200 overflow-hidden`}
                     >
                       {/* Top accent bar */}
                       <div className={`h-1 w-full ${barColor}`} />
@@ -1370,8 +1440,51 @@ export const ProjectManagementPage: React.FC = () => {
                           </div>
                         </div>
 
-                        {/* Badge trạng thái */}
+                        {/* Badge trạng thái + Cấp bậc ưu tiên */}
                         <div className="flex items-center gap-2 flex-wrap">
+                          {/* Priority badge with quick-dropdown */}
+                          <div className="relative inline-block" onClick={(e) => e.stopPropagation()}>
+                            <button
+                              type="button"
+                              onClick={() => setQuickPriorityMenuProjectId(quickPriorityMenuProjectId === project.id ? null : project.id)}
+                              className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-extrabold border transition-all hover:scale-105 active:scale-95 cursor-pointer ${prioInfo.badgeClass}`}
+                              title="Nhấn để đổi cấp bậc ưu tiên"
+                            >
+                              <span className="material-symbols-outlined text-[13px]">{prioInfo.icon}</span>
+                              <span>{prioInfo.shortLabel}</span>
+                              <span className="material-symbols-outlined text-[10px] opacity-70">arrow_drop_down</span>
+                            </button>
+                            {quickPriorityMenuProjectId === project.id && (
+                              <div
+                                onClick={(e) => e.stopPropagation()}
+                                className="absolute left-0 top-full mt-1 z-30 w-52 bg-white rounded-xl shadow-xl border border-slate-200 p-1.5 flex flex-col gap-1 text-left animate-in fade-in zoom-in-95 duration-100"
+                              >
+                                <div className="px-2 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                  Đổi mức ưu tiên
+                                </div>
+                                {PROJECT_PRIORITY_OPTIONS.map((opt) => (
+                                  <button
+                                    key={opt.value}
+                                    type="button"
+                                    onClick={(e) => handleQuickChangePriority(project.id, opt.value, e)}
+                                    className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold hover:bg-slate-50 transition-colors cursor-pointer ${
+                                      (project.priority || 'normal') === opt.value ? 'bg-blue-50 text-blue-700 font-bold' : 'text-slate-700'
+                                    }`}
+                                  >
+                                    <span className="flex items-center gap-1.5">
+                                      <span className="material-symbols-outlined text-[15px]">{opt.icon}</span>
+                                      <span>{opt.shortLabel}</span>
+                                      <span className="text-[10px] opacity-75">({opt.subLabel})</span>
+                                    </span>
+                                    {(project.priority || 'normal') === opt.value && (
+                                      <span className="material-symbols-outlined text-sm text-blue-600">check</span>
+                                    )}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+
                           <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-bold border ${statusCfg.bg} ${statusCfg.text} ${statusCfg.border}`}>
                             <span className={`w-1.5 h-1.5 rounded-full ${statusCfg.dot}`} />
                             {statusLabel[project.status]}
@@ -1518,6 +1631,7 @@ export const ProjectManagementPage: React.FC = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
                 {paginatedProjects.map((project, idx) => {
                   const globalIdx = (safeCurrentPage - 1) * pageSize + idx;
+                  const prioInfo = getProjectPriorityInfo(project.priority);
                   const barColor = project.progress >= 100 ? 'bg-emerald-500'
                     : project.progress >= 60 ? 'bg-blue-500'
                     : project.progress >= 30 ? 'bg-amber-400' : 'bg-slate-300';
@@ -1545,16 +1659,26 @@ export const ProjectManagementPage: React.FC = () => {
                       role="button"
                       tabIndex={0}
                       onKeyDown={(e) => { if (e.key === 'Enter') openProjectTasks(project); }}
-                      className="group relative flex flex-col bg-white rounded-xl border border-slate-200 shadow-2xs hover:shadow-md hover:border-primary/40 cursor-pointer transition-all duration-200 overflow-hidden p-3"
+                      className={`group relative flex flex-col bg-white rounded-xl border ${
+                        prioInfo.value === 'urgent'
+                          ? 'border-red-300 ring-1 ring-red-400/80 shadow-2xs shadow-red-50'
+                          : prioInfo.value === 'high'
+                            ? 'border-amber-300 ring-1 ring-amber-400/60'
+                            : 'border-slate-200 shadow-2xs'
+                      } hover:shadow-md hover:border-primary/40 cursor-pointer transition-all duration-200 overflow-hidden p-3`}
                     >
                       {/* Thanh màu tiến độ trên đầu */}
                       <div className={`absolute top-0 left-0 right-0 h-1 ${barColor}`} />
 
-                      {/* Hàng 1: Mã dự án & Trạng thái & Chuông */}
+                      {/* Hàng 1: Mã dự án & Ưu tiên & Trạng thái & Chuông */}
                       <div className="flex items-center justify-between gap-1 mb-2 pt-0.5">
-                        <div className="flex items-center gap-1.5 min-w-0">
+                        <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
                           <span className="font-mono text-[10px] font-extrabold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200/80 truncate">
                             {project.code || `#${globalIdx + 1}`}
+                          </span>
+                          <span className={`inline-flex items-center gap-0.5 rounded px-1.5 py-0.2 text-[9px] font-extrabold border ${prioInfo.badgeClass}`} title={prioInfo.label}>
+                            <span className="material-symbols-outlined text-[11px]">{prioInfo.icon}</span>
+                            {prioInfo.shortLabel}
                           </span>
                           <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.2 text-[9px] font-bold border ${statusCfg.bg} ${statusCfg.text} ${statusCfg.border} shrink-0`}>
                             <span className={`w-1.5 h-1.5 rounded-full ${statusCfg.dot}`} />
@@ -1661,6 +1785,7 @@ export const ProjectManagementPage: React.FC = () => {
                       <tr>
                         <th className="py-2.5 px-3 w-12 text-center border-r border-slate-200">STT</th>
                         <th className="py-2.5 px-3 w-32 border-r border-slate-200">Mã dự án</th>
+                        <th className="py-2.5 px-3 w-28 text-center border-r border-slate-200">Ưu tiên</th>
                         <th className="py-2.5 px-4 min-w-[200px] border-r border-slate-200">Tên dự án</th>
                         <th className="py-2.5 px-3 w-36 border-r border-slate-200">Phân loại / CĐT</th>
                         <th className="py-2.5 px-3 w-48 border-r border-slate-200">Nhân sự</th>
@@ -1672,6 +1797,7 @@ export const ProjectManagementPage: React.FC = () => {
                     <tbody className="divide-y divide-slate-200 font-medium">
                       {paginatedProjects.map((project, idx) => {
                         const globalIdx = (safeCurrentPage - 1) * pageSize + idx;
+                        const prioInfo = getProjectPriorityInfo(project.priority);
                         const statusCfg = project.status === 'completed'
                           ? { dot: 'bg-emerald-500', text: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200' }
                           : project.status === 'on_hold'
@@ -1693,6 +1819,49 @@ export const ProjectManagementPage: React.FC = () => {
                             </td>
                             <td className="py-2.5 px-3 border-r border-slate-200 font-mono text-[11px] font-bold text-slate-600 truncate max-w-[130px]">
                               {project.code || '—'}
+                            </td>
+                            <td className="py-2.5 px-3 text-center border-r border-slate-200" onClick={(e) => e.stopPropagation()}>
+                              <div className="relative inline-block">
+                                <button
+                                  type="button"
+                                  onClick={() => setQuickPriorityMenuProjectId(quickPriorityMenuProjectId === project.id ? null : project.id)}
+                                  className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-extrabold border transition-all hover:scale-105 active:scale-95 cursor-pointer ${prioInfo.badgeClass}`}
+                                  title="Nhấn để đổi cấp bậc ưu tiên"
+                                >
+                                  <span className="material-symbols-outlined text-[12px]">{prioInfo.icon}</span>
+                                  <span>{prioInfo.shortLabel}</span>
+                                  <span className="material-symbols-outlined text-[10px] opacity-70">arrow_drop_down</span>
+                                </button>
+                                {quickPriorityMenuProjectId === project.id && (
+                                  <div
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="absolute left-1/2 -translate-x-1/2 top-full mt-1 z-30 w-52 bg-white rounded-xl shadow-xl border border-slate-200 p-1.5 flex flex-col gap-1 text-left animate-in fade-in zoom-in-95 duration-100"
+                                  >
+                                    <div className="px-2 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                      Đổi mức ưu tiên
+                                    </div>
+                                    {PROJECT_PRIORITY_OPTIONS.map((opt) => (
+                                      <button
+                                        key={opt.value}
+                                        type="button"
+                                        onClick={(e) => handleQuickChangePriority(project.id, opt.value, e)}
+                                        className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold hover:bg-slate-50 transition-colors cursor-pointer ${
+                                          (project.priority || 'normal') === opt.value ? 'bg-blue-50 text-blue-700 font-bold' : 'text-slate-700'
+                                        }`}
+                                      >
+                                        <span className="flex items-center gap-1.5">
+                                          <span className="material-symbols-outlined text-[15px]">{opt.icon}</span>
+                                          <span>{opt.shortLabel}</span>
+                                          <span className="text-[10px] opacity-75">({opt.subLabel})</span>
+                                        </span>
+                                        {(project.priority || 'normal') === opt.value && (
+                                          <span className="material-symbols-outlined text-sm text-blue-600">check</span>
+                                        )}
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
                             </td>
                             <td className="py-2.5 px-4 border-r border-slate-200">
                               <div className="flex items-center gap-2">
@@ -1813,6 +1982,7 @@ export const ProjectManagementPage: React.FC = () => {
                       <tr>
                         <th className="py-2.5 px-3 w-12 text-center border-r border-slate-200">STT</th>
                         <th className="py-2.5 px-3 w-28 border-r border-slate-200">Mã DA</th>
+                        <th className="py-2.5 px-3 w-28 text-center border-r border-slate-200">Ưu tiên</th>
                         <th className="py-2.5 px-4 min-w-[220px] border-r border-slate-200">Tên dự án & Địa điểm</th>
                         <th className="py-2.5 px-3 w-36 border-r border-slate-200">Phân loại / CĐT</th>
                         <th className="py-2.5 px-3 w-40 border-r border-slate-200">Quản lý / PM</th>
@@ -1827,6 +1997,7 @@ export const ProjectManagementPage: React.FC = () => {
                     <tbody className="divide-y divide-slate-200 font-medium">
                       {paginatedProjects.map((project, idx) => {
                         const globalIdx = (safeCurrentPage - 1) * pageSize + idx;
+                        const prioInfo = getProjectPriorityInfo(project.priority);
                         const statusCfg = project.status === 'completed'
                           ? { dot: 'bg-emerald-500', text: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200' }
                           : project.status === 'on_hold'
@@ -1848,6 +2019,49 @@ export const ProjectManagementPage: React.FC = () => {
                             </td>
                             <td className="py-2.5 px-3 border-r border-slate-200 font-mono text-[11px] font-bold text-slate-600 truncate max-w-[120px]">
                               {project.code || '—'}
+                            </td>
+                            <td className="py-2.5 px-3 text-center border-r border-slate-200" onClick={(e) => e.stopPropagation()}>
+                              <div className="relative inline-block">
+                                <button
+                                  type="button"
+                                  onClick={() => setQuickPriorityMenuProjectId(quickPriorityMenuProjectId === project.id ? null : project.id)}
+                                  className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-extrabold border transition-all hover:scale-105 active:scale-95 cursor-pointer ${prioInfo.badgeClass}`}
+                                  title="Nhấn để đổi cấp bậc ưu tiên"
+                                >
+                                  <span className="material-symbols-outlined text-[12px]">{prioInfo.icon}</span>
+                                  <span>{prioInfo.shortLabel}</span>
+                                  <span className="material-symbols-outlined text-[10px] opacity-70">arrow_drop_down</span>
+                                </button>
+                                {quickPriorityMenuProjectId === project.id && (
+                                  <div
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="absolute left-1/2 -translate-x-1/2 top-full mt-1 z-30 w-52 bg-white rounded-xl shadow-xl border border-slate-200 p-1.5 flex flex-col gap-1 text-left animate-in fade-in zoom-in-95 duration-100"
+                                  >
+                                    <div className="px-2 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                      Đổi mức ưu tiên
+                                    </div>
+                                    {PROJECT_PRIORITY_OPTIONS.map((opt) => (
+                                      <button
+                                        key={opt.value}
+                                        type="button"
+                                        onClick={(e) => handleQuickChangePriority(project.id, opt.value, e)}
+                                        className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold hover:bg-slate-50 transition-colors cursor-pointer ${
+                                          (project.priority || 'normal') === opt.value ? 'bg-blue-50 text-blue-700 font-bold' : 'text-slate-700'
+                                        }`}
+                                      >
+                                        <span className="flex items-center gap-1.5">
+                                          <span className="material-symbols-outlined text-[15px]">{opt.icon}</span>
+                                          <span>{opt.shortLabel}</span>
+                                          <span className="text-[10px] opacity-75">({opt.subLabel})</span>
+                                        </span>
+                                        {(project.priority || 'normal') === opt.value && (
+                                          <span className="material-symbols-outlined text-sm text-blue-600">check</span>
+                                        )}
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
                             </td>
                             <td className="py-2.5 px-4 border-r border-slate-200">
                               <div className="flex items-center gap-2">
@@ -2009,6 +2223,7 @@ export const ProjectManagementPage: React.FC = () => {
                             </div>
                           ) : (
                             colProjects.map((project) => {
+                              const prioInfo = getProjectPriorityInfo(project.priority);
                               const barColor = project.progress >= 100 ? 'bg-emerald-500'
                                 : project.progress >= 60 ? 'bg-blue-500'
                                 : project.progress >= 30 ? 'bg-amber-400' : 'bg-slate-300';
@@ -2017,13 +2232,25 @@ export const ProjectManagementPage: React.FC = () => {
                                 <div
                                   key={project.id}
                                   onClick={() => openProjectTasks(project)}
-                                  className="group relative bg-white border border-slate-200 rounded-xl p-3 shadow-2xs hover:shadow-md hover:border-primary/50 transition-all cursor-pointer flex flex-col gap-2"
+                                  className={`group relative bg-white border ${
+                                    prioInfo.value === 'urgent'
+                                      ? 'border-red-300 ring-1 ring-red-400/80 shadow-2xs shadow-red-50'
+                                      : prioInfo.value === 'high'
+                                        ? 'border-amber-300 ring-1 ring-amber-400/60'
+                                        : 'border-slate-200'
+                                  } rounded-xl p-3 shadow-2xs hover:shadow-md hover:border-primary/50 transition-all cursor-pointer flex flex-col gap-2`}
                                 >
-                                  {/* Mã dự án + Thông báo */}
+                                  {/* Mã dự án + Ưu tiên + Thông báo */}
                                   <div className="flex items-center justify-between gap-1 text-[10px]">
-                                    <span className="font-mono font-bold text-slate-500 bg-slate-100 px-1.5 py-0.2 rounded border border-slate-200 truncate">
-                                      {project.code || 'DA'}
-                                    </span>
+                                    <div className="flex items-center gap-1.5 min-w-0">
+                                      <span className="font-mono font-bold text-slate-500 bg-slate-100 px-1.5 py-0.2 rounded border border-slate-200 truncate">
+                                        {project.code || 'DA'}
+                                      </span>
+                                      <span className={`inline-flex items-center gap-0.5 rounded px-1.5 py-0.2 text-[9px] font-extrabold border ${prioInfo.badgeClass}`} title={prioInfo.label}>
+                                        <span className="material-symbols-outlined text-[11px]">{prioInfo.icon}</span>
+                                        {prioInfo.shortLabel}
+                                      </span>
+                                    </div>
                                     {Boolean((project as any).unreadNotifCount && (project as any).unreadNotifCount > 0) && (
                                       <span className="inline-flex items-center px-1.5 py-0.2 text-[9px] font-bold bg-rose-50 text-rose-600 rounded-full border border-rose-200">
                                         {(project as any).unreadNotifCount} mới
@@ -2218,6 +2445,32 @@ export const ProjectManagementPage: React.FC = () => {
             />
           </div>
           <div>
+            <label className="block font-bold text-slate-700 mb-1.5 flex items-center justify-between">
+              <span>Mức độ ưu tiên (Cấp bậc)</span>
+              <span className="text-[11px] font-normal text-slate-400">Cấp bậc cao hơn sẽ hiển thị lên trước các dự án khác</span>
+            </label>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {PROJECT_PRIORITY_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setEditProjPriority(opt.value)}
+                  className={`px-3 py-2 rounded-xl border text-left transition-all flex flex-col gap-0.5 cursor-pointer ${
+                    editProjPriority === opt.value
+                      ? `${opt.activeBg} ring-2 ${opt.ring} font-bold shadow-xs`
+                      : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 font-medium'
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5 text-xs">
+                    <span className="material-symbols-outlined text-[15px]">{opt.icon}</span>
+                    <span className="font-extrabold">{opt.shortLabel}</span>
+                  </div>
+                  <span className="text-[10px] opacity-80 truncate">{opt.subLabel}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
             <label className="block font-bold text-slate-700 mb-1">Chỉ huy trưởng / Quản lý dự án</label>
             <CustomSelect
               value={editProjManagerId}
@@ -2327,6 +2580,32 @@ export const ProjectManagementPage: React.FC = () => {
               placeholder="Nhập hạng mục thực hiện..."
               className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none"
             />
+          </div>
+          <div>
+            <label className="block font-bold text-slate-700 mb-1.5 flex items-center justify-between">
+              <span>Mức độ ưu tiên (Cấp bậc)</span>
+              <span className="text-[11px] font-normal text-slate-400">Cấp bậc cao hơn sẽ hiển thị lên trước các dự án khác</span>
+            </label>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {PROJECT_PRIORITY_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setNewProjPriority(opt.value)}
+                  className={`px-3 py-2 rounded-xl border text-left transition-all flex flex-col gap-0.5 cursor-pointer ${
+                    newProjPriority === opt.value
+                      ? `${opt.activeBg} ring-2 ${opt.ring} font-bold shadow-xs`
+                      : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 font-medium'
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5 text-xs">
+                    <span className="material-symbols-outlined text-[15px]">{opt.icon}</span>
+                    <span className="font-extrabold">{opt.shortLabel}</span>
+                  </div>
+                  <span className="text-[10px] opacity-80 truncate">{opt.subLabel}</span>
+                </button>
+              ))}
+            </div>
           </div>
           <div>
             <label className="block font-bold text-slate-700 mb-1">Chỉ huy trưởng / Quản lý dự án</label>

@@ -19,7 +19,8 @@ import {
   DirectMessage,
   isTaskSectionHeaderItem,
   isTaskActuallyDone,
-  getTaskEffectiveProgress
+  getTaskEffectiveProgress,
+  getProjectPriorityWeight
 } from '../types';
 import { api } from './apiSupabase';
 import { AuthUser, useAuthStore } from './authStore';
@@ -2243,7 +2244,15 @@ export const useRealtimeStore = create<RealtimeStoreState>((set, get) => {
       try {
         const createdProj = await api.projects.create(projData);
         set((state) => {
-          const nextProjs = [createdProj, ...state.projects];
+          const rawProjs = [createdProj, ...state.projects.filter(p => p.id !== createdProj.id)];
+          const nextProjs = rawProjs.sort((a, b) => {
+            const pA = getProjectPriorityWeight(a.priority);
+            const pB = getProjectPriorityWeight(b.priority);
+            if (pA !== pB) return pA - pB;
+            const tA = new Date(a.createdAt || a.created_at || a.startDate || 0).getTime();
+            const tB = new Date(b.createdAt || b.created_at || b.startDate || 0).getTime();
+            return tB - tA;
+          });
           persistAndNotify({ projects: nextProjs });
           return { projects: nextProjs };
         });
@@ -2254,7 +2263,27 @@ export const useRealtimeStore = create<RealtimeStoreState>((set, get) => {
       }
     },
 
-      updateProject: async (id, projData) => { try { const updatedProj = await api.projects.update(id, projData); set((state) => { const nextProjs = state.projects.map((p) => (p.id === id ? { ...p, ...updatedProj } : p)); persistAndNotify({ projects: nextProjs }); return { projects: nextProjs }; }); return updatedProj; } catch (e) { console.error('Failed to update project', e); } },
+    updateProject: async (id, projData) => {
+      try {
+        const updatedProj = await api.projects.update(id, projData);
+        set((state) => {
+          const rawProjs = state.projects.map((p) => (p.id === id ? { ...p, ...updatedProj } : p));
+          const nextProjs = rawProjs.sort((a, b) => {
+            const pA = getProjectPriorityWeight(a.priority);
+            const pB = getProjectPriorityWeight(b.priority);
+            if (pA !== pB) return pA - pB;
+            const tA = new Date(a.createdAt || a.created_at || a.startDate || 0).getTime();
+            const tB = new Date(b.createdAt || b.created_at || b.startDate || 0).getTime();
+            return tB - tA;
+          });
+          persistAndNotify({ projects: nextProjs });
+          return { projects: nextProjs };
+        });
+        return updatedProj;
+      } catch (e) {
+        console.error('Failed to update project', e);
+      }
+    },
 
     deleteProject: async (id) => {
       const allProjects = get().projects;
