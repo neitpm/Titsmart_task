@@ -193,7 +193,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
     <div
       ref={dropdownRef}
       style={dropdownStyle}
-      className="bg-white rounded-lg shadow-[0_10px_30px_rgba(0,0,0,0.12)] border border-slate-100 py-1 max-h-60 overflow-auto custom-scrollbar text-left"
+      className="bg-white rounded-md shadow-[0_10px_30px_rgba(15,23,42,0.14)] border border-slate-200 py-1 max-h-60 overflow-auto custom-scrollbar text-left"
     >
       
       {filteredOptions.length === 0 ? (
