@@ -777,16 +777,36 @@ export const AttendancePage: React.FC = () => {
       (pos) => {
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
-        const nearest = findNearestLocation(lat, lng, attendanceConfig.locations);
+
+        // Ưu tiên đối chiếu với dự án Văn phòng (OFFICE) hoặc dự án đầu tiên có tọa độ
+        const officeProj = projects.find(p => (p.code || '').toUpperCase() === 'OFFICE' && p.latitude !== undefined && p.longitude !== undefined)
+          || projects.find(p => (p.name || '').toLowerCase().includes('văn phòng') && p.latitude !== undefined && p.longitude !== undefined);
+
+        let distanceMeters = 0;
+        let isWithinRadius = true;
+        let locationName = 'Vị trí hiện tại';
+
+        if (officeProj && officeProj.latitude !== undefined && officeProj.longitude !== undefined) {
+          distanceMeters = calculateDistanceMeters(lat, lng, officeProj.latitude, officeProj.longitude);
+          isWithinRadius = distanceMeters <= (officeProj.radiusMeters || 500);
+          locationName = officeProj.name || 'Văn phòng';
+        } else {
+          const nearest = findNearestLocation(lat, lng, attendanceConfig.locations);
+          distanceMeters = nearest.distanceMeters;
+          isWithinRadius = nearest.isWithinRadius;
+          locationName = nearest.nearestLocation?.name || 'Vị trí hiện tại';
+        }
+
         setGpsData({
           lat,
           lng,
-          distanceMeters: nearest.distanceMeters,
-          locationName: nearest.nearestLocation?.name || 'Vị trí hiện tại',
-          isWithinRadius: nearest.isWithinRadius,
+          distanceMeters,
+          locationName,
+          isWithinRadius,
         });
+
         // Nếu ở xa văn phòng (> 500m) và cho phép làm việc ngoài văn phòng, tự động chuyển sang "Tại công trình / Dự án"
-        if (nearest.distanceMeters > 500 && attendanceConfig.allowFieldWork !== false) {
+        if (distanceMeters > 500 && attendanceConfig.allowFieldWork !== false) {
           setWorkLocationType(prev => prev === 'office' ? 'field' : prev);
         }
         setIsGpsScanning(false);

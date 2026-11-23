@@ -21,18 +21,13 @@ export const AttendanceConfigModal: React.FC<AttendanceConfigModalProps> = ({
   config,
   onSave
 }) => {
-  const [activeTab, setActiveTab] = useState<'mode' | 'shifts' | 'gps'>('mode');
+  const [activeTab, setActiveTab] = useState<'mode' | 'shifts'>('mode');
   const [formConfig, setFormConfig] = useState<AttendanceConfig>(config);
   const [isSaving, setIsSaving] = useState(false);
-  const [isGettingGps, setIsGettingGps] = useState(false);
 
   // State cho thêm / sửa ca
   const [editingShift, setEditingShift] = useState<WorkShift | null>(null);
   const [showShiftModal, setShowShiftModal] = useState(false);
-
-  // State cho thêm / sửa địa điểm GPS
-  const [editingLoc, setEditingLoc] = useState<AttendanceGpsLocation | null>(null);
-  const [showLocModal, setShowLocModal] = useState(false);
 
   React.useEffect(() => {
     setFormConfig(config);
@@ -48,32 +43,6 @@ export const AttendanceConfigModal: React.FC<AttendanceConfigModalProps> = ({
     } finally {
       setIsSaving(false);
     }
-  };
-
-  // Lấy vị trí GPS hiện tại cho địa điểm đang tạo/sửa
-  const handleGetCurrentGps = () => {
-    if (!navigator.geolocation) {
-      alert('Trình duyệt không hỗ trợ định vị GPS');
-      return;
-    }
-    setIsGettingGps(true);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setIsGettingGps(false);
-        if (editingLoc) {
-          setEditingLoc({
-            ...editingLoc,
-            latitude: Number(pos.coords.latitude.toFixed(6)),
-            longitude: Number(pos.coords.longitude.toFixed(6)),
-          });
-        }
-      },
-      (err) => {
-        setIsGettingGps(false);
-        alert('Không thể lấy tọa độ GPS: ' + (err.message || 'Vui lòng cấp quyền truy cập vị trí'));
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
   };
 
   return (
@@ -110,18 +79,6 @@ export const AttendanceConfigModal: React.FC<AttendanceConfigModalProps> = ({
           >
             <span className="material-symbols-outlined text-[18px]">schedule</span>
             Ca làm việc ({formConfig.shifts?.filter(s => s.isActive).length || 0})
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('gps')}
-            className={`flex items-center gap-2 py-2 px-3 text-xs sm:text-sm font-bold border-b-2 transition-colors cursor-pointer ${
-              activeTab === 'gps'
-                ? 'border-primary text-primary'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            <span className="material-symbols-outlined text-[18px]">location_on</span>
-            Địa điểm GPS ({formConfig.locations?.filter(l => l.isActive).length || 0})
           </button>
         </div>
 
@@ -380,101 +337,6 @@ export const AttendanceConfigModal: React.FC<AttendanceConfigModalProps> = ({
           </div>
         )}
 
-        {/* TAB 3: CÀI ĐẶT ĐỊA ĐIỂM GPS */}
-        {activeTab === 'gps' && (
-          <div className="space-y-3 py-2">
-            <div className="flex justify-between items-center">
-              <span className="text-xs text-slate-500">
-                Danh sách văn phòng, kho xưởng, công trường hợp lệ để chấm công GPS.
-              </span>
-              <button
-                type="button"
-                onClick={() => {
-                  setEditingLoc({
-                    id: `loc_${Date.now()}`,
-                    name: '',
-                    address: '',
-                    latitude: 10.7769,
-                    longitude: 106.7009,
-                    radiusMeters: 300,
-                    isActive: true,
-                  });
-                  setShowLocModal(true);
-                }}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-primary hover:bg-blue-800 text-white rounded-lg text-xs font-bold cursor-pointer transition-colors"
-              >
-                <span className="material-symbols-outlined text-[16px]">add_location</span>
-                Thêm địa điểm
-              </button>
-            </div>
-
-            <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden bg-white">
-              {(formConfig.locations || []).length === 0 ? (
-                <div className="p-6 text-center text-xs text-slate-400">Chưa có địa điểm nào. Bấm nút Thêm địa điểm để tạo.</div>
-              ) : (
-                (formConfig.locations || []).map((loc) => (
-                  <div key={loc.id} className="p-3.5 flex items-center justify-between gap-3 hover:bg-slate-50/80 transition-colors">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className={`font-bold text-xs sm:text-sm ${loc.isActive ? 'text-slate-800' : 'text-slate-400 line-through'}`}>
-                          {loc.name}
-                        </span>
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200">
-                          Bán kính: {loc.radiusMeters}m
-                        </span>
-                      </div>
-                      <div className="text-[11px] text-slate-500 mt-0.5 truncate">
-                        📍 {loc.latitude.toFixed(6)}, {loc.longitude.toFixed(6)} {loc.address ? `• ${loc.address}` : ''}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const updated = formConfig.locations.map(l => l.id === loc.id ? { ...l, isActive: !l.isActive } : l);
-                          setFormConfig({ ...formConfig, locations: updated });
-                        }}
-                        className={`text-[11px] font-bold px-2.5 py-1 rounded-md transition-colors cursor-pointer ${
-                          loc.isActive ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
-                        }`}
-                      >
-                        {loc.isActive ? 'Bật' : 'Tắt'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEditingLoc({ ...loc });
-                          setShowLocModal(true);
-                        }}
-                        className="p-1 text-slate-400 hover:text-primary transition-colors cursor-pointer"
-                        title="Chỉnh sửa địa điểm"
-                      >
-                        <span className="material-symbols-outlined text-[18px]">edit</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (confirm(`Bạn có chắc chắn muốn xóa "${loc.name}"?`)) {
-                            setFormConfig({
-                              ...formConfig,
-                              locations: formConfig.locations.filter(l => l.id !== loc.id)
-                            });
-                          }
-                        }}
-                        className="p-1 text-slate-400 hover:text-red-600 transition-colors cursor-pointer"
-                        title="Xóa địa điểm"
-                      >
-                        <span className="material-symbols-outlined text-[18px]">delete</span>
-                      </button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        )}
-
         {/* Footer Actions */}
         <div className="flex justify-end gap-2 pt-4 border-t border-slate-200">
           <button
@@ -600,126 +462,6 @@ export const AttendanceConfigModal: React.FC<AttendanceConfigModalProps> = ({
                   }
                   setFormConfig({ ...formConfig, shifts: updated });
                   setShowShiftModal(false);
-                }}
-                className="px-4 py-1.5 bg-primary text-white font-bold rounded-lg text-xs cursor-pointer shadow-xs"
-              >
-                Xác nhận
-              </button>
-            </div>
-          </div>
-        </Modal>
-      )}
-
-      {/* MODAL THÊM / SỬA ĐỊA ĐIỂM GPS */}
-      {showLocModal && editingLoc && (
-        <Modal
-          isOpen={showLocModal}
-          onClose={() => setShowLocModal(false)}
-          title="Cài đặt địa điểm GPS chấm công"
-          size="md"
-          icon="location_on"
-        >
-          <div className="space-y-3.5">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Tên địa điểm (*):</label>
-              <input
-                type="text"
-                value={editingLoc.name}
-                onChange={(e) => setEditingLoc({ ...editingLoc, name: e.target.value })}
-                placeholder="Ví dụ: Trụ sở Công ty, Trạm 110kV Đăk Mil..."
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-semibold focus:border-primary focus:outline-none"
-              />
-            </div>
-
-            <div className="flex justify-between items-center py-1">
-              <span className="text-[11px] text-slate-500">Lấy tọa độ hiện tại nhanh:</span>
-              <button
-                type="button"
-                onClick={handleGetCurrentGps}
-                disabled={isGettingGps}
-                className="flex items-center gap-1.5 px-3 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 rounded-lg text-xs font-bold cursor-pointer transition-colors"
-              >
-                <span className="material-symbols-outlined text-[15px]">my_location</span>
-                {isGettingGps ? 'Đang định vị...' : 'Lấy vị trí của tôi'}
-              </button>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Vĩ độ (Latitude) (*):</label>
-                <input
-                  type="number"
-                  step="0.000001"
-                  value={editingLoc.latitude}
-                  onChange={(e) => setEditingLoc({ ...editingLoc, latitude: Number(e.target.value) })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-mono font-semibold focus:border-primary focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Kinh độ (Longitude) (*):</label>
-                <input
-                  type="number"
-                  step="0.000001"
-                  value={editingLoc.longitude}
-                  onChange={(e) => setEditingLoc({ ...editingLoc, longitude: Number(e.target.value) })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-mono font-semibold focus:border-primary focus:outline-none"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Bán kính cho phép (mét):</label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  min="50"
-                  max="5000"
-                  step="50"
-                  value={editingLoc.radiusMeters}
-                  onChange={(e) => setEditingLoc({ ...editingLoc, radiusMeters: Number(e.target.value) })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-semibold focus:border-primary focus:outline-none"
-                />
-                <span className="text-xs font-bold text-slate-500 shrink-0">mét</span>
-              </div>
-              <p className="text-[10px] text-slate-400 mt-1">Gợi ý: Văn phòng 200m - 300m; Công trường lớn: 500m - 1000m.</p>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Địa chỉ thực tế:</label>
-              <input
-                type="text"
-                value={editingLoc.address || ''}
-                onChange={(e) => setEditingLoc({ ...editingLoc, address: e.target.value })}
-                placeholder="Số nhà, đường, huyện/tỉnh..."
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:border-primary focus:outline-none"
-              />
-            </div>
-
-            <div className="flex justify-end gap-2 pt-3 border-t border-slate-200">
-              <button
-                type="button"
-                onClick={() => setShowLocModal(false)}
-                className="px-3.5 py-1.5 bg-slate-100 text-slate-700 font-bold rounded-lg text-xs cursor-pointer"
-              >
-                Hủy
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  if (!editingLoc.name.trim()) {
-                    alert('Vui lòng nhập tên địa điểm');
-                    return;
-                  }
-                  const existingIdx = formConfig.locations.findIndex(l => l.id === editingLoc.id);
-                  let updated: AttendanceGpsLocation[];
-                  if (existingIdx >= 0) {
-                    updated = [...formConfig.locations];
-                    updated[existingIdx] = editingLoc;
-                  } else {
-                    updated = [...formConfig.locations, editingLoc];
-                  }
-                  setFormConfig({ ...formConfig, locations: updated });
-                  setShowLocModal(false);
                 }}
                 className="px-4 py-1.5 bg-primary text-white font-bold rounded-lg text-xs cursor-pointer shadow-xs"
               >
