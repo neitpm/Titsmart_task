@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useRealtimeStore } from '../services/realtimeStore';
-import { useAuthStore } from '../services/authStore';
+import { useAuthStore, isDirector, isSystemAdmin } from '../services/authStore';
 import { Task, TaskPriority, TaskStatus, isTaskActuallyDone } from '../types';
 import { Modal } from '../components/common/Modal';
 import { Toast } from '../components/common/Toast';
@@ -138,6 +138,7 @@ export const WorkPlanPage: React.FC = () => {
   const updateTaskProgress = useRealtimeStore((state) => state.updateTaskProgress);
   const logActivity = useRealtimeStore((state) => state.logActivity);
   const user = useAuthStore((state) => state.user);
+  const canViewSharedPlans = isDirector(user) || isSystemAdmin(user) || user?.role === 'admin' || user?.role === 'pm' || user?.companyRole === 'company_admin';
 
   // The work-plan page can be opened directly, so make sure its selectors
   // are populated even when the Personnel/Projects pages have not been opened.
@@ -200,6 +201,7 @@ export const WorkPlanPage: React.FC = () => {
 
   // Filters
   const [selectedProject, setSelectedProject] = useState<string>('all');
+  const [planScope, setPlanScope] = useState<'all_projects' | 'project' | 'personal'>('personal');
   const [selectedAssignee, setSelectedAssignee] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'overdue' | 'due_today' | 'due_soon' | 'in_progress' | 'completed'>('all');
   const [searchKeyword, setSearchKeyword] = useState<string>('');
@@ -431,6 +433,23 @@ export const WorkPlanPage: React.FC = () => {
   // Filtered task list
   const filteredTasks = useMemo(() => {
     return analyzedTasks.filter((t) => {
+      const currentUserId = String(user?.id || '').toLowerCase();
+      const currentUserName = String(user?.name || '').trim().toLowerCase();
+      const currentUsername = String(user?.username || '').trim().toLowerCase();
+      const assigneeId = String(t.assignedEngineerId || '').toLowerCase();
+      const assigneeName = String(t.assignedEngineerName || '').split('|')[0].trim().toLowerCase();
+      const assignerId = String(t.assignerId || '').toLowerCase();
+      const assignerName = String(t.assignerName || '').trim().toLowerCase();
+
+      if (planScope === 'personal') {
+        const isMine = (currentUserId && (assigneeId === currentUserId || assignerId === currentUserId)) ||
+          (currentUsername && (assigneeId === currentUsername || assignerId === currentUsername)) ||
+          (currentUserName && (assigneeName === currentUserName || assignerName === currentUserName));
+        if (!isMine) return false;
+      } else if (planScope === 'project') {
+        if (!t.projectCode || t.projectCode === 'KE_HOACH_CONG_TY') return false;
+      }
+
       // Filter by project
       if (selectedProject !== 'all' && t.projectCode !== selectedProject) {
         return false;
@@ -478,7 +497,7 @@ export const WorkPlanPage: React.FC = () => {
 
       return true;
     });
-  }, [analyzedTasks, selectedProject, selectedAssignee, statusFilter, searchKeyword, user]);
+  }, [analyzedTasks, selectedProject, selectedAssignee, planScope, statusFilter, searchKeyword, user]);
 
   // Month navigation helpers
   const year = currentDate.getFullYear();
@@ -875,6 +894,15 @@ export const WorkPlanPage: React.FC = () => {
                 </div>
               </div>
             )}
+          </div>
+
+          {/* Phạm vi kế hoạch */}
+          <div className="inline-flex rounded-md bg-slate-100 p-0.5 border border-slate-200">
+            <button type="button" onClick={() => { setPlanScope('personal'); setSelectedProject('all'); }} className={`px-2.5 py-1 rounded text-xs font-bold ${planScope === 'personal' ? 'bg-white text-primary shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}>Cá nhân</button>
+            {canViewSharedPlans && <>
+              <button type="button" onClick={() => setPlanScope('project')} className={`px-2.5 py-1 rounded text-xs font-bold ${planScope === 'project' ? 'bg-white text-primary shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}>Dự án</button>
+              <button type="button" onClick={() => { setPlanScope('all_projects'); setSelectedProject('all'); }} className={`px-2.5 py-1 rounded text-xs font-bold ${planScope === 'all_projects' ? 'bg-white text-primary shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}>Tất cả dự án</button>
+            </>}
           </div>
 
           {/* View Mode Switcher */}
