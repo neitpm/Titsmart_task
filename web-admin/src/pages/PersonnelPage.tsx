@@ -16,6 +16,7 @@ import { PullToRefresh } from '../components/common/PullToRefresh';
 import { EmployeePeriodToolbar } from '../components/tasks/EmployeePeriodToolbar';
 import { TimePeriodType, getDateRangeForPeriod, isTaskInPeriod, getTaskTimeBounds } from '../utils/taskPeriodFilter';
 import { cleanNotes } from '../utils/cleanNotesUtils';
+import { uploadAttachment } from '../utils/fileUploadHelper';
 
 const filters = [
   { key: 'all', label: 'Tất cả' },
@@ -156,6 +157,8 @@ export const PersonnelPage: React.FC = () => {
   const [address, setAddress] = useState('');
   const [identityNumber, setIdentityNumber] = useState('');
   const [emergencyContactName, setEmergencyContactName] = useState('');
+  const [avatar, setAvatar] = useState('');
+  const [avatarUploading, setAvatarUploading] = useState(false);
   const user = useAuthStore(state => state.user);
   const navigate = useNavigate();
   const isDirectorUser = isDirector(user);
@@ -346,6 +349,7 @@ export const PersonnelPage: React.FC = () => {
     setAddress('');
     setIdentityNumber('');
     setEmergencyContactName('');
+    setAvatar('');
     setRole('Nhân viên');
     setUsername('');
     setPassword('');
@@ -470,6 +474,7 @@ export const PersonnelPage: React.FC = () => {
     setAddress((person as any).address || '');
     setIdentityNumber((person as any).identityNumber || (person as any).identity_number || '');
     setEmergencyContactName((person as any).emergencyContactName || (person as any).emergency_contact_name || '');
+    setAvatar((person as any).avatar || '');
     setRole(person.role || 'Nhân viên');
     setUsername((person as any).username || '');
     setPassword('');
@@ -481,6 +486,26 @@ export const PersonnelPage: React.FC = () => {
     
     setSelectedProjectCodes(initialCodes);
     setIsFormOpen(true);
+  };
+
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      triggerToast('Vui lòng chọn tệp hình ảnh!', 'warning');
+      return;
+    }
+    setAvatarUploading(true);
+    try {
+      const result = await uploadAttachment(file, 'personnel_avatars');
+      setAvatar(result.url);
+      triggerToast('Đã tải ảnh nhân sự lên!', 'success');
+    } catch (error: any) {
+      triggerToast(`Không thể tải ảnh lên: ${error?.message || 'Lỗi không xác định'}`, 'warning');
+    } finally {
+      setAvatarUploading(false);
+    }
   };
 
   const handleSavePerson = async (event: React.FormEvent) => {
@@ -498,6 +523,7 @@ export const PersonnelPage: React.FC = () => {
       if (editingPersonId) {
         await updateEngineer(editingPersonId, {
           name: name.trim(),
+          avatar,
           email: email.trim(),
           phone,
           emergencyPhone,
@@ -572,6 +598,7 @@ export const PersonnelPage: React.FC = () => {
 
         const created = await createEngineer({
           name: name.trim(),
+          avatar,
           email: email.trim(),
           phone,
           emergencyPhone,
@@ -859,8 +886,13 @@ export const PersonnelPage: React.FC = () => {
                       className={canEditPerson ? "cursor-pointer hover:bg-slate-50" : "hover:bg-slate-50"}
                       onClick={() => canEditPerson && openEditModal(person)}
                     >
-                      <td className="p-2 sm:p-3 text-xs sm:text-sm font-semibold text-slate-900 tracking-tight min-w-[120px] whitespace-nowrap">
-                        <div>{person.name}</div>
+                      <td className="p-2 sm:p-3 text-xs sm:text-sm font-semibold text-slate-900 tracking-tight min-w-[160px] whitespace-nowrap">
+                        <div className="flex items-center gap-2">
+                          <div className="h-8 w-8 shrink-0 overflow-hidden rounded-full border border-slate-200 bg-slate-100 flex items-center justify-center">
+                            {(person as any).avatar ? <img src={(person as any).avatar} alt="" className="h-full w-full object-cover" /> : <span className="material-symbols-outlined text-lg text-slate-400">person</span>}
+                          </div>
+                          <span>{person.name}</span>
+                        </div>
                       </td>
                       <td className="p-2 sm:p-3 font-mono font-bold text-primary max-w-[140px] truncate whitespace-nowrap text-[10px] sm:text-xs" title={person.code}>{person.code}</td>
                       <td className="p-2 sm:p-3 text-slate-700 font-semibold max-w-[110px] truncate whitespace-nowrap text-[10px] sm:text-xs" title={person.username || '-'}>{person.username || '-'}</td>
@@ -1046,6 +1078,19 @@ export const PersonnelPage: React.FC = () => {
 <div className="flex flex-col lg:flex-row gap-4">
 <div className="lg:w-[40%] space-y-3">
           <div className="mb-1 text-[11px] font-extrabold uppercase tracking-wide text-slate-400">Thông tin cá nhân</div>
+          <div className="flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+            <div className="h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-white flex items-center justify-center">
+              {avatar ? <img src={avatar} alt="Ảnh nhân sự" className="h-full w-full object-cover" /> : <span className="material-symbols-outlined text-3xl text-slate-300">account_circle</span>}
+            </div>
+            <div className="min-w-0">
+              <label className={`inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-primary/30 bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary hover:bg-primary/20 ${avatarUploading ? 'pointer-events-none opacity-60' : ''}`}>
+                <span className="material-symbols-outlined text-[16px]">{avatarUploading ? 'sync' : 'photo_camera'}</span>
+                {avatarUploading ? 'Đang tải ảnh...' : 'Tải ảnh người dùng'}
+                <input type="file" accept="image/*" onChange={handleAvatarUpload} disabled={avatarUploading} className="hidden" />
+              </label>
+              <p className="mt-1 text-[11px] text-slate-500">JPG, PNG hoặc WEBP. Ảnh sẽ được nén trước khi lưu.</p>
+            </div>
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <label className="text-[13px] font-bold text-slate-700">Họ tên <span className="text-red-500">*</span></label>

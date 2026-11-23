@@ -565,8 +565,8 @@ interface RealtimeStoreState {
   updateTaskProgress: (id: string, progress: number, isDone: boolean) => void;
   assignEngineer: (taskId: string, engineerId: string, engineerName: string) => void;
   addEngineer: (engineer: Omit<Engineer, 'id'>) => Engineer;
-  createEngineer: (input: { name: string; phone?: string; emergencyPhone?: string; joinDate?: string; address?: string; identityNumber?: string; emergencyContactName?: string; email?: string; title?: string; role?: string; username?: string; password?: string; isLocked?: boolean; projectCodes?: string[]; permissions?: import('../types').Permission[] }) => Promise<Engineer>;
-  updateEngineer: (id: string, input: { name: string; phone?: string; emergencyPhone?: string; joinDate?: string; address?: string; identityNumber?: string; emergencyContactName?: string; email?: string; title?: string; role?: string; username?: string; password?: string; isLocked?: boolean; projectCodes?: string[]; permissions?: import('../types').Permission[]; accountStatus?: import('../types').AccountStatus; syncError?: string }) => Promise<Engineer>;
+  createEngineer: (input: { name: string; avatar?: string; phone?: string; emergencyPhone?: string; joinDate?: string; address?: string; identityNumber?: string; emergencyContactName?: string; email?: string; title?: string; role?: string; username?: string; password?: string; isLocked?: boolean; projectCodes?: string[]; permissions?: import('../types').Permission[] }) => Promise<Engineer>;
+  updateEngineer: (id: string, input: { name: string; avatar?: string; phone?: string; emergencyPhone?: string; joinDate?: string; address?: string; identityNumber?: string; emergencyContactName?: string; email?: string; title?: string; role?: string; username?: string; password?: string; isLocked?: boolean; projectCodes?: string[]; permissions?: import('../types').Permission[]; accountStatus?: import('../types').AccountStatus; syncError?: string }) => Promise<Engineer>;
   syncEngineerAuth: (engineer: Engineer, password?: string) => Promise<{ success: boolean; error?: string }>;
   deleteEngineer: (id: string) => Promise<void>;
   deleteTask: (id: string) => void;
@@ -1634,6 +1634,7 @@ export const useRealtimeStore = create<RealtimeStoreState>((set, get) => {
       const existing = get().engineers.find(e => e.id === id);
       const updateData: any = {};
       if (input.name !== undefined) updateData.name = input.name;
+      if (input.avatar !== undefined) updateData.avatar = input.avatar;
       if (input.email !== undefined) updateData.email = input.email;
       if (input.phone !== undefined) updateData.phone = input.phone;
       if (input.emergencyPhone !== undefined) updateData.emergencyPhone = input.emergencyPhone;
