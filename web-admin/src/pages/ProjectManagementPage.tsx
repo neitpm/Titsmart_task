@@ -16,6 +16,7 @@ import {
   PROJECT_PRIORITY_OPTIONS
 } from '../types';
 import { Modal } from '../components/common/Modal';
+import { ConfirmModal } from '../components/common/ConfirmModal';
 import { Toast } from '../components/common/Toast';
 import { OcrUploadPanel } from '../components/common/OcrUploadPanel';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -220,16 +221,25 @@ export const ProjectManagementPage: React.FC = () => {
   const isSubmittingRef = useRef(false);
   const [loadingMessage, setLoadingMessage] = useState('');
   const [isScanningAllCoords, setIsScanningAllCoords] = useState(false);
+  const [showConfirmScanModal, setShowConfirmScanModal] = useState(false);
+  const [unlocatedProjectsCount, setUnlocatedProjectsCount] = useState(0);
+
+  // Mở modal xác nhận quét tọa độ tự động cho các dự án cũ có địa chỉ
+  const handleOpenScanConfirm = () => {
+    const unlocated = projects.filter(p => (p.location || '').trim().length >= 3 && (p.latitude === undefined || p.longitude === undefined));
+    if (unlocated.length === 0) {
+      triggerToast('Tất cả các dự án có địa chỉ đều đã được cập nhật tọa độ GPS!', 'info');
+      return;
+    }
+    setUnlocatedProjectsCount(unlocated.length);
+    setShowConfirmScanModal(true);
+  };
 
   // Quét và cập nhật tọa độ tự động cho các dự án cũ có địa chỉ nhưng chưa có tọa độ
   const handleAutoGeocodeAllProjects = async () => {
     const unlocatedProjects = projects.filter(p => (p.location || '').trim().length >= 3 && (p.latitude === undefined || p.longitude === undefined));
     if (unlocatedProjects.length === 0) {
       triggerToast('Tất cả các dự án có địa chỉ đều đã được cập nhật tọa độ GPS!', 'info');
-      return;
-    }
-
-    if (!window.confirm(`Tìm thấy ${unlocatedProjects.length} dự án có địa chỉ nhưng chưa có tọa độ GPS. Bạn có muốn hệ thống tự động tìm và cập nhật tọa độ cho các dự án này không?`)) {
       return;
     }
 
@@ -1402,7 +1412,7 @@ export const ProjectManagementPage: React.FC = () => {
               <button
                 type="button"
                 disabled={isScanningAllCoords}
-                onClick={handleAutoGeocodeAllProjects}
+                onClick={handleOpenScanConfirm}
                 title="Tự động tìm tọa độ GPS cho các dự án cũ có địa chỉ nhưng chưa có tọa độ"
                 className="hidden sm:flex items-center justify-center gap-1 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 px-2.5 h-[34px] rounded-lg text-xs font-bold shadow-2xs whitespace-nowrap shrink-0 cursor-pointer disabled:opacity-50"
               >
@@ -2991,6 +3001,18 @@ export const ProjectManagementPage: React.FC = () => {
           <div className="flex justify-end gap-2 pt-2"><button type="button" onClick={() => { setIsNewProjectModalOpen(false); setPendingProjectTasks([]); }} className="px-4 py-2 border border-slate-200 rounded-lg font-semibold text-slate-600 hover:bg-slate-100">{TEXT.cancel}</button><button type="submit" disabled={loading}  className="px-5 py-2 bg-primary text-white rounded-lg font-bold hover:opacity-90 disabled:opacity-50">{TEXT.create}</button></div>
         </form>
       </Modal>
+
+      <ConfirmModal
+        isOpen={showConfirmScanModal}
+        onClose={() => setShowConfirmScanModal(false)}
+        onConfirm={handleAutoGeocodeAllProjects}
+        title="Quét tọa độ GPS dự án"
+        message={`Tìm thấy ${unlocatedProjectsCount} dự án có địa chỉ nhưng chưa có tọa độ GPS. Bạn có muốn hệ thống tự động tìm và cập nhật tọa độ cho các dự án này không?`}
+        confirmText="Bắt đầu quét"
+        cancelText="Hủy"
+        icon="explore"
+        isDestructive={false}
+      />
     </div>
   );
 };
