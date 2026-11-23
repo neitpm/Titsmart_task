@@ -131,11 +131,21 @@ export const WorkPlanPage: React.FC = () => {
   const tasks = useRealtimeStore((state) => state.tasks);
   const projects = useRealtimeStore((state) => state.projects);
   const engineers = useRealtimeStore((state) => state.engineers);
+  const fetchProjects = useRealtimeStore((state) => state.fetchProjects);
+  const fetchEngineers = useRealtimeStore((state) => state.fetchEngineers);
   const addTask = useRealtimeStore((state) => state.addTask);
   const updateTask = useRealtimeStore((state) => state.updateTask);
   const updateTaskProgress = useRealtimeStore((state) => state.updateTaskProgress);
   const logActivity = useRealtimeStore((state) => state.logActivity);
   const user = useAuthStore((state) => state.user);
+
+  // The work-plan page can be opened directly, so make sure its selectors
+  // are populated even when the Personnel/Projects pages have not been opened.
+  useEffect(() => {
+    void Promise.all([fetchProjects(), fetchEngineers()]).catch((error) => {
+      console.warn('Không thể tải danh sách dự án và nhân sự cho kế hoạch:', error);
+    });
+  }, [fetchProjects, fetchEngineers]);
 
   // User configurable deadline alert threshold (days, hours, minutes)
   const [alertConfig, setAlertConfig] = useState<DeadlineAlertConfig>(loadAlertConfig);
