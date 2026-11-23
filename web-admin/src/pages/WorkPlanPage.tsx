@@ -746,7 +746,11 @@ export const WorkPlanPage: React.FC = () => {
         title={`${task.name} - ${task.projectName || task.projectCode} (${task.assignedEngineerName || 'Chưa giao'})`}
       >
         <span className="material-symbols-outlined text-[12px] shrink-0">{icon}</span>
-        <span className="truncate flex-1">{task.name}</span>
+        <span className="truncate flex-1">
+          <span className="font-bold">{task.projectName || task.projectCode || 'Kế hoạch chung'}</span>
+          <span className="mx-1 text-slate-400">·</span>
+          {task.name}
+        </span>
       </button>
     );
   };
