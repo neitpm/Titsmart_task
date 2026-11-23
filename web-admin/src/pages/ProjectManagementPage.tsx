@@ -2509,6 +2509,50 @@ export const ProjectManagementPage: React.FC = () => {
               </div>
             </div>
           </div>
+
+          {/* Tọa độ GPS & Bán kính chấm công (Hiển thị tự động theo địa chỉ, không cho sửa tay) */}
+          <div className="rounded-lg border border-slate-200 bg-slate-50/80 p-3">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold text-slate-700 uppercase tracking-tight flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-base text-slate-500">pin_drop</span>
+                Tọa độ GPS & Bán kính chấm công công trường
+              </span>
+              {editProjLatitude && editProjLongitude ? (
+                <a
+                  href={`https://www.google.com/maps?q=${editProjLatitude},${editProjLongitude}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-[11px] font-bold text-primary hover:underline flex items-center gap-1"
+                >
+                  <span>Xem trên Google Maps</span>
+                  <span className="material-symbols-outlined text-[13px]">open_in_new</span>
+                </a>
+              ) : null}
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-500 mb-1">Vĩ độ (Latitude)</label>
+                <div className="w-full px-2.5 py-1.5 border border-slate-200 bg-slate-100 rounded-md text-xs font-mono font-medium text-slate-700 select-all flex items-center min-h-[30px]">
+                  {editProjLatitude ? editProjLatitude : <span className="text-slate-400 italic font-sans font-normal">Tự động lấy theo địa chỉ</span>}
+                </div>
+              </div>
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-500 mb-1">Kinh độ (Longitude)</label>
+                <div className="w-full px-2.5 py-1.5 border border-slate-200 bg-slate-100 rounded-md text-xs font-mono font-medium text-slate-700 select-all flex items-center min-h-[30px]">
+                  {editProjLongitude ? editProjLongitude : <span className="text-slate-400 italic font-sans font-normal">Tự động lấy theo địa chỉ</span>}
+                </div>
+              </div>
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-500 mb-1">Bán kính hợp lệ (mét)</label>
+                <div className="w-full px-2.5 py-1.5 border border-slate-200 bg-slate-100 rounded-md text-xs font-mono font-medium text-slate-700 select-all flex items-center min-h-[30px]">
+                  {editProjRadiusMeters || 500} m
+                </div>
+              </div>
+            </div>
+            <p className="mt-1.5 text-[11px] text-slate-500">
+              * Tọa độ GPS được hệ thống tự động xác định từ địa chỉ công trình. Nhân sự chấm công trong phạm vi bán kính trên sẽ được tính là đúng vị trí.
+            </p>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block font-bold text-slate-700 mb-1">Chủ đầu tư</label>
@@ -2680,6 +2724,50 @@ export const ProjectManagementPage: React.FC = () => {
                 )}
               </div>
             </div>
+          </div>
+
+          {/* Tọa độ GPS & Bán kính chấm công (Hiển thị tự động theo địa chỉ, không cho sửa tay) */}
+          <div className="rounded-lg border border-slate-200 bg-slate-50/80 p-3">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold text-slate-700 uppercase tracking-tight flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-base text-slate-500">pin_drop</span>
+                Tọa độ GPS & Bán kính chấm công công trường
+              </span>
+              {newProjLatitude && newProjLongitude ? (
+                <a
+                  href={`https://www.google.com/maps?q=${newProjLatitude},${newProjLongitude}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-[11px] font-bold text-primary hover:underline flex items-center gap-1"
+                >
+                  <span>Xem trên Google Maps</span>
+                  <span className="material-symbols-outlined text-[13px]">open_in_new</span>
+                </a>
+              ) : null}
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-500 mb-1">Vĩ độ (Latitude)</label>
+                <div className="w-full px-2.5 py-1.5 border border-slate-200 bg-slate-100 rounded-md text-xs font-mono font-medium text-slate-700 select-all flex items-center min-h-[30px]">
+                  {newProjLatitude ? newProjLatitude : <span className="text-slate-400 italic font-sans font-normal">Tự động lấy theo địa chỉ</span>}
+                </div>
+              </div>
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-500 mb-1">Kinh độ (Longitude)</label>
+                <div className="w-full px-2.5 py-1.5 border border-slate-200 bg-slate-100 rounded-md text-xs font-mono font-medium text-slate-700 select-all flex items-center min-h-[30px]">
+                  {newProjLongitude ? newProjLongitude : <span className="text-slate-400 italic font-sans font-normal">Tự động lấy theo địa chỉ</span>}
+                </div>
+              </div>
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-500 mb-1">Bán kính hợp lệ (mét)</label>
+                <div className="w-full px-2.5 py-1.5 border border-slate-200 bg-slate-100 rounded-md text-xs font-mono font-medium text-slate-700 select-all flex items-center min-h-[30px]">
+                  {newProjRadiusMeters || 500} m
+                </div>
+              </div>
+            </div>
+            <p className="mt-1.5 text-[11px] text-slate-500">
+              * Tọa độ GPS được hệ thống tự động xác định từ địa chỉ công trình. Nhân sự chấm công trong phạm vi bán kính trên sẽ được tính là đúng vị trí.
+            </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div><label className="block font-bold text-slate-700 mb-1">Chủ đầu tư</label><input value={newProjClient} onChange={(event) => setNewProjClient(event.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none" /></div>
