@@ -1911,8 +1911,12 @@ export const SettingsPage: React.FC = () => {
                     ))}
                   </div>
                   <div className="flex justify-end gap-2 pt-1">
-                    <button type="button" onClick={() => setIsChangePasswordOpen(true)} className="px-4 py-2 rounded-md text-xs font-bold bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 transition-colors cursor-pointer">Đổi mật khẩu</button>
-                    <button type="button" onClick={() => setIsConfirmLogoutOpen(true)} className="px-4 py-2 rounded-md text-xs font-bold bg-red-50 border border-red-200 hover:bg-red-100 text-red-600 transition-colors cursor-pointer">Đăng xuất</button>
+                    <select defaultValue="" onChange={(event) => { if (event.target.value === 'password') setIsChangePasswordOpen(true); if (event.target.value === 'logout') setIsConfirmLogoutOpen(true); event.target.value = ''; }} className="min-w-44 rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 outline-none focus:border-primary">
+                      <option value="">Bảo mật tài khoản</option>
+                      <option value="password">Đổi mật khẩu</option>
+                      <option value="logout">Đăng xuất</option>
+                    </select>
+                    <button type="button" onClick={() => setIsEditingProfile(true)} className="px-4 py-2 rounded-md text-xs font-bold bg-primary text-white hover:opacity-90 transition-colors cursor-pointer">Chỉnh sửa thông tin</button>
                   </div>
 
                 </div>}
