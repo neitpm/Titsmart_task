@@ -86,6 +86,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   const [openSubMenus, setOpenSubMenus] = useState<Record<string, boolean>>({
     'Công việc': true,
+    'Công và lương': true,
     'Chấm công': true,
     'Tất cả dự án': true,
     'Tổng kho': true,
@@ -105,7 +106,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
       setOpenSubMenus(prev => ({ ...prev, 'Công việc': true }));
     }
     if (location.pathname === '/attendance') {
-      setOpenSubMenus(prev => ({ ...prev, 'Chấm công': true }));
+      setOpenSubMenus(prev => ({ ...prev, 'Công và lương': true, 'Chấm công': true }));
     }
     if (location.pathname === '/projects') {
       setOpenSubMenus(prev => ({ ...prev, 'Tất cả dự án': true }));
@@ -333,7 +334,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
 
     const attendanceSubItems = [
       {
-        label: 'Công và lương',
+        label: 'Chấm công',
         path: '/attendance?tab=attendance',
         icon: 'fingerprint',
         isActive: (pathname: string, search: string) => {
@@ -417,7 +418,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
         children: materialSubItems
       },
       { 
-        label: 'Chấm công', 
+        label: 'Công và lương', 
         path: '/attendance', 
         icon: 'schedule', 
         req: 'VIEW_TASKS',
@@ -503,7 +504,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
                   const hasChildren = Array.isArray(item.children) && item.children.length > 0;
                   const isTaskSection = (item.label === 'Công việc' || item.path.includes('task')) &&
                     (location.pathname === '/task-assignment' || location.pathname === '/my-tasks' || location.pathname === '/work-plan');
-                  const isAttendanceSection = item.label === 'Chấm công' && location.pathname === '/attendance';
+                  const isAttendanceSection = (item.label === 'Công và lương' || item.label === 'Chấm công') && location.pathname === '/attendance';
                   const isProjectsSection = item.label === 'Tất cả dự án' && location.pathname === '/projects';
                   const isMaterialsSection = item.label === 'Tổng kho' && location.pathname === '/materials';
                   const isCostPlanSection = (item.label === 'Vật tư & Chi phí' || item.path.includes('/cost-plan')) && location.pathname.includes('/cost-plan');
