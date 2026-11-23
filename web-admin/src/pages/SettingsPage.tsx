@@ -326,6 +326,7 @@ export const SettingsPage: React.FC = () => {
   const personalTasks = tasks.filter((task: any) => String(task.assignedEngineerId || '').toLowerCase() === String(user?.id || '').toLowerCase() || String(task.assignedEngineerName || '').trim().toLowerCase() === String(user?.name || '').trim().toLowerCase());
   const personalProjects = projects.filter((project: any) => (currentEngineer?.projectCodes || []).some(code => String(code).toLowerCase() === String(project.code || project.id).toLowerCase()));
   const [personalTab, setPersonalTab] = useState<'profile' | 'overview' | 'attendance' | 'leave' | 'contract' | 'projects' | 'payroll' | 'journal'>('overview');
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [personalAttendance, setPersonalAttendance] = useState<any[]>([]);
   const [personalLeaves, setPersonalLeaves] = useState<any[]>([]);
   const [personalPayroll, setPersonalPayroll] = useState<any[]>([]);
