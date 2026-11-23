@@ -897,11 +897,11 @@ export const WorkPlanPage: React.FC = () => {
           </div>
 
           {/* Phạm vi kế hoạch */}
-          <div className="inline-flex rounded-md bg-slate-100 p-0.5 border border-slate-200">
-            <button type="button" onClick={() => { setPlanScope('personal'); setSelectedProject('all'); }} className={`px-2.5 py-1 rounded text-xs font-bold ${planScope === 'personal' ? 'bg-white text-primary shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}>Cá nhân</button>
+          <div className="flex items-center border-b border-slate-200 gap-1">
+            <button type="button" onClick={() => { setPlanScope('personal'); setSelectedProject('all'); }} className={`px-3 py-1.5 border-b-2 text-xs font-bold transition-colors ${planScope === 'personal' ? 'border-primary text-primary' : 'border-transparent text-slate-500 hover:text-slate-800'}`}>Kế hoạch cá nhân</button>
             {canViewSharedPlans && <>
-              <button type="button" onClick={() => setPlanScope('project')} className={`px-2.5 py-1 rounded text-xs font-bold ${planScope === 'project' ? 'bg-white text-primary shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}>Dự án</button>
-              <button type="button" onClick={() => { setPlanScope('all_projects'); setSelectedProject('all'); }} className={`px-2.5 py-1 rounded text-xs font-bold ${planScope === 'all_projects' ? 'bg-white text-primary shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}>Tất cả dự án</button>
+              <button type="button" onClick={() => setPlanScope('project')} className={`px-3 py-1.5 border-b-2 text-xs font-bold transition-colors ${planScope === 'project' ? 'border-primary text-primary' : 'border-transparent text-slate-500 hover:text-slate-800'}`}>Kế hoạch dự án</button>
+              <button type="button" onClick={() => { setPlanScope('all_projects'); setSelectedProject('all'); }} className={`px-3 py-1.5 border-b-2 text-xs font-bold transition-colors ${planScope === 'all_projects' ? 'border-primary text-primary' : 'border-transparent text-slate-500 hover:text-slate-800'}`}>Tất cả dự án</button>
             </>}
           </div>
 
