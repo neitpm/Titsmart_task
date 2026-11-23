@@ -2747,6 +2747,15 @@ export const api = {
           data = retry.data;
         }
       }
+
+      // Phát tín hiệu broadcast tức thì cho các tab & thiết bị khác (iPad, Windows, Web)
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('titsmart_attendance_updated'));
+      }
+      import('./realtimeStore').then(({ broadcastRealtimeSync }) => {
+        broadcastRealtimeSync('activity_logs');
+      }).catch(() => {});
+
       return { id: data?.id || `att-${Date.now()}`, ...payloadData } as any;
     },
     checkOut: async (id: string, input: { 
@@ -2772,6 +2781,14 @@ export const api = {
       
       const { data, error } = await supabase.from('activity_logs').update({ action: JSON.stringify(payloadData) }).eq('id', id).select().single();
       if (error) throw error;
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('titsmart_attendance_updated'));
+      }
+      import('./realtimeStore').then(({ broadcastRealtimeSync }) => {
+        broadcastRealtimeSync('activity_logs');
+      }).catch(() => {});
+
       return { id: data.id, ...payloadData } as any;
     },
     getConfig: async (): Promise<AttendanceConfig> => {
@@ -2972,6 +2989,14 @@ export const api = {
 
       const { data, error } = await supabase.from('activity_logs').update({ action: JSON.stringify(payloadData) }).eq('id', id).select().single();
       if (error) throw error;
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('titsmart_attendance_updated'));
+      }
+      import('./realtimeStore').then(({ broadcastRealtimeSync }) => {
+        broadcastRealtimeSync('activity_logs');
+      }).catch(() => {});
+
       return { id: data.id, ...payloadData } as any;
     },
     delete: async (id: string) => {
@@ -3125,6 +3150,14 @@ export const api = {
 
       const { data, error } = await supabase.from('activity_logs').update({ action: JSON.stringify(payloadData) }).eq('id', id).select().single();
       if (error) throw error;
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('titsmart_attendance_updated'));
+      }
+      import('./realtimeStore').then(({ broadcastRealtimeSync }) => {
+        broadcastRealtimeSync('activity_logs');
+      }).catch(() => {});
+
       return { id: data.id, ...payloadData } as any;
     },
     delete: async (id: string) => {

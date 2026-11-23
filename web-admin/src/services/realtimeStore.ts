@@ -3167,7 +3167,7 @@ export function setupRealtimeSync() {
   };
   subscribeChannel();
 
-  // Heartbeat polling 15s tự động kiểm tra tin nhắn & thông báo mới (lưới an toàn khi mạng chập chờn)
+  // Heartbeat polling 10s tự động kiểm tra tin nhắn, thông báo và dữ liệu chấm công (lưới an toàn khi mạng chập chờn)
   // Trong Electron desktop app, cho phép chạy cả khi app đang thu nhỏ/chạy ngầm để không bỏ lỡ thông báo Windows
   const isElectron = typeof window !== 'undefined' && Boolean((window as any).electronAPI);
   const heartbeatInterval = setInterval(() => {
@@ -3175,20 +3175,39 @@ export function setupRealtimeSync() {
     const store = useRealtimeStore.getState();
     store.fetchNotifications();
     store.fetchDirectMessages();
-  }, 15000);
+    window.dispatchEvent(new CustomEvent('titsmart_attendance_updated'));
+  }, 10000);
 
-  // Tự động tải lại dữ liệu ngay khi người dùng bấm quay lại cửa sổ ứng dụng (focus)
+  // Tự động tải lại dữ liệu ngay khi người dùng bấm quay lại cửa sổ ứng dụng (focus) hoặc chuyển tab hiển thị (visibilitychange)
   let lastFocusFetch = 0;
   const handleFocus = () => {
     const now = Date.now();
-    if (now - lastFocusFetch < 3000) return; // Tránh spam nếu focus liên tục trong 3s
+    if (now - lastFocusFetch < 2000) return; // Tránh spam nếu focus liên tục trong 2s
     lastFocusFetch = now;
     const store = useRealtimeStore.getState();
     store.fetchNotifications();
     store.fetchDirectMessages();
+    store.fetchTasks(undefined);
+    window.dispatchEvent(new CustomEvent('titsmart_attendance_updated'));
+    window.dispatchEvent(new CustomEvent('titsmart_leaves_updated'));
   };
+
+  const handleVisibilityChange = () => {
+    if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+      handleFocus();
+    }
+  };
+
+  const handleOnline = () => {
+    console.log('[Realtime] Thiết bị trực tuyến trở lại, đồng bộ toàn bộ dữ liệu...');
+    handleFocus();
+    subscribeChannel();
+  };
+
   if (typeof window !== 'undefined') {
     window.addEventListener('focus', handleFocus);
+    window.addEventListener('online', handleOnline);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
   }
 
   realtimeChannel = channel;
@@ -3198,6 +3217,8 @@ export function setupRealtimeSync() {
     clearInterval(heartbeatInterval);
     if (typeof window !== 'undefined') {
       window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('online', handleOnline);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     }
   };
 }
