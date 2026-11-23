@@ -576,7 +576,7 @@ export const SettingsPage: React.FC = () => {
       {/* Top Header Bar synchronized pl-3 */}
       <section className="bg-white border-b border-slate-200 pl-3 pr-14 md:pr-16 h-12 flex items-center shadow-sm shrink-0">
         <h2 className="page-title text-base md:text-lg font-extrabold text-slate-900 border-l-4 border-primary pl-2 uppercase tracking-wide">
-          CÀI ĐẶT HỆ THỐNG
+          CÀI ĐẶT VÀ CÁ NHÂN
         </h2>
       </section>
 
@@ -646,6 +646,18 @@ export const SettingsPage: React.FC = () => {
                 Giao diện & Tiện ích
               </div>
               <nav className="space-y-1">
+                <button
+                  type="button"
+                  onClick={() => { setActiveTab('account'); setPersonalTab('overview'); }}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${
+                    activeTab === 'account' && personalTab === 'overview'
+                      ? 'bg-blue-50 text-primary border border-blue-200/80 shadow-2xs'
+                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-lg">dashboard_customize</span>
+                  <span>Tổng quan cá nhân</span>
+                </button>
                 <button
                   type="button"
                   onClick={() => setActiveTab('appearance')}
