@@ -26,6 +26,7 @@ interface UIStoreState {
   isApplyingBranding: boolean;
   tablePaginationMode: 'infinite' | 'pagination';
   tablePageSize: number;
+  setAppViewMode: (val: UIStoreState['appViewMode']) => void;
   setTablePaginationMode: (val: 'infinite' | 'pagination') => void;
   setTablePageSize: (val: number) => void;
   setAppViewMode: (val: UIStoreState['appViewMode']) => void;
