@@ -1376,24 +1376,23 @@ export const AttendancePage: React.FC = () => {
   const handleCheckIn = async () => {
     if (!user || isSubmitting) return;
 
+    if (!selectedProject) {
+      showToast('Vui lòng chọn Dự án / Công trình cần chấm công!', 'warning');
+      return;
+    }
+
     const proj = projects.find(p => p.id === selectedProject || p.code === selectedProject);
     const hasProjectCoords = proj && proj.latitude !== undefined && proj.longitude !== undefined;
     
-    // Tự động xác định khoảng cách & tính hợp lệ:
-    // Nếu chọn dự án có tọa độ: so sánh với tọa độ dự án
-    // Nếu không chọn dự án (hoặc dự án văn phòng): so sánh với tọa độ văn phòng
-    const officeLoc = attendanceConfig.locations?.[0];
+    // So sánh trực tiếp tọa độ vị trí hiện tại với dự án đã chọn
     let actualDistanceMeters = gpsData?.distanceMeters;
-    let isWithinGeoRadius = gpsData?.isWithinRadius ?? true;
-    let allowedRadius = officeLoc?.radiusMeters || 500;
+    let isWithinGeoRadius = true;
+    let allowedRadius = proj?.radiusMeters || 500;
 
     if (hasProjectCoords && gpsData?.lat && gpsData?.lng) {
       actualDistanceMeters = calculateDistanceMeters(gpsData.lat, gpsData.lng, proj.latitude!, proj.longitude!);
       allowedRadius = proj.radiusMeters || 500;
       isWithinGeoRadius = actualDistanceMeters <= allowedRadius;
-    } else if (gpsData) {
-      actualDistanceMeters = gpsData.distanceMeters;
-      isWithinGeoRadius = gpsData.isWithinRadius;
     }
 
     // 1. Kiểm tra GPS nếu ở chế độ bắt buộc (strict)
@@ -1406,8 +1405,8 @@ export const AttendancePage: React.FC = () => {
         showToast('Không thể xác định vị trí GPS của bạn để chấm công!', 'error');
         return;
       }
-      if (!isWithinGeoRadius) {
-        showToast(`Bạn đang ở ngoài bán kính cho phép (${formatDistance(actualDistanceMeters || 0)} / cho phép ≤ ${allowedRadius}m)!`, 'error');
+      if (hasProjectCoords && !isWithinGeoRadius) {
+        showToast(`Bạn đang ở ngoài bán kính dự án (${formatDistance(actualDistanceMeters || 0)} / cho phép ≤ ${allowedRadius}m)!`, 'error');
         return;
       }
     }
@@ -1420,16 +1419,16 @@ export const AttendancePage: React.FC = () => {
 
     setIsSubmitting(true);
     try {
-      const detectedWorkLocationType: 'office' | 'field' | 'remote' = proj ? 'field' : 'office';
+      const detectedWorkLocationType: 'office' | 'field' | 'remote' = 'field';
 
       const locationLabel = proj
-        ? (proj.location ? `${proj.name} (${proj.location})` : `Dự án: ${proj.name}`)
-        : (gpsData?.locationName || officeLoc?.name || 'Văn phòng');
+        ? (proj.location ? `${proj.name} (${proj.location})` : proj.name)
+        : (gpsData?.locationName || 'Công trình');
 
       const result = await api.attendance.checkIn({
         userId: user.id,
         userName: user.name || user.username || 'Unknown',
-        projectId: selectedProject || undefined,
+        projectId: selectedProject,
         projectName: proj?.name,
         checkInImage: checkInImage || undefined,
         notes: notes || undefined,
@@ -1455,7 +1454,7 @@ export const AttendancePage: React.FC = () => {
       // Gửi thông báo realtime chỉ đến admin
       await addNotification({
         title: 'Chấm công',
-        message: `${user.name} đã chấm công${proj ? ` tại ${proj.name}` : ' tại Văn phòng'} lúc ${formatTime(result.checkInTime)}${actualDistanceMeters !== undefined ? ` (${formatDistance(actualDistanceMeters)})` : ''}`,
+        message: `${user.name} đã chấm công tại ${proj?.name || 'dự án'} lúc ${formatTime(result.checkInTime)}${actualDistanceMeters !== undefined ? ` (${formatDistance(actualDistanceMeters)})` : ''}`,
         link: '/attendance?tab=attendance&view=all',
         type: 'attendance:::admin',
         icon: 'fingerprint',
@@ -3616,16 +3615,10 @@ export const AttendancePage: React.FC = () => {
             Thời gian chấm công: <span className="font-bold text-slate-800">{formatTime(new Date().toISOString())} {formatDate(new Date().toISOString())}</span>
           </p>
 
-          {/* CHỌN DỰ ÁN / CÔNG TRÌNH / NƠI LÀM VIỆC */}
+          {/* CHỌN DỰ ÁN / CÔNG TRÌNH */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center justify-between">
-              <span className="flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-[16px] text-primary">apartment</span>
-                Dự án / Công trình làm việc:
-              </span>
-              <span className="text-[11px] text-slate-500 font-normal">
-                Mặc định là Văn phòng nếu không chọn
-              </span>
+            <label className="block text-xs font-bold text-slate-700 mb-1">
+              Dự án / Công trình:
             </label>
             <CustomSelect
               value={selectedProject}
@@ -3633,7 +3626,7 @@ export const AttendancePage: React.FC = () => {
               searchable={true}
               className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:outline-none bg-white font-medium"
             >
-              <option value="">🏢 Văn phòng công ty (mặc định)</option>
+              <option value="">-- Chọn dự án / công trình --</option>
               {projects.map(p => (
                 <option key={p.id} value={p.id}>
                   {p.name} {p.location ? `(${p.location})` : ''}
@@ -3642,12 +3635,11 @@ export const AttendancePage: React.FC = () => {
             </CustomSelect>
           </div>
 
-          {/* ĐỊNH VỊ GPS SO SÁNH TRỰC TIẾP VỚI ĐỊA ĐIỂM DỰ ÁN HOẶC VĂN PHÒNG */}
+          {/* ĐỊNH VỊ GPS SO SÁNH TRỰC TIẾP VỚI ĐỊA ĐIỂM DỰ ÁN */}
           {attendanceConfig.gpsRequirement !== 'none' && (
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                  <span className="material-symbols-outlined text-[16px] text-primary">location_on</span>
+                <label className="text-xs font-bold text-slate-700">
                   Kiểm tra vị trí GPS:
                 </label>
                 <button
@@ -3668,15 +3660,23 @@ export const AttendancePage: React.FC = () => {
                 </div>
               ) : gpsData ? (() => {
                 const currentSelectedProj = projects.find(p => p.id === selectedProject || p.code === selectedProject);
-                const hasProjectCoords = currentSelectedProj && currentSelectedProj.latitude !== undefined && currentSelectedProj.longitude !== undefined;
-                const officeLocation = attendanceConfig.locations?.[0];
-                
-                const targetName = currentSelectedProj ? currentSelectedProj.name : (officeLocation?.name || 'Văn phòng');
-                const targetRadius = currentSelectedProj ? (currentSelectedProj.radiusMeters || 500) : (officeLocation?.radiusMeters || 500);
+                if (!currentSelectedProj) {
+                  return (
+                    <div className="p-3 rounded-lg border border-slate-200 bg-slate-50 text-slate-600 text-xs flex items-center justify-between">
+                      <span>Vui lòng chọn Dự án ở trên để đối chiếu khoảng cách GPS.</span>
+                      <span className="text-[11px] font-bold text-slate-500">
+                        {gpsData.lat.toFixed(5)}, {gpsData.lng.toFixed(5)}
+                      </span>
+                    </div>
+                  );
+                }
+
+                const hasProjectCoords = currentSelectedProj.latitude !== undefined && currentSelectedProj.longitude !== undefined;
+                const targetRadius = currentSelectedProj.radiusMeters || 500;
 
                 const distanceToTarget = hasProjectCoords
                   ? calculateDistanceMeters(gpsData.lat, gpsData.lng, currentSelectedProj.latitude!, currentSelectedProj.longitude!)
-                  : (currentSelectedProj ? null : gpsData.distanceMeters);
+                  : null;
 
                 const isWithinRadius = distanceToTarget !== null 
                   ? distanceToTarget <= targetRadius 
@@ -3693,11 +3693,8 @@ export const AttendancePage: React.FC = () => {
                       : 'bg-blue-50/80 border-blue-300 text-blue-950'
                   }`}>
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold flex items-center gap-1.5">
-                        <span className="material-symbols-outlined text-base text-primary">
-                          {currentSelectedProj ? 'foundation' : 'apartment'}
-                        </span>
-                        {currentSelectedProj ? `Tại dự án: ${currentSelectedProj.name}` : 'Tại văn phòng'}
+                      <span className="text-xs font-bold text-slate-800">
+                        {currentSelectedProj.name}
                       </span>
                       {distanceToTarget !== null ? (
                         <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${
@@ -3705,7 +3702,7 @@ export const AttendancePage: React.FC = () => {
                             ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
                             : 'bg-amber-100 text-amber-800 border-amber-300'
                         }`}>
-                          {isWithinRadius ? '✓ Trong phạm vi hợp lệ' : `⚠️ Ngoài bán kính (${formatDistance(distanceToTarget)})`}
+                          {isWithinRadius ? 'Trong phạm vi' : `Ngoài bán kính (${formatDistance(distanceToTarget)})`}
                         </span>
                       ) : (
                         <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 border border-blue-300">
@@ -3715,18 +3712,17 @@ export const AttendancePage: React.FC = () => {
                     </div>
                     
                     <div className="text-[11px] mt-1.5 flex flex-wrap items-center gap-1.5 text-slate-700">
-                      <span className="material-symbols-outlined text-[14px] text-primary">my_location</span>
-                      <span>Tọa độ thiết bị: <b>{gpsData.lat.toFixed(5)}, {gpsData.lng.toFixed(5)}</b></span>
+                      <span>Tọa độ của bạn: <b>{gpsData.lat.toFixed(5)}, {gpsData.lng.toFixed(5)}</b></span>
                       {distanceToTarget !== null && (
                         <span className="font-semibold text-slate-600">
-                          (Cách {targetName} <b>{formatDistance(distanceToTarget)}</b> / chuẩn ≤ {targetRadius}m)
+                          (Cách dự án <b>{formatDistance(distanceToTarget)}</b> / bán kính ≤ {targetRadius}m)
                         </span>
                       )}
                     </div>
 
-                    {currentSelectedProj && !hasProjectCoords && (
+                    {!hasProjectCoords && (
                       <div className="text-[10.5px] text-blue-800 mt-1.5 bg-blue-100/70 p-1.5 rounded">
-                        💡 Dự án này chưa có tọa độ GPS cụ thể. Hệ thống sẽ ghi nhận tọa độ GPS thực tế của bạn khi chấm công.
+                        Dự án này chưa lưu tọa độ GPS cố định. Hệ thống sẽ ghi nhận tọa độ GPS thực tế của bạn.
                       </div>
                     )}
                   </div>
