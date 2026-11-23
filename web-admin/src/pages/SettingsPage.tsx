@@ -647,9 +647,6 @@ export const SettingsPage: React.FC = () => {
 
             {/* Giao diện & Tiện ích cá nhân (Tất cả tài khoản đều có) */}
             <div>
-              <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-3 mb-1.5">
-                Giao diện & Tiện ích
-              </div>
               <nav className="space-y-1">
                 <button type="button" onClick={() => { setActiveTab('account'); setPersonalTab('overview'); }} className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-xs font-bold transition-all text-left cursor-pointer ${activeTab === 'account' && personalTab === 'overview' ? 'bg-blue-50 text-primary border border-blue-200/80 shadow-2xs' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`}>
                   <span className="material-symbols-outlined text-lg">dashboard_customize</span><span>Tổng quan cá nhân</span>
@@ -692,9 +689,6 @@ export const SettingsPage: React.FC = () => {
             {/* Dữ liệu & Nhật ký */}
             {canViewLogs && (
               <div>
-                <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-3 mb-1.5">
-                  Dữ liệu & Giám sát
-                </div>
                 <nav className="space-y-1">
                   <button
                     type="button"
@@ -713,9 +707,6 @@ export const SettingsPage: React.FC = () => {
             )}
 
             <div>
-              <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-3 mb-1.5">
-                Tài khoản của bạn
-              </div>
               <nav className="space-y-1">
               </nav>
             </div>
