@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 import { api } from './apiSupabase';
 
 interface UIStoreState {
+  appViewMode: 'grid' | 'compact_grid' | 'table' | 'table_detailed' | 'kanban';
   sidebarHoverToExpand: boolean;
   sidebarShowToggleButton: boolean;
   isSidebarExpanded: boolean;
@@ -25,6 +26,7 @@ interface UIStoreState {
   isApplyingBranding: boolean;
   tablePaginationMode: 'infinite' | 'pagination';
   tablePageSize: number;
+  setAppViewMode: (val: UIStoreState['appViewMode']) => void;
   setTablePaginationMode: (val: 'infinite' | 'pagination') => void;
   setTablePageSize: (val: number) => void;
   setSidebarHoverToExpand: (val: boolean) => void;
@@ -76,8 +78,10 @@ export const useUIStore = create<UIStoreState>()(
       isApplyingBranding: false,
       tablePaginationMode: 'infinite',
       tablePageSize: 25,
+      appViewMode: 'grid',
       setTablePaginationMode: (val) => set({ tablePaginationMode: val }),
       setTablePageSize: (val) => set({ tablePageSize: val }),
+      setAppViewMode: (val) => set({ appViewMode: val }),
       setAllowDirectFundApproval: (val) => set({ allowDirectFundApproval: val }),
       setAllowDualCheckerReviewerRole: (val) => set({ allowDualCheckerReviewerRole: val }),
       setDefaultAccountant: (id, name) => set({ defaultAccountantId: id || '', defaultAccountantName: name || '' }),
@@ -164,6 +168,7 @@ export const useUIStore = create<UIStoreState>()(
         defaultAccountantName: state.defaultAccountantName,
         tablePaginationMode: state.tablePaginationMode,
         tablePageSize: state.tablePageSize,
+        appViewMode: state.appViewMode,
       }),
     }
   )
