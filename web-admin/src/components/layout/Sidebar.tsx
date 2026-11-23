@@ -518,6 +518,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
                         <NavLink
                           to={item.path}
                           end={item.path === '/'}
+                          aria-expanded={hasChildren ? isSubOpen : undefined}
+                          aria-haspopup={hasChildren ? 'true' : undefined}
                           title={!isExpanded ? item.label : undefined}
                           onClick={() => {
                             if (hasChildren) {
@@ -555,6 +557,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
                               <NavLink
                                 key={child.path}
                                 to={child.path}
+                                onClick={() => {
+                                  setOpenSubMenus(prev => ({ ...prev, [item.label]: true }));
+                                }}
                                 className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md text-[11px] transition-all truncate select-none ${
                                   active 
                                     ? 'text-primary bg-blue-50 font-bold shadow-2xs border border-blue-200/80' 
