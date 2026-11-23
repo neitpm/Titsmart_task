@@ -16,8 +16,11 @@ if (import.meta.env.DEV || import.meta.env.MODE === 'development') {
   const envKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
   if (Capacitor.isNativePlatform()) {
-    // Trên máy ảo Android / thiết bị di động kết nối về Host máy tính
-    supabaseUrl = `http://10.0.2.2:54321`;
+    // Thiết bị thật (iPad/điện thoại) phải truy cập máy dev qua LAN.
+    // 10.0.2.2 chỉ đúng cho Android Emulator, không dùng được trên iPad.
+    supabaseUrl = envUrl && !envUrl.includes('supabase.co')
+      ? envUrl
+      : `http://${LOCAL_LAN_IP}:54321`;
     supabaseAnonKey = LOCAL_ANON_KEY;
   } else if (envUrl && !envUrl.includes('supabase.co')) {
     supabaseUrl = envUrl;

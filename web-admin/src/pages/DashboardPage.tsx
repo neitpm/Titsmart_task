@@ -68,15 +68,18 @@ export const DashboardPage: React.FC = () => {
 
   useEffect(() => {
     let isMounted = true;
-    api.attendance.getAll().then(logs => {
+    const refreshAttendance = () => api.attendance.getAll().then(logs => {
       if (isMounted && Array.isArray(logs)) {
         setAttendanceTodayLogs(logs);
       }
     }).catch(err => {
       console.warn('Dashboard fetch attendance logs err:', err);
     });
+    refreshAttendance();
+    window.addEventListener('titsmart_attendance_updated', refreshAttendance);
     return () => {
       isMounted = false;
+      window.removeEventListener('titsmart_attendance_updated', refreshAttendance);
     };
   }, []);
 
