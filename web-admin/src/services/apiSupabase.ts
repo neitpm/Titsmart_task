@@ -3153,15 +3153,38 @@ export const api = {
           .order('timestamp', { ascending: false })
           .limit(500);
 
-        if (error) return [];
+        let cloudList: MonthlyPayrollItem[] = [];
+        if (!error && Array.isArray(data)) {
+          cloudList = data.map(row => {
+            try {
+              const payload = typeof row.action === 'string' ? JSON.parse(row.action) : row.action;
+              return { ...payload, id: row.id, cloudId: row.id };
+            } catch { return null; }
+          }).filter(Boolean);
+        }
 
-        let list: MonthlyPayrollItem[] = (data || []).map(row => {
-          try {
-            const payload = typeof row.action === 'string' ? JSON.parse(row.action) : row.action;
-            return { id: row.id, ...payload };
-          } catch { return null; }
-        }).filter(Boolean);
+        // Đọc thêm từ localStorage fallback để đảm bảo dữ liệu ký không bị mất
+        let localList: MonthlyPayrollItem[] = [];
+        try {
+          const raw = localStorage.getItem('titsmart_payroll_confirmations');
+          localList = raw ? JSON.parse(raw) : [];
+        } catch {}
 
+        const mergedMap = new Map<string, MonthlyPayrollItem>();
+        localList.forEach(item => {
+          const key = `${item.userId}_${item.year}_${item.month}`;
+          mergedMap.set(key, item);
+        });
+
+        cloudList.forEach(item => {
+          const key = `${item.userId}_${item.year}_${item.month}`;
+          const local = mergedMap.get(key);
+          if (!local || (item.updatedAt && (!local.updatedAt || new Date(item.updatedAt) >= new Date(local.updatedAt)))) {
+            mergedMap.set(key, item);
+          }
+        });
+
+        let list = Array.from(mergedMap.values());
         if (year) {
           list = list.filter(item => item.year === year);
         }
@@ -3171,7 +3194,15 @@ export const api = {
         return list;
       } catch (err) {
         console.error('[Payroll] Lỗi tải danh sách xác nhận bảng lương:', err);
-        return [];
+        try {
+          const raw = localStorage.getItem('titsmart_payroll_confirmations');
+          let list: MonthlyPayrollItem[] = raw ? JSON.parse(raw) : [];
+          if (year) list = list.filter(item => item.year === year);
+          if (month) list = list.filter(item => item.month === month);
+          return list;
+        } catch {
+          return [];
+        }
       }
     },
 
@@ -3186,133 +3217,336 @@ export const api = {
     },
 
     save: async (item: MonthlyPayrollItem, updatedBy?: string): Promise<MonthlyPayrollItem> => {
+      const nowIso = new Date().toISOString();
+      const payloadData: MonthlyPayrollItem = {
+        ...item,
+        updatedAt: nowIso,
+        updatedBy: updatedBy || item.userName || 'System'
+      };
+
+      // Đồng bộ ngay vào localStorage để đảm bảo tính sẵn sàng
+      try {
+        const raw = localStorage.getItem('titsmart_payroll_confirmations');
+        const list: MonthlyPayrollItem[] = raw ? JSON.parse(raw) : [];
+        const idx = list.findIndex(p =>
+          (p.id && item.id && p.id === item.id) ||
+          (String(p.userId) === String(item.userId) && p.month === item.month && p.year === item.year)
+        );
+        if (idx >= 0) {
+          list[idx] = payloadData;
+        } else {
+          list.unshift(payloadData);
+        }
+        localStorage.setItem('titsmart_payroll_confirmations', JSON.stringify(list));
+      } catch (stErr) {
+        console.warn('[Payroll] Failed to save to localStorage:', stErr);
+      }
+
       try {
         const companyId = getCurrentCompanyId();
-        const payloadData = {
-          ...item,
-          updatedAt: new Date().toISOString(),
-          updatedBy: updatedBy || 'System'
-        };
 
-        const { data: existingRows } = await supabase
-          .from('activity_logs')
-          .select('id, action')
-          .eq('icon', 'PAYROLL_CONFIRMATION')
-          .limit(500);
+        // Tìm bản ghi hiện có trên Supabase
+        let existingId: string | null = null;
+        if (item.id && UUID_RE.test(item.id)) {
+          existingId = item.id;
+        }
 
-        const existing = (existingRows || []).find(r => {
-          try {
-            const p = typeof r.action === 'string' ? JSON.parse(r.action) : r.action;
-            return String(p.userId) === String(item.userId) && p.month === item.month && p.year === item.year;
-          } catch { return false; }
-        });
-
-        if (existing) {
-          const { data, error } = await supabase
+        if (!existingId) {
+          const { data: existingRows } = await supabase
             .from('activity_logs')
-            .update({
-              user: item.userName,
-              project: `PAYROLL_${item.year}_${item.month}`,
-              action: JSON.stringify(payloadData),
-              timestamp: payloadData.updatedAt
-            })
-            .eq('id', existing.id)
-            .select()
-            .single();
-          if (error) throw error;
-          return { ...payloadData, id: data.id };
-        } else {
-          const payload: any = {
+            .select('id, action')
+            .eq('icon', 'PAYROLL_CONFIRMATION')
+            .limit(500);
+
+          const existing = (existingRows || []).find(r => {
+            try {
+              const p = typeof r.action === 'string' ? JSON.parse(r.action) : r.action;
+              return String(p.userId) === String(item.userId) && p.month === item.month && p.year === item.year;
+            } catch { return false; }
+          });
+          if (existing?.id) {
+            existingId = existing.id;
+          }
+        }
+
+        if (existingId) {
+          // Cập nhật bản ghi hiện có
+          const updatePayload: any = {
             user: item.userName,
+            user_name: item.userName,
+            project: `PAYROLL_${item.year}_${item.month}`,
+            action: JSON.stringify(payloadData),
+            timestamp: payloadData.updatedAt
+          };
+
+          let { data, error } = await supabase
+            .from('activity_logs')
+            .update(updatePayload)
+            .eq('id', existingId)
+            .select()
+            .maybeSingle();
+
+          if (error) {
+            delete updatePayload.timestamp;
+            updatePayload.created_at = payloadData.updatedAt;
+            const res = await supabase.from('activity_logs').update(updatePayload).eq('id', existingId).select().maybeSingle();
+            data = res.data;
+          }
+
+          const finalItem: MonthlyPayrollItem = {
+            ...payloadData,
+            id: data?.id || existingId,
+            cloudId: data?.id || existingId
+          };
+
+          try {
+            const raw = localStorage.getItem('titsmart_payroll_confirmations');
+            const list: MonthlyPayrollItem[] = raw ? JSON.parse(raw) : [];
+            const idx = list.findIndex(p =>
+              (p.id && (p.id === existingId || p.id === item.id)) ||
+              (String(p.userId) === String(item.userId) && p.month === item.month && p.year === item.year)
+            );
+            if (idx >= 0) list[idx] = finalItem;
+            else list.unshift(finalItem);
+            localStorage.setItem('titsmart_payroll_confirmations', JSON.stringify(list));
+          } catch {}
+
+          return finalItem;
+        } else {
+          // Thêm mới bản ghi vào Supabase
+          const insertPayload: any = {
+            user: item.userName,
+            user_name: item.userName,
             project: `PAYROLL_${item.year}_${item.month}`,
             icon: 'PAYROLL_CONFIRMATION',
             action: JSON.stringify(payloadData),
             timestamp: payloadData.updatedAt
           };
-          if (companyId) payload.company_id = companyId;
+          if (companyId) insertPayload.company_id = companyId;
 
-          let { data, error } = await supabase.from('activity_logs').insert(payload).select().single();
+          let { data, error } = await supabase.from('activity_logs').insert(insertPayload).select().maybeSingle();
           if (error) {
-            delete payload.company_id;
-            const res = await supabase.from('activity_logs').insert(payload).select().single();
-            data = res.data;
+            delete insertPayload.company_id;
+            const res = await supabase.from('activity_logs').insert(insertPayload).select().maybeSingle();
+            if (res.error && (res.error.code === 'PGRST204' || String(res.error.message).includes('timestamp'))) {
+              delete insertPayload.timestamp;
+              insertPayload.created_at = payloadData.updatedAt;
+              const res2 = await supabase.from('activity_logs').insert(insertPayload).select().maybeSingle();
+              data = res2.data;
+            } else {
+              data = res.data;
+            }
           }
-          return { ...payloadData, id: data?.id || `payroll-${Date.now()}` };
+
+          const finalId = data?.id || item.id || `payroll-${item.year}-${item.month}-${item.userId}`;
+          const finalItem: MonthlyPayrollItem = {
+            ...payloadData,
+            id: finalId,
+            cloudId: data?.id
+          };
+
+          try {
+            const raw = localStorage.getItem('titsmart_payroll_confirmations');
+            const list: MonthlyPayrollItem[] = raw ? JSON.parse(raw) : [];
+            const idx = list.findIndex(p =>
+              (p.id && p.id === finalId) ||
+              (String(p.userId) === String(item.userId) && p.month === item.month && p.year === item.year)
+            );
+            if (idx >= 0) list[idx] = finalItem;
+            else list.unshift(finalItem);
+            localStorage.setItem('titsmart_payroll_confirmations', JSON.stringify(list));
+          } catch {}
+
+          return finalItem;
         }
       } catch (err) {
-        console.error('[Payroll] Lỗi lưu bảng lương:', err);
-        throw err;
+        console.warn('[Payroll] Lỗi lưu cloud, đã lưu local an toàn:', err);
+        return payloadData;
       }
     },
 
-    sign: async (payrollId: string, signData: {
-      signatureImage: string;
-      signatureType?: 'draw' | 'quick';
-      signedByName: string;
-      signedByUserId: string;
-    }): Promise<MonthlyPayrollItem> => {
-      const { data: row, error: fetchErr } = await supabase.from('activity_logs').select('action').eq('id', payrollId).single();
-      if (fetchErr) throw fetchErr;
-      const payloadData = typeof row.action === 'string' ? JSON.parse(row.action) : row.action;
+    sign: async (
+      payrollItemOrId: string | MonthlyPayrollItem,
+      signData: {
+        signatureImage: string;
+        signatureType?: 'draw' | 'quick';
+        signedByName: string;
+        signedByUserId: string;
+      }
+    ): Promise<MonthlyPayrollItem> => {
+      const nowIso = new Date().toISOString();
 
-      payloadData.signatureStatus = 'signed';
-      payloadData.signatureImage = signData.signatureImage;
-      payloadData.signatureType = signData.signatureType || 'draw';
-      payloadData.signedByName = signData.signedByName;
-      payloadData.signedByUserId = signData.signedByUserId;
-      payloadData.signedAt = new Date().toISOString();
-      payloadData.updatedAt = payloadData.signedAt;
+      if (typeof payrollItemOrId === 'object' && payrollItemOrId !== null) {
+        const updatedItem: MonthlyPayrollItem = {
+          ...payrollItemOrId,
+          signatureStatus: 'signed',
+          signatureImage: signData.signatureImage,
+          signatureType: signData.signatureType || 'draw',
+          signedByName: signData.signedByName,
+          signedByUserId: signData.signedByUserId,
+          signedAt: nowIso,
+          updatedAt: nowIso,
+          updatedBy: signData.signedByName,
+        };
+        return await api.payroll.save(updatedItem, signData.signedByName);
+      }
 
-      const { data, error } = await supabase.from('activity_logs').update({ action: JSON.stringify(payloadData) }).eq('id', payrollId).select().single();
-      if (error) throw error;
-      return { ...payloadData, id: data.id };
+      const payrollId = String(payrollItemOrId);
+      const allPayrolls = await api.payroll.getAll();
+      const existing = allPayrolls.find(p => p.id === payrollId || (p as any).cloudId === payrollId);
+
+      if (existing) {
+        const updatedItem: MonthlyPayrollItem = {
+          ...existing,
+          signatureStatus: 'signed',
+          signatureImage: signData.signatureImage,
+          signatureType: signData.signatureType || 'draw',
+          signedByName: signData.signedByName,
+          signedByUserId: signData.signedByUserId,
+          signedAt: nowIso,
+          updatedAt: nowIso,
+          updatedBy: signData.signedByName,
+        };
+        return await api.payroll.save(updatedItem, signData.signedByName);
+      }
+
+      if (UUID_RE.test(payrollId)) {
+        const { data: row } = await supabase.from('activity_logs').select('action').eq('id', payrollId).maybeSingle();
+        if (row) {
+          const payloadData = typeof row.action === 'string' ? JSON.parse(row.action) : row.action;
+          const updatedItem: MonthlyPayrollItem = {
+            ...payloadData,
+            id: payrollId,
+            signatureStatus: 'signed',
+            signatureImage: signData.signatureImage,
+            signatureType: signData.signatureType || 'draw',
+            signedByName: signData.signedByName,
+            signedByUserId: signData.signedByUserId,
+            signedAt: nowIso,
+            updatedAt: nowIso,
+            updatedBy: signData.signedByName,
+          };
+          return await api.payroll.save(updatedItem, signData.signedByName);
+        }
+      }
+
+      throw new Error('Không tìm thấy bản ghi bảng lương để ký xác nhận');
     },
 
-    dispute: async (payrollId: string, disputeData: {
-      disputeNote: string;
-      userId: string;
-      userName: string;
-    }): Promise<MonthlyPayrollItem> => {
-      const { data: row, error: fetchErr } = await supabase.from('activity_logs').select('action').eq('id', payrollId).single();
-      if (fetchErr) throw fetchErr;
-      const payloadData = typeof row.action === 'string' ? JSON.parse(row.action) : row.action;
+    dispute: async (
+      payrollItemOrId: string | MonthlyPayrollItem,
+      disputeData: {
+        disputeNote: string;
+        userId: string;
+        userName: string;
+      }
+    ): Promise<MonthlyPayrollItem> => {
+      const nowIso = new Date().toISOString();
 
-      payloadData.signatureStatus = 'disputed';
-      payloadData.disputeNote = disputeData.disputeNote;
-      payloadData.disputedAt = new Date().toISOString();
-      payloadData.updatedAt = payloadData.disputedAt;
+      if (typeof payrollItemOrId === 'object' && payrollItemOrId !== null) {
+        const updatedItem: MonthlyPayrollItem = {
+          ...payrollItemOrId,
+          signatureStatus: 'disputed',
+          disputeNote: disputeData.disputeNote,
+          disputedAt: nowIso,
+          updatedAt: nowIso,
+          updatedBy: disputeData.userName,
+        };
+        return await api.payroll.save(updatedItem, disputeData.userName);
+      }
 
-      const { data, error } = await supabase.from('activity_logs').update({ action: JSON.stringify(payloadData) }).eq('id', payrollId).select().single();
-      if (error) throw error;
-      return { ...payloadData, id: data.id };
+      const payrollId = String(payrollItemOrId);
+      const allPayrolls = await api.payroll.getAll();
+      const existing = allPayrolls.find(p => p.id === payrollId || (p as any).cloudId === payrollId);
+
+      if (existing) {
+        const updatedItem: MonthlyPayrollItem = {
+          ...existing,
+          signatureStatus: 'disputed',
+          disputeNote: disputeData.disputeNote,
+          disputedAt: nowIso,
+          updatedAt: nowIso,
+          updatedBy: disputeData.userName,
+        };
+        return await api.payroll.save(updatedItem, disputeData.userName);
+      }
+
+      if (UUID_RE.test(payrollId)) {
+        const { data: row } = await supabase.from('activity_logs').select('action').eq('id', payrollId).maybeSingle();
+        if (row) {
+          const payloadData = typeof row.action === 'string' ? JSON.parse(row.action) : row.action;
+          const updatedItem: MonthlyPayrollItem = {
+            ...payloadData,
+            id: payrollId,
+            signatureStatus: 'disputed',
+            disputeNote: disputeData.disputeNote,
+            disputedAt: nowIso,
+            updatedAt: nowIso,
+            updatedBy: disputeData.userName,
+          };
+          return await api.payroll.save(updatedItem, disputeData.userName);
+        }
+      }
+
+      throw new Error('Không tìm thấy bản ghi bảng lương để gửi phản hồi');
     },
 
-    resolveDispute: async (payrollId: string, resolution: {
-      adminResolutionNote: string;
-      approvedBy: string;
-      updatedPayrollData?: Partial<MonthlyPayrollItem>;
-    }): Promise<MonthlyPayrollItem> => {
-      const { data: row, error: fetchErr } = await supabase.from('activity_logs').select('action').eq('id', payrollId).single();
-      if (fetchErr) throw fetchErr;
-      const payloadData = typeof row.action === 'string' ? JSON.parse(row.action) : row.action;
+    resolveDispute: async (
+      payrollItemOrId: string | MonthlyPayrollItem,
+      resolution: {
+        adminResolutionNote: string;
+        approvedBy: string;
+        updatedPayrollData?: Partial<MonthlyPayrollItem>;
+      }
+    ): Promise<MonthlyPayrollItem> => {
+      const nowIso = new Date().toISOString();
+
+      let targetItem: MonthlyPayrollItem | null = null;
+      if (typeof payrollItemOrId === 'object' && payrollItemOrId !== null) {
+        targetItem = { ...payrollItemOrId };
+      } else {
+        const payrollId = String(payrollItemOrId);
+        const allPayrolls = await api.payroll.getAll();
+        targetItem = allPayrolls.find(p => p.id === payrollId || (p as any).cloudId === payrollId) || null;
+        if (!targetItem && UUID_RE.test(payrollId)) {
+          const { data: row } = await supabase.from('activity_logs').select('action').eq('id', payrollId).maybeSingle();
+          if (row) {
+            targetItem = typeof row.action === 'string' ? JSON.parse(row.action) : row.action;
+            if (targetItem) targetItem.id = payrollId;
+          }
+        }
+      }
+
+      if (!targetItem) {
+        throw new Error('Không tìm thấy bản ghi bảng lương để xử lý khiếu nại');
+      }
 
       if (resolution.updatedPayrollData) {
-        Object.assign(payloadData, resolution.updatedPayrollData);
+        Object.assign(targetItem, resolution.updatedPayrollData);
       }
-      payloadData.signatureStatus = 'pending';
-      payloadData.adminResolutionNote = resolution.adminResolutionNote;
-      payloadData.disputeResolvedAt = new Date().toISOString();
-      payloadData.updatedAt = payloadData.disputeResolvedAt;
-      payloadData.updatedBy = resolution.approvedBy;
+      targetItem.signatureStatus = 'pending';
+      targetItem.adminResolutionNote = resolution.adminResolutionNote;
+      targetItem.disputeResolvedAt = nowIso;
+      targetItem.updatedAt = nowIso;
+      targetItem.updatedBy = resolution.approvedBy;
 
-      const { data, error } = await supabase.from('activity_logs').update({ action: JSON.stringify(payloadData) }).eq('id', payrollId).select().single();
-      if (error) throw error;
-      return { ...payloadData, id: data.id };
+      return await api.payroll.save(targetItem, resolution.approvedBy);
     },
 
     delete: async (id: string) => {
-      const { error } = await supabase.from('activity_logs').delete().eq('id', id);
-      if (error) throw error;
+      try {
+        const raw = localStorage.getItem('titsmart_payroll_confirmations');
+        if (raw) {
+          const list: MonthlyPayrollItem[] = JSON.parse(raw);
+          const filtered = list.filter(p => p.id !== id && (p as any).cloudId !== id);
+          localStorage.setItem('titsmart_payroll_confirmations', JSON.stringify(filtered));
+        }
+      } catch {}
+
+      if (UUID_RE.test(id)) {
+        const { error } = await supabase.from('activity_logs').delete().eq('id', id);
+        if (error) throw error;
+      }
       return { success: true };
     }
   },

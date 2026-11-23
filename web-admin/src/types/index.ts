@@ -657,7 +657,8 @@ export const DEFAULT_ATTENDANCE_CONFIG: AttendanceConfig = {
 export type PayrollSignatureStatus = 'pending' | 'signed' | 'disputed';
 
 export interface MonthlyPayrollItem {
-  id: string; // `payroll-${year}-${month}-${userId}`
+  id: string; // `payroll-${year}-${month}-${userId}` hoặc UUID từ Supabase
+  cloudId?: string;
   month: number; // 1 - 12
   year: number; // e.g. 2026
   userId: string;
@@ -728,6 +729,7 @@ export interface MonthlyPayrollItem {
   approvedBy?: string;
   approvedAt?: string;
   updatedAt?: string;
+  updatedBy?: string;
 }
 
 export interface DirectMessage {

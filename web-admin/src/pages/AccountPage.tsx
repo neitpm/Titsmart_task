@@ -400,6 +400,7 @@ export const AccountPage: React.FC = () => {
           payrollItem={viewingSlipItem}
           onUpdatePayroll={(updated) => {
             handleUpdatePayroll(updated);
+            setViewingSlipItem(updated);
           }}
           showToast={triggerToast}
           canSign={true}

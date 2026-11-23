@@ -27,30 +27,57 @@ export const DigitalSignatureModal: React.FC<DigitalSignatureModalProps> = ({
   const [isAgreed, setIsAgreed] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Reset & setup canvas
+  useEffect(() => {
+    if (isOpen) {
+      setHasDrawn(false);
+      setIsAgreed(true);
+      setIsSubmitting(false);
+    }
+  }, [isOpen]);
+
   // Setup canvas resolution and styling
   useEffect(() => {
     if (!isOpen || signMode !== 'draw') return;
+
+    const timer = setTimeout(() => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      // Thiết lập kích thước thực của canvas
+      const rect = canvas.getBoundingClientRect();
+      const width = rect.width > 0 ? rect.width : 450;
+      const height = rect.height > 0 ? rect.height : 176;
+      const dpr = window.devicePixelRatio || 1;
+
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+      ctx.scale(dpr, dpr);
+
+      ctx.strokeStyle = penColor;
+      ctx.lineWidth = 2.5;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      // Vẽ nền mờ có đường kẻ ngang hướng dẫn ký
+      drawGuidelines(ctx, width, height);
+    }, 50);
+
+    return () => clearTimeout(timer);
+  }, [isOpen, signMode]);
+
+  // Khi thay đổi màu mực, cập nhật context mà không làm mất nét vẽ
+  useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-
     const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    // Thiết lập kích thước thực của canvas
-    const rect = canvas.getBoundingClientRect();
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = rect.width * dpr;
-    canvas.height = rect.height * dpr;
-    ctx.scale(dpr, dpr);
-
-    ctx.strokeStyle = penColor;
-    ctx.lineWidth = 2.5;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-
-    // Vẽ nền mờ có đường kẻ ngang hướng dẫn ký
-    drawGuidelines(ctx, rect.width, rect.height);
-  }, [isOpen, signMode, penColor]);
+    if (ctx) {
+      ctx.strokeStyle = penColor;
+    }
+  }, [penColor]);
 
   const drawGuidelines = (ctx: CanvasRenderingContext2D, width: number, height: number) => {
     ctx.save();
@@ -172,14 +199,8 @@ export const DigitalSignatureModal: React.FC<DigitalSignatureModalProps> = ({
 
     setIsSubmitting(true);
     try {
-      // 1. Lưu hoặc đảm bảo phiếu lương đã được tạo trước khi ký
-      let activeItem = payrollItem;
-      if (!payrollItem.id || payrollItem.id.startsWith('temp-')) {
-        activeItem = await api.payroll.save(payrollItem, payrollItem.userName);
-      }
-
-      // 2. Ký xác nhận
-      const signed = await api.payroll.sign(activeItem.id, {
+      // Ký xác nhận trực tiếp bằng toàn bộ thông tin phiếu lương
+      const signed = await api.payroll.sign(payrollItem, {
         signatureImage,
         signatureType: signMode,
         signedByName: payrollItem.userName,

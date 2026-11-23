@@ -830,7 +830,10 @@ export const MonthlyPayrollTab: React.FC<MonthlyPayrollTabProps> = ({
           isOpen={!!viewingSlipItem}
           onClose={() => setViewingSlipItem(null)}
           payrollItem={viewingSlipItem}
-          onUpdatePayroll={handleUpdatePayrollItem}
+          onUpdatePayroll={(updated) => {
+            handleUpdatePayrollItem(updated);
+            setViewingSlipItem(updated);
+          }}
           showToast={showToast}
           canSign={viewingSlipItem.userId === user?.id || isAdmin}
         />

@@ -29,14 +29,8 @@ export const PayrollDisputeModal: React.FC<PayrollDisputeModalProps> = ({
 
     setIsSubmitting(true);
     try {
-      // 1. Đảm bảo bản ghi tồn tại
-      let activeItem = payrollItem;
-      if (!payrollItem.id || payrollItem.id.startsWith('temp-')) {
-        activeItem = await api.payroll.save(payrollItem, payrollItem.userName);
-      }
-
-      // 2. Gửi phản hồi
-      const updated = await api.payroll.dispute(activeItem.id, {
+      // Gửi phản hồi thắc mắc trực tiếp
+      const updated = await api.payroll.dispute(payrollItem, {
         disputeNote: disputeNote.trim(),
         userId: payrollItem.userId,
         userName: payrollItem.userName,
