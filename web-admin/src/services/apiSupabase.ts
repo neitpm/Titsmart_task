@@ -1,6 +1,6 @@
 import { supabase, isCloudSupabase } from '../lib/supabase';
 import { v4 as uuidv4 } from 'uuid';
-import { NotificationItem, getProjectPriorityWeight, AttendanceConfig, DEFAULT_ATTENDANCE_CONFIG } from '../types';
+import { NotificationItem, getProjectPriorityWeight, AttendanceConfig, DEFAULT_ATTENDANCE_CONFIG, MonthlyPayrollItem } from '../types';
 import { deleteStorageFiles, parseInvoiceUrls } from '../utils/fileUploadHelper';
 
 /**
@@ -3137,6 +3137,180 @@ export const api = {
       } catch (stErr) {
         console.warn('[Storage] Cảnh báo lỗi dọn dẹp ảnh chấm công:', stErr);
       }
+      const { error } = await supabase.from('activity_logs').delete().eq('id', id);
+      if (error) throw error;
+      return { success: true };
+    }
+  },
+
+  payroll: {
+    getAll: async (month?: number, year?: number): Promise<MonthlyPayrollItem[]> => {
+      try {
+        let { data, error } = await supabase
+          .from('activity_logs')
+          .select('*')
+          .eq('icon', 'PAYROLL_CONFIRMATION')
+          .order('timestamp', { ascending: false })
+          .limit(500);
+
+        if (error) return [];
+
+        let list: MonthlyPayrollItem[] = (data || []).map(row => {
+          try {
+            const payload = typeof row.action === 'string' ? JSON.parse(row.action) : row.action;
+            return { id: row.id, ...payload };
+          } catch { return null; }
+        }).filter(Boolean);
+
+        if (year) {
+          list = list.filter(item => item.year === year);
+        }
+        if (month) {
+          list = list.filter(item => item.month === month);
+        }
+        return list;
+      } catch (err) {
+        console.error('[Payroll] Lỗi tải danh sách xác nhận bảng lương:', err);
+        return [];
+      }
+    },
+
+    getByUser: async (userId: string, month?: number, year?: number): Promise<MonthlyPayrollItem | null> => {
+      try {
+        const all = await api.payroll.getAll(month, year);
+        return all.find(item => String(item.userId) === String(userId)) || null;
+      } catch (err) {
+        console.error('[Payroll] Lỗi tìm phiếu lương nhân sự:', err);
+        return null;
+      }
+    },
+
+    save: async (item: MonthlyPayrollItem, updatedBy?: string): Promise<MonthlyPayrollItem> => {
+      try {
+        const companyId = getCurrentCompanyId();
+        const payloadData = {
+          ...item,
+          updatedAt: new Date().toISOString(),
+          updatedBy: updatedBy || 'System'
+        };
+
+        const { data: existingRows } = await supabase
+          .from('activity_logs')
+          .select('id, action')
+          .eq('icon', 'PAYROLL_CONFIRMATION')
+          .limit(500);
+
+        const existing = (existingRows || []).find(r => {
+          try {
+            const p = typeof r.action === 'string' ? JSON.parse(r.action) : r.action;
+            return String(p.userId) === String(item.userId) && p.month === item.month && p.year === item.year;
+          } catch { return false; }
+        });
+
+        if (existing) {
+          const { data, error } = await supabase
+            .from('activity_logs')
+            .update({
+              user: item.userName,
+              project: `PAYROLL_${item.year}_${item.month}`,
+              action: JSON.stringify(payloadData),
+              timestamp: payloadData.updatedAt
+            })
+            .eq('id', existing.id)
+            .select()
+            .single();
+          if (error) throw error;
+          return { ...payloadData, id: data.id };
+        } else {
+          const payload: any = {
+            user: item.userName,
+            project: `PAYROLL_${item.year}_${item.month}`,
+            icon: 'PAYROLL_CONFIRMATION',
+            action: JSON.stringify(payloadData),
+            timestamp: payloadData.updatedAt
+          };
+          if (companyId) payload.company_id = companyId;
+
+          let { data, error } = await supabase.from('activity_logs').insert(payload).select().single();
+          if (error) {
+            delete payload.company_id;
+            const res = await supabase.from('activity_logs').insert(payload).select().single();
+            data = res.data;
+          }
+          return { ...payloadData, id: data?.id || `payroll-${Date.now()}` };
+        }
+      } catch (err) {
+        console.error('[Payroll] Lỗi lưu bảng lương:', err);
+        throw err;
+      }
+    },
+
+    sign: async (payrollId: string, signData: {
+      signatureImage: string;
+      signatureType?: 'draw' | 'quick';
+      signedByName: string;
+      signedByUserId: string;
+    }): Promise<MonthlyPayrollItem> => {
+      const { data: row, error: fetchErr } = await supabase.from('activity_logs').select('action').eq('id', payrollId).single();
+      if (fetchErr) throw fetchErr;
+      const payloadData = typeof row.action === 'string' ? JSON.parse(row.action) : row.action;
+
+      payloadData.signatureStatus = 'signed';
+      payloadData.signatureImage = signData.signatureImage;
+      payloadData.signatureType = signData.signatureType || 'draw';
+      payloadData.signedByName = signData.signedByName;
+      payloadData.signedByUserId = signData.signedByUserId;
+      payloadData.signedAt = new Date().toISOString();
+      payloadData.updatedAt = payloadData.signedAt;
+
+      const { data, error } = await supabase.from('activity_logs').update({ action: JSON.stringify(payloadData) }).eq('id', payrollId).select().single();
+      if (error) throw error;
+      return { ...payloadData, id: data.id };
+    },
+
+    dispute: async (payrollId: string, disputeData: {
+      disputeNote: string;
+      userId: string;
+      userName: string;
+    }): Promise<MonthlyPayrollItem> => {
+      const { data: row, error: fetchErr } = await supabase.from('activity_logs').select('action').eq('id', payrollId).single();
+      if (fetchErr) throw fetchErr;
+      const payloadData = typeof row.action === 'string' ? JSON.parse(row.action) : row.action;
+
+      payloadData.signatureStatus = 'disputed';
+      payloadData.disputeNote = disputeData.disputeNote;
+      payloadData.disputedAt = new Date().toISOString();
+      payloadData.updatedAt = payloadData.disputedAt;
+
+      const { data, error } = await supabase.from('activity_logs').update({ action: JSON.stringify(payloadData) }).eq('id', payrollId).select().single();
+      if (error) throw error;
+      return { ...payloadData, id: data.id };
+    },
+
+    resolveDispute: async (payrollId: string, resolution: {
+      adminResolutionNote: string;
+      approvedBy: string;
+      updatedPayrollData?: Partial<MonthlyPayrollItem>;
+    }): Promise<MonthlyPayrollItem> => {
+      const { data: row, error: fetchErr } = await supabase.from('activity_logs').select('action').eq('id', payrollId).single();
+      if (fetchErr) throw fetchErr;
+      const payloadData = typeof row.action === 'string' ? JSON.parse(row.action) : row.action;
+
+      if (resolution.updatedPayrollData) {
+        Object.assign(payloadData, resolution.updatedPayrollData);
+      }
+      payloadData.signatureStatus = 'pending';
+      payloadData.adminResolutionNote = resolution.adminResolutionNote;
+      payloadData.disputeResolvedAt = new Date().toISOString();
+      payloadData.updatedAt = payloadData.disputeResolvedAt;
+      payloadData.updatedBy = resolution.approvedBy;
+
+      const { data, error } = await supabase.from('activity_logs').update({ action: JSON.stringify(payloadData) }).eq('id', payrollId).select().single();
+      if (error) throw error;
+      return { ...payloadData, id: data.id };
+    },
+
+    delete: async (id: string) => {
       const { error } = await supabase.from('activity_logs').delete().eq('id', id);
       if (error) throw error;
       return { success: true };

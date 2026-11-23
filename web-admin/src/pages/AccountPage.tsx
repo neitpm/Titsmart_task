@@ -1,13 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useRealtimeStore } from '../services/realtimeStore';
 import { useAuthStore } from '../services/authStore';
+import { api } from '../services/apiSupabase';
+import { MonthlyPayrollItem, LeaveRequest, AttendanceAdjustmentRequest } from '../types';
+import { generateMonthlyPayrollDraft, formatVND } from '../utils/payrollCalculator';
 import { ChangePasswordModal } from '../components/common/ChangePasswordModal';
 import { Modal } from '../components/common/Modal';
 import { Toast } from '../components/common/Toast';
+import { DigitalSignatureModal } from '../components/payroll/DigitalSignatureModal';
+import { PayrollDisputeModal } from '../components/payroll/PayrollDisputeModal';
+import { PayrollSlipViewModal } from '../components/payroll/PayrollSlipViewModal';
 
 export const AccountPage: React.FC = () => {
   const engineer = useRealtimeStore((state) => state.engineers[0]);
+  const engineers = useRealtimeStore((state) => state.engineers);
   const user = useAuthStore((state) => state.user);
   const isLoggingOut = useAuthStore((state) => state.isLoggingOut);
   const logout = useAuthStore((state) => state.logout);
@@ -17,9 +24,88 @@ export const AccountPage: React.FC = () => {
   const [isConfirmLogoutOpen, setIsConfirmLogoutOpen] = useState(false);
   const [toastState, setToastState] = useState({ show: false, message: '', type: 'success' as 'success' | 'info' | 'warning' | 'error' });
 
+  // Dữ liệu Bảng công & Lương trên tài khoản
+  const now = new Date();
+  const [selectedMonth, setSelectedMonth] = useState<number>(now.getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState<number>(now.getFullYear());
+  const [showSalaryAmounts, setShowSalaryAmounts] = useState<boolean>(true);
+
+  const [attendanceLogs, setAttendanceLogs] = useState<any[]>([]);
+  const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
+  const [adjustments, setAdjustments] = useState<AttendanceAdjustmentRequest[]>([]);
+  const [savedPayrolls, setSavedPayrolls] = useState<MonthlyPayrollItem[]>([]);
+  const [isPayrollLoading, setIsPayrollLoading] = useState<boolean>(false);
+
+  // Modals ký và xem phiếu lương
+  const [signingItem, setSigningItem] = useState<MonthlyPayrollItem | null>(null);
+  const [disputingItem, setDisputingItem] = useState<MonthlyPayrollItem | null>(null);
+  const [viewingSlipItem, setViewingSlipItem] = useState<MonthlyPayrollItem | null>(null);
+
   const triggerToast = (message: string, type: 'success' | 'info' | 'warning' | 'error' = 'success') => {
     setToastState({ show: true, message, type });
     setTimeout(() => setToastState({ show: false, message: '', type: 'success' }), 3000);
+  };
+
+  // Nạp dữ liệu chấm công & bảng lương cho tài khoản
+  const fetchAccountPayrollData = async () => {
+    if (!user) return;
+    setIsPayrollLoading(true);
+    try {
+      const [logsData, leavesData, adjsData, payrollsData] = await Promise.all([
+        api.attendance.getByUser(user.id, user.name),
+        api.leaves.getAll(),
+        api.adjustments.getAll(),
+        api.payroll.getAll(selectedMonth, selectedYear),
+      ]);
+      setAttendanceLogs(logsData || []);
+      setLeaves(leavesData || []);
+      setAdjustments(adjsData || []);
+      setSavedPayrolls(payrollsData || []);
+    } catch (err) {
+      console.warn('[Account] Lỗi nạp bảng công lương tài khoản:', err);
+    } finally {
+      setIsPayrollLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAccountPayrollData();
+  }, [user, selectedMonth, selectedYear]);
+
+  // Thông tin kỹ sư của tài khoản hiện tại
+  const myEngineer = useMemo(() => {
+    return engineers.find(e => 
+      e.id === user?.id || 
+      (user?.name && e.name && e.name.trim().toLowerCase() === user.name.trim().toLowerCase())
+    ) || engineer;
+  }, [engineers, engineer, user]);
+
+  // Bảng lương của tài khoản tháng đã chọn
+  const myAccountPayroll = useMemo<MonthlyPayrollItem | null>(() => {
+    if (!user) return null;
+    const existing = savedPayrolls.find(p => String(p.userId) === String(user.id));
+    return generateMonthlyPayrollDraft({
+      user: { id: user.id, name: user.name || user.username || 'User', username: user.username, title: user.title },
+      engineer: myEngineer,
+      month: selectedMonth,
+      year: selectedYear,
+      logs: attendanceLogs,
+      leaves,
+      adjustments,
+      existingPayroll: existing,
+    });
+  }, [user, myEngineer, selectedMonth, selectedYear, attendanceLogs, leaves, adjustments, savedPayrolls]);
+
+  const handleUpdatePayroll = (updated: MonthlyPayrollItem) => {
+    setSavedPayrolls(prev => {
+      const idx = prev.findIndex(p => p.id === updated.id || (p.userId === updated.userId && p.month === updated.month && p.year === updated.year));
+      if (idx >= 0) {
+        const copy = [...prev];
+        copy[idx] = updated;
+        return copy;
+      }
+      return [updated, ...prev];
+    });
   };
 
   const handleLogout = async () => {
@@ -91,7 +177,229 @@ export const AccountPage: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* SECTION: BẢNG CHẤM CÔNG & PHIẾU LƯƠNG TRÊN TÀI KHOẢN */}
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8 space-y-5">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-blue-50 text-primary border border-blue-100 flex items-center justify-center">
+                <span className="material-symbols-outlined text-2xl">receipt_long</span>
+              </div>
+              <div>
+                <h3 className="text-base font-extrabold text-slate-900 uppercase tracking-wide">
+                  Bảng Chấm Công & Bảng Lương Trên Tài Khoản
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Đối soát số ngày công làm việc, phụ cấp và thực hiện ký xác nhận điện tử trực tiếp
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs">
+                <span className="material-symbols-outlined text-[16px] text-primary ml-1">calendar_month</span>
+                <select
+                  value={selectedMonth}
+                  onChange={e => setSelectedMonth(Number(e.target.value))}
+                  className="bg-white border border-slate-200 rounded-lg px-2.5 py-1 font-bold text-primary focus:outline-none cursor-pointer"
+                >
+                  {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+                    <option key={m} value={m}>Tháng {m}</option>
+                  ))}
+                </select>
+                <select
+                  value={selectedYear}
+                  onChange={e => setSelectedYear(Number(e.target.value))}
+                  className="bg-white border border-slate-200 rounded-lg px-2.5 py-1 font-bold text-slate-800 focus:outline-none cursor-pointer"
+                >
+                  {[2024, 2025, 2026, 2027].map(y => (
+                    <option key={y} value={y}>Năm {y}</option>
+                  ))}
+                </select>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowSalaryAmounts(p => !p)}
+                className="flex items-center gap-1 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-xl border border-slate-200 text-xs font-bold transition cursor-pointer"
+                title={showSalaryAmounts ? 'Ẩn số tiền lương' : 'Hiện số tiền lương'}
+              >
+                <span className="material-symbols-outlined text-[16px]">
+                  {showSalaryAmounts ? 'visibility_off' : 'visibility'}
+                </span>
+                <span>{showSalaryAmounts ? 'Ẩn tiền' : 'Hiện tiền'}</span>
+              </button>
+            </div>
+          </div>
+
+          {myAccountPayroll && (
+            <div className="space-y-4">
+              {/* BANNER TRẠNG THÁI KÝ */}
+              <div className={`p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                myAccountPayroll.signatureStatus === 'signed'
+                  ? 'bg-emerald-50/90 border-emerald-300 text-emerald-950'
+                  : myAccountPayroll.signatureStatus === 'disputed'
+                  ? 'bg-amber-50/90 border-amber-300 text-amber-950'
+                  : 'bg-blue-50/90 border-blue-300 text-blue-950'
+              }`}>
+                <div className="flex items-start gap-3">
+                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
+                    myAccountPayroll.signatureStatus === 'signed'
+                      ? 'bg-emerald-600 text-white'
+                      : myAccountPayroll.signatureStatus === 'disputed'
+                      ? 'bg-amber-600 text-white'
+                      : 'bg-primary text-white animate-pulse'
+                  }`}>
+                    <span className="material-symbols-outlined text-xl">
+                      {myAccountPayroll.signatureStatus === 'signed' ? 'verified' : myAccountPayroll.signatureStatus === 'disputed' ? 'warning' : 'draw'}
+                    </span>
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-extrabold uppercase tracking-wide">
+                        {myAccountPayroll.signatureStatus === 'signed'
+                          ? 'Đã ký xác nhận bảng công & lương'
+                          : myAccountPayroll.signatureStatus === 'disputed'
+                          ? 'Đang có phản hồi khiếu nại'
+                          : 'Chờ bạn ký xác nhận tháng này'}
+                      </span>
+                      <span className="text-[10.5px] font-bold px-2 py-0.5 rounded-full bg-white/80 border">
+                        Tháng {selectedMonth}/{selectedYear}
+                      </span>
+                    </div>
+                    <p className="text-xs mt-1 opacity-90 leading-relaxed">
+                      {myAccountPayroll.signatureStatus === 'signed' ? (
+                        <>Đã ký điện tử lúc <b>{myAccountPayroll.signedAt ? new Date(myAccountPayroll.signedAt).toLocaleString('vi-VN') : ''}</b>.</>
+                      ) : myAccountPayroll.signatureStatus === 'disputed' ? (
+                        <>Nội dung phản hồi: <i>"{myAccountPayroll.disputeNote}"</i></>
+                      ) : (
+                        <>Vui lòng kiểm tra số ngày công ({myAccountPayroll.actualWorkingDays} công) và số tiền thực lĩnh, sau đó bấm <b>Ký xác nhận</b>.</>
+                      )}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                  <button
+                    type="button"
+                    onClick={() => setViewingSlipItem(myAccountPayroll)}
+                    className="flex items-center gap-1 px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-lg text-xs font-bold shadow-xs transition cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-[15px]">visibility</span>
+                    Xem phiếu A4
+                  </button>
+
+                  {myAccountPayroll.signatureStatus !== 'signed' && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setDisputingItem(myAccountPayroll)}
+                        className="flex items-center gap-1 px-2.5 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 rounded-lg text-xs font-bold transition cursor-pointer"
+                      >
+                        <span className="material-symbols-outlined text-[15px]">chat_bubble</span>
+                        Phản hồi
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSigningItem(myAccountPayroll)}
+                        className="flex items-center gap-1.5 px-3.5 py-1.5 bg-primary hover:bg-blue-800 text-white rounded-lg text-xs font-extrabold shadow-xs transition cursor-pointer"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">draw</span>
+                        Ký xác nhận ngay
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* 4 THẺ SỐ LIỆU */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/70">
+                  <span className="text-[10.5px] uppercase font-bold text-slate-400 block mb-1">Công thực tế</span>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-xl font-black text-slate-800">{myAccountPayroll.actualWorkingDays}</span>
+                    <span className="text-xs text-slate-400 font-medium">/ {myAccountPayroll.standardWorkingDays} công</span>
+                  </div>
+                </div>
+                <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/70">
+                  <span className="text-[10.5px] uppercase font-bold text-slate-400 block mb-1">Công trường / Đi ngoài</span>
+                  <div className="text-xl font-black text-amber-700">{myAccountPayroll.fieldWorkDays} <span className="text-xs text-slate-400 font-medium">ngày</span></div>
+                </div>
+                <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/70">
+                  <span className="text-[10.5px] uppercase font-bold text-slate-400 block mb-1">Làm thêm giờ (OT)</span>
+                  <div className="text-xl font-black text-indigo-700">
+                    {myAccountPayroll.otHoursNormal + myAccountPayroll.otHoursSunday + myAccountPayroll.otHoursHoliday} <span className="text-xs text-slate-400 font-medium">giờ</span>
+                  </div>
+                </div>
+                <div className="p-3.5 rounded-xl border border-emerald-300 bg-emerald-50/50">
+                  <span className="text-[10.5px] uppercase font-bold text-emerald-700 block mb-1">THỰC LĨNH THÁNG</span>
+                  <div className="text-xl font-black text-emerald-800">
+                    {showSalaryAmounts ? formatVND(myAccountPayroll.netSalary) : '•••••••• đ'}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-2 text-xs">
+                <span className="text-slate-500">
+                  Chữ ký điện tử trên tài khoản có giá trị xác nhận hồ sơ quyết toán tiền lương hàng tháng.
+                </span>
+                <button
+                  type="button"
+                  onClick={() => navigate(`/attendance?tab=payroll`)}
+                  className="text-primary font-bold hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  Xem bảng chi tiết ngày công
+                  <span className="material-symbols-outlined text-[15px]">arrow_forward</span>
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* Modal Ký xác nhận */}
+      {signingItem && (
+        <DigitalSignatureModal
+          isOpen={!!signingItem}
+          onClose={() => setSigningItem(null)}
+          payrollItem={signingItem}
+          onSuccess={(updated) => {
+            handleUpdatePayroll(updated);
+            setSigningItem(null);
+            triggerToast('Đã ký xác nhận thành công!', 'success');
+          }}
+          showToast={triggerToast}
+        />
+      )}
+
+      {/* Modal Phản hồi khiếu nại */}
+      {disputingItem && (
+        <PayrollDisputeModal
+          isOpen={!!disputingItem}
+          onClose={() => setDisputingItem(null)}
+          payrollItem={disputingItem}
+          onSuccess={(updated) => {
+            handleUpdatePayroll(updated);
+            setDisputingItem(null);
+            triggerToast('Đã gửi phản hồi thắc mắc cho Kế toán!', 'success');
+          }}
+          showToast={triggerToast}
+        />
+      )}
+
+      {/* Modal Xem phiếu lương A4 */}
+      {viewingSlipItem && (
+        <PayrollSlipViewModal
+          isOpen={!!viewingSlipItem}
+          onClose={() => setViewingSlipItem(null)}
+          payrollItem={viewingSlipItem}
+          onUpdatePayroll={(updated) => {
+            handleUpdatePayroll(updated);
+          }}
+          showToast={triggerToast}
+          canSign={true}
+        />
+      )}
 
       {/* Change Password Modal */}
       <ChangePasswordModal

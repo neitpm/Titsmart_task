@@ -34,6 +34,7 @@ import {
   suggestBestShift 
 } from '../utils/attendanceUtils';
 import { AttendanceConfigModal } from '../components/attendance/AttendanceConfigModal';
+import { MonthlyPayrollTab } from '../components/payroll/MonthlyPayrollTab';
 import { PullToRefresh } from '../components/common/PullToRefresh';
 
 interface AttendanceLog {
@@ -168,7 +169,7 @@ export const AttendancePage: React.FC = () => {
     );
   }, [user, isAdmin]);
 
-  const [mainTab, setMainTab] = useState<'attendance' | 'leave' | 'adjustment'>('attendance');
+  const [mainTab, setMainTab] = useState<'attendance' | 'leave' | 'adjustment' | 'payroll'>('attendance');
   const [highlightLeaveId, setHighlightLeaveId] = useState<string | null>(null);
   const [isHighlightActive, setIsHighlightActive] = useState<boolean>(false);
   const [logs, setLogs] = useState<AttendanceLog[]>(cachedLogs);
@@ -405,6 +406,8 @@ export const AttendancePage: React.FC = () => {
       }
     } else if (tabParam === 'adjustment' || tabParam === 'adjustments' || tabParam === 'cham-cong-bu') {
       setMainTab('adjustment');
+    } else if (tabParam === 'payroll' || tabParam === 'salary' || tabParam === 'bang-luong') {
+      setMainTab('payroll');
     } else if (tabParam === 'attendance') {
       setMainTab('attendance');
     }
@@ -1514,8 +1517,49 @@ export const AttendancePage: React.FC = () => {
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           <div className="flex items-center border-l-4 border-primary pl-2">
             <h1 className="page-title text-xs sm:text-sm md:text-base font-extrabold text-slate-900 shrink-0">
-              {mainTab === 'attendance' ? 'Chấm công' : mainTab === 'leave' ? 'Nghỉ phép' : 'Chấm công bù'}
+              {mainTab === 'attendance' ? 'Chấm công' : mainTab === 'leave' ? 'Nghỉ phép' : mainTab === 'adjustment' ? 'Chấm công bù' : 'Bảng công & Lương'}
             </h1>
+          </div>
+
+          {/* Quick tab switcher inside page */}
+          <div className="hidden sm:flex items-center gap-0.5 bg-slate-100 p-0.5 rounded-lg border border-slate-200 text-xs ml-2">
+            <button
+              type="button"
+              onClick={() => setMainTab('attendance')}
+              className={`px-2.5 py-1 rounded-md font-bold transition-all cursor-pointer ${
+                mainTab === 'attendance' ? 'bg-white text-primary shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Chấm công
+            </button>
+            <button
+              type="button"
+              onClick={() => setMainTab('leave')}
+              className={`px-2.5 py-1 rounded-md font-bold transition-all cursor-pointer ${
+                mainTab === 'leave' ? 'bg-white text-primary shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Nghỉ phép
+            </button>
+            <button
+              type="button"
+              onClick={() => setMainTab('adjustment')}
+              className={`px-2.5 py-1 rounded-md font-bold transition-all cursor-pointer ${
+                mainTab === 'adjustment' ? 'bg-white text-primary shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Bù công
+            </button>
+            <button
+              type="button"
+              onClick={() => setMainTab('payroll')}
+              className={`px-2.5 py-1 rounded-md font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                mainTab === 'payroll' ? 'bg-primary text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <span className="material-symbols-outlined text-[14px]">draw</span>
+              Bảng công & Lương
+            </button>
           </div>
         </div>
 
@@ -1786,7 +1830,7 @@ export const AttendancePage: React.FC = () => {
                 <span>Tạo đơn xin nghỉ</span>
               </button>
             </div>
-          ) : (
+          ) : mainTab === 'adjustment' ? (
             <div className="flex items-center gap-1.5 lg:gap-2">
               {/* Desktop Filter Bar for Adjustment Tab */}
               <div className="flex items-center gap-1.5 lg:gap-2">
@@ -1897,7 +1941,7 @@ export const AttendancePage: React.FC = () => {
                 <span>Tạo bù công</span>
               </button>
             </div>
-          )}
+          ) : null}
         </div>
       </header>
 
@@ -2621,7 +2665,7 @@ export const AttendancePage: React.FC = () => {
             )}
           </PullToRefresh>
         </div>
-      ) : (
+      ) : mainTab === 'adjustment' ? (
         /* Tab Chấm công bù */
         <div className="flex-1 w-full max-w-full overflow-hidden flex flex-col bg-slate-50">
           {/* Mobile-only Toolbar Bar */}
@@ -2841,7 +2885,18 @@ export const AttendancePage: React.FC = () => {
             )}
           </PullToRefresh>
         </div>
-      )}
+      ) : mainTab === 'payroll' ? (
+        /* Tab Bảng công & Lương (Ký xác nhận) */
+        <div className="flex-1 w-full max-w-full overflow-y-auto p-3 sm:p-4 md:p-6 bg-slate-50">
+          <MonthlyPayrollTab
+            logs={logs}
+            leaves={leaves}
+            adjustments={adjustments}
+            showToast={showToast}
+            isAdmin={isAdmin}
+          />
+        </div>
+      ) : null}
 
       {/* Modal Tạo yêu cầu chấm công bù */}
       <Modal isOpen={showAdjModal} onClose={() => setShowAdjModal(false)} title="Tạo yêu cầu chấm công bù" icon="edit_calendar" size="lg">

@@ -653,6 +653,83 @@ export const DEFAULT_ATTENDANCE_CONFIG: AttendanceConfig = {
   ]
 };
 
+// ==================== BẢNG CHẤM CÔNG & BẢNG LƯƠNG XÁC NHẬN (DIGITAL SIGNATURE) ====================
+export type PayrollSignatureStatus = 'pending' | 'signed' | 'disputed';
+
+export interface MonthlyPayrollItem {
+  id: string; // `payroll-${year}-${month}-${userId}`
+  month: number; // 1 - 12
+  year: number; // e.g. 2026
+  userId: string;
+  userName: string;
+  userCode?: string;
+  userTitle?: string;
+  department?: string;
+
+  // 1. Số liệu chấm công
+  standardWorkingDays: number; // Số ngày công chuẩn (mặc định 26 hoặc 24)
+  actualWorkingDays: number;   // Số ngày công thực tế làm việc
+  paidLeaveDays: number;       // Nghỉ phép có lương (Phép năm, lễ, việc riêng có lương)
+  unpaidLeaveDays: number;     // Nghỉ không lương (KP)
+  sundayWorkingDays: number;   // Công làm ngày Chủ nhật
+  otHoursNormal: number;       // Giờ OT ngày thường (hệ số 1.5)
+  otHoursSunday: number;       // Giờ OT Chủ nhật (hệ số 2.0)
+  otHoursHoliday: number;      // Giờ OT Lễ (hệ số 3.0)
+  fieldWorkDays: number;       // Số ngày làm việc tại công trường / dự án
+  remoteWorkDays: number;      // Số ngày đi công tác ngoài
+  lateTimes: number;           // Số lần đi trễ
+  earlyTimes: number;          // Số lần về sớm
+  totalEquivalentDays: number; // Tổng số công quy đổi hưởng lương
+
+  // 2. Thu nhập & Phụ cấp
+  baseSalary: number;          // Mức lương cơ bản thỏa thuận / HĐLĐ
+  salaryByWorkDays: number;    // Tiền lương theo ngày công = (baseSalary / standardWorkingDays) * actualWorkingDays
+  paidLeaveSalary: number;     // Tiền lương ngày phép có lương
+  allowanceLunch: number;      // Phụ cấp ăn trưa
+  allowanceFuel: number;       // Phụ cấp xăng xe / đi lại
+  allowancePhone: number;      // Phụ cấp điện thoại
+  allowanceField: number;      // Phụ cấp công trường / lưu trú hiện trường
+  allowanceRole: number;       // Phụ cấp chức vụ / trách nhiệm
+  allowanceOther: number;      // Phụ cấp khác
+  totalAllowances: number;     // Tổng các khoản phụ cấp
+  otPay: number;               // Tiền làm thêm giờ (OT)
+  bonus: number;               // Thưởng hiệu quả / dự án
+  grossIncome: number;         // Tổng thu nhập (Lương + Phụ cấp + OT + Thưởng)
+
+  // 3. Khấu trừ
+  deductionSocialInsurance: number; // BHXH, BHYT, BHTN (thường 10.5%)
+  deductionAdvance: number;         // Tạm ứng đã nhận trong tháng
+  deductionTax: number;             // Thuế TNCN tạm tính
+  deductionOther: number;           // Giảm trừ khác (phạt, trừ nghỉ không phép...)
+  totalDeductions: number;          // Tổng các khoản giảm trừ
+
+  // 4. Thực lĩnh (Net)
+  netSalary: number;                // Số tiền thực lĩnh = grossIncome - totalDeductions
+  paymentStatus: 'unpaid' | 'paid';
+  paymentDate?: string;
+  notes?: string;
+
+  // 5. Ký xác nhận của Nhân viên
+  signatureStatus: PayrollSignatureStatus;
+  signedAt?: string;
+  signedByName?: string;
+  signedByUserId?: string;
+  signatureImage?: string;          // Ảnh chữ ký điện tử Base64 PNG
+  signatureType?: 'draw' | 'quick'; // Ký vẽ tay hoặc ký nhanh xác thực
+
+  // 6. Phản hồi / Thắc mắc / Khiếu nại từ Nhân viên (nếu có)
+  disputeNote?: string;
+  disputedAt?: string;
+  disputeResolvedAt?: string;
+  adminResolutionNote?: string;
+
+  // 7. Khóa / Phê duyệt
+  isLocked?: boolean;               // Kế toán đã chốt sổ
+  approvedBy?: string;
+  approvedAt?: string;
+  updatedAt?: string;
+}
+
 export interface DirectMessage {
   id: string;
   senderId: string;
