@@ -1589,13 +1589,6 @@ export const AttendancePage: React.FC = () => {
 
         {/* Desktop-only Right controls (My/All switcher + Action Button) pushed to far right */}
         <div className="hidden md:flex items-center gap-1.5 lg:gap-2 shrink-0">
-          {/* Thanh công cụ chọn chế độ xem */}
-          <ViewModeToolbar
-            currentMode={viewMode}
-            onModeChange={setAppViewMode}
-            supportedModes={supportedAttendanceModes}
-          />
-
           {canViewAll && (mainTab !== 'attendance' || attendanceSubTab === 'logs') && (
             <div className="inline-flex items-center gap-0.5 bg-slate-100 rounded-lg p-0.5 border border-slate-200 text-xs shrink-0">
               <button

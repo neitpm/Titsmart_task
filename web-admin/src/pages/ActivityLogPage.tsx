@@ -325,13 +325,6 @@ export const ActivityLogPage: React.FC = () => {
               </button>
             )}
 
-            {/* ViewMode Toolbar cho Nhật ký (Không Kanban, tự chuyển sang bảng chi tiết) */}
-            <ViewModeToolbar
-              currentMode={viewMode}
-              onModeChange={setAppViewMode}
-              supportedModes={supportedActivityModes}
-            />
-
             {/* Export File Dropdown Menu */}
             <div className="relative shrink-0">
               <button

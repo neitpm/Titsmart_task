@@ -539,13 +539,6 @@ export const DocumentTrackingPage: React.FC = () => {
               />
             </div>
 
-            {/* ViewMode Toolbar */}
-            <ViewModeToolbar
-              currentMode={viewMode}
-              onModeChange={setAppViewMode}
-              supportedModes={supportedDocModes}
-            />
-
             {/* Desktop Export File Dropdown */}
             <div className="relative hidden md:block">
             <button 

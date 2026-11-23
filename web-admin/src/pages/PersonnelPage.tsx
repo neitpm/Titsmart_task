@@ -729,13 +729,6 @@ export const PersonnelPage: React.FC = () => {
               />
             </div>
 
-            {/* Chuyển chế độ xem đa dạng (ViewModeToolbar) */}
-            <ViewModeToolbar
-              currentMode={viewMode}
-              onModeChange={setAppViewMode}
-              supportedModes={supportedPersonnelModes}
-            />
-
             <span className="h-8 md:h-[34px] px-3 md:px-3 rounded-lg flex items-center bg-blue-50 text-primary text-xs font-bold border border-blue-100 shrink-0">{engineers.filter(e => e.role !== 'Quản trị viên' && e.username !== 'admin').length} nhân sự</span>
             
             {/* Desktop Export Dropdown with Standardized Height */}
