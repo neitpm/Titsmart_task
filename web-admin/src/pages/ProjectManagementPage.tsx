@@ -178,15 +178,10 @@ export const ProjectManagementPage: React.FC = () => {
   const [filterDateFrom, setFilterDateFrom] = useState('');
   const [filterDateTo, setFilterDateTo] = useState('');
 
-  // Chế độ xem đa dạng: Thẻ tiêu chuẩn, Thẻ thu gọn, Bảng gọn, Bảng chi tiết, Bảng Kanban
-  const [viewMode, setViewMode] = useState<ProjectViewMode>(() => {
-    return (localStorage.getItem('titsmart_project_view_mode') as ProjectViewMode) || 'grid';
-  });
-
-  const handleViewModeChange = (mode: ProjectViewMode) => {
-    setViewMode(mode);
-    localStorage.setItem('titsmart_project_view_mode', mode);
-  };
+  // Dùng cấu hình kiểu hiển thị chung trong Cài đặt giao diện.
+  const viewMode = useUIStore(s => s.appViewMode) as ProjectViewMode;
+  const setAppViewMode = useUIStore(s => s.setAppViewMode);
+  const handleViewModeChange = (mode: ProjectViewMode) => setAppViewMode(mode);
   const tablePaginationMode = useUIStore(s => s.tablePaginationMode);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState<number>(24);

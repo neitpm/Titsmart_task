@@ -9,6 +9,7 @@ import { Permission } from '../types';
 import { ChangePasswordModal } from '../components/common/ChangePasswordModal';
 import { Toast } from '../components/common/Toast';
 import { Modal } from '../components/common/Modal';
+import { CustomSelect } from '../components/common/CustomSelect';
 import { registerWebDeviceToken } from '../services/notificationDispatchService';
 import { requestSystemNotificationPermission, sendSystemNotification } from '../services/systemNotificationService';
 import { exportToStyledExcel } from '../utils/excelExportUtils';
@@ -218,6 +219,8 @@ export const SettingsPage: React.FC = () => {
     setShowChatWidget,
     tablePaginationMode,
     tablePageSize,
+    appViewMode,
+    setAppViewMode,
     setTablePaginationMode,
     setTablePageSize,
   } = useUIStore();
@@ -1594,6 +1597,15 @@ export const SettingsPage: React.FC = () => {
                         ))}
                       </div>
                     </div>
+                  </div>
+                  <div className="flex items-center justify-between gap-3 p-4 rounded-xl bg-slate-50 border border-slate-200/80">
+                    <div>
+                      <span className="text-xs font-bold text-slate-800 block">Kiểu hiển thị chung</span>
+                      <span className="text-[11px] text-slate-500">Áp dụng cho các tab có danh sách tương thích.</span>
+                    </div>
+                    <CustomSelect value={appViewMode} onChange={e => setAppViewMode(e.target.value as typeof appViewMode)} className="h-9 w-44 rounded-md border border-slate-300 bg-white px-3 text-xs font-bold text-slate-700">
+                      <option value="grid">Dạng thẻ</option><option value="compact_grid">Thẻ thu gọn</option><option value="table">Bảng gọn</option><option value="table_detailed">Bảng chi tiết</option><option value="kanban">Bảng Kanban</option>
+                    </CustomSelect>
                   </div>
                 </div>
               </div>

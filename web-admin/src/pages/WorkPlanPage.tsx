@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useRealtimeStore } from '../services/realtimeStore';
-import { useAuthStore } from '../services/authStore';
+import { useAuthStore, isDirector, isSystemAdmin } from '../services/authStore';
 import { Task, TaskPriority, TaskStatus, isTaskActuallyDone } from '../types';
 import { Modal } from '../components/common/Modal';
 import { Toast } from '../components/common/Toast';
@@ -138,6 +138,7 @@ export const WorkPlanPage: React.FC = () => {
   const updateTaskProgress = useRealtimeStore((state) => state.updateTaskProgress);
   const logActivity = useRealtimeStore((state) => state.logActivity);
   const user = useAuthStore((state) => state.user);
+  const canViewSharedPlans = isDirector(user) || isSystemAdmin(user) || user?.role === 'admin' || user?.role === 'pm' || user?.companyRole === 'company_admin';
 
   // The work-plan page can be opened directly, so make sure its selectors
   // are populated even when the Personnel/Projects pages have not been opened.
@@ -200,6 +201,7 @@ export const WorkPlanPage: React.FC = () => {
 
   // Filters
   const [selectedProject, setSelectedProject] = useState<string>('all');
+  const [planScope, setPlanScope] = useState<'all_projects' | 'project' | 'personal'>('personal');
   const [selectedAssignee, setSelectedAssignee] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'overdue' | 'due_today' | 'due_soon' | 'in_progress' | 'completed'>('all');
   const [searchKeyword, setSearchKeyword] = useState<string>('');
@@ -429,8 +431,56 @@ export const WorkPlanPage: React.FC = () => {
   }, [analyzedTasks]);
 
   // Filtered task list
+  const personalIdentityKeys = useMemo(() => {
+    const keys = new Set<string>();
+    const addKey = (value?: string | null) => {
+      const normalized = String(value || '').trim().toLowerCase();
+      if (normalized) keys.add(normalized);
+    };
+
+    addKey(user?.id);
+    addKey(user?.username);
+    addKey(user?.email);
+    addKey(user?.name);
+
+    // The account ID and the personnel ID can differ in older local data.
+    // Include every linked personnel identity so personal plans remain visible.
+    engineers.forEach((engineer) => {
+      const sameUser = [engineer.id, engineer.authUserId, engineer.username, engineer.email, engineer.name]
+        .some((value) => {
+          const normalized = String(value || '').trim().toLowerCase();
+          return normalized && keys.has(normalized);
+        });
+      if (sameUser) {
+        addKey(engineer.id);
+        addKey(engineer.authUserId);
+        addKey(engineer.username);
+        addKey(engineer.email);
+        addKey(engineer.name);
+      }
+    });
+
+    return keys;
+  }, [engineers, user]);
+
   const filteredTasks = useMemo(() => {
     return analyzedTasks.filter((t) => {
+      const currentUserId = String(user?.id || '').toLowerCase();
+      const currentUserName = String(user?.name || '').trim().toLowerCase();
+      const currentUsername = String(user?.username || '').trim().toLowerCase();
+      const assigneeId = String(t.assignedEngineerId || '').toLowerCase();
+      const assigneeName = String(t.assignedEngineerName || '').split('|')[0].trim().toLowerCase();
+      const assignerId = String(t.assignerId || '').toLowerCase();
+      const assignerName = String(t.assignerName || '').trim().toLowerCase();
+
+      if (planScope === 'personal') {
+        const isMine = personalIdentityKeys.has(assigneeId) || personalIdentityKeys.has(assignerId) ||
+          (currentUserName && (assigneeName === currentUserName || assignerName === currentUserName));
+        if (!isMine) return false;
+      } else if (planScope === 'project') {
+        if (!t.projectCode || t.projectCode === 'KE_HOACH_CONG_TY') return false;
+      }
+
       // Filter by project
       if (selectedProject !== 'all' && t.projectCode !== selectedProject) {
         return false;
@@ -478,7 +528,7 @@ export const WorkPlanPage: React.FC = () => {
 
       return true;
     });
-  }, [analyzedTasks, selectedProject, selectedAssignee, statusFilter, searchKeyword, user]);
+  }, [analyzedTasks, selectedProject, selectedAssignee, planScope, statusFilter, searchKeyword, user, personalIdentityKeys]);
 
   // Month navigation helpers
   const year = currentDate.getFullYear();
@@ -696,7 +746,11 @@ export const WorkPlanPage: React.FC = () => {
         title={`${task.name} - ${task.projectName || task.projectCode} (${task.assignedEngineerName || 'Chưa giao'})`}
       >
         <span className="material-symbols-outlined text-[12px] shrink-0">{icon}</span>
-        <span className="truncate flex-1">{task.name}</span>
+        <span className="truncate flex-1">
+          <span className="font-bold">{task.projectName || task.projectCode || 'Kế hoạch chung'}</span>
+          <span className="mx-1 text-slate-400">·</span>
+          {task.name}
+        </span>
       </button>
     );
   };
@@ -721,10 +775,18 @@ export const WorkPlanPage: React.FC = () => {
             <h1 className="page-title text-sm md:text-base font-extrabold text-slate-900 border-l-4 border-primary pl-2 shrink-0">
               Lịch & Kế hoạch
             </h1>
+            <button
+              type="button"
+              onClick={() => openAddModal()}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-primary hover:bg-blue-700 text-white rounded-md text-xs font-bold transition-colors shadow-sm cursor-pointer whitespace-nowrap"
+            >
+              <span className="material-symbols-outlined text-base">add_task</span>
+              <span>Lên kế hoạch</span>
+            </button>
           </div>
         </div>
 
-        {/* Right Controls: Cài đặt cảnh báo, Chuyển đổi Tháng/Tuần/Lộ trình, + Lên kế hoạch mới */}
+        {/* Right Controls: Cài đặt cảnh báo và Chuyển đổi Tháng/Tuần/Lộ trình */}
         <div className="flex items-center gap-2 flex-wrap md:flex-nowrap justify-between md:justify-end w-full md:w-auto">
           {/* Cài đặt cảnh báo thời hạn */}
           <div className="relative">
@@ -877,6 +939,15 @@ export const WorkPlanPage: React.FC = () => {
             )}
           </div>
 
+          {/* Phạm vi kế hoạch */}
+          <div className="flex items-center border-b border-slate-200 gap-1">
+            <button type="button" onClick={() => { setPlanScope('personal'); setSelectedProject('all'); }} className={`px-3 py-1.5 border-b-2 text-xs font-bold transition-colors ${planScope === 'personal' ? 'border-primary text-primary' : 'border-transparent text-slate-500 hover:text-slate-800'}`}>Kế hoạch cá nhân</button>
+            {canViewSharedPlans && <>
+              <button type="button" onClick={() => setPlanScope('project')} className={`px-3 py-1.5 border-b-2 text-xs font-bold transition-colors ${planScope === 'project' ? 'border-primary text-primary' : 'border-transparent text-slate-500 hover:text-slate-800'}`}>Kế hoạch dự án</button>
+              <button type="button" onClick={() => { setPlanScope('all_projects'); setSelectedProject('all'); }} className={`px-3 py-1.5 border-b-2 text-xs font-bold transition-colors ${planScope === 'all_projects' ? 'border-primary text-primary' : 'border-transparent text-slate-500 hover:text-slate-800'}`}>Tất cả dự án</button>
+            </>}
+          </div>
+
           {/* View Mode Switcher */}
           <div className="inline-flex rounded-md bg-slate-100 p-0.5 border border-slate-200">
             <button
@@ -911,15 +982,6 @@ export const WorkPlanPage: React.FC = () => {
             </button>
           </div>
 
-          {/* Button + Lên kế hoạch mới */}
-          <button
-            type="button"
-            onClick={() => openAddModal()}
-            className="flex items-center gap-1.5 px-3 py-1 bg-primary hover:bg-blue-700 text-white rounded-md text-xs font-bold transition-colors shadow-sm cursor-pointer whitespace-nowrap"
-          >
-            <span className="material-symbols-outlined text-base">add_task</span>
-            <span>+ Lên kế hoạch mới</span>
-          </button>
         </div>
       </div>
 
