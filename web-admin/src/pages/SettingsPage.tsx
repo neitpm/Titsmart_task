@@ -590,7 +590,7 @@ export const SettingsPage: React.FC = () => {
       {/* Main Settings Layout (Left Nav + Right Content) */}
       <div className="flex-1 flex overflow-hidden">
         {/* Left Settings Sidebar */}
-        <aside className="w-52 md:w-56 bg-white border-r border-slate-200 p-3 flex flex-col justify-between shrink-0 overflow-y-auto custom-scrollbar">
+        <aside className="w-44 md:w-48 bg-white border-r border-slate-200 p-2 flex flex-col justify-between shrink-0 overflow-y-auto custom-scrollbar">
           <div className="space-y-4">
             {/* Cấu hình công ty (Dành cho Company Admin) */}
             {!isGeneralStaff && (
