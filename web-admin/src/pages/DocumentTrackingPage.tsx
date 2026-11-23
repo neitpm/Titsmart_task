@@ -15,6 +15,8 @@ import { FileUpload } from '../components/common/FileUpload';
 import { AuditInfoCell } from '../components/common/AuditInfoCell';
 import { PullToRefresh } from '../components/common/PullToRefresh';
 import { useUIStore } from '../services/uiStore';
+import { ViewModeToolbar, resolveViewMode, AppViewMode } from '../components/common/ViewModeToolbar';
+import { StatusKanbanBoard } from '../components/common/StatusKanbanBoard';
 
 export const DocumentTrackingPage: React.FC = () => {
   const documentTracks = useRealtimeStore(s => s.documentTracks);
@@ -27,6 +29,12 @@ export const DocumentTrackingPage: React.FC = () => {
   const logActivity = useRealtimeStore(s => s.logActivity);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Chế độ xem theo chuẩn appViewMode chung và toolbar
+  const appViewMode = useUIStore(s => s.appViewMode);
+  const setAppViewMode = useUIStore(s => s.setAppViewMode);
+  const supportedDocModes: AppViewMode[] = ['grid', 'compact_grid', 'table', 'table_detailed', 'kanban'];
+  const viewMode = resolveViewMode(appViewMode, supportedDocModes);
 
   const [fileViewerUrls, setFileViewerUrls] = useState<string[] | null>(null);
 
@@ -530,6 +538,13 @@ export const DocumentTrackingPage: React.FC = () => {
                 className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary focus:bg-white transition-all h-8"
               />
             </div>
+
+            {/* ViewMode Toolbar */}
+            <ViewModeToolbar
+              currentMode={viewMode}
+              onModeChange={setAppViewMode}
+              supportedModes={supportedDocModes}
+            />
 
             {/* Desktop Export File Dropdown */}
             <div className="relative hidden md:block">
