@@ -1376,14 +1376,38 @@ export const AttendancePage: React.FC = () => {
   const handleCheckIn = async () => {
     if (!user || isSubmitting) return;
 
-    // 1. Kiểm tra GPS nếu ở chế độ bắt buộc (strict) khi làm việc tại văn phòng
-    if (attendanceConfig.gpsRequirement === 'strict' && workLocationType === 'office') {
+    const proj = projects.find(p => p.id === selectedProject || p.code === selectedProject);
+    const hasProjectCoords = proj && proj.latitude !== undefined && proj.longitude !== undefined;
+    
+    // Tự động xác định khoảng cách & tính hợp lệ:
+    // Nếu chọn dự án có tọa độ: so sánh với tọa độ dự án
+    // Nếu không chọn dự án (hoặc dự án văn phòng): so sánh với tọa độ văn phòng
+    const officeLoc = attendanceConfig.locations?.[0];
+    let actualDistanceMeters = gpsData?.distanceMeters;
+    let isWithinGeoRadius = gpsData?.isWithinRadius ?? true;
+    let allowedRadius = officeLoc?.radiusMeters || 500;
+
+    if (hasProjectCoords && gpsData?.lat && gpsData?.lng) {
+      actualDistanceMeters = calculateDistanceMeters(gpsData.lat, gpsData.lng, proj.latitude!, proj.longitude!);
+      allowedRadius = proj.radiusMeters || 500;
+      isWithinGeoRadius = actualDistanceMeters <= allowedRadius;
+    } else if (gpsData) {
+      actualDistanceMeters = gpsData.distanceMeters;
+      isWithinGeoRadius = gpsData.isWithinRadius;
+    }
+
+    // 1. Kiểm tra GPS nếu ở chế độ bắt buộc (strict)
+    if (attendanceConfig.gpsRequirement === 'strict') {
       if (isGpsScanning) {
         showToast('Đang quét tọa độ GPS, vui lòng đợi trong giây lát...', 'warning');
         return;
       }
-      if (!gpsData || !gpsData.isWithinRadius) {
-        showToast('Bạn đang ở ngoài bán kính văn phòng. Nếu bạn đang làm việc tại công trường hoặc đi công tác, vui lòng chọn "Tại công trình" hoặc "Đi công tác"!', 'error');
+      if (!gpsData) {
+        showToast('Không thể xác định vị trí GPS của bạn để chấm công!', 'error');
+        return;
+      }
+      if (!isWithinGeoRadius) {
+        showToast(`Bạn đang ở ngoài bán kính cho phép (${formatDistance(actualDistanceMeters || 0)} / cho phép ≤ ${allowedRadius}m)!`, 'error');
         return;
       }
     }
@@ -1396,42 +1420,11 @@ export const AttendancePage: React.FC = () => {
 
     setIsSubmitting(true);
     try {
-      const proj = projects.find(p => p.id === selectedProject);
-      const nowIso = new Date().toISOString();
+      const detectedWorkLocationType: 'office' | 'field' | 'remote' = proj ? 'field' : 'office';
 
-      let attendanceType: 'time' | 'shift' = 'time';
-      let shiftId: string | undefined = undefined;
-      let shiftName: string | undefined = undefined;
-      let shiftStatus: 'on_time' | 'late' | 'early' | 'normal' = 'normal';
-      let shiftLateMinutes = 0;
-
-      if (attendanceConfig.mode === 'shift' || (attendanceConfig.mode === 'hybrid' && selectedShiftId)) {
-        attendanceType = 'shift';
-        const shiftObj = attendanceConfig.shifts.find(s => s.id === selectedShiftId);
-        if (shiftObj) {
-          shiftId = shiftObj.id;
-          shiftName = shiftObj.name;
-          const evalShift = evaluateShiftStatus(nowIso, shiftObj);
-          shiftStatus = evalShift.status;
-          shiftLateMinutes = evalShift.lateMinutes;
-        }
-      }
-
-      const locationLabel = workLocationType === 'field' 
-        ? (proj ? `Công trường: ${proj.name}` : 'Công trường / Dự án')
-        : workLocationType === 'remote' 
-        ? 'Đi công tác / Ra ngoài' 
-        : (gpsData?.locationName || 'Văn phòng');
-
-      // Xác định khoảng cách và trạng thái hợp lệ theo loại địa điểm
-      let actualDistanceMeters = gpsData?.distanceMeters;
-      let isWithinGeoRadius = workLocationType === 'office' ? gpsData?.isWithinRadius : true;
-
-      if (workLocationType === 'field' && proj && proj.latitude !== undefined && proj.longitude !== undefined && gpsData?.lat && gpsData?.lng) {
-        actualDistanceMeters = calculateDistanceMeters(gpsData.lat, gpsData.lng, proj.latitude, proj.longitude);
-        const maxRadius = proj.radiusMeters || 500;
-        isWithinGeoRadius = actualDistanceMeters <= maxRadius;
-      }
+      const locationLabel = proj
+        ? (proj.location ? `${proj.name} (${proj.location})` : `Dự án: ${proj.name}`)
+        : (gpsData?.locationName || officeLoc?.name || 'Văn phòng');
 
       const result = await api.attendance.checkIn({
         userId: user.id,
@@ -1440,12 +1433,8 @@ export const AttendancePage: React.FC = () => {
         projectName: proj?.name,
         checkInImage: checkInImage || undefined,
         notes: notes || undefined,
-        attendanceType,
-        workLocationType,
-        shiftId,
-        shiftName,
-        shiftStatus,
-        shiftLateMinutes,
+        attendanceType: 'time',
+        workLocationType: detectedWorkLocationType,
         checkInLat: gpsData?.lat,
         checkInLng: gpsData?.lng,
         checkInLocationName: locationLabel,
@@ -1465,8 +1454,8 @@ export const AttendancePage: React.FC = () => {
 
       // Gửi thông báo realtime chỉ đến admin
       await addNotification({
-        title: 'Chấm công' + (shiftName ? ` [${shiftName}]` : ''),
-        message: `${user.name} đã chấm công [${workLocationType === 'field' ? 'Công trường' : workLocationType === 'remote' ? 'Công tác' : 'Văn phòng'}]${shiftName ? ` (${shiftName})` : ''}${proj ? ` tại dự án ${proj.name}` : ''} lúc ${formatTime(result.checkInTime)}${gpsData ? ` (${formatDistance(gpsData.distanceMeters)})` : ''}`,
+        title: 'Chấm công',
+        message: `${user.name} đã chấm công${proj ? ` tại ${proj.name}` : ' tại Văn phòng'} lúc ${formatTime(result.checkInTime)}${actualDistanceMeters !== undefined ? ` (${formatDistance(actualDistanceMeters)})` : ''}`,
         link: '/attendance?tab=attendance&view=all',
         type: 'attendance:::admin',
         icon: 'fingerprint',
@@ -3627,131 +3616,39 @@ export const AttendancePage: React.FC = () => {
             Thời gian chấm công: <span className="font-bold text-slate-800">{formatTime(new Date().toISOString())} {formatDate(new Date().toISOString())}</span>
           </p>
 
-          {/* CHỌN CA LÀM VIỆC (NẾU BẬT CHẾ ĐỘ SHIFT HOẶC HYBRID) */}
-          {(attendanceConfig.mode === 'shift' || attendanceConfig.mode === 'hybrid') && (
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="text-xs font-bold text-slate-700">
-                  Ca làm việc {attendanceConfig.mode === 'shift' ? '(*)' : '(tùy chọn)'}:
-                </label>
-                {attendanceConfig.mode === 'hybrid' && (
-                  <button
-                    type="button"
-                    onClick={() => setSelectedShiftId(selectedShiftId ? '' : (attendanceConfig.shifts[0]?.id || ''))}
-                    className="text-[11px] text-primary hover:underline font-semibold"
-                  >
-                    {selectedShiftId ? 'Đổi sang chấm theo giờ' : 'Chọn ca làm việc'}
-                  </button>
-                )}
-              </div>
-
-              {selectedShiftId ? (
-                <div className="grid grid-cols-2 gap-2">
-                  {attendanceConfig.shifts.filter(s => s.isActive).map(s => {
-                    const isSelected = selectedShiftId === s.id;
-                    const evalRes = evaluateShiftStatus(new Date().toISOString(), s);
-                    return (
-                      <div
-                        key={s.id}
-                        onClick={() => setSelectedShiftId(s.id)}
-                        className={`p-2.5 rounded-lg border-2 cursor-pointer transition-all ${
-                          isSelected
-                            ? 'border-primary bg-blue-50/80 shadow-xs'
-                            : 'border-slate-200 hover:border-slate-300 bg-white'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-slate-800">{s.name}</span>
-                          {evalRes.status === 'on_time' ? (
-                            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded">Đúng giờ</span>
-                          ) : (
-                            <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.2 rounded">Trễ {evalRes.lateMinutes}p</span>
-                          )}
-                        </div>
-                        <div className="text-[11px] text-slate-500 mt-0.5">
-                          {s.startTime} - {s.endTime} ({s.workWeight} công)
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="p-2.5 rounded-lg border border-dashed border-slate-300 bg-slate-50 text-xs text-slate-600 flex items-center justify-between">
-                  <span>Chấm công theo thời gian thực (Giờ vào: {formatTime(new Date().toISOString())})</span>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedShiftId(attendanceConfig.shifts[0]?.id || '')}
-                    className="text-primary font-bold hover:underline"
-                  >
-                    Chọn ca
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* HÌNH THỨC / ĐỊA ĐIỂM LÀM VIỆC */}
+          {/* CHỌN DỰ ÁN / CÔNG TRÌNH / NƠI LÀM VIỆC */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
+            <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center justify-between">
               <span className="flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-[16px] text-primary">domain</span>
-                Địa điểm làm việc:
+                <span className="material-symbols-outlined text-[16px] text-primary">apartment</span>
+                Dự án / Công trình làm việc:
               </span>
-              {attendanceConfig.allowFieldWork && (
-                <span className="text-[10px] text-emerald-700 font-medium bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                  Hỗ trợ công trường / ra ngoài
-                </span>
-              )}
+              <span className="text-[11px] text-slate-500 font-normal">
+                Mặc định là Văn phòng nếu không chọn
+              </span>
             </label>
-            <div className="grid grid-cols-3 gap-2">
-              <button
-                type="button"
-                onClick={() => setWorkLocationType('office')}
-                className={`flex flex-col items-center justify-center p-2 rounded-lg border text-xs font-bold transition-all cursor-pointer ${
-                  workLocationType === 'office'
-                    ? 'bg-blue-50 border-primary text-primary shadow-xs'
-                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                }`}
-              >
-                <span className="material-symbols-outlined text-lg mb-0.5">apartment</span>
-                <span>Tại văn phòng</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setWorkLocationType('field')}
-                className={`flex flex-col items-center justify-center p-2 rounded-lg border text-xs font-bold transition-all cursor-pointer ${
-                  workLocationType === 'field'
-                    ? 'bg-amber-50 border-amber-500 text-amber-800 shadow-xs ring-1 ring-amber-400'
-                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                }`}
-              >
-                <span className="material-symbols-outlined text-lg mb-0.5 text-amber-600">foundation</span>
-                <span>Tại công trình</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setWorkLocationType('remote')}
-                className={`flex flex-col items-center justify-center p-2 rounded-lg border text-xs font-bold transition-all cursor-pointer ${
-                  workLocationType === 'remote'
-                    ? 'bg-purple-50 border-purple-500 text-purple-800 shadow-xs ring-1 ring-purple-400'
-                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                }`}
-              >
-                <span className="material-symbols-outlined text-lg mb-0.5 text-purple-600">commute</span>
-                <span>Đi công tác</span>
-              </button>
-            </div>
+            <CustomSelect
+              value={selectedProject}
+              onChange={e => setSelectedProject(e.target.value)}
+              searchable={true}
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:outline-none bg-white font-medium"
+            >
+              <option value="">🏢 Văn phòng công ty (mặc định)</option>
+              {projects.map(p => (
+                <option key={p.id} value={p.id}>
+                  {p.name} {p.location ? `(${p.location})` : ''}
+                </option>
+              ))}
+            </CustomSelect>
           </div>
 
-          {/* ĐỊNH VỊ GPS NẾU YÊU CẦU */}
+          {/* ĐỊNH VỊ GPS SO SÁNH TRỰC TIẾP VỚI ĐỊA ĐIỂM DỰ ÁN HOẶC VĂN PHÒNG */}
           {attendanceConfig.gpsRequirement !== 'none' && (
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
                   <span className="material-symbols-outlined text-[16px] text-primary">location_on</span>
-                  Định vị GPS:
+                  Kiểm tra vị trí GPS:
                 </label>
                 <button
                   type="button"
@@ -3769,110 +3666,72 @@ export const AttendancePage: React.FC = () => {
                   <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent shrink-0" />
                   <span className="text-xs text-blue-800 font-medium">Đang xác định tọa độ GPS của thiết bị...</span>
                 </div>
-              ) : gpsData ? (
-                workLocationType === 'field' ? (() => {
-                  const currentSelectedProj = projects.find(p => p.id === selectedProject || p.code === selectedProject);
-                  const hasProjectCoords = currentSelectedProj && currentSelectedProj.latitude !== undefined && currentSelectedProj.longitude !== undefined;
-                  const distanceToProject = hasProjectCoords
-                    ? calculateDistanceMeters(gpsData.lat, gpsData.lng, currentSelectedProj.latitude!, currentSelectedProj.longitude!)
-                    : null;
-                  const projectRadius = currentSelectedProj?.radiusMeters || 500;
-                  const isWithinProjectRadius = distanceToProject !== null ? distanceToProject <= projectRadius : true;
+              ) : gpsData ? (() => {
+                const currentSelectedProj = projects.find(p => p.id === selectedProject || p.code === selectedProject);
+                const hasProjectCoords = currentSelectedProj && currentSelectedProj.latitude !== undefined && currentSelectedProj.longitude !== undefined;
+                const officeLocation = attendanceConfig.locations?.[0];
+                
+                const targetName = currentSelectedProj ? currentSelectedProj.name : (officeLocation?.name || 'Văn phòng');
+                const targetRadius = currentSelectedProj ? (currentSelectedProj.radiusMeters || 500) : (officeLocation?.radiusMeters || 500);
 
-                  return (
-                    <div className={`p-3 rounded-lg border ${
-                      hasProjectCoords
-                        ? (isWithinProjectRadius ? 'bg-emerald-50/80 border-emerald-300 text-emerald-950' : 'bg-amber-50/80 border-amber-300 text-amber-950')
-                        : 'bg-amber-50/90 border-amber-300 text-amber-950'
-                    }`}>
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold flex items-center gap-1.5 text-slate-800">
-                          <span className="material-symbols-outlined text-base text-amber-600">foundation</span>
-                          Chấm công tại Công trình / Dự án
-                        </span>
-                        {hasProjectCoords ? (
-                          <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${
-                            isWithinProjectRadius
-                              ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
-                              : 'bg-amber-100 text-amber-800 border-amber-300'
-                          }`}>
-                            {isWithinProjectRadius ? '✓ Trong phạm vi công trình' : `⚠️ Ngoài bán kính (${formatDistance(distanceToProject || 0)})`}
-                          </span>
-                        ) : (
-                          <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300">
-                            Lưu vết thực địa
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-[11px] mt-1.5 flex flex-wrap items-center gap-1.5 text-slate-700">
-                        <span className="material-symbols-outlined text-[14px] text-amber-600">pin_drop</span>
-                        <span>Tọa độ thực tế: <b>{gpsData.lat.toFixed(5)}, {gpsData.lng.toFixed(5)}</b></span>
-                        {hasProjectCoords && distanceToProject !== null ? (
-                          <span className="font-semibold text-slate-600">
-                            (Cách tâm dự án <b>{formatDistance(distanceToProject)}</b> / chuẩn ≤ {projectRadius}m)
-                          </span>
-                        ) : (
-                          <span className="text-slate-400">({formatDistance(gpsData.distanceMeters)} so với VP)</span>
-                        )}
-                      </div>
-                      {!hasProjectCoords && (
-                        <div className="text-[10.5px] text-amber-800 mt-1.5 bg-amber-100/70 p-1.5 rounded">
-                          💡 Dự án chưa cài đặt tọa độ GPS cố định. Hệ thống sẽ lưu tọa độ thực tế của bạn để làm minh chứng.
-                        </div>
-                      )}
-                    </div>
-                  );
-                })() : workLocationType === 'remote' ? (
-                  <div className="p-3 rounded-lg border bg-purple-50/90 border-purple-300 text-purple-950">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold flex items-center gap-1.5 text-purple-900">
-                        <span className="material-symbols-outlined text-base text-purple-600">commute</span>
-                        Đi công tác / Ra ngoài khảo sát
-                      </span>
-                      <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 border border-purple-300">
-                        Lưu vết công tác
-                      </span>
-                    </div>
-                    <div className="text-[11px] mt-1.5 flex items-center gap-1 text-slate-700">
-                      <span className="material-symbols-outlined text-[14px] text-purple-600">pin_drop</span>
-                      <span>Tọa độ: <b>{gpsData.lat.toFixed(5)}, {gpsData.lng.toFixed(5)}</b></span>
-                      <span className="text-slate-400">({formatDistance(gpsData.distanceMeters)} so với VP)</span>
-                    </div>
-                  </div>
-                ) : (
+                const distanceToTarget = hasProjectCoords
+                  ? calculateDistanceMeters(gpsData.lat, gpsData.lng, currentSelectedProj.latitude!, currentSelectedProj.longitude!)
+                  : (currentSelectedProj ? null : gpsData.distanceMeters);
+
+                const isWithinRadius = distanceToTarget !== null 
+                  ? distanceToTarget <= targetRadius 
+                  : true; // Nếu dự án chưa có tọa độ, cho phép lưu vết thực địa
+
+                return (
                   <div className={`p-3 rounded-lg border ${
-                    gpsData.isWithinRadius
-                      ? 'bg-emerald-50/80 border-emerald-300 text-emerald-900'
-                      : attendanceConfig.gpsRequirement === 'strict'
-                      ? 'bg-red-50/80 border-red-300 text-red-900'
-                      : 'bg-amber-50/80 border-amber-300 text-amber-900'
+                    distanceToTarget !== null
+                      ? (isWithinRadius
+                          ? 'bg-emerald-50/80 border-emerald-300 text-emerald-950'
+                          : attendanceConfig.gpsRequirement === 'strict'
+                          ? 'bg-red-50/80 border-red-300 text-red-950'
+                          : 'bg-amber-50/80 border-amber-300 text-amber-950')
+                      : 'bg-blue-50/80 border-blue-300 text-blue-950'
                   }`}>
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold flex items-center gap-1.5">
-                        {gpsData.isWithinRadius ? '✅ Vị trí hợp lệ' : attendanceConfig.gpsRequirement === 'strict' ? '❌ Ngoài bán kính văn phòng' : '⚠️ Vị trí chấm công'}
+                        <span className="material-symbols-outlined text-base text-primary">
+                          {currentSelectedProj ? 'foundation' : 'apartment'}
+                        </span>
+                        {currentSelectedProj ? `Tại dự án: ${currentSelectedProj.name}` : 'Tại văn phòng'}
                       </span>
-                      <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-white/80 border">
-                        Cách: {formatDistance(gpsData.distanceMeters)}
-                      </span>
+                      {distanceToTarget !== null ? (
+                        <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${
+                          isWithinRadius
+                            ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                            : 'bg-amber-100 text-amber-800 border-amber-300'
+                        }`}>
+                          {isWithinRadius ? '✓ Trong phạm vi hợp lệ' : `⚠️ Ngoài bán kính (${formatDistance(distanceToTarget)})`}
+                        </span>
+                      ) : (
+                        <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 border border-blue-300">
+                          Lưu vết thực địa
+                        </span>
+                      )}
                     </div>
-                    <div className="text-[11px] mt-1 opacity-90 truncate">
-                      📍 {gpsData.locationName} ({gpsData.lat.toFixed(5)}, {gpsData.lng.toFixed(5)})
+                    
+                    <div className="text-[11px] mt-1.5 flex flex-wrap items-center gap-1.5 text-slate-700">
+                      <span className="material-symbols-outlined text-[14px] text-primary">my_location</span>
+                      <span>Tọa độ thiết bị: <b>{gpsData.lat.toFixed(5)}, {gpsData.lng.toFixed(5)}</b></span>
+                      {distanceToTarget !== null && (
+                        <span className="font-semibold text-slate-600">
+                          (Cách {targetName} <b>{formatDistance(distanceToTarget)}</b> / chuẩn ≤ {targetRadius}m)
+                        </span>
+                      )}
                     </div>
-                    {!gpsData.isWithinRadius && (
-                      <div className="text-[11px] mt-2 pt-2 border-t border-slate-200/60 flex items-center justify-between">
-                        <span className="text-slate-600">Đang ở công trường / dự án xa?</span>
-                        <button
-                          type="button"
-                          onClick={() => setWorkLocationType('field')}
-                          className="px-2 py-0.5 bg-amber-500 hover:bg-amber-600 text-white rounded font-bold text-[10.5px] cursor-pointer"
-                        >
-                          Chuyển sang Tại công trình
-                        </button>
+
+                    {currentSelectedProj && !hasProjectCoords && (
+                      <div className="text-[10.5px] text-blue-800 mt-1.5 bg-blue-100/70 p-1.5 rounded">
+                        💡 Dự án này chưa có tọa độ GPS cụ thể. Hệ thống sẽ ghi nhận tọa độ GPS thực tế của bạn khi chấm công.
                       </div>
                     )}
                   </div>
-                )
-              ) : gpsError ? (
+                );
+              })() : gpsError ? (
                 <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700 flex items-start gap-2">
                   <span className="material-symbols-outlined text-[18px] shrink-0 text-red-500">warning</span>
                   <div>
@@ -3906,20 +3765,7 @@ export const AttendancePage: React.FC = () => {
               <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileSelect} />
             </div>
           </div>
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">Dự án (tùy chọn)</label>
-            <CustomSelect
-              value={selectedProject}
-              onChange={e => setSelectedProject(e.target.value)}
-              searchable={true}
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:outline-none bg-white"
-            >
-              <option value="">-- Không chọn dự án --</option>
-              {projects.map(p => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </CustomSelect>
-          </div>
+
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1">Ghi chú (tùy chọn)</label>
             <textarea
