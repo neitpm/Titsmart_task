@@ -1910,6 +1910,10 @@ export const SettingsPage: React.FC = () => {
                       </div>
                     ))}
                   </div>
+                  <div className="flex justify-end gap-2 pt-1">
+                    <button type="button" onClick={() => setIsChangePasswordOpen(true)} className="px-4 py-2 rounded-md text-xs font-bold bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 transition-colors cursor-pointer">Đổi mật khẩu</button>
+                    <button type="button" onClick={() => setIsConfirmLogoutOpen(true)} className="px-4 py-2 rounded-md text-xs font-bold bg-red-50 border border-red-200 hover:bg-red-100 text-red-600 transition-colors cursor-pointer">Đăng xuất</button>
+                  </div>
 
                 </div>}
 
