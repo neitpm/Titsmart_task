@@ -31,7 +31,8 @@ import {
   formatDistance, 
   getGoogleMapsLink, 
   evaluateShiftStatus, 
-  suggestBestShift 
+  suggestBestShift,
+  calculateDistanceMeters
 } from '../utils/attendanceUtils';
 import { AttendanceConfigModal } from '../components/attendance/AttendanceConfigModal';
 import { MonthlyPayrollTab } from '../components/payroll/MonthlyPayrollTab';
@@ -1402,6 +1403,16 @@ export const AttendancePage: React.FC = () => {
         ? 'Đi công tác / Ra ngoài' 
         : (gpsData?.locationName || 'Văn phòng');
 
+      // Xác định khoảng cách và trạng thái hợp lệ theo loại địa điểm
+      let actualDistanceMeters = gpsData?.distanceMeters;
+      let isWithinGeoRadius = workLocationType === 'office' ? gpsData?.isWithinRadius : true;
+
+      if (workLocationType === 'field' && proj && proj.latitude !== undefined && proj.longitude !== undefined && gpsData?.lat && gpsData?.lng) {
+        actualDistanceMeters = calculateDistanceMeters(gpsData.lat, gpsData.lng, proj.latitude, proj.longitude);
+        const maxRadius = proj.radiusMeters || 500;
+        isWithinGeoRadius = actualDistanceMeters <= maxRadius;
+      }
+
       const result = await api.attendance.checkIn({
         userId: user.id,
         userName: user.name || user.username || 'Unknown',
@@ -1418,8 +1429,8 @@ export const AttendancePage: React.FC = () => {
         checkInLat: gpsData?.lat,
         checkInLng: gpsData?.lng,
         checkInLocationName: locationLabel,
-        checkInDistanceMeters: gpsData?.distanceMeters,
-        checkInWithinRadius: workLocationType === 'office' ? gpsData?.isWithinRadius : true,
+        checkInDistanceMeters: actualDistanceMeters,
+        checkInWithinRadius: isWithinGeoRadius,
       });
 
       cachedLogs = [result, ...cachedLogs];
@@ -3739,27 +3750,59 @@ export const AttendancePage: React.FC = () => {
                   <span className="text-xs text-blue-800 font-medium">Đang xác định tọa độ GPS của thiết bị...</span>
                 </div>
               ) : gpsData ? (
-                workLocationType === 'field' ? (
-                  <div className="p-3 rounded-lg border bg-amber-50/90 border-amber-300 text-amber-950">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold flex items-center gap-1.5 text-amber-900">
-                        <span className="material-symbols-outlined text-base text-amber-600">foundation</span>
-                        Chấm công tại Công trình / Dự án
-                      </span>
-                      <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300">
-                        Lưu vết thực địa
-                      </span>
+                workLocationType === 'field' ? (() => {
+                  const currentSelectedProj = projects.find(p => p.id === selectedProject || p.code === selectedProject);
+                  const hasProjectCoords = currentSelectedProj && currentSelectedProj.latitude !== undefined && currentSelectedProj.longitude !== undefined;
+                  const distanceToProject = hasProjectCoords
+                    ? calculateDistanceMeters(gpsData.lat, gpsData.lng, currentSelectedProj.latitude!, currentSelectedProj.longitude!)
+                    : null;
+                  const projectRadius = currentSelectedProj?.radiusMeters || 500;
+                  const isWithinProjectRadius = distanceToProject !== null ? distanceToProject <= projectRadius : true;
+
+                  return (
+                    <div className={`p-3 rounded-lg border ${
+                      hasProjectCoords
+                        ? (isWithinProjectRadius ? 'bg-emerald-50/80 border-emerald-300 text-emerald-950' : 'bg-amber-50/80 border-amber-300 text-amber-950')
+                        : 'bg-amber-50/90 border-amber-300 text-amber-950'
+                    }`}>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold flex items-center gap-1.5 text-slate-800">
+                          <span className="material-symbols-outlined text-base text-amber-600">foundation</span>
+                          Chấm công tại Công trình / Dự án
+                        </span>
+                        {hasProjectCoords ? (
+                          <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${
+                            isWithinProjectRadius
+                              ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                              : 'bg-amber-100 text-amber-800 border-amber-300'
+                          }`}>
+                            {isWithinProjectRadius ? '✓ Trong phạm vi công trình' : `⚠️ Ngoài bán kính (${formatDistance(distanceToProject || 0)})`}
+                          </span>
+                        ) : (
+                          <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300">
+                            Lưu vết thực địa
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-[11px] mt-1.5 flex flex-wrap items-center gap-1.5 text-slate-700">
+                        <span className="material-symbols-outlined text-[14px] text-amber-600">pin_drop</span>
+                        <span>Tọa độ thực tế: <b>{gpsData.lat.toFixed(5)}, {gpsData.lng.toFixed(5)}</b></span>
+                        {hasProjectCoords && distanceToProject !== null ? (
+                          <span className="font-semibold text-slate-600">
+                            (Cách tâm dự án <b>{formatDistance(distanceToProject)}</b> / chuẩn ≤ {projectRadius}m)
+                          </span>
+                        ) : (
+                          <span className="text-slate-400">({formatDistance(gpsData.distanceMeters)} so với VP)</span>
+                        )}
+                      </div>
+                      {!hasProjectCoords && (
+                        <div className="text-[10.5px] text-amber-800 mt-1.5 bg-amber-100/70 p-1.5 rounded">
+                          💡 Dự án chưa cài đặt tọa độ GPS cố định. Hệ thống sẽ lưu tọa độ thực tế của bạn để làm minh chứng.
+                        </div>
+                      )}
                     </div>
-                    <div className="text-[11px] mt-1.5 flex items-center gap-1 text-slate-700">
-                      <span className="material-symbols-outlined text-[14px] text-amber-600">pin_drop</span>
-                      <span>Tọa độ thực tế: <b>{gpsData.lat.toFixed(5)}, {gpsData.lng.toFixed(5)}</b></span>
-                      <span className="text-slate-400">({formatDistance(gpsData.distanceMeters)} so với VP)</span>
-                    </div>
-                    <div className="text-[10.5px] text-amber-800 mt-1.5 bg-amber-100/70 p-1.5 rounded">
-                      💡 Tọa độ thực tế của công trình được lưu vết minh bạch. Vui lòng chọn Dự án bên dưới để gắn kết công việc.
-                    </div>
-                  </div>
-                ) : workLocationType === 'remote' ? (
+                  );
+                })() : workLocationType === 'remote' ? (
                   <div className="p-3 rounded-lg border bg-purple-50/90 border-purple-300 text-purple-950">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold flex items-center gap-1.5 text-purple-900">

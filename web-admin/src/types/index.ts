@@ -252,6 +252,9 @@ export interface Project {
   name: string;
   client?: string; // Chủ đầu tư
   location: string;
+  latitude?: number; // Tọa độ vĩ độ công trình
+  longitude?: number; // Tọa độ kinh độ công trình
+  radiusMeters?: number; // Bán kính chấm công hợp lệ (mét, mặc định 500m)
   category?: string; // Phân loại dự án
   priority?: ProjectPriority; // Mức độ ưu tiên theo cấp bậc: Cấp 1 (urgent) > Cấp 2 (high) > Cấp 3 (normal) > Cấp 4 (low)
   contractValue?: number;
