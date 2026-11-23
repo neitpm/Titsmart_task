@@ -656,7 +656,7 @@ export const SettingsPage: React.FC = () => {
                 </button>
                 <div className="ml-3 border-l-2 border-blue-100 pl-3 space-y-0.5">
                   {([
-                    ['profile', 'Tài khoản & Mật khẩu', 'account_circle'], ['attendance', 'Chấm công', 'fingerprint'], ['leave', 'Nghỉ phép', 'event_busy'],
+                    ['profile', 'Tài khoản', 'account_circle'], ['attendance', 'Chấm công', 'fingerprint'], ['leave', 'Nghỉ phép', 'event_busy'],
                     ['contract', 'Hợp đồng', 'description'], ['projects', 'Dự án', 'folder_open'],
                     ['payroll', 'Bảng lương', 'payments'], ['journal', 'Nhật ký cá nhân', 'history'],
                   ] as const).map(([key, label, icon]) => <button key={key} type="button" onClick={() => { setActiveTab('account'); setPersonalTab(key); }} className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs font-semibold text-left ${activeTab === 'account' && personalTab === key ? 'bg-slate-100 text-slate-900' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'}`}><span className="material-symbols-outlined text-[16px] text-slate-400">{icon}</span><span>{label}</span></button>)}
@@ -1876,7 +1876,7 @@ export const SettingsPage: React.FC = () => {
             {activeTab === 'account' && (
               <div className="space-y-6 animate-in fade-in duration-150">
                 <div>
-                  <h1 className="text-xl font-extrabold text-slate-900">Tài khoản & Bảo mật</h1>
+                  <h1 className="text-xl font-extrabold text-slate-900">Tài khoản</h1>
                   <p className="text-xs text-slate-500 mt-0.5">
                     Quản lý thông tin đăng nhập và đổi mật khẩu bảo vệ tài khoản của bạn.
                   </p>
