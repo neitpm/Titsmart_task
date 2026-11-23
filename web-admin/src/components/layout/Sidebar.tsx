@@ -88,7 +88,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
     'Công việc': true,
     'Công và lương': true,
     'Chấm công': true,
-    'Tất cả dự án': true,
+    'Dự án': true,
     'Tổng kho': true,
     'Vật tư & Chi phí': true,
     'Kho Dự án': true
@@ -109,7 +109,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
       setOpenSubMenus(prev => ({ ...prev, 'Công và lương': true, 'Chấm công': true }));
     }
     if (location.pathname === '/projects') {
-      setOpenSubMenus(prev => ({ ...prev, 'Tất cả dự án': true }));
+      setOpenSubMenus(prev => ({ ...prev, 'Dự án': true }));
     }
     if (location.pathname === '/materials') {
       setOpenSubMenus(prev => ({ ...prev, 'Tổng kho': true }));
@@ -240,7 +240,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
           title: '',
           collapsible: false,
           items: [
-            { label: 'Tất cả dự án', path: '/projects', icon: 'arrow_back' }
+            { label: 'Dự án', path: '/projects?status=all', icon: 'arrow_back' }
           ].filter(() => hasPermission(user, 'VIEW_PROJECTS'))
         },
         {
@@ -265,6 +265,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
 
     const projectSubItems = [
       {
+        label: 'Tất cả',
+        path: '/projects?status=all',
+        icon: 'apps',
+        isActive: (pathname: string, search: string) => {
+          const sp = new URLSearchParams(search);
+          return pathname === '/projects' && (sp.get('status') === 'all' || !sp.get('status'));
+        }
+      },
+      {
         label: 'Đang triển khai',
         path: '/projects?status=active',
         icon: 'play_circle',
@@ -282,15 +291,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
           return pathname === '/projects' && sp.get('status') === 'completed';
         }
       },
-      {
-        label: 'Tất cả',
-        path: '/projects?status=all',
-        icon: 'apps',
-        isActive: (pathname: string, search: string) => {
-          const sp = new URLSearchParams(search);
-          return pathname === '/projects' && (sp.get('status') === 'all' || !sp.get('status'));
-        }
-      }
+
     ];
 
     const taskSubItems = [
@@ -396,8 +397,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
     const mainItems = [
       { label: 'Tổng quan', path: '/dashboard', icon: 'analytics', req: 'VIEW_PROJECTS' },
       { 
-        label: 'Tất cả dự án', 
-        path: '/projects?status=active', 
+        label: 'Dự án',
+        path: '/projects?status=all',
         icon: 'cell_tower', 
         req: 'VIEW_PROJECTS',
         children: projectSubItems
@@ -505,7 +506,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
                   const isTaskSection = (item.label === 'Công việc' || item.path.includes('task')) &&
                     (location.pathname === '/task-assignment' || location.pathname === '/my-tasks' || location.pathname === '/work-plan');
                   const isAttendanceSection = (item.label === 'Công và lương' || item.label === 'Chấm công') && location.pathname === '/attendance';
-                  const isProjectsSection = item.label === 'Tất cả dự án' && location.pathname === '/projects';
+                  const isProjectsSection = item.label === 'Dự án' && location.pathname === '/projects';
                   const isMaterialsSection = item.label === 'Tổng kho' && location.pathname === '/materials';
                   const isCostPlanSection = (item.label === 'Vật tư & Chi phí' || item.path.includes('/cost-plan')) && location.pathname.includes('/cost-plan');
                   const isInventorySection = (item.label === 'Kho Dự án' || item.path.includes('/inventory')) && location.pathname.includes('/inventory');
@@ -757,7 +758,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
           { label: 'Hồ sơ', path: `/projects/${currentProject.id}/documents`, icon: 'file_present' },
         ] : [
           { label: 'Tổng quan', path: '/dashboard', icon: 'analytics' },
-          { label: 'Dự án', path: '/projects', icon: 'cell_tower' },
+          { label: 'Dự án', path: '/projects?status=all', icon: 'cell_tower' },
           { label: 'Công việc', path: defaultTaskPath, icon: 'checklist' },
           { label: 'Hồ sơ', path: '/document-tracking', icon: 'folder_managed' },
         ]).map((item) => {
