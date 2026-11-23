@@ -654,7 +654,7 @@ export const SettingsPage: React.FC = () => {
                 </button>
                 <div className="ml-3 border-l-2 border-blue-100 pl-3 space-y-0.5">
                   {([
-                    ['attendance', 'Chấm công', 'fingerprint'], ['leave', 'Nghỉ phép', 'event_busy'],
+                    ['profile', 'Tài khoản & Mật khẩu', 'account_circle'], ['attendance', 'Chấm công', 'fingerprint'], ['leave', 'Nghỉ phép', 'event_busy'],
                     ['contract', 'Hợp đồng', 'description'], ['projects', 'Dự án', 'folder_open'],
                     ['payroll', 'Bảng lương', 'payments'], ['journal', 'Nhật ký cá nhân', 'history'],
                   ] as const).map(([key, label, icon]) => <button key={key} type="button" onClick={() => { setActiveTab('account'); setPersonalTab(key); }} className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs font-semibold text-left ${activeTab === 'account' && personalTab === key ? 'bg-slate-100 text-slate-900' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'}`}><span className="material-symbols-outlined text-[16px] text-slate-400">{icon}</span><span>{label}</span></button>)}
@@ -715,19 +715,6 @@ export const SettingsPage: React.FC = () => {
                 Tài khoản của bạn
               </div>
               <nav className="space-y-1">
-                <button
-                  type="button"
-                  onClick={() => { setActiveTab('account'); setPersonalTab('profile'); }}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${
-                    activeTab === 'account'
-                      ? 'bg-blue-50 text-primary border border-blue-200/80 shadow-2xs'
-                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                  }`}
-                >
-                  <span className="material-symbols-outlined text-lg">account_circle</span>
-                  <span>Tài khoản & Mật khẩu</span>
-                </button>
-
                 <button
                   type="button"
                   onClick={() => setIsConfirmLogoutOpen(true)}
