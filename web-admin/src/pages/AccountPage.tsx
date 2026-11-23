@@ -131,8 +131,8 @@ export const AccountPage: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Panel */}
           <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-8 flex flex-col items-center justify-center min-h-[360px]">
-            <div className="w-28 h-28 rounded-lg bg-slate-100 text-slate-400 border border-slate-200 flex items-center justify-center shadow-sm mb-6">
-              <span className="material-symbols-outlined text-[64px]">person</span>
+            <div className="w-28 h-28 rounded-md bg-slate-100 text-slate-400 border border-slate-200 flex items-center justify-center shadow-sm mb-6 overflow-hidden">
+              {(myEngineer as any)?.avatar ? <img src={(myEngineer as any).avatar} alt="Ảnh người dùng" className="w-full h-full object-cover" /> : <span className="material-symbols-outlined text-[64px]">person</span>}
             </div>
             <h3 className="text-lg font-extrabold text-slate-900 mb-2">
               {user?.name || engineer?.name || 'Admin'}
@@ -150,6 +150,11 @@ export const AccountPage: React.FC = () => {
               <Info label="Vai trò" value={user?.title || 'Quản trị viên'} icon="verified_user" />
               <Info label="Email" value={user?.email || engineer?.email || 'admin@titsmart.vn'} icon="mail" />
               <Info label="Số điện thoại" value={user?.phone || engineer?.phone || '0901 234 567'} icon="call" />
+              <Info label="Ngày vào công ty" value={(myEngineer as any)?.joinDate || (myEngineer as any)?.join_date || 'Chưa cập nhật'} icon="event" />
+              <Info label="Địa chỉ" value={(myEngineer as any)?.address || 'Chưa cập nhật'} icon="home" />
+              <Info label="Số CCCD" value={(myEngineer as any)?.identityNumber || (myEngineer as any)?.identity_number || 'Chưa cập nhật'} icon="badge" />
+              <Info label="Người liên hệ khẩn cấp" value={(myEngineer as any)?.emergencyContactName || (myEngineer as any)?.emergency_contact_name || 'Chưa cập nhật'} icon="contact_phone" />
+              <Info label="SĐT khẩn cấp" value={(myEngineer as any)?.emergencyPhone || (myEngineer as any)?.emergency_phone || 'Chưa cập nhật'} icon="phone_in_talk" />
             </div>
 
             <div className="mt-8 pt-6 border-t border-slate-100 flex flex-wrap gap-3 justify-end">

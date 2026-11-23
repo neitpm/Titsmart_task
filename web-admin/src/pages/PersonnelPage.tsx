@@ -511,6 +511,10 @@ export const PersonnelPage: React.FC = () => {
   const handleSavePerson = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!name.trim() || submitting) return;
+    if (avatarUploading) {
+      triggerToast('Vui lòng chờ ảnh tải lên hoàn tất trước khi lưu!', 'warning');
+      return;
+    }
     if (selectedProjectCodes.length === 0) {
       triggerToast('Vui lòng chọn ít nhất 1 dự án cho nhân sự!', 'warning');
       return;
@@ -1078,12 +1082,12 @@ export const PersonnelPage: React.FC = () => {
 <div className="flex flex-col lg:flex-row gap-4">
 <div className="lg:w-[40%] space-y-3">
           <div className="mb-1 text-[11px] font-extrabold uppercase tracking-wide text-slate-400">Thông tin cá nhân</div>
-          <div className="flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
-            <div className="h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-white flex items-center justify-center">
+          <div className="flex items-center gap-3 rounded border border-slate-200 bg-slate-50 p-3">
+            <div className="h-16 w-16 shrink-0 overflow-hidden rounded border border-slate-200 bg-white flex items-center justify-center">
               {avatar ? <img src={avatar} alt="Ảnh nhân sự" className="h-full w-full object-cover" /> : <span className="material-symbols-outlined text-3xl text-slate-300">account_circle</span>}
             </div>
             <div className="min-w-0">
-              <label className={`inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-primary/30 bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary hover:bg-primary/20 ${avatarUploading ? 'pointer-events-none opacity-60' : ''}`}>
+              <label className={`inline-flex cursor-pointer items-center gap-1.5 rounded border border-primary/30 bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary hover:bg-primary/20 ${avatarUploading ? 'pointer-events-none opacity-60' : ''}`}>
                 <span className="material-symbols-outlined text-[16px]">{avatarUploading ? 'sync' : 'photo_camera'}</span>
                 {avatarUploading ? 'Đang tải ảnh...' : 'Tải ảnh người dùng'}
                 <input type="file" accept="image/*" onChange={handleAvatarUpload} disabled={avatarUploading} className="hidden" />
