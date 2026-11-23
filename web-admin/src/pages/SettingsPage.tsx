@@ -651,7 +651,7 @@ export const SettingsPage: React.FC = () => {
             <div>
               <nav className="space-y-1">
                 <button type="button" onClick={() => { const wasAccount = activeTab === 'account'; setActiveTab('account'); setPersonalTab('profile'); setIsPersonalMenuOpen(open => wasAccount ? !open : true); }} className={`w-full flex items-center justify-between gap-2.5 px-3 py-2 rounded-md text-xs font-bold transition-all text-left cursor-pointer ${activeTab === 'account' ? 'bg-slate-100 text-slate-900' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`}>
-                  <span className="flex items-center gap-2.5"><span className="material-symbols-outlined text-lg">dashboard_customize</span><span>Tổng quan cá nhân</span></span><span className="material-symbols-outlined text-base text-slate-400">{isPersonalMenuOpen ? 'expand_less' : 'expand_more'}</span>
+                  <span className="flex items-center gap-2.5 whitespace-nowrap"><span className="material-symbols-outlined text-lg">dashboard_customize</span><span>Tổng quan cá nhân</span></span>
                 </button>
                 {isPersonalMenuOpen && <div className="ml-3 border-l-2 border-blue-100 pl-3 space-y-0.5">
                   {([
@@ -669,8 +669,7 @@ export const SettingsPage: React.FC = () => {
                       : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                   }`}
                 >
-                  <span className="flex items-center gap-2.5"><span className="material-symbols-outlined text-lg">tune</span><span>Cài đặt ứng dụng</span></span>
-                  <span className="material-symbols-outlined text-base text-slate-400">{isAppSettingsMenuOpen ? 'expand_less' : 'expand_more'}</span>
+                  <span className="flex items-center gap-2.5 whitespace-nowrap"><span className="material-symbols-outlined text-lg">tune</span><span>Cài đặt ứng dụng</span></span>
                 </button>
                 {isAppSettingsMenuOpen && <div className="ml-3 border-l-2 border-blue-100 pl-3 space-y-0.5">
                   <button type="button" onClick={() => setActiveTab('appearance')} className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs font-semibold text-left ${activeTab === 'appearance' ? 'bg-slate-100 text-slate-900' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'}`}>
