@@ -37,6 +37,9 @@ import {
 import { AttendanceConfigModal } from '../components/attendance/AttendanceConfigModal';
 import { MonthlyPayrollTab } from '../components/payroll/MonthlyPayrollTab';
 import { PullToRefresh } from '../components/common/PullToRefresh';
+import { useUIStore } from '../services/uiStore';
+import { ViewModeToolbar, resolveViewMode, AppViewMode } from '../components/common/ViewModeToolbar';
+import { StatusKanbanBoard } from '../components/common/StatusKanbanBoard';
 
 interface AttendanceLog {
   id: string;
@@ -191,6 +194,12 @@ export const AttendancePage: React.FC = () => {
   // Cấu hình hình thức chấm công (Admin Setup)
   const [attendanceConfig, setAttendanceConfig] = useState<AttendanceConfig>(DEFAULT_ATTENDANCE_CONFIG);
   const [showConfigModal, setShowConfigModal] = useState(false);
+
+  // Chế độ xem theo chuẩn appViewMode chung và toolbar
+  const appViewMode = useUIStore(s => s.appViewMode);
+  const setAppViewMode = useUIStore(s => s.setAppViewMode);
+  const supportedAttendanceModes: AppViewMode[] = ['grid', 'compact_grid', 'table', 'table_detailed', 'kanban'];
+  const viewMode = resolveViewMode(appViewMode, supportedAttendanceModes);
 
   // State chấm công theo ca
   const [selectedShiftId, setSelectedShiftId] = useState<string>('');
@@ -1580,6 +1589,13 @@ export const AttendancePage: React.FC = () => {
 
         {/* Desktop-only Right controls (My/All switcher + Action Button) pushed to far right */}
         <div className="hidden md:flex items-center gap-1.5 lg:gap-2 shrink-0">
+          {/* Thanh công cụ chọn chế độ xem */}
+          <ViewModeToolbar
+            currentMode={viewMode}
+            onModeChange={setAppViewMode}
+            supportedModes={supportedAttendanceModes}
+          />
+
           {canViewAll && (mainTab !== 'attendance' || attendanceSubTab === 'logs') && (
             <div className="inline-flex items-center gap-0.5 bg-slate-100 rounded-lg p-0.5 border border-slate-200 text-xs shrink-0">
               <button
