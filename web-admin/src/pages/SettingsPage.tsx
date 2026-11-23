@@ -156,6 +156,7 @@ export const SettingsPage: React.FC = () => {
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
   const engineers = useRealtimeStore((state) => state.engineers || []);
+  const updateEngineer = useRealtimeStore((state) => state.updateEngineer);
   const currentEngineer = useMemo(() => engineers.find((engineer) =>
     engineer.id === user?.id ||
     (user?.username && engineer.username === user.username) ||
@@ -330,9 +331,52 @@ export const SettingsPage: React.FC = () => {
   const [isAppSettingsMenuOpen, setIsAppSettingsMenuOpen] = useState(true);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [isAccountActionMenuOpen, setIsAccountActionMenuOpen] = useState(false);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [profileDraft, setProfileDraft] = useState({
+    name: '', email: '', phone: '', joinDate: '', address: '', identityNumber: '', emergencyContactName: '', emergencyPhone: ''
+  });
   const [personalAttendance, setPersonalAttendance] = useState<any[]>([]);
   const [personalLeaves, setPersonalLeaves] = useState<any[]>([]);
   const [personalPayroll, setPersonalPayroll] = useState<any[]>([]);
+  useEffect(() => {
+    if (!currentEngineer || isEditingProfile) return;
+    setProfileDraft({
+      name: currentEngineer.name || user?.name || '',
+      email: currentEngineer.email || user?.email || '',
+      phone: currentEngineer.phone || user?.phone || '',
+      joinDate: currentEngineer.joinDate || '',
+      address: currentEngineer.address || '',
+      identityNumber: currentEngineer.identityNumber || '',
+      emergencyContactName: currentEngineer.emergencyContactName || '',
+      emergencyPhone: currentEngineer.emergencyPhone || '',
+    });
+  }, [currentEngineer, isEditingProfile, user?.name, user?.email, user?.phone]);
+
+  const handleSaveProfile = async () => {
+    if (!currentEngineer?.id || !profileDraft.name.trim()) {
+      triggerToast('Vui lòng nhập họ tên.', 'warning');
+      return;
+    }
+    setIsSavingProfile(true);
+    try {
+      await updateEngineer(currentEngineer.id, {
+        ...profileDraft,
+        name: profileDraft.name.trim(),
+        email: profileDraft.email.trim(),
+        phone: profileDraft.phone.trim(),
+        address: profileDraft.address.trim(),
+        identityNumber: profileDraft.identityNumber.trim(),
+        emergencyContactName: profileDraft.emergencyContactName.trim(),
+        emergencyPhone: profileDraft.emergencyPhone.trim(),
+      });
+      triggerToast('Đã lưu thông tin cá nhân.', 'success');
+      setIsEditingProfile(false);
+    } catch (error: any) {
+      triggerToast(`Không thể lưu thông tin: ${error?.message || 'Lỗi kết nối'}`, 'error');
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
   useEffect(() => {
     if (!user || activeTab !== 'account') return;
     Promise.all([api.attendance.getByUser(user.id, user.name), api.leaves.getAll(), api.payroll.getAll(new Date().getMonth() + 1, new Date().getFullYear())]).then(([attendance, leaves, payroll]) => {
@@ -1883,7 +1927,24 @@ export const SettingsPage: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 border-b border-slate-100 pb-4">
+                  {isEditingProfile && <div className="grid grid-cols-1 md:grid-cols-2 gap-3 border-b border-slate-100 pb-4">
+                    {([
+                      ['name', 'Họ tên', 'text'], ['email', 'Email', 'email'], ['phone', 'Số điện thoại', 'tel'],
+                      ['joinDate', 'Ngày vào công ty', 'date'], ['address', 'Địa chỉ', 'text'], ['identityNumber', 'Số CCCD', 'text'],
+                      ['emergencyContactName', 'Liên hệ khẩn cấp', 'text'], ['emergencyPhone', 'SĐT khẩn cấp', 'tel'],
+                    ] as const).map(([key, label, type]) => (
+                      <label key={key} className="block">
+                        <span className="mb-1 block text-[10px] font-bold uppercase text-slate-400">{label}</span>
+                        <input type={type} value={profileDraft[key]} onChange={e => setProfileDraft(prev => ({ ...prev, [key]: e.target.value }))} className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 outline-none focus:border-primary focus:ring-1 focus:ring-primary/20" />
+                      </label>
+                    ))}
+                    <div className="md:col-span-2 flex justify-end gap-2 pt-1">
+                      <button type="button" onClick={() => setIsEditingProfile(false)} disabled={isSavingProfile} className="rounded-md border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-50">Hủy</button>
+                      <button type="button" onClick={handleSaveProfile} disabled={isSavingProfile} className="rounded-md bg-primary px-3 py-2 text-xs font-bold text-white hover:bg-primary/90 disabled:opacity-50">{isSavingProfile ? 'Đang lưu...' : 'Lưu thay đổi'}</button>
+                    </div>
+                  </div>}
+
+                  {!isEditingProfile && <div className="grid grid-cols-1 md:grid-cols-2 gap-3 border-b border-slate-100 pb-4">
                     {[
                       ['Email', user?.email || currentEngineer?.email],
                       ['Số điện thoại', user?.phone || currentEngineer?.phone],
@@ -1898,8 +1959,8 @@ export const SettingsPage: React.FC = () => {
                         <div className="mt-0.5 text-xs font-semibold text-slate-700 break-words">{value || 'Chưa cập nhật'}</div>
                       </div>
                     ))}
-                  </div>
-                  <div className="flex justify-end gap-2 pt-1">
+                  </div>}
+                  {!isEditingProfile && <div className="flex justify-end gap-2 pt-1">
                     <div className="relative min-w-52">
                       <button type="button" onClick={() => setIsAccountActionMenuOpen(open => !open)} className="flex w-full items-center justify-between rounded-md border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-800 shadow-2xs hover:bg-slate-50">
                         <span>Thao tác tài khoản</span><span className="material-symbols-outlined text-base text-slate-500">{isAccountActionMenuOpen ? 'expand_less' : 'expand_more'}</span>
@@ -1910,7 +1971,7 @@ export const SettingsPage: React.FC = () => {
                         <button type="button" onClick={() => { setIsConfirmLogoutOpen(true); setIsAccountActionMenuOpen(false); }} className="block w-full rounded px-3 py-2 text-left text-xs font-semibold text-red-600 hover:bg-red-50">Đăng xuất</button>
                       </div>}
                     </div>
-                  </div>
+                  </div>}
 
                 </div>}
 
