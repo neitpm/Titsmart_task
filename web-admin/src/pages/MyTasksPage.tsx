@@ -634,7 +634,7 @@ export const MyTasksPage: React.FC = () => {
 
       {/* Main Content Area */}
       <div className="flex-1 overflow-hidden flex flex-col w-full">
-        <div className="w-full h-full overflow-auto custom-scrollbar bg-slate-50/50 p-2.5 sm:p-3.5 md:p-4 pb-20 space-y-4">
+        <div className="w-full h-full overflow-auto custom-scrollbar bg-slate-50/50 p-1 sm:p-2 md:p-2.5 pb-20 space-y-3">
           {displayedTasks.length === 0 ? (
             <div className="py-16 text-center text-slate-500 font-medium bg-white rounded-2xl border border-dashed border-slate-300 flex flex-col items-center justify-center gap-2">
               <span className="material-symbols-outlined text-4xl text-slate-400">

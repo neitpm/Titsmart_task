@@ -69,8 +69,8 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ selectedProject }) => 
   }
 
   return (
-    <div className="h-full overflow-y-auto bg-slate-50/50 p-6 custom-scrollbar">
-      <div className="mb-6 flex items-center justify-between">
+    <div className="h-full overflow-y-auto bg-slate-50/50 p-2 sm:p-3 custom-scrollbar">
+      <div className="mb-3 flex items-center justify-between">
         <h2 className="text-lg font-black text-slate-800">TỔNG QUAN TÀI CHÍNH & VẬN HÀNH</h2>
         <span className="rounded-lg bg-indigo-50 px-3 py-1.5 text-sm font-bold text-indigo-700 border border-indigo-100">
           Dự án: {selectedProject}

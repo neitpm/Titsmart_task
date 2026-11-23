@@ -914,7 +914,7 @@ export const WorkPlanPage: React.FC = () => {
       </div>
 
       {/* SCROLLABLE BODY: Chức năng cuộn mượt mà toàn bộ nội dung */}
-      <div className="flex-1 overflow-y-auto min-h-0 bg-slate-50 p-3 sm:p-5 space-y-4 custom-scrollbar">
+      <div className="flex-1 overflow-y-auto min-h-0 bg-slate-50 p-1 sm:p-2 md:p-2.5 space-y-3 custom-scrollbar">
 
         {/* Proactive Alert Banner (Displays if Overdue or Due Soon) */}
         {(stats.overdue > 0 || stats.dueSoon > 0 || stats.dueToday > 0) && (

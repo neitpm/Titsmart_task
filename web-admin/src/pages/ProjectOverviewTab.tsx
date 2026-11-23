@@ -363,7 +363,7 @@ export const ProjectOverviewTab: React.FC = () => {
   }
 
   return (
-    <div className="p-4 sm:p-6 space-y-5 overflow-y-auto bg-slate-50 flex-1">
+    <div className="p-1 sm:p-2 md:p-2.5 space-y-3 overflow-y-auto bg-slate-50 flex-1">
       {/* OPTION B: THANH METRIC RIBBON LIỀN MẠCH (DASHBOARD RIBBON) */}
       <div className="bg-white rounded-xl border border-slate-200/90 shadow-2xs overflow-hidden">
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-7 divide-y sm:divide-y-0 divide-slate-100 xl:divide-x divide-slate-100">

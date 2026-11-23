@@ -582,7 +582,7 @@ export const FieldLogsPage: React.FC = () => {
           onRefresh={async () => {
             await fetchFieldLogs();
           }}
-          className={`flex flex-col flex-1 min-h-0 ${(logsByProject.length === 0 && !selectedProject) || selectedProject ? '' : 'p-6'}`}
+          className={`flex flex-col flex-1 min-h-0 ${(logsByProject.length === 0 && !selectedProject) || selectedProject ? '' : 'p-2 sm:p-3'}`}
         >
           {selectedProject ? (
               <div className="flex flex-col flex-1 overflow-hidden bg-white">
