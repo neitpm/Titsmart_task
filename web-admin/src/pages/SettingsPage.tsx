@@ -1926,9 +1926,10 @@ export const SettingsPage: React.FC = () => {
                     >
                       Đổi mật khẩu
                     </button>
-                    <button type="button" onClick={() => setIsConfirmLogoutOpen(true)} className="px-4 py-2 rounded-md text-xs font-bold bg-red-50 border border-red-200 hover:bg-red-100 text-red-600 transition-colors cursor-pointer">
-                      Đăng xuất
-                    </button>
+                  </div>
+                  <div className="flex items-center justify-between border-t border-slate-200 pt-3">
+                    <div><span className="text-xs font-bold text-slate-800 block">Phiên đăng nhập</span><span className="text-[11px] text-slate-500">Kết thúc phiên làm việc trên thiết bị này.</span></div>
+                    <button type="button" onClick={() => setIsConfirmLogoutOpen(true)} className="px-4 py-2 rounded-md text-xs font-bold bg-red-50 border border-red-200 hover:bg-red-100 text-red-600 transition-colors cursor-pointer">Đăng xuất</button>
                   </div>
                 </div>}
 
