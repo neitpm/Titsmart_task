@@ -17,6 +17,9 @@ import { EmployeePeriodToolbar } from '../components/tasks/EmployeePeriodToolbar
 import { TimePeriodType, getDateRangeForPeriod, isTaskInPeriod, getTaskTimeBounds } from '../utils/taskPeriodFilter';
 import { cleanNotes } from '../utils/cleanNotesUtils';
 import { uploadAttachment } from '../utils/fileUploadHelper';
+import { useUIStore } from '../services/uiStore';
+import { ViewModeToolbar, resolveViewMode, AppViewMode } from '../components/common/ViewModeToolbar';
+import { StatusKanbanBoard } from '../components/common/StatusKanbanBoard';
 
 const filters = [
   { key: 'all', label: 'Tất cả' },
@@ -146,6 +149,12 @@ export const PersonnelPage: React.FC = () => {
   const isSubmittingRef = useRef(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [showExportMenu, setShowExportMenu] = useState(false);
+
+  // Chế độ xem theo chuẩn appViewMode chung và toolbar
+  const appViewMode = useUIStore(s => s.appViewMode);
+  const setAppViewMode = useUIStore(s => s.setAppViewMode);
+  const supportedPersonnelModes: AppViewMode[] = ['grid', 'compact_grid', 'table', 'table_detailed', 'kanban'];
+  const viewMode = resolveViewMode(appViewMode, supportedPersonnelModes);
 
   const [lockedIds, setLockedIds] = useState<string[]>([]);
   const [name, setName] = useState('');
@@ -720,6 +729,13 @@ export const PersonnelPage: React.FC = () => {
               />
             </div>
 
+            {/* Chuyển chế độ xem đa dạng (ViewModeToolbar) */}
+            <ViewModeToolbar
+              currentMode={viewMode}
+              onModeChange={setAppViewMode}
+              supportedModes={supportedPersonnelModes}
+            />
+
             <span className="h-8 md:h-[34px] px-3 md:px-3 rounded-lg flex items-center bg-blue-50 text-primary text-xs font-bold border border-blue-100 shrink-0">{engineers.filter(e => e.role !== 'Quản trị viên' && e.username !== 'admin').length} nhân sự</span>
             
             {/* Desktop Export Dropdown with Standardized Height */}
@@ -866,59 +882,252 @@ export const PersonnelPage: React.FC = () => {
       <div className="flex-1 w-full max-w-full overflow-hidden flex flex-col">
       <section className="flex-1 grid grid-cols-1 gap-0 overflow-hidden">
         <div className="bg-white border-b border-r border-slate-200 shadow-xs overflow-hidden flex flex-col">
-          <PullToRefresh onRefresh={async () => { await Promise.all([fetchEngineers(), fetchProjects()]); }} className="flex-1 overflow-x-auto overflow-y-auto custom-scrollbar relative">
-            <table className="w-full text-[11px] sm:text-xs text-left border-collapse">
-              <thead className="sticky top-0 z-20 bg-slate-50 text-slate-700 font-semibold text-[10px] sm:text-[11px] shadow-[0_1px_2px_rgba(0,0,0,0.05)] border-b border-slate-200">
-                <tr>
-                  <th className="text-left p-2 sm:p-3 bg-slate-50 whitespace-nowrap">Họ tên</th>
-                  <th className="text-left p-2 sm:p-3 bg-slate-50 whitespace-nowrap">Mã NV</th>
-                  <th className="text-left p-2 sm:p-3 bg-slate-50 whitespace-nowrap">Tài khoản</th>
-                  <th className="text-left p-2 sm:p-3 bg-slate-50 whitespace-nowrap">Tài khoản Auth</th>
-                  <th className="text-left p-2 sm:p-3 bg-slate-50 whitespace-nowrap">Vai trò / Chức danh</th>
-                  <th className="text-left p-2 sm:p-3 bg-slate-50 whitespace-nowrap">Dự án</th>
-                  <th className="text-center p-2 sm:p-3 bg-slate-50 whitespace-nowrap">KPI & Công việc</th>
-                  <th className="text-left p-2 sm:p-3 bg-slate-50 whitespace-nowrap">SĐT</th>
-                  <th className="text-left p-2 sm:p-3 bg-slate-50 whitespace-nowrap">Trạng thái</th>
-                  {(hasPermission(user, 'MANAGE_USERS') || hasPermission(user, 'EDIT_USERS')) && <th className="text-left p-2 sm:p-3 bg-slate-50 whitespace-nowrap">Chức năng</th>}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {people.map((person, index) => {
+          <PullToRefresh onRefresh={async () => { await Promise.all([fetchEngineers(), fetchProjects()]); }} className="flex-1 overflow-x-auto overflow-y-auto custom-scrollbar relative p-3">
+            {/* 1. DẠNG THẺ (GRID) - Hồ sơ nhân sự đầy đủ */}
+            {viewMode === 'grid' && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5">
+                {people.map((person) => {
                   const kpi = computePersonKpi(person, tasks);
                   const canEditPerson = hasPermission(user, 'MANAGE_USERS') || hasPermission(user, 'EDIT_USERS');
                   return (
-                    <tr
+                    <div
                       key={person.id}
-                      className={canEditPerson ? "cursor-pointer hover:bg-slate-50" : "hover:bg-slate-50"}
                       onClick={() => canEditPerson && openEditModal(person)}
+                      className={`p-4 rounded-xl border bg-white shadow-2xs hover:shadow-md transition-all flex flex-col justify-between ${
+                        canEditPerson ? 'cursor-pointer hover:border-primary/50' : ''
+                      } ${person.locked ? 'border-red-200 bg-red-50/20' : 'border-slate-200'}`}
                     >
-                      <td className="p-2 sm:p-3 text-xs sm:text-sm font-semibold text-slate-900 tracking-tight min-w-[160px] whitespace-nowrap">
-                        <div className="flex items-center gap-2">
-                          <div className="h-8 w-8 shrink-0 overflow-hidden rounded-full border border-slate-200 bg-slate-100 flex items-center justify-center">
-                            {(person as any).avatar ? <img src={(person as any).avatar} alt="" className="h-full w-full object-cover" /> : <span className="material-symbols-outlined text-lg text-slate-400">person</span>}
+                      <div>
+                        <div className="flex items-start justify-between gap-2 mb-3">
+                          <div className="flex items-center gap-3">
+                            <div className="h-12 w-12 shrink-0 overflow-hidden rounded-full border border-slate-200 bg-slate-100 flex items-center justify-center">
+                              {(person as any).avatar ? (
+                                <img src={(person as any).avatar} alt="" className="h-full w-full object-cover" />
+                              ) : (
+                                <span className="material-symbols-outlined text-2xl text-slate-400">person</span>
+                              )}
+                            </div>
+                            <div className="min-w-0">
+                              <h3 className="text-xs sm:text-sm font-bold text-slate-900 truncate" title={person.name}>
+                                {person.name}
+                              </h3>
+                              <div className="text-[11px] font-medium text-slate-500 truncate">{person.role}</div>
+                              <span className="text-[10px] font-mono text-primary font-semibold">{person.code}</span>
+                            </div>
                           </div>
-                          <span>{person.name}</span>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                            person.locked ? 'bg-red-50 text-red-700 border-red-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          }`}>
+                            {person.locked ? 'Bị khóa' : 'Hoạt động'}
+                          </span>
                         </div>
-                      </td>
-                      <td className="p-2 sm:p-3 font-mono font-bold text-primary max-w-[140px] truncate whitespace-nowrap text-[10px] sm:text-xs" title={person.code}>{person.code}</td>
-                      <td className="p-2 sm:p-3 text-slate-700 font-semibold max-w-[110px] truncate whitespace-nowrap text-[10px] sm:text-xs" title={person.username || '-'}>{person.username || '-'}</td>
-                      <td className="p-2 sm:p-3 whitespace-nowrap">
-                        {(() => {
-                          const status = (person as any).accountStatus || (person as any).account_status || ((person as any).auth_user_id || (person as any).authUserId ? 'ACTIVE' : 'NOT_CREATED');
-                          if (status === 'ACTIVE') {
-                            return (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                                Đã kích hoạt
-                              </span>
-                            );
-                          }
-                          if (status === 'SYNC_ERROR') {
+
+                        <div className="space-y-1.5 py-2 border-t border-slate-100 text-[11px] text-slate-600">
+                          <div className="flex items-center gap-1.5 truncate">
+                            <span className="material-symbols-outlined text-[14px] text-slate-400">phone</span>
+                            <span>{formatPhoneNumber(person.phone)}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 truncate">
+                            <span className="material-symbols-outlined text-[14px] text-slate-400">folder</span>
+                            <span>{person.assignedProjects.length} dự án tham gia</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="material-symbols-outlined text-[14px] text-slate-400">task_alt</span>
+                            <span>KPI: <b>{kpi.completedCount}/{kpi.totalCount}</b> ({kpi.percent}%)</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {canEditPerson && (
+                        <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2 mt-2" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            onClick={() => toggleLock(person)}
+                            className={`px-2 py-1 rounded text-[10px] font-bold border transition-all ${
+                              person.locked ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-50 text-slate-700 border-slate-200'
+                            }`}
+                          >
+                            {person.locked ? 'Mở khóa' : 'Khóa'}
+                          </button>
+                          <button
+                            onClick={() => openEditModal(person)}
+                            className="px-2 py-1 rounded text-[10px] font-bold bg-blue-50 text-primary border border-blue-200"
+                          >
+                            Sửa
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* 2. THẺ THU GỌN (COMPACT_GRID) - Avatar + tên + vai trò */}
+            {viewMode === 'compact_grid' && (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2.5">
+                {people.map((person) => {
+                  const canEditPerson = hasPermission(user, 'MANAGE_USERS') || hasPermission(user, 'EDIT_USERS');
+                  return (
+                    <div
+                      key={person.id}
+                      onClick={() => canEditPerson && openEditModal(person)}
+                      className={`p-2.5 rounded-lg border bg-white shadow-2xs hover:shadow-xs transition-all flex items-center gap-2.5 ${
+                        canEditPerson ? 'cursor-pointer hover:border-primary/50' : ''
+                      } ${person.locked ? 'border-red-200 bg-red-50/10' : 'border-slate-200'}`}
+                    >
+                      <div className="h-9 w-9 shrink-0 overflow-hidden rounded-full border border-slate-200 bg-slate-100 flex items-center justify-center">
+                        {(person as any).avatar ? (
+                          <img src={(person as any).avatar} alt="" className="h-full w-full object-cover" />
+                        ) : (
+                          <span className="material-symbols-outlined text-xl text-slate-400">person</span>
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-xs font-bold text-slate-800 truncate" title={person.name}>
+                          {person.name}
+                        </div>
+                        <div className="text-[10px] text-slate-500 truncate">{person.role}</div>
+                      </div>
+                      <span className={`w-2 h-2 rounded-full shrink-0 ${person.locked ? 'bg-red-500' : 'bg-emerald-500'}`} />
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* 3. BẢNG GỌN (TABLE) - Danh sách nhân sự rút gọn */}
+            {viewMode === 'table' && (
+              <table className="w-full text-[11px] sm:text-xs text-left border-collapse">
+                <thead className="sticky top-0 z-20 bg-slate-50 text-slate-700 font-semibold text-[10px] sm:text-[11px] border-b border-slate-200">
+                  <tr>
+                    <th className="p-2 sm:p-2.5 bg-slate-50">Họ tên</th>
+                    <th className="p-2 sm:p-2.5 bg-slate-50">Tài khoản</th>
+                    <th className="p-2 sm:p-2.5 bg-slate-50">Vai trò</th>
+                    <th className="p-2 sm:p-2.5 bg-slate-50">SĐT</th>
+                    <th className="p-2 sm:p-2.5 bg-slate-50 text-center">Trạng thái</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {people.map((person) => {
+                    const canEditPerson = hasPermission(user, 'MANAGE_USERS') || hasPermission(user, 'EDIT_USERS');
+                    return (
+                      <tr
+                        key={person.id}
+                        className={canEditPerson ? "cursor-pointer hover:bg-slate-50" : "hover:bg-slate-50"}
+                        onClick={() => canEditPerson && openEditModal(person)}
+                      >
+                        <td className="p-2 sm:p-2.5 font-semibold text-slate-900">
+                          <div className="flex items-center gap-2">
+                            <div className="h-6 w-6 shrink-0 overflow-hidden rounded-full border border-slate-200 bg-slate-100 flex items-center justify-center">
+                              {(person as any).avatar ? <img src={(person as any).avatar} alt="" className="h-full w-full object-cover" /> : <span className="material-symbols-outlined text-sm text-slate-400">person</span>}
+                            </div>
+                            <span>{person.name}</span>
+                          </div>
+                        </td>
+                        <td className="p-2 sm:p-2.5 text-slate-600 font-mono text-[11px]">{person.username || '-'}</td>
+                        <td className="p-2 sm:p-2.5 text-slate-700">{person.role}</td>
+                        <td className="p-2 sm:p-2.5 text-slate-600">{formatPhoneNumber(person.phone)}</td>
+                        <td className="p-2 sm:p-2.5 text-center">
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${person.locked ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700'}`}>
+                            {person.locked ? 'Bị khóa' : 'Hoạt động'}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+
+            {/* 4. BẢNG CHI TIẾT (TABLE_DETAILED) - Đầy đủ thông tin, dự án, KPI, trạng thái */}
+            {viewMode === 'table_detailed' && (
+              <table className="w-full text-[11px] sm:text-xs text-left border-collapse">
+                <thead className="sticky top-0 z-20 bg-slate-50 text-slate-700 font-semibold text-[10px] sm:text-[11px] shadow-[0_1px_2px_rgba(0,0,0,0.05)] border-b border-slate-200">
+                  <tr>
+                    <th className="text-left p-2 sm:p-3 bg-slate-50 whitespace-nowrap">Họ tên</th>
+                    <th className="text-left p-2 sm:p-3 bg-slate-50 whitespace-nowrap">Mã NV</th>
+                    <th className="text-left p-2 sm:p-3 bg-slate-50 whitespace-nowrap">Tài khoản</th>
+                    <th className="text-left p-2 sm:p-3 bg-slate-50 whitespace-nowrap">Tài khoản Auth</th>
+                    <th className="text-left p-2 sm:p-3 bg-slate-50 whitespace-nowrap">Vai trò / Chức danh</th>
+                    <th className="text-left p-2 sm:p-3 bg-slate-50 whitespace-nowrap">Dự án</th>
+                    <th className="text-center p-2 sm:p-3 bg-slate-50 whitespace-nowrap">KPI & Công việc</th>
+                    <th className="text-left p-2 sm:p-3 bg-slate-50 whitespace-nowrap">SĐT</th>
+                    <th className="text-left p-2 sm:p-3 bg-slate-50 whitespace-nowrap">Trạng thái</th>
+                    {(hasPermission(user, 'MANAGE_USERS') || hasPermission(user, 'EDIT_USERS')) && <th className="text-left p-2 sm:p-3 bg-slate-50 whitespace-nowrap">Chức năng</th>}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {people.map((person) => {
+                    const kpi = computePersonKpi(person, tasks);
+                    const canEditPerson = hasPermission(user, 'MANAGE_USERS') || hasPermission(user, 'EDIT_USERS');
+                    return (
+                      <tr
+                        key={person.id}
+                        className={canEditPerson ? "cursor-pointer hover:bg-slate-50" : "hover:bg-slate-50"}
+                        onClick={() => canEditPerson && openEditModal(person)}
+                      >
+                        <td className="p-2 sm:p-3 text-xs sm:text-sm font-semibold text-slate-900 tracking-tight min-w-[160px] whitespace-nowrap">
+                          <div className="flex items-center gap-2">
+                            <div className="h-8 w-8 shrink-0 overflow-hidden rounded-full border border-slate-200 bg-slate-100 flex items-center justify-center">
+                              {(person as any).avatar ? <img src={(person as any).avatar} alt="" className="h-full w-full object-cover" /> : <span className="material-symbols-outlined text-lg text-slate-400">person</span>}
+                            </div>
+                            <span>{person.name}</span>
+                          </div>
+                        </td>
+                        <td className="p-2 sm:p-3 font-mono font-bold text-primary max-w-[140px] truncate whitespace-nowrap text-[10px] sm:text-xs" title={person.code}>{person.code}</td>
+                        <td className="p-2 sm:p-3 text-slate-700 font-semibold max-w-[110px] truncate whitespace-nowrap text-[10px] sm:text-xs" title={person.username || '-'}>{person.username || '-'}</td>
+                        <td className="p-2 sm:p-3 whitespace-nowrap">
+                          {(() => {
+                            const status = (person as any).accountStatus || (person as any).account_status || ((person as any).auth_user_id || (person as any).authUserId ? 'ACTIVE' : 'NOT_CREATED');
+                            if (status === 'ACTIVE') {
+                              return (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                  Đã kích hoạt
+                                </span>
+                              );
+                            }
+                            if (status === 'SYNC_ERROR') {
+                              return (
+                                <div className="flex items-center gap-1.5">
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200" title={(person as any).syncError || (person as any).sync_error || 'Lỗi đồng bộ Auth'}>
+                                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                                    Lỗi Auth
+                                  </span>
+                                  {(hasPermission(user, 'MANAGE_USERS') || hasPermission(user, 'EDIT_USERS')) && (
+                                    <button
+                                      type="button"
+                                      disabled={syncingId === person.id}
+                                      onClick={async (e) => {
+                                        e.stopPropagation();
+                                        setSyncingId(person.id);
+                                        try {
+                                          const res = await syncEngineerAuth(person, (person as any).password || '123456');
+                                          if (res.success) {
+                                            triggerToast(`Đã đồng bộ lại tài khoản cho "${person.name}" thành công!`, 'success');
+                                          } else {
+                                            triggerToast(`Đồng bộ thất bại: ${res.error}`, 'warning');
+                                          }
+                                        } catch (err: any) {
+                                          triggerToast(`Lỗi: ${err?.message}`, 'warning');
+                                        } finally {
+                                          setSyncingId(null);
+                                        }
+                                      }}
+                                      className="p-1 rounded bg-rose-100 hover:bg-rose-200 text-rose-800 text-[10px] font-bold transition-all cursor-pointer"
+                                      title="Thử lại đồng bộ tài khoản"
+                                    >
+                                      <span className="material-symbols-outlined text-[13px]">{syncingId === person.id ? 'sync' : 'refresh'}</span>
+                                    </button>
+                                  )}
+                                </div>
+                              );
+                            }
                             return (
                               <div className="flex items-center gap-1.5">
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200" title={(person as any).syncError || (person as any).sync_error || 'Lỗi đồng bộ Auth'}>
-                                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
-                                  Lỗi Auth
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                                  Chưa tạo
                                 </span>
                                 {(hasPermission(user, 'MANAGE_USERS') || hasPermission(user, 'EDIT_USERS')) && (
                                   <button
@@ -926,13 +1135,18 @@ export const PersonnelPage: React.FC = () => {
                                     disabled={syncingId === person.id}
                                     onClick={async (e) => {
                                       e.stopPropagation();
+                                      if (!(person as any).email) {
+                                        triggerToast(`Vui lòng chỉnh sửa và bổ sung Email cho "${person.name}" trước khi kích hoạt!`, 'warning');
+                                        openEditModal(person);
+                                        return;
+                                      }
                                       setSyncingId(person.id);
                                       try {
                                         const res = await syncEngineerAuth(person, (person as any).password || '123456');
                                         if (res.success) {
-                                          triggerToast(`Đã đồng bộ lại tài khoản cho "${person.name}" thành công!`, 'success');
+                                          triggerToast(`Đã kích hoạt tài khoản đăng nhập cho "${person.name}" thành công!`, 'success');
                                         } else {
-                                          triggerToast(`Đồng bộ thất bại: ${res.error}`, 'warning');
+                                          triggerToast(`Kích hoạt thất bại: ${res.error}`, 'warning');
                                         }
                                       } catch (err: any) {
                                         triggerToast(`Lỗi: ${err?.message}`, 'warning');
@@ -940,140 +1154,148 @@ export const PersonnelPage: React.FC = () => {
                                         setSyncingId(null);
                                       }
                                     }}
-                                    className="p-1 rounded bg-rose-100 hover:bg-rose-200 text-rose-800 text-[10px] font-bold transition-all cursor-pointer"
-                                    title="Thử lại đồng bộ tài khoản"
+                                    className="px-2 py-0.5 rounded bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 shadow-2xs"
+                                    title="Kích hoạt tài khoản đăng nhập Supabase Auth"
                                   >
-                                    <span className="material-symbols-outlined text-[13px]">{syncingId === person.id ? 'sync' : 'refresh'}</span>
+                                    <span className="material-symbols-outlined text-[12px]">{syncingId === person.id ? 'sync' : 'bolt'}</span>
+                                    <span>{syncingId === person.id ? 'Đang tạo...' : 'Kích hoạt'}</span>
                                   </button>
                                 )}
                               </div>
                             );
-                          }
-                          return (
-                            <div className="flex items-center gap-1.5">
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-                                Chưa tạo
+                          })()}
+                        </td>
+                        <td className="p-2 sm:p-3 whitespace-nowrap">
+                          <span className="text-[10px] sm:text-[11px] font-medium text-slate-700">
+                            {person.role}
+                          </span>
+                        </td>
+                        <td className="p-2 sm:p-3 whitespace-nowrap">
+                          {person.assignedProjects.length === 0 ? (
+                            <span className="text-slate-400 text-[10px] sm:text-[11px] italic">Chưa phân công</span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setProjectModalSearch('');
+                                setViewingProjectsPerson(person);
+                              }}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200 text-[11px] sm:text-xs font-medium transition-all active:scale-95 shadow-2xs cursor-pointer group"
+                              title={`Xem ${person.assignedProjects.length} dự án tham gia`}
+                            >
+                              <span className="material-symbols-outlined text-[15px] text-slate-500 group-hover:scale-110 transition-transform">folder_open</span>
+                              <span>Xem dự án</span>
+                              <span className="px-1.5 py-0.2 bg-slate-200 text-slate-700 rounded-full text-[10px] font-semibold">
+                                {person.assignedProjects.length}
                               </span>
-                              {(hasPermission(user, 'MANAGE_USERS') || hasPermission(user, 'EDIT_USERS')) && (
-                                <button
-                                  type="button"
-                                  disabled={syncingId === person.id}
-                                  onClick={async (e) => {
-                                    e.stopPropagation();
-                                    if (!(person as any).email) {
-                                      triggerToast(`Vui lòng chỉnh sửa và bổ sung Email cho "${person.name}" trước khi kích hoạt!`, 'warning');
-                                      openEditModal(person);
-                                      return;
-                                    }
-                                    setSyncingId(person.id);
-                                    try {
-                                      const res = await syncEngineerAuth(person, (person as any).password || '123456');
-                                      if (res.success) {
-                                        triggerToast(`Đã kích hoạt tài khoản đăng nhập cho "${person.name}" thành công!`, 'success');
-                                      } else {
-                                        triggerToast(`Kích hoạt thất bại: ${res.error}`, 'warning');
-                                      }
-                                    } catch (err: any) {
-                                      triggerToast(`Lỗi: ${err?.message}`, 'warning');
-                                    } finally {
-                                      setSyncingId(null);
-                                    }
-                                  }}
-                                  className="px-2 py-0.5 rounded bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 shadow-2xs"
-                                  title="Kích hoạt tài khoản đăng nhập Supabase Auth"
-                                >
-                                  <span className="material-symbols-outlined text-[12px]">{syncingId === person.id ? 'sync' : 'bolt'}</span>
-                                  <span>{syncingId === person.id ? 'Đang tạo...' : 'Kích hoạt'}</span>
-                                </button>
-                              )}
-                            </div>
-                          );
-                        })()}
-                      </td>
-                      <td className="p-2 sm:p-3 whitespace-nowrap">
-                        <span className="text-[10px] sm:text-[11px] font-medium text-slate-700">
-                          {person.role}
-                        </span>
-                      </td>
-                      <td className="p-2 sm:p-3 whitespace-nowrap">
-                        {person.assignedProjects.length === 0 ? (
-                          <span className="text-slate-400 text-[10px] sm:text-[11px] italic">Chưa phân công</span>
-                        ) : (
+                            </button>
+                          )}
+                        </td>
+                        <td className="p-2 sm:p-3 whitespace-nowrap text-center">
                           <button
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
-                              setProjectModalSearch('');
-                              setViewingProjectsPerson(person);
+                              setViewingKpiPerson(person);
+                              setKpiFilterTab('all');
+                              setKpiSearch('');
                             }}
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200 text-[11px] sm:text-xs font-medium transition-all active:scale-95 shadow-2xs cursor-pointer group"
-                            title={`Xem ${person.assignedProjects.length} dự án tham gia`}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-[11px] sm:text-xs font-bold transition-all active:scale-95 shadow-2xs group cursor-pointer"
+                            title={`Xem chi tiết KPI (${kpi.completedCount}/${kpi.totalCount} công việc hoàn thành)`}
                           >
-                            <span className="material-symbols-outlined text-[15px] text-slate-500 group-hover:scale-110 transition-transform">folder_open</span>
-                            <span>Xem dự án</span>
-                            <span className="px-1.5 py-0.2 bg-slate-200 text-slate-700 rounded-full text-[10px] font-semibold">
-                              {person.assignedProjects.length}
+                            <span className="material-symbols-outlined text-[15px] text-slate-500 group-hover:scale-110 transition-transform">analytics</span>
+                            <span className="text-slate-700 font-semibold">{kpi.completedCount}/{kpi.totalCount} CV</span>
+                            <span className="px-1.5 py-0.2 rounded-full text-[10px] font-medium bg-slate-200 text-slate-700">
+                              {kpi.percent}%
                             </span>
+                            {kpi.overdueCount > 0 && (
+                              <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700 animate-pulse" title={`${kpi.overdueCount} việc quá hạn`}>
+                                !{kpi.overdueCount}
+                              </span>
+                            )}
                           </button>
-                        )}
-                      </td>
-                      <td className="p-2 sm:p-3 whitespace-nowrap text-center">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setViewingKpiPerson(person);
-                            setKpiFilterTab('all');
-                            setKpiSearch('');
-                          }}
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-[11px] sm:text-xs font-bold transition-all active:scale-95 shadow-2xs group cursor-pointer"
-                          title={`Xem chi tiết KPI (${kpi.completedCount}/${kpi.totalCount} công việc hoàn thành)`}
-                        >
-                          <span className="material-symbols-outlined text-[15px] text-slate-500 group-hover:scale-110 transition-transform">analytics</span>
-                          <span className="text-slate-700 font-semibold">{kpi.completedCount}/{kpi.totalCount} CV</span>
-                          <span className="px-1.5 py-0.2 rounded-full text-[10px] font-medium bg-slate-200 text-slate-700">
-                            {kpi.percent}%
-                          </span>
-                          {kpi.overdueCount > 0 && (
-                            <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700 animate-pulse" title={`${kpi.overdueCount} việc quá hạn`}>
-                              !{kpi.overdueCount}
-                            </span>
-                          )}
-                        </button>
-                      </td>
-                      <td className="p-2 sm:p-3 text-slate-600 whitespace-nowrap text-[10px] sm:text-xs">{formatPhoneNumber(person.phone)}</td>
-                    <td className="p-2 sm:p-3 whitespace-nowrap"><span className={`text-[10px] sm:text-[11px] font-bold ${person.locked ? 'text-red-700' : 'text-emerald-700'}`}>{person.locked ? 'Bị khóa' : 'Đang hoạt động'}</span></td>
-                    {(hasPermission(user, 'MANAGE_USERS') || hasPermission(user, 'EDIT_USERS')) && (
-                      <td className="p-2 sm:p-3 min-w-[140px] whitespace-nowrap">
-                        <div className="flex items-center gap-2.5">
-                          <button
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              toggleLock(person);
-                            }}
-                            className={`inline-flex items-center gap-2 px-2.5 py-1.5 rounded-md border text-[11px] font-bold active:scale-95 transition-all ${person.locked ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100' : 'border-primary/30 bg-primary/5 text-primary hover:bg-primary/10'}`}
-                          >
-                            <span className="material-symbols-outlined text-[14px]">{person.locked ? 'lock_open' : 'lock'}</span>
-                            {person.locked ? 'Mở khóa' : 'Khóa'}
-                          </button>
-                          <button
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              setDeletingPerson({ id: person.id, name: person.name });
-                            }}
-                            className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-md border border-red-200 bg-white text-[11px] font-bold text-red-600 hover:bg-red-50 hover:border-red-300 active:scale-95 transition-all"
-                          >
-                            <span className="material-symbols-outlined text-[14px]">delete</span>Xóa
-                          </button>
+                        </td>
+                        <td className="p-2 sm:p-3 text-slate-600 whitespace-nowrap text-[10px] sm:text-xs">{formatPhoneNumber(person.phone)}</td>
+                      <td className="p-2 sm:p-3 whitespace-nowrap"><span className={`text-[10px] sm:text-[11px] font-bold ${person.locked ? 'text-red-700' : 'text-emerald-700'}`}>{person.locked ? 'Bị khóa' : 'Đang hoạt động'}</span></td>
+                      {(hasPermission(user, 'MANAGE_USERS') || hasPermission(user, 'EDIT_USERS')) && (
+                        <td className="p-2 sm:p-3 min-w-[140px] whitespace-nowrap">
+                          <div className="flex items-center gap-2.5">
+                            <button
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                toggleLock(person);
+                              }}
+                              className={`inline-flex items-center gap-2 px-2.5 py-1.5 rounded-md border text-[11px] font-bold active:scale-95 transition-all ${person.locked ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100' : 'border-primary/30 bg-primary/5 text-primary hover:bg-primary/10'}`}
+                            >
+                              <span className="material-symbols-outlined text-[14px]">{person.locked ? 'lock_open' : 'lock'}</span>
+                              {person.locked ? 'Mở khóa' : 'Khóa'}
+                            </button>
+                            <button
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setDeletingPerson({ id: person.id, name: person.name });
+                              }}
+                              className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-md border border-red-200 bg-white text-[11px] font-bold text-red-600 hover:bg-red-50 hover:border-red-300 active:scale-95 transition-all"
+                            >
+                              <span className="material-symbols-outlined text-[14px]">delete</span>Xóa
+                            </button>
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })}
+                </tbody>
+              </table>
+            )}
+
+            {/* 5. KANBAN - Theo phòng ban / vai trò */}
+            {viewMode === 'kanban' && (() => {
+              const rolesList = Array.from(new Set(people.map(p => p.role || 'Chưa phân loại')));
+              const kanbanCols = rolesList.map(r => ({
+                id: r,
+                title: r,
+                items: people.filter(p => (p.role || 'Chưa phân loại') === r),
+              }));
+
+              return (
+                <StatusKanbanBoard
+                  columns={kanbanCols}
+                  keyExtractor={(person) => person.id}
+                  renderCard={(person) => {
+                    const canEditPerson = hasPermission(user, 'MANAGE_USERS') || hasPermission(user, 'EDIT_USERS');
+                    return (
+                      <div
+                        onClick={() => canEditPerson && openEditModal(person)}
+                        className={`p-3 rounded-lg border bg-white shadow-2xs hover:shadow-xs transition-all ${
+                          canEditPerson ? 'cursor-pointer hover:border-primary/50' : ''
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5 mb-2">
+                          <div className="h-8 w-8 shrink-0 overflow-hidden rounded-full border border-slate-200 bg-slate-100 flex items-center justify-center">
+                            {(person as any).avatar ? (
+                              <img src={(person as any).avatar} alt="" className="h-full w-full object-cover" />
+                            ) : (
+                              <span className="material-symbols-outlined text-base text-slate-400">person</span>
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="text-xs font-bold text-slate-800 truncate">{person.name}</div>
+                            <div className="text-[10px] font-mono text-primary font-semibold">{person.code}</div>
+                          </div>
+                          <span className={`w-2 h-2 rounded-full ${person.locked ? 'bg-red-500' : 'bg-emerald-500'}`} />
                         </div>
-                      </td>
-                    )}
-                  </tr>
-                );
-              })}
-              </tbody>
-            </table>
+                        <div className="text-[10.5px] text-slate-500 flex items-center justify-between pt-1.5 border-t border-slate-100">
+                          <span>{person.assignedProjects.length} dự án</span>
+                          <span>{formatPhoneNumber(person.phone)}</span>
+                        </div>
+                      </div>
+                    );
+                  }}
+                />
+              );
+            })()}
           </PullToRefresh>
         </div>
       </section>
