@@ -325,7 +325,7 @@ export const SettingsPage: React.FC = () => {
   const fetchActivityLogs = useRealtimeStore(state => state.fetchActivityLogs);
   const personalTasks = tasks.filter((task: any) => String(task.assignedEngineerId || '').toLowerCase() === String(user?.id || '').toLowerCase() || String(task.assignedEngineerName || '').trim().toLowerCase() === String(user?.name || '').trim().toLowerCase());
   const personalProjects = projects.filter((project: any) => (currentEngineer?.projectCodes || []).some(code => String(code).toLowerCase() === String(project.code || project.id).toLowerCase()));
-  const [personalTab, setPersonalTab] = useState<'overview' | 'attendance' | 'leave' | 'contract' | 'projects' | 'payroll' | 'journal'>('overview');
+  const [personalTab, setPersonalTab] = useState<'profile' | 'overview' | 'attendance' | 'leave' | 'contract' | 'projects' | 'payroll' | 'journal'>('overview');
   const [personalAttendance, setPersonalAttendance] = useState<any[]>([]);
   const [personalLeaves, setPersonalLeaves] = useState<any[]>([]);
   const [personalPayroll, setPersonalPayroll] = useState<any[]>([]);
@@ -714,7 +714,7 @@ export const SettingsPage: React.FC = () => {
               <nav className="space-y-1">
                 <button
                   type="button"
-                  onClick={() => setActiveTab('account')}
+                  onClick={() => { setActiveTab('account'); setPersonalTab('profile'); }}
                   className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${
                     activeTab === 'account'
                       ? 'bg-blue-50 text-primary border border-blue-200/80 shadow-2xs'
@@ -1901,12 +1901,12 @@ export const SettingsPage: React.FC = () => {
 
                 <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-3">
                   {([
-                    ['overview', 'Tổng quan cá nhân'], ['attendance', 'Chấm công'], ['leave', 'Nghỉ phép'],
+                    ['profile', 'Hồ sơ cá nhân'], ['overview', 'Tổng quan cá nhân'], ['attendance', 'Chấm công'], ['leave', 'Nghỉ phép'],
                     ['contract', 'Hợp đồng'], ['projects', 'Dự án'], ['payroll', 'Bảng lương'], ['journal', 'Nhật ký cá nhân'],
                   ] as const).map(([key, label]) => <button key={key} type="button" onClick={() => setPersonalTab(key)} className={`rounded-md border px-3 py-2 text-xs font-bold ${personalTab === key ? 'border-primary bg-primary text-white' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'}`}>{label}</button>)}
                 </div>
 
-                <div className="bg-white rounded-lg border border-slate-200 shadow-2xs p-6 space-y-4">
+                {personalTab === 'profile' && <div className="bg-white rounded-lg border border-slate-200 shadow-2xs p-6 space-y-4">
                   <div className="flex items-center gap-4 pb-4 border-b border-slate-100">
                     <div className="w-16 h-16 rounded-md bg-primary/10 text-primary flex items-center justify-center font-bold text-2xl border border-primary/20 overflow-hidden">
                       {currentEngineer?.avatar ? <img src={currentEngineer.avatar} alt="Ảnh người dùng" className="w-full h-full object-cover" /> : (user?.name ? user.name.charAt(0).toUpperCase() : 'A')}
@@ -1953,9 +1953,9 @@ export const SettingsPage: React.FC = () => {
                       Đổi mật khẩu
                     </button>
                   </div>
-                </div>
+                </div>}
 
-                {personalTab !== 'overview' && <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-2xs">
+                {personalTab !== 'overview' && personalTab !== 'profile' && <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-2xs">
                   {personalTab === 'attendance' && <><h3 className="mb-3 text-base font-extrabold text-slate-800">Chấm công cá nhân</h3><p className="mb-3 text-xs text-slate-500">Tổng bản ghi chấm công: <b>{personalAttendance.length}</b></p>{personalAttendance.slice(0, 20).map((item: any, index) => <div key={item.id || index} className="grid grid-cols-3 gap-3 border-b border-slate-100 py-2 text-xs"><span>{item.checkInTime || item.check_in_time || item.date || '-'}</span><span>Vào: {item.checkInTime || item.check_in_time || '-'}</span><span>Ra: {item.checkOutTime || item.check_out_time || '-'}</span></div>)}{!personalAttendance.length && <p className="text-xs text-slate-400">Chưa có dữ liệu chấm công trên local.</p>}</>}
                   {personalTab === 'leave' && <><h3 className="mb-3 text-base font-extrabold text-slate-800">Nghỉ phép cá nhân</h3>{personalLeaves.map((item: any, index) => <div key={item.id || index} className="border-b border-slate-100 py-3 text-xs"><b>{item.leaveType || item.type || 'Nghỉ phép'}</b><span className="ml-3 text-slate-500">{item.startDate || item.start_date || '-'} → {item.endDate || item.end_date || '-'}</span><span className="ml-3 text-primary">{item.status || 'Chờ duyệt'}</span></div>)}{!personalLeaves.length && <p className="text-xs text-slate-400">Chưa có đơn nghỉ phép cá nhân trên local.</p>}</>}
                   {personalTab === 'contract' && <><h3 className="mb-3 text-base font-extrabold text-slate-800">Hợp đồng với công ty</h3><div className="grid grid-cols-2 gap-3 text-xs"><div className="rounded-md bg-slate-50 p-3">Loại hợp đồng: Chưa cập nhật</div><div className="rounded-md bg-slate-50 p-3">Số hợp đồng: Chưa cập nhật</div><div className="rounded-md bg-slate-50 p-3">Ngày ký: Chưa cập nhật</div><div className="rounded-md bg-slate-50 p-3">Ngày kết thúc: Chưa cập nhật</div></div><p className="mt-3 text-xs text-slate-400">Local hiện chưa có bảng dữ liệu hợp đồng.</p></>}
