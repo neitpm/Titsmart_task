@@ -3094,6 +3094,10 @@ export function setupRealtimeSync() {
       if (tables.includes('activity_logs')) {
         store.fetchActivityLogs();
         window.dispatchEvent(new CustomEvent('titsmart_fund_requests_updated'));
+        // Activity logs contain leave requests and attendance adjustments.
+        // Notify the feature pages as well when this update came from another device.
+        window.dispatchEvent(new CustomEvent('titsmart_leaves_updated'));
+        window.dispatchEvent(new CustomEvent('titsmart_attendance_updated'));
       }
     }, 2000);
   };
@@ -3176,6 +3180,7 @@ export function setupRealtimeSync() {
     store.fetchNotifications();
     store.fetchDirectMessages();
     window.dispatchEvent(new CustomEvent('titsmart_attendance_updated'));
+    window.dispatchEvent(new CustomEvent('titsmart_leaves_updated'));
   }, 10000);
 
   // Tự động tải lại dữ liệu ngay khi người dùng bấm quay lại cửa sổ ứng dụng (focus) hoặc chuyển tab hiển thị (visibilitychange)
@@ -3220,6 +3225,10 @@ export function setupRealtimeSync() {
       window.removeEventListener('online', handleOnline);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     }
+    if (realtimeChannel) {
+      supabase.removeChannel(realtimeChannel);
+    }
+    realtimeChannel = null;
   };
 }
 
