@@ -656,14 +656,10 @@ export const DashboardPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Card 6: Nhân sự (Chỉ Giám Đốc mới có quyền click chuyển trang) */}
+          {/* Card 6: Nhân sự */}
           <div 
-            onClick={() => {
-              if (isDirectorUser) {
-                navigate('/personnel');
-              }
-            }} 
-            className={`bg-white rounded-lg p-3.5 border border-slate-200 shadow-2xs transition-all flex flex-col justify-between min-w-0 group ${isDirectorUser ? 'hover:shadow-xs hover:border-slate-300 cursor-pointer' : 'cursor-default'}`}
+            onClick={() => navigate('/personnel')} 
+            className="bg-white rounded-lg p-3.5 border border-slate-200 shadow-2xs transition-all flex flex-col justify-between min-w-0 group hover:shadow-xs hover:border-slate-300 cursor-pointer"
           >
             <div className="flex items-center gap-2 mb-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-md bg-slate-100 text-slate-700 shrink-0">

@@ -424,15 +424,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
         req: 'VIEW_TASKS',
         children: attendanceSubItems
       },
-      ...(isDirectorUser ? [{ label: 'Nhân sự', path: '/personnel', icon: 'groups', req: 'VIEW_USERS' }] : [])
+      { label: 'Nhân sự', path: '/personnel', icon: 'groups' }
     ];
 
     return [{
       title: '',
       collapsible: false,
-      items: mainItems.filter(item => hasPermission(user, item.req as any))
+      items: mainItems.filter(item => !item.req || hasPermission(user, item.req as any))
     }].filter(group => group.items.length > 0);
-  }, [currentProject?.id, currentProject?.name, user, defaultTaskPath, isDirectorUser]);
+  }, [currentProject?.id, currentProject?.name, user, defaultTaskPath]);
 
   return (
     <>
