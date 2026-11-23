@@ -2477,35 +2477,42 @@ export const ProjectManagementPage: React.FC = () => {
             </div>
             <div>
               <label className="block font-bold text-slate-700 mb-1">Địa điểm công trình</label>
-              <div className="relative">
+              <div className="flex gap-1.5">
                 <input
                   value={editProjLocation}
                   onChange={(e) => setEditProjLocation(e.target.value)}
-                  onBlur={async () => {
-                    const loc = editProjLocation.trim();
-                    if (loc.length >= 3 && (!editProjLatitude || !editProjLongitude)) {
-                      setIsGeocodingEdit(true);
-                      try {
-                        const res = await geocodeAddress(loc);
-                        if (res) {
-                          setEditProjLatitude(String(res.latitude));
-                          setEditProjLongitude(String(res.longitude));
-                        }
-                      } catch {
-                        // ignore error in background
-                      } finally {
-                        setIsGeocodingEdit(false);
+                  placeholder="Nhập địa chỉ, tỉnh/thành phố..."
+                  className="flex-1 px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none text-xs"
+                />
+                <button
+                  type="button"
+                  title="Tìm tọa độ từ địa chỉ đã nhập"
+                  disabled={isGeocodingEdit || !editProjLocation.trim()}
+                  onClick={async () => {
+                    if (!editProjLocation.trim()) return;
+                    setIsGeocodingEdit(true);
+                    try {
+                      const res = await geocodeAddress(editProjLocation);
+                      if (res) {
+                        setEditProjLatitude(String(res.latitude));
+                        setEditProjLongitude(String(res.longitude));
+                        triggerToast(`Đã tìm thấy tọa độ: ${res.latitude.toFixed(5)}, ${res.longitude.toFixed(5)}`, 'success');
+                      } else {
+                        triggerToast('Không tìm thấy tọa độ cho địa chỉ này. Bạn có thể kiểm tra lại tên đường, quận/huyện, tỉnh thành.', 'warning');
                       }
+                    } catch {
+                      triggerToast('Lỗi khi tra cứu tọa độ địa chỉ', 'warning');
+                    } finally {
+                      setIsGeocodingEdit(false);
                     }
                   }}
-                  placeholder="Nhập địa chỉ, tỉnh/thành phố..."
-                  className="w-full pl-3 pr-8 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none text-xs"
-                />
-                {isGeocodingEdit && (
-                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 animate-spin material-symbols-outlined text-sm">
-                    sync
+                  className="px-2.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold border border-slate-200 flex items-center gap-1 shrink-0 disabled:opacity-50 cursor-pointer"
+                >
+                  <span className={`material-symbols-outlined text-[16px] ${isGeocodingEdit ? 'animate-spin' : ''}`}>
+                    {isGeocodingEdit ? 'sync' : 'search'}
                   </span>
-                )}
+                  <span>{isGeocodingEdit ? 'Đang tìm...' : 'Tìm tọa độ'}</span>
+                </button>
               </div>
             </div>
           </div>
@@ -2693,35 +2700,42 @@ export const ProjectManagementPage: React.FC = () => {
             </div>
             <div>
               <label className="block font-bold text-slate-700 mb-1">Địa điểm công trình</label>
-              <div className="relative">
+              <div className="flex gap-1.5">
                 <input
                   value={newProjLocation}
                   onChange={(event) => setNewProjLocation(event.target.value)}
-                  onBlur={async () => {
-                    const loc = newProjLocation.trim();
-                    if (loc.length >= 3 && (!newProjLatitude || !newProjLongitude)) {
-                      setIsGeocodingNew(true);
-                      try {
-                        const res = await geocodeAddress(loc);
-                        if (res) {
-                          setNewProjLatitude(String(res.latitude));
-                          setNewProjLongitude(String(res.longitude));
-                        }
-                      } catch {
-                        // ignore error in background
-                      } finally {
-                        setIsGeocodingNew(false);
+                  placeholder="Nhập địa chỉ, tỉnh/thành phố..."
+                  className="flex-1 px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none text-xs"
+                />
+                <button
+                  type="button"
+                  title="Tìm tọa độ từ địa chỉ đã nhập"
+                  disabled={isGeocodingNew || !newProjLocation.trim()}
+                  onClick={async () => {
+                    if (!newProjLocation.trim()) return;
+                    setIsGeocodingNew(true);
+                    try {
+                      const res = await geocodeAddress(newProjLocation);
+                      if (res) {
+                        setNewProjLatitude(String(res.latitude));
+                        setNewProjLongitude(String(res.longitude));
+                        triggerToast(`Đã tìm thấy tọa độ: ${res.latitude.toFixed(5)}, ${res.longitude.toFixed(5)}`, 'success');
+                      } else {
+                        triggerToast('Không tìm thấy tọa độ cho địa chỉ này. Bạn có thể kiểm tra lại tên đường, quận/huyện, tỉnh thành.', 'warning');
                       }
+                    } catch {
+                      triggerToast('Lỗi khi tra cứu tọa độ địa chỉ', 'warning');
+                    } finally {
+                      setIsGeocodingNew(false);
                     }
                   }}
-                  placeholder="Nhập địa chỉ, tỉnh/thành phố..."
-                  className="w-full pl-3 pr-8 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none text-xs"
-                />
-                {isGeocodingNew && (
-                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 animate-spin material-symbols-outlined text-sm">
-                    sync
+                  className="px-2.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold border border-slate-200 flex items-center gap-1 shrink-0 disabled:opacity-50 cursor-pointer"
+                >
+                  <span className={`material-symbols-outlined text-[16px] ${isGeocodingNew ? 'animate-spin' : ''}`}>
+                    {isGeocodingNew ? 'sync' : 'search'}
                   </span>
-                )}
+                  <span>{isGeocodingNew ? 'Đang tìm...' : 'Tìm tọa độ'}</span>
+                </button>
               </div>
             </div>
           </div>
