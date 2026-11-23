@@ -132,41 +132,39 @@ export const PayrollSlipViewModal: React.FC<PayrollSlipViewModalProps> = ({
               </div>
             </div>
 
-            {/* PHẦN 1: BẢNG TỔNG HỢP CHẤM CÔNG */}
+            {/* PHẦN 1: BẢNG TỔNG HỢP CHẤM CÔNG (CHUẨN KẾ TOÁN) */}
             <div className="mb-4">
-              <h4 className="text-xs font-extrabold text-blue-900 uppercase tracking-wide mb-2 flex items-center gap-1.5 border-b pb-1">
+              <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wide mb-2 flex items-center gap-1.5 border-b border-slate-200 pb-1">
                 <span className="material-symbols-outlined text-[16px] text-primary">calendar_month</span>
                 I. TỔNG HỢP CHẤM CÔNG TRONG THÁNG
               </h4>
-              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2 text-xs">
-                <div className="p-2 rounded border border-slate-200 bg-white">
-                  <span className="text-slate-500 text-[10.5px] block">Công chuẩn:</span>
-                  <span className="font-extrabold text-slate-800 text-sm">{payrollItem.standardWorkingDays}</span>
-                </div>
-                <div className="p-2 rounded border border-blue-200 bg-blue-50/50">
-                  <span className="text-blue-700 text-[10.5px] block font-medium">Công thực tế:</span>
-                  <span className="font-extrabold text-blue-900 text-sm">{payrollItem.actualWorkingDays}</span>
-                </div>
-                <div className="p-2 rounded border border-amber-200 bg-amber-50/50">
-                  <span className="text-amber-800 text-[10.5px] block font-medium">Tại công trường:</span>
-                  <span className="font-extrabold text-amber-900 text-sm">{payrollItem.fieldWorkDays}</span>
-                </div>
-                <div className="p-2 rounded border border-purple-200 bg-purple-50/50">
-                  <span className="text-purple-800 text-[10.5px] block font-medium">Đi công tác:</span>
-                  <span className="font-extrabold text-purple-900 text-sm">{payrollItem.remoteWorkDays}</span>
-                </div>
-                <div className="p-2 rounded border border-emerald-200 bg-emerald-50/50">
-                  <span className="text-emerald-800 text-[10.5px] block font-medium">Phép năm (hưởng lương):</span>
-                  <span className="font-extrabold text-emerald-900 text-sm">{payrollItem.paidLeaveDays}</span>
-                </div>
-                <div className="p-2 rounded border border-slate-200 bg-white">
-                  <span className="text-slate-500 text-[10.5px] block">Nghỉ không lương (KP):</span>
-                  <span className="font-extrabold text-slate-700 text-sm">{payrollItem.unpaidLeaveDays}</span>
-                </div>
+              <div className="border border-slate-200 rounded overflow-hidden">
+                <table className="w-full text-xs text-center border-collapse">
+                  <thead className="bg-slate-50 text-slate-700 font-semibold text-[11px] border-b border-slate-200">
+                    <tr>
+                      <th className="py-2 px-2 border-r border-slate-200">Công chuẩn</th>
+                      <th className="py-2 px-2 border-r border-slate-200 font-bold text-slate-900">Công thực tế</th>
+                      <th className="py-2 px-2 border-r border-slate-200">Tại công trường</th>
+                      <th className="py-2 px-2 border-r border-slate-200">Đi công tác</th>
+                      <th className="py-2 px-2 border-r border-slate-200">Phép năm (CL)</th>
+                      <th className="py-2 px-2">Nghỉ không lương</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white">
+                    <tr>
+                      <td className="py-2 px-2 border-r border-slate-200 font-medium text-slate-700">{payrollItem.standardWorkingDays}</td>
+                      <td className="py-2 px-2 border-r border-slate-200 font-bold text-slate-900 text-sm">{payrollItem.actualWorkingDays}</td>
+                      <td className="py-2 px-2 border-r border-slate-200 text-slate-700 font-medium">{payrollItem.fieldWorkDays}</td>
+                      <td className="py-2 px-2 border-r border-slate-200 text-slate-700 font-medium">{payrollItem.remoteWorkDays}</td>
+                      <td className="py-2 px-2 border-r border-slate-200 text-slate-700 font-medium">{payrollItem.paidLeaveDays}</td>
+                      <td className="py-2 px-2 text-slate-600 font-medium">{payrollItem.unpaidLeaveDays}</td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
 
               {/* Giờ làm thêm */}
-              <div className="mt-2 text-xs text-slate-600 bg-slate-50 p-2.5 rounded-md flex items-center justify-between">
+              <div className="mt-2 text-xs text-slate-600 bg-slate-50 border border-slate-200 px-3 py-2 rounded flex items-center justify-between">
                 <span>
                   <b>Làm thêm giờ (OT):</b> Ngày thường: <b>{payrollItem.otHoursNormal}h</b> (1.5x) | Chủ nhật: <b>{payrollItem.otHoursSunday}h</b> (2.0x) | Lễ: <b>{payrollItem.otHoursHoliday}h</b> (3.0x)
                 </span>
@@ -178,64 +176,64 @@ export const PayrollSlipViewModal: React.FC<PayrollSlipViewModalProps> = ({
 
             {/* PHẦN 2: BẢNG KÊ TIỀN LƯƠNG & THU NHẬP */}
             <div className="mb-4">
-              <h4 className="text-xs font-extrabold text-blue-900 uppercase tracking-wide mb-2 flex items-center gap-1.5 border-b pb-1">
+              <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wide mb-2 flex items-center gap-1.5 border-b border-slate-200 pb-1">
                 <span className="material-symbols-outlined text-[16px] text-primary">payments</span>
                 II. CHI TIẾT TIỀN LƯƠNG, PHỤ CẤP & KHẤU TRỪ
               </h4>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* CỘT THU NHẬP */}
-                <div className="border border-slate-200 rounded-lg overflow-hidden">
-                  <div className="bg-slate-100 px-3 py-1.5 font-bold text-xs text-slate-800 border-b border-slate-200 flex justify-between">
+                <div className="border border-slate-200 rounded overflow-hidden">
+                  <div className="bg-slate-50 px-3 py-1.5 font-bold text-xs text-slate-800 border-b border-slate-200 flex justify-between">
                     <span>A. CÁC KHOẢN THU NHẬP</span>
                     <span>SỐ TIỀN (VNĐ)</span>
                   </div>
-                  <div className="p-3 space-y-2 text-xs">
-                    <div className="flex justify-between py-1 border-b border-dashed border-slate-100">
+                  <div className="p-3 space-y-1.5 text-xs">
+                    <div className="flex justify-between py-1 border-b border-slate-100">
                       <span className="text-slate-600">1. Lương cơ bản theo HĐLĐ:</span>
                       <span className="font-medium text-slate-800">{formatVND(payrollItem.baseSalary)}</span>
                     </div>
-                    <div className="flex justify-between py-1 border-b border-dashed border-slate-100 font-bold text-blue-900">
+                    <div className="flex justify-between py-1 border-b border-slate-100 font-semibold text-slate-900">
                       <span>2. Lương theo ngày công thực tế ({payrollItem.actualWorkingDays} ngày):</span>
                       <span>{formatVND(payrollItem.salaryByWorkDays)}</span>
                     </div>
                     {payrollItem.paidLeaveSalary > 0 && (
-                      <div className="flex justify-between py-1 border-b border-dashed border-slate-100 text-emerald-700">
+                      <div className="flex justify-between py-1 border-b border-slate-100 text-slate-700">
                         <span>3. Lương ngày phép có lương ({payrollItem.paidLeaveDays} ngày):</span>
                         <span>{formatVND(payrollItem.paidLeaveSalary)}</span>
                       </div>
                     )}
-                    <div className="flex justify-between py-1 border-b border-dashed border-slate-100">
+                    <div className="flex justify-between py-1 border-b border-slate-100">
                       <span className="text-slate-600">4. Phụ cấp ăn trưa:</span>
                       <span className="font-medium text-slate-800">{formatVND(payrollItem.allowanceLunch)}</span>
                     </div>
-                    <div className="flex justify-between py-1 border-b border-dashed border-slate-100">
+                    <div className="flex justify-between py-1 border-b border-slate-100">
                       <span className="text-slate-600">5. Phụ cấp xăng xe / đi lại:</span>
                       <span className="font-medium text-slate-800">{formatVND(payrollItem.allowanceFuel)}</span>
                     </div>
-                    <div className="flex justify-between py-1 border-b border-dashed border-slate-100">
+                    <div className="flex justify-between py-1 border-b border-slate-100">
                       <span className="text-slate-600">6. Phụ cấp điện thoại:</span>
                       <span className="font-medium text-slate-800">{formatVND(payrollItem.allowancePhone)}</span>
                     </div>
                     {payrollItem.allowanceField > 0 && (
-                      <div className="flex justify-between py-1 border-b border-dashed border-slate-100 font-medium text-amber-800">
+                      <div className="flex justify-between py-1 border-b border-slate-100 font-medium text-slate-700">
                         <span>7. Phụ cấp công trường ({payrollItem.fieldWorkDays} ngày):</span>
                         <span>{formatVND(payrollItem.allowanceField)}</span>
                       </div>
                     )}
                     {payrollItem.otPay > 0 && (
-                      <div className="flex justify-between py-1 border-b border-dashed border-slate-100 font-bold text-indigo-700">
+                      <div className="flex justify-between py-1 border-b border-slate-100 font-semibold text-slate-700">
                         <span>8. Tiền làm thêm giờ (OT):</span>
                         <span>{formatVND(payrollItem.otPay)}</span>
                       </div>
                     )}
                     {payrollItem.bonus > 0 && (
-                      <div className="flex justify-between py-1 border-b border-dashed border-slate-100 font-bold text-emerald-700">
+                      <div className="flex justify-between py-1 border-b border-slate-100 font-semibold text-slate-700">
                         <span>9. Thưởng hiệu quả / dự án:</span>
                         <span>{formatVND(payrollItem.bonus)}</span>
                       </div>
                     )}
-                    <div className="flex justify-between pt-2 border-t border-slate-200 font-extrabold text-blue-900 text-sm">
+                    <div className="flex justify-between pt-2 border-t border-slate-200 font-bold text-slate-900 text-sm">
                       <span>TỔNG THU NHẬP (GROSS):</span>
                       <span>{formatVND(payrollItem.grossIncome)}</span>
                     </div>
@@ -243,47 +241,47 @@ export const PayrollSlipViewModal: React.FC<PayrollSlipViewModalProps> = ({
                 </div>
 
                 {/* CỘT KHẤU TRỪ */}
-                <div className="border border-slate-200 rounded-lg overflow-hidden flex flex-col justify-between">
+                <div className="border border-slate-200 rounded overflow-hidden flex flex-col justify-between">
                   <div>
-                    <div className="bg-slate-100 px-3 py-1.5 font-bold text-xs text-slate-800 border-b border-slate-200 flex justify-between">
+                    <div className="bg-slate-50 px-3 py-1.5 font-bold text-xs text-slate-800 border-b border-slate-200 flex justify-between">
                       <span>B. CÁC KHOẢN KHẤU TRỪ</span>
                       <span>SỐ TIỀN (VNĐ)</span>
                     </div>
-                    <div className="p-3 space-y-2 text-xs">
-                      <div className="flex justify-between py-1 border-b border-dashed border-slate-100">
+                    <div className="p-3 space-y-1.5 text-xs">
+                      <div className="flex justify-between py-1 border-b border-slate-100">
                         <span className="text-slate-600">1. BHXH, BHYT, BHTN (10.5%):</span>
                         <span className="font-medium text-red-600">-{formatVND(payrollItem.deductionSocialInsurance)}</span>
                       </div>
-                      <div className="flex justify-between py-1 border-b border-dashed border-slate-100">
+                      <div className="flex justify-between py-1 border-b border-slate-100">
                         <span className="text-slate-600">2. Thuế TNCN (tạm tính):</span>
                         <span className="font-medium text-red-600">-{formatVND(payrollItem.deductionTax)}</span>
                       </div>
-                      <div className="flex justify-between py-1 border-b border-dashed border-slate-100">
+                      <div className="flex justify-between py-1 border-b border-slate-100">
                         <span className="text-slate-600">3. Tạm ứng đã nhận:</span>
                         <span className="font-medium text-red-600">-{formatVND(payrollItem.deductionAdvance)}</span>
                       </div>
                       {payrollItem.deductionOther > 0 && (
-                        <div className="flex justify-between py-1 border-b border-dashed border-slate-100">
+                        <div className="flex justify-between py-1 border-b border-slate-100">
                           <span className="text-slate-600">4. Giảm trừ khác:</span>
                           <span className="font-medium text-red-600">-{formatVND(payrollItem.deductionOther)}</span>
                         </div>
                       )}
-                      <div className="flex justify-between pt-2 border-t border-slate-200 font-extrabold text-red-700 text-sm">
+                      <div className="flex justify-between pt-2 border-t border-slate-200 font-bold text-red-700 text-sm">
                         <span>TỔNG KHẤU TRỪ:</span>
                         <span>-{formatVND(payrollItem.totalDeductions)}</span>
                       </div>
                     </div>
                   </div>
 
-                  {/* THỰC LĨNH BOX */}
-                  <div className="p-3 bg-gradient-to-r from-emerald-500 to-teal-600 text-white m-3 rounded-md flex items-center justify-between shadow-xs">
+                  {/* THỰC LĨNH BOX (GỌI ĐẦU ĐỒNG NHẤT, KHÔNG ĐỔ MÀU XANH ĐẶC) */}
+                  <div className="p-3 bg-slate-100 border border-slate-200 m-3 rounded flex items-baseline justify-between">
                     <div>
-                      <span className="text-[11px] font-bold uppercase tracking-wider block opacity-90">
+                      <span className="text-[11px] font-bold uppercase tracking-wider block text-slate-900">
                         THỰC LĨNH TIỀN LƯƠNG:
                       </span>
-                      <span className="text-xs opacity-80">(Chuyển khoản tài khoản cá nhân)</span>
+                      <span className="text-[10px] text-slate-500">Chuyển khoản tài khoản cá nhân</span>
                     </div>
-                    <span className="text-xl font-black tracking-tight">
+                    <span className="text-lg font-bold font-mono tracking-tight text-slate-900">
                       {formatVND(payrollItem.netSalary)}
                     </span>
                   </div>

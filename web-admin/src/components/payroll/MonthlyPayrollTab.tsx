@@ -249,57 +249,43 @@ export const MonthlyPayrollTab: React.FC<MonthlyPayrollTabProps> = ({
       {viewScope === 'my' && myPayrollItem && (
         <div className="w-full flex flex-col">
           {/* BANNER TRẠNG THÁI KÝ XÁC NHẬN */}
-          <div className={`px-3 sm:px-4 py-2.5 border-b flex flex-col md:flex-row md:items-center justify-between gap-3 ${
-            myPayrollItem.signatureStatus === 'signed'
-              ? 'bg-emerald-50/90 border-emerald-300 text-emerald-950'
-              : myPayrollItem.signatureStatus === 'disputed'
-              ? 'bg-amber-50/90 border-amber-300 text-amber-950'
-              : 'bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-300 text-blue-950'
-          }`}>
-            <div className="flex items-start gap-2.5">
-              <div className={`w-9 h-9 rounded-md flex items-center justify-center shrink-0 ${
+          <div className="px-4 py-2.5 bg-white border-b border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <span className={`px-2.5 py-1 rounded text-xs font-bold border inline-flex items-center gap-1 ${
                 myPayrollItem.signatureStatus === 'signed'
-                  ? 'bg-emerald-600 text-white'
+                  ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
                   : myPayrollItem.signatureStatus === 'disputed'
-                  ? 'bg-amber-600 text-white'
-                  : 'bg-primary text-white animate-pulse'
+                  ? 'bg-amber-50 text-amber-800 border-amber-200'
+                  : 'bg-blue-50 text-blue-800 border-blue-200'
               }`}>
-                <span className="material-symbols-outlined text-xl">
+                <span className="material-symbols-outlined text-[15px]">
                   {myPayrollItem.signatureStatus === 'signed'
                     ? 'verified'
                     : myPayrollItem.signatureStatus === 'disputed'
-                    ? 'report_problem'
-                    : 'draw'}
+                    ? 'help_outline'
+                    : 'edit_note'}
                 </span>
-              </div>
+                {myPayrollItem.signatureStatus === 'signed'
+                  ? 'Đã ký xác nhận'
+                  : myPayrollItem.signatureStatus === 'disputed'
+                  ? 'Đang phản hồi'
+                  : 'Chờ ký xác nhận'}
+              </span>
 
               <div>
-                <div className="flex items-center gap-2">
-                  <h4 className="text-xs font-extrabold uppercase tracking-wide">
-                    {myPayrollItem.signatureStatus === 'signed'
-                      ? 'ĐÃ KÝ XÁC NHẬN BẢNG CÔNG & LƯƠNG'
-                      : myPayrollItem.signatureStatus === 'disputed'
-                      ? 'ĐANG KHIẾU NẠI / CHỜ KẾ TOÁN XỬ LÝ'
-                      : 'CHỜ BẠN KÝ XÁC NHẬN BẢNG CÔNG & LƯƠNG'}
-                  </h4>
-                  <span className="text-[10.5px] font-bold px-2 py-0.5 rounded bg-white/80 border">
-                    Tháng {selectedMonth}/{selectedYear}
-                  </span>
-                </div>
-
-                <p className="text-xs mt-0.5 opacity-90 leading-relaxed">
+                <p className="text-xs text-slate-700 leading-normal">
                   {myPayrollItem.signatureStatus === 'signed' ? (
                     <>
-                      Bạn đã ký xác nhận điện tử vào lúc{' '}
-                      <b>{myPayrollItem.signedAt ? new Date(myPayrollItem.signedAt).toLocaleString('vi-VN') : ''}</b>. Số tiền thực lĩnh đã được chốt để kế toán chi trả.
+                      Đã ký xác nhận điện tử lúc{' '}
+                      <span className="font-semibold text-slate-900">{myPayrollItem.signedAt ? new Date(myPayrollItem.signedAt).toLocaleString('vi-VN') : ''}</span>. Bảng công và phiếu thanh toán lương Tháng {selectedMonth}/{selectedYear} đã được chốt.
                     </>
                   ) : myPayrollItem.signatureStatus === 'disputed' ? (
                     <>
-                      Nội dung thắc mắc: <i>"{myPayrollItem.disputeNote}"</i>. Kế toán sẽ liên hệ kiểm tra và cập nhật lại số liệu.
+                      Nội dung thắc mắc: <span className="font-medium text-slate-900">"{myPayrollItem.disputeNote}"</span>. Bộ phận kế toán đang xử lý đối soát số liệu.
                     </>
                   ) : (
                     <>
-                      Vui lòng đối chiếu số ngày công làm việc ({myPayrollItem.actualWorkingDays} công) và số tiền thực lĩnh. Sau khi kiểm tra, bấm <b>"Ký xác nhận ngay"</b> để hoàn tất.
+                      Vui lòng kiểm tra đối chiếu ngày công ({myPayrollItem.actualWorkingDays} công) và số tiền thực lĩnh Tháng {selectedMonth}/{selectedYear} trước khi ký xác nhận.
                     </>
                   )}
                 </p>
@@ -311,10 +297,10 @@ export const MonthlyPayrollTab: React.FC<MonthlyPayrollTabProps> = ({
               <button
                 type="button"
                 onClick={() => setViewingSlipItem(myPayrollItem)}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-md text-xs font-bold shadow-xs transition cursor-pointer"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded text-xs font-semibold shadow-2xs transition cursor-pointer"
               >
-                <span className="material-symbols-outlined text-[15px]">visibility</span>
-                Xem chi tiết & In phiếu A4
+                <span className="material-symbols-outlined text-[15px]">print</span>
+                Xem & In phiếu A4
               </button>
 
               {myPayrollItem.signatureStatus !== 'signed' && (
@@ -322,86 +308,82 @@ export const MonthlyPayrollTab: React.FC<MonthlyPayrollTabProps> = ({
                   <button
                     type="button"
                     onClick={() => setDisputingItem(myPayrollItem)}
-                    className="flex items-center gap-1 px-3 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 rounded-md text-xs font-bold transition cursor-pointer"
+                    className="flex items-center gap-1 px-3 py-1.5 bg-white hover:bg-slate-50 text-amber-800 border border-amber-300 rounded text-xs font-semibold transition cursor-pointer"
                   >
-                    <span className="material-symbols-outlined text-[15px]">chat_bubble</span>
+                    <span className="material-symbols-outlined text-[15px]">chat_bubble_outline</span>
                     Phản hồi
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setSigningItem(myPayrollItem)}
-                    className="flex items-center gap-1.5 px-3.5 py-1.5 bg-primary hover:bg-blue-800 text-white rounded-md text-xs font-extrabold shadow-sm transition cursor-pointer"
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 bg-primary hover:bg-blue-800 text-white rounded text-xs font-bold shadow-2xs transition cursor-pointer"
                   >
                     <span className="material-symbols-outlined text-[16px]">draw</span>
-                    Ký xác nhận ngay
+                    Ký xác nhận
                   </button>
                 </>
               )}
             </div>
           </div>
 
-          {/* 4 CARD CHỈ SỐ TỔNG QUAN */}
+          {/* 4 CARD CHỈ SỐ TỔNG QUAN (PHONG CÁCH CHUẨN ERP DOANH NGHIỆP) */}
           <div className="grid grid-cols-2 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-slate-200 border-b border-slate-200 bg-white">
             {/* 1. Công thực tế */}
-            <div className="bg-white p-3 sm:p-3.5">
-              <div className="flex items-center justify-between text-slate-500 mb-1">
-                <span className="text-[11px] font-bold uppercase tracking-wider">Ngày công thực tế</span>
-                <span className="material-symbols-outlined text-primary text-xl">fact_check</span>
+            <div className="bg-white p-3.5">
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1">
+                Ngày công thực tế
               </div>
               <div className="flex items-baseline gap-1.5">
-                <span className="text-2xl font-black text-slate-800">{myPayrollItem.actualWorkingDays}</span>
-                <span className="text-xs text-slate-400 font-medium">/ {myPayrollItem.standardWorkingDays} công chuẩn</span>
+                <span className="text-2xl font-bold text-slate-900">{myPayrollItem.actualWorkingDays}</span>
+                <span className="text-xs text-slate-500 font-normal">/ {myPayrollItem.standardWorkingDays} công chuẩn</span>
               </div>
-              <div className="text-[11px] text-slate-500 mt-1 flex items-center gap-1">
-                <span className="text-emerald-600 font-bold">+{myPayrollItem.paidLeaveDays} phép năm</span>
-                <span>|</span>
-                <span className="text-amber-600 font-bold">+{myPayrollItem.sundayWorkingDays} CN</span>
+              <div className="text-[11px] text-slate-500 mt-1 flex items-center gap-1.5">
+                <span>{myPayrollItem.paidLeaveDays} phép năm</span>
+                <span className="text-slate-300">•</span>
+                <span>{myPayrollItem.sundayWorkingDays} chủ nhật</span>
               </div>
             </div>
 
             {/* 2. Công trường & Đi ngoài */}
-            <div className="bg-white p-3 sm:p-3.5">
-              <div className="flex items-center justify-between text-slate-500 mb-1">
-                <span className="text-[11px] font-bold uppercase tracking-wider">Công trường / Công tác</span>
-                <span className="material-symbols-outlined text-amber-600 text-xl">foundation</span>
+            <div className="bg-white p-3.5">
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1">
+                Công trường / Công tác
               </div>
               <div className="flex items-baseline gap-1.5">
-                <span className="text-2xl font-black text-amber-700">{myPayrollItem.fieldWorkDays}</span>
-                <span className="text-xs text-slate-500 font-medium">ngày công trường</span>
+                <span className="text-2xl font-bold text-slate-900">{myPayrollItem.fieldWorkDays}</span>
+                <span className="text-xs text-slate-500 font-normal">ngày tại công trường</span>
               </div>
               <div className="text-[11px] text-slate-500 mt-1">
-                Đi công tác ngoài: <b>{myPayrollItem.remoteWorkDays}</b> ngày
+                Công tác ngoài: {myPayrollItem.remoteWorkDays} ngày
               </div>
             </div>
 
             {/* 3. Tăng ca OT */}
-            <div className="bg-white p-3 sm:p-3.5">
-              <div className="flex items-center justify-between text-slate-500 mb-1">
-                <span className="text-[11px] font-bold uppercase tracking-wider">Giờ làm thêm (OT)</span>
-                <span className="material-symbols-outlined text-indigo-600 text-xl">more_time</span>
+            <div className="bg-white p-3.5">
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1">
+                Giờ làm thêm (OT)
               </div>
               <div className="flex items-baseline gap-1.5">
-                <span className="text-2xl font-black text-indigo-700">
+                <span className="text-2xl font-bold text-slate-900">
                   {myPayrollItem.otHoursNormal + myPayrollItem.otHoursSunday + myPayrollItem.otHoursHoliday}
                 </span>
-                <span className="text-xs text-slate-500 font-medium">giờ làm thêm</span>
+                <span className="text-xs text-slate-500 font-normal">giờ làm thêm</span>
               </div>
-              <div className="text-[11px] text-indigo-700 mt-1 font-bold">
+              <div className="text-[11px] text-slate-500 mt-1">
                 Tiền OT: {showSalaryAmounts ? formatVND(myPayrollItem.otPay) : '•••••• đ'}
               </div>
             </div>
 
-            {/* 4. Thực lĩnh (Net Salary) */}
-            <div className="bg-gradient-to-br from-emerald-600 to-teal-700 text-white p-3 sm:p-3.5">
-              <div className="flex items-center justify-between opacity-90 mb-1">
-                <span className="text-[11px] font-bold uppercase tracking-wider">THỰC LĨNH THÁNG</span>
-                <span className="material-symbols-outlined text-xl">account_balance_wallet</span>
+            {/* 4. Thực lĩnh (Net Salary) - Tối giản sang trọng, không đổ khối màu xanh đặc */}
+            <div className="bg-white p-3.5">
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1">
+                Thực lĩnh tháng
               </div>
-              <div className="text-2xl font-black tracking-tight">
+              <div className="text-2xl font-black text-slate-900 tracking-tight">
                 {showSalaryAmounts ? formatVND(myPayrollItem.netSalary) : '•••••••• đ'}
               </div>
-              <div className="text-[11px] opacity-80 mt-1">
+              <div className="text-[11px] text-slate-500 mt-1">
                 Tổng thu nhập: {showSalaryAmounts ? formatVND(myPayrollItem.grossIncome) : '•••••• đ'}
               </div>
             </div>
@@ -444,46 +426,57 @@ export const MonthlyPayrollTab: React.FC<MonthlyPayrollTabProps> = ({
                           key={d.dayNumber}
                           className={`hover:bg-slate-50 transition-colors ${
                             d.isSunday
-                              ? 'bg-red-50/30'
+                              ? 'bg-slate-50/70 text-slate-500'
                               : isToday
-                              ? 'bg-blue-50/40 font-semibold'
+                              ? 'bg-blue-50/30 font-medium'
                               : ''
                           }`}
                         >
-                          <td className="p-2.5 text-center font-bold text-slate-800">{d.dayNumber}</td>
-                          <td className={`p-2.5 text-center font-bold ${d.isSunday ? 'text-red-500' : 'text-slate-600'}`}>
+                          <td className="p-2 text-center font-semibold text-slate-800">{d.dayNumber}</td>
+                          <td className={`p-2 text-center font-medium ${d.isSunday ? 'text-slate-400' : 'text-slate-600'}`}>
                             {d.dayOfWeek}
                           </td>
-                          <td className="p-2.5 whitespace-nowrap">
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold border inline-flex items-center gap-1 ${
-                              d.status === 'present'
-                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                : d.status === 'field'
-                                ? 'bg-amber-50 text-amber-800 border-amber-200'
-                                : d.status === 'remote'
-                                ? 'bg-purple-50 text-purple-800 border-purple-200'
-                                : d.status === 'leave_paid'
-                                ? 'bg-blue-50 text-blue-700 border-blue-200'
-                                : d.status === 'leave_unpaid'
-                                ? 'bg-slate-100 text-slate-700 border-slate-200'
-                                : d.status === 'absent'
-                                ? 'bg-red-50 text-red-600 border-red-200'
-                                : 'bg-slate-50 text-slate-400 border-slate-200'
-                            }`}>
-                              {d.status === 'field' ? '🏗️ ' : d.status === 'remote' ? '🚗 ' : ''}
-                              {d.statusLabel}
-                            </span>
+                          <td className="p-2 whitespace-nowrap">
+                            {d.isSunday ? (
+                              <span className="text-slate-400 text-[11px]">Nghỉ CN</span>
+                            ) : d.status === 'present' ? (
+                              <span className="px-1.5 py-0.5 rounded text-[11px] font-medium bg-slate-100 text-slate-800">
+                                Đi làm
+                              </span>
+                            ) : d.status === 'field' ? (
+                              <span className="px-1.5 py-0.5 rounded text-[11px] font-medium bg-slate-100 text-slate-800">
+                                Công trường
+                              </span>
+                            ) : d.status === 'remote' ? (
+                              <span className="px-1.5 py-0.5 rounded text-[11px] font-medium bg-slate-100 text-slate-800">
+                                Công tác
+                              </span>
+                            ) : d.status === 'leave_paid' ? (
+                              <span className="px-1.5 py-0.5 rounded text-[11px] font-medium bg-blue-50 text-blue-700">
+                                Phép năm
+                              </span>
+                            ) : d.status === 'leave_unpaid' ? (
+                              <span className="px-1.5 py-0.5 rounded text-[11px] font-medium bg-slate-100 text-slate-600">
+                                Nghỉ KP
+                              </span>
+                            ) : d.checkInTime ? (
+                              <span className="px-1.5 py-0.5 rounded text-[11px] font-medium bg-slate-100 text-slate-700">
+                                {d.statusLabel}
+                              </span>
+                            ) : (
+                              <span className="text-slate-400">—</span>
+                            )}
                           </td>
-                          <td className="p-2.5 text-center text-slate-700 font-mono text-[11px]">
+                          <td className="p-2 text-center text-slate-700 font-mono text-[11px]">
                             {d.checkInTime ? new Date(d.checkInTime).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '—'}
                           </td>
-                          <td className="p-2.5 text-center text-slate-700 font-mono text-[11px]">
+                          <td className="p-2 text-center text-slate-700 font-mono text-[11px]">
                             {d.checkOutTime ? new Date(d.checkOutTime).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '—'}
                           </td>
-                          <td className="p-2.5 text-slate-600 max-w-[140px] truncate" title={d.projectName || d.notes}>
+                          <td className="p-2 text-slate-600 max-w-[140px] truncate" title={d.projectName || d.notes}>
                             {d.projectName || (d.workLocationType === 'office' ? 'Văn phòng' : '—')}
                           </td>
-                          <td className="p-2.5 text-center font-bold text-indigo-700">
+                          <td className="p-2 text-center font-medium text-slate-700">
                             {d.otHours > 0 ? `+${d.otHours}h` : '—'}
                           </td>
                         </tr>
@@ -496,51 +489,51 @@ export const MonthlyPayrollTab: React.FC<MonthlyPayrollTabProps> = ({
 
             {/* CỘT PHẢI: BẢNG CHI TIẾT TÍNH LƯƠNG & CHỮ KÝ (5 COLS) */}
             <div className="lg:col-span-5 bg-slate-50/50 p-3 sm:p-4 space-y-3">
-              <div className="bg-white rounded-lg border border-slate-200 shadow-xs overflow-hidden">
+              <div className="bg-white rounded-lg border border-slate-200 shadow-2xs overflow-hidden">
                 <div className="p-3 border-b border-slate-200 flex items-center justify-between bg-slate-50/70">
                   <div className="flex items-center gap-2">
                     <span className="material-symbols-outlined text-primary text-base">receipt_long</span>
-                    <h3 className="text-xs font-extrabold text-slate-800 uppercase tracking-wide">
+                    <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wide">
                       Chi tiết thu nhập & khấu trừ
                     </h3>
                   </div>
                 </div>
 
                 <div className="p-3.5 space-y-1.5 text-xs">
-                  <div className="flex justify-between py-1 border-b border-dashed border-slate-100">
+                  <div className="flex justify-between py-1 border-b border-slate-100">
                     <span className="text-slate-600">Lương cơ bản theo HĐ:</span>
-                    <span className="font-bold text-slate-800">
+                    <span className="font-semibold text-slate-800">
                       {showSalaryAmounts ? formatVND(myPayrollItem.baseSalary) : '•••••• đ'}
                     </span>
                   </div>
 
-                  <div className="flex justify-between py-1 border-b border-dashed border-slate-100 font-bold text-blue-900">
+                  <div className="flex justify-between py-1 border-b border-slate-100 font-semibold text-slate-900">
                     <span>Lương theo công thực tế ({myPayrollItem.actualWorkingDays} công):</span>
                     <span>{showSalaryAmounts ? formatVND(myPayrollItem.salaryByWorkDays) : '•••••• đ'}</span>
                   </div>
 
                   {myPayrollItem.paidLeaveSalary > 0 && (
-                    <div className="flex justify-between py-1 border-b border-dashed border-slate-100 text-emerald-700">
+                    <div className="flex justify-between py-1 border-b border-slate-100 text-slate-700">
                       <span>Lương ngày phép ({myPayrollItem.paidLeaveDays} ngày):</span>
                       <span>{showSalaryAmounts ? formatVND(myPayrollItem.paidLeaveSalary) : '•••••• đ'}</span>
                     </div>
                   )}
 
-                  <div className="flex justify-between py-1 border-b border-dashed border-slate-100">
+                  <div className="flex justify-between py-1 border-b border-slate-100">
                     <span className="text-slate-600">Phụ cấp ăn trưa:</span>
                     <span className="font-medium text-slate-800">
                       {showSalaryAmounts ? formatVND(myPayrollItem.allowanceLunch) : '•••••• đ'}
                     </span>
                   </div>
 
-                  <div className="flex justify-between py-1 border-b border-dashed border-slate-100">
+                  <div className="flex justify-between py-1 border-b border-slate-100">
                     <span className="text-slate-600">Phụ cấp xăng xe / đi lại:</span>
                     <span className="font-medium text-slate-800">
                       {showSalaryAmounts ? formatVND(myPayrollItem.allowanceFuel) : '•••••• đ'}
                     </span>
                   </div>
 
-                  <div className="flex justify-between py-1 border-b border-dashed border-slate-100">
+                  <div className="flex justify-between py-1 border-b border-slate-100">
                     <span className="text-slate-600">Phụ cấp điện thoại:</span>
                     <span className="font-medium text-slate-800">
                       {showSalaryAmounts ? formatVND(myPayrollItem.allowancePhone) : '•••••• đ'}
@@ -548,50 +541,50 @@ export const MonthlyPayrollTab: React.FC<MonthlyPayrollTabProps> = ({
                   </div>
 
                   {myPayrollItem.allowanceField > 0 && (
-                    <div className="flex justify-between py-1 border-b border-dashed border-slate-100 text-amber-800 font-medium">
+                    <div className="flex justify-between py-1 border-b border-slate-100 text-slate-700 font-medium">
                       <span>Phụ cấp công trường ({myPayrollItem.fieldWorkDays} ngày):</span>
                       <span>{showSalaryAmounts ? formatVND(myPayrollItem.allowanceField) : '•••••• đ'}</span>
                     </div>
                   )}
 
                   {myPayrollItem.otPay > 0 && (
-                    <div className="flex justify-between py-1 border-b border-dashed border-slate-100 text-indigo-700 font-bold">
+                    <div className="flex justify-between py-1 border-b border-slate-100 text-slate-700 font-semibold">
                       <span>Tiền làm thêm giờ (OT):</span>
                       <span>{showSalaryAmounts ? formatVND(myPayrollItem.otPay) : '•••••• đ'}</span>
                     </div>
                   )}
 
-                  <div className="flex justify-between py-1 border-b border-slate-200 font-extrabold text-blue-900 pt-2">
+                  <div className="flex justify-between py-1.5 border-b border-slate-200 font-bold text-slate-900 pt-2">
                     <span>TỔNG THU NHẬP (GROSS):</span>
                     <span>{showSalaryAmounts ? formatVND(myPayrollItem.grossIncome) : '•••••• đ'}</span>
                   </div>
 
                   {/* Khấu trừ */}
-                  <div className="pt-2 text-slate-500 font-bold text-[11px] uppercase">Khấu trừ:</div>
-                  <div className="flex justify-between py-0.5 text-red-600">
+                  <div className="pt-2 text-slate-500 font-semibold text-[11px] uppercase">Khấu trừ:</div>
+                  <div className="flex justify-between py-0.5 text-slate-600">
                     <span>BHXH, BHYT, BHTN (10.5%):</span>
-                    <span>-{showSalaryAmounts ? formatVND(myPayrollItem.deductionSocialInsurance) : '•••••• đ'}</span>
+                    <span className="text-red-600 font-medium">-{showSalaryAmounts ? formatVND(myPayrollItem.deductionSocialInsurance) : '•••••• đ'}</span>
                   </div>
                   {myPayrollItem.deductionAdvance > 0 && (
-                    <div className="flex justify-between py-0.5 text-red-600">
+                    <div className="flex justify-between py-0.5 text-slate-600">
                       <span>Tạm ứng trong tháng:</span>
-                      <span>-{showSalaryAmounts ? formatVND(myPayrollItem.deductionAdvance) : '•••••• đ'}</span>
+                      <span className="text-red-600 font-medium">-{showSalaryAmounts ? formatVND(myPayrollItem.deductionAdvance) : '•••••• đ'}</span>
                     </div>
                   )}
                   {myPayrollItem.deductionTax > 0 && (
-                    <div className="flex justify-between py-0.5 text-red-600">
+                    <div className="flex justify-between py-0.5 text-slate-600">
                       <span>Thuế TNCN tạm tính:</span>
-                      <span>-{showSalaryAmounts ? formatVND(myPayrollItem.deductionTax) : '•••••• đ'}</span>
+                      <span className="text-red-600 font-medium">-{showSalaryAmounts ? formatVND(myPayrollItem.deductionTax) : '•••••• đ'}</span>
                     </div>
                   )}
 
-                  {/* THỰC LĨNH BOX */}
-                  <div className="p-3 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-lg flex items-center justify-between mt-2.5 shadow-xs">
+                  {/* THỰC LĨNH BOX (CHUẨN CHỨNG TỪ KẾ TOÁN) */}
+                  <div className="p-3 bg-slate-100 border border-slate-200 rounded-md flex items-baseline justify-between mt-3">
                     <div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider block opacity-90">THỰC LĨNH:</span>
-                      <span className="text-xs opacity-80">(Chuyển khoản)</span>
+                      <span className="text-xs font-bold text-slate-900 block">THỰC LĨNH TIỀN LƯƠNG</span>
+                      <span className="text-[10.5px] text-slate-500">Chuyển khoản tài khoản ngân hàng</span>
                     </div>
-                    <span className="text-lg font-black tracking-tight">
+                    <span className="text-xl font-bold text-slate-900 tracking-tight font-mono">
                       {showSalaryAmounts ? formatVND(myPayrollItem.netSalary) : '•••••••• đ'}
                     </span>
                   </div>

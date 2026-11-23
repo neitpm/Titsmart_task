@@ -222,11 +222,11 @@ export const DigitalSignatureModal: React.FC<DigitalSignatureModalProps> = ({
     <Modal isOpen={isOpen} onClose={onClose} title="KÝ XÁC NHẬN BẢNG CÔNG & BẢNG LƯƠNG" size="md">
       <div className="space-y-4">
         {/* Tóm tắt thông tin tháng ký */}
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-3">
-          <div className="flex items-center justify-between border-b border-blue-200/70 pb-2 mb-2">
+        <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
+          <div className="flex items-center justify-between border-b border-slate-200 pb-2 mb-2">
             <div>
-              <span className="text-[11px] font-bold uppercase tracking-wider text-primary">Kỳ thanh toán:</span>
-              <h4 className="text-sm font-extrabold text-slate-800">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Kỳ thanh toán:</span>
+              <h4 className="text-sm font-bold text-slate-900">
                 Tháng {payrollItem.month}/{payrollItem.year}
               </h4>
             </div>
@@ -237,15 +237,15 @@ export const DigitalSignatureModal: React.FC<DigitalSignatureModalProps> = ({
           </div>
 
           <div className="grid grid-cols-2 gap-2 text-xs">
-            <div className="bg-white/80 p-2 rounded-md border border-blue-100">
+            <div className="bg-white p-2.5 rounded border border-slate-200">
               <span className="text-slate-500 block text-[11px]">Công thực tế / Chuẩn:</span>
-              <span className="font-extrabold text-slate-800 text-sm">
+              <span className="font-bold text-slate-800 text-sm">
                 {payrollItem.actualWorkingDays} <span className="text-xs text-slate-400 font-normal">/ {payrollItem.standardWorkingDays} công</span>
               </span>
             </div>
-            <div className="bg-white/80 p-2 rounded-md border border-blue-100">
+            <div className="bg-white p-2.5 rounded border border-slate-200">
               <span className="text-slate-500 block text-[11px]">Thực lĩnh (Net):</span>
-              <span className="font-extrabold text-emerald-600 text-sm">
+              <span className="font-bold text-slate-900 text-sm font-mono">
                 {formatVND(payrollItem.netSalary)}
               </span>
             </div>
