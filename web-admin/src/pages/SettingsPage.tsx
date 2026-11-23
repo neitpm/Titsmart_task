@@ -327,6 +327,7 @@ export const SettingsPage: React.FC = () => {
   const personalProjects = projects.filter((project: any) => (currentEngineer?.projectCodes || []).some(code => String(code).toLowerCase() === String(project.code || project.id).toLowerCase()));
   const [personalTab, setPersonalTab] = useState<'profile' | 'overview' | 'attendance' | 'leave' | 'contract' | 'projects' | 'payroll' | 'journal'>('overview');
   const [isPersonalMenuOpen, setIsPersonalMenuOpen] = useState(true);
+  const [isAppSettingsMenuOpen, setIsAppSettingsMenuOpen] = useState(true);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [isAccountActionMenuOpen, setIsAccountActionMenuOpen] = useState(false);
   const [personalAttendance, setPersonalAttendance] = useState<any[]>([]);
@@ -661,29 +662,24 @@ export const SettingsPage: React.FC = () => {
                 </div>}
                 <button
                   type="button"
-                  onClick={() => setActiveTab('appearance')}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${
-                    activeTab === 'appearance'
-                      ? 'bg-blue-50 text-primary border border-blue-200/80 shadow-2xs'
+                  onClick={() => setIsAppSettingsMenuOpen(open => !open)}
+                  className={`w-full flex items-center justify-between gap-2.5 px-3 py-2 rounded-md text-xs font-bold transition-all text-left cursor-pointer ${
+                    activeTab === 'appearance' || activeTab === 'notifications'
+                      ? 'bg-slate-100 text-slate-900'
                       : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                   }`}
                 >
-                  <span className="material-symbols-outlined text-lg">palette</span>
-                  <span>Giao diện thanh điều hướng</span>
+                  <span className="flex items-center gap-2.5"><span className="material-symbols-outlined text-lg">tune</span><span>Cài đặt ứng dụng</span></span>
+                  <span className="material-symbols-outlined text-base text-slate-400">{isAppSettingsMenuOpen ? 'expand_less' : 'expand_more'}</span>
                 </button>
-
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('notifications')}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${
-                    activeTab === 'notifications'
-                      ? 'bg-blue-50 text-primary border border-blue-200/80 shadow-2xs'
-                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                  }`}
-                >
-                  <span className="material-symbols-outlined text-lg">notifications</span>
-                  <span>Thông báo & Chuông</span>
-                </button>
+                {isAppSettingsMenuOpen && <div className="ml-3 border-l-2 border-blue-100 pl-3 space-y-0.5">
+                  <button type="button" onClick={() => setActiveTab('appearance')} className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs font-semibold text-left ${activeTab === 'appearance' ? 'bg-slate-100 text-slate-900' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'}`}>
+                    <span className="material-symbols-outlined text-[16px] text-slate-400">palette</span><span>Giao diện thanh điều hướng</span>
+                  </button>
+                  <button type="button" onClick={() => setActiveTab('notifications')} className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs font-semibold text-left ${activeTab === 'notifications' ? 'bg-slate-100 text-slate-900' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'}`}>
+                    <span className="material-symbols-outlined text-[16px] text-slate-400">notifications</span><span>Thông báo & Chuông</span>
+                  </button>
+                </div>}
               </nav>
             </div>
 
