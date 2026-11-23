@@ -574,23 +574,35 @@ export const ProjectManagementPage: React.FC = () => {
     setLoading(true);
     setLoadingMessage('Đang tạo dự án...');
     try {
+      let finalLat = parseFloat(newProjLatitude);
+      let finalLng = parseFloat(newProjLongitude);
 
-    const selectedEngineers = engineers.filter(eng => selectedEngineerIds.includes(eng.id));
-    const managerEng = engineers.find(eng => eng.id === newProjManagerId);
-    const managerName = managerEng ? managerEng.name : TEXT.unassigned;
-    const managerId = managerEng ? managerEng.id : undefined;
+      // Tự động tìm tọa độ ngầm nếu chưa có tọa độ nhưng có địa chỉ
+      if ((isNaN(finalLat) || isNaN(finalLng)) && newProjLocation.trim().length >= 3) {
+        try {
+          const geoRes = await geocodeAddress(newProjLocation.trim());
+          if (geoRes) {
+            finalLat = geoRes.latitude;
+            finalLng = geoRes.longitude;
+          }
+        } catch {
+          // Bỏ qua lỗi ngầm
+        }
+      }
 
-    const parsedLat = parseFloat(newProjLatitude);
-    const parsedLng = parseFloat(newProjLongitude);
+      const selectedEngineers = engineers.filter(eng => selectedEngineerIds.includes(eng.id));
+      const managerEng = engineers.find(eng => eng.id === newProjManagerId);
+      const managerName = managerEng ? managerEng.name : TEXT.unassigned;
+      const managerId = managerEng ? managerEng.id : undefined;
 
-    const newProject: Omit<Project, 'id'> = {
-      code,
-      name: newProjName.trim(),
-      client: newProjClient.trim() || undefined,
-      location: newProjLocation.trim(),
-      latitude: !isNaN(parsedLat) ? parsedLat : undefined,
-      longitude: !isNaN(parsedLng) ? parsedLng : undefined,
-      radiusMeters: newProjRadiusMeters > 0 ? newProjRadiusMeters : 500,
+      const newProject: Omit<Project, 'id'> = {
+        code,
+        name: newProjName.trim(),
+        client: newProjClient.trim() || undefined,
+        location: newProjLocation.trim(),
+        latitude: !isNaN(finalLat) ? finalLat : undefined,
+        longitude: !isNaN(finalLng) ? finalLng : undefined,
+        radiusMeters: newProjRadiusMeters > 0 ? newProjRadiusMeters : 500,
       category: newProjCategory.trim() || undefined,
       priority: newProjPriority || 'normal',
       notes: newProjNotes.trim() || undefined,
@@ -957,12 +969,29 @@ export const ProjectManagementPage: React.FC = () => {
       const managerName = managerEng ? managerEng.name : TEXT.unassigned;
       const managerId = managerEng ? managerEng.id : undefined;
 
-      const parsedEditLat = parseFloat(editProjLatitude);
-      const parsedEditLng = parseFloat(editProjLongitude);
+      let parsedEditLat = parseFloat(editProjLatitude);
+      let parsedEditLng = parseFloat(editProjLongitude);
+
+      // Tự động tìm tọa độ nếu người dùng đổi địa chỉ mà chưa có tọa độ
+      const trimmedEditLocation = editProjLocation.trim();
+      const locationChanged = trimmedEditLocation !== (projectToEdit.location || '').trim();
+      if ((isNaN(parsedEditLat) || isNaN(parsedEditLng) || locationChanged) && trimmedEditLocation.length >= 3) {
+        if (locationChanged || isNaN(parsedEditLat) || isNaN(parsedEditLng)) {
+          try {
+            const geoRes = await geocodeAddress(trimmedEditLocation);
+            if (geoRes) {
+              parsedEditLat = geoRes.latitude;
+              parsedEditLng = geoRes.longitude;
+            }
+          } catch {
+            // Bỏ qua lỗi ngầm
+          }
+        }
+      }
 
       const payload = {
         name: editProjName.trim(),
-        location: editProjLocation.trim(),
+        location: trimmedEditLocation,
         latitude: !isNaN(parsedEditLat) ? parsedEditLat : undefined,
         longitude: !isNaN(parsedEditLng) ? parsedEditLng : undefined,
         radiusMeters: editProjRadiusMeters > 0 ? editProjRadiusMeters : 500,
@@ -2448,116 +2477,37 @@ export const ProjectManagementPage: React.FC = () => {
             </div>
             <div>
               <label className="block font-bold text-slate-700 mb-1">Địa điểm công trình</label>
-              <div className="flex gap-1.5">
-                <input value={editProjLocation} onChange={(e) => setEditProjLocation(e.target.value)} placeholder="Nhập địa chỉ, tỉnh/thành phố..." className="flex-1 px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none text-xs" />
-                <button
-                  type="button"
-                  title="Tìm tọa độ từ địa chỉ đã nhập"
-                  disabled={isGeocodingEdit || !editProjLocation.trim()}
-                  onClick={async () => {
-                    if (!editProjLocation.trim()) return;
-                    setIsGeocodingEdit(true);
-                    try {
-                      const res = await geocodeAddress(editProjLocation);
-                      if (res) {
-                        setEditProjLatitude(String(res.latitude));
-                        setEditProjLongitude(String(res.longitude));
-                        triggerToast(`Đã tìm thấy tọa độ: ${res.latitude.toFixed(5)}, ${res.longitude.toFixed(5)}`, 'success');
-                      } else {
-                        triggerToast('Không tìm thấy tọa độ cho địa chỉ này. Vui lòng nhập chi tiết hơn hoặc dùng nút lấy GPS hiện tại.', 'warning');
+              <div className="relative">
+                <input
+                  value={editProjLocation}
+                  onChange={(e) => setEditProjLocation(e.target.value)}
+                  onBlur={async () => {
+                    const loc = editProjLocation.trim();
+                    if (loc.length >= 3 && (!editProjLatitude || !editProjLongitude)) {
+                      setIsGeocodingEdit(true);
+                      try {
+                        const res = await geocodeAddress(loc);
+                        if (res) {
+                          setEditProjLatitude(String(res.latitude));
+                          setEditProjLongitude(String(res.longitude));
+                        }
+                      } catch {
+                        // ignore error in background
+                      } finally {
+                        setIsGeocodingEdit(false);
                       }
-                    } catch {
-                      triggerToast('Lỗi khi tra cứu tọa độ địa chỉ', 'warning');
-                    } finally {
-                      setIsGeocodingEdit(false);
                     }
                   }}
-                  className="px-2.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold border border-slate-200 flex items-center gap-1 shrink-0 disabled:opacity-50"
-                >
-                  <span className="material-symbols-outlined text-[16px]">search</span>
-                  {isGeocodingEdit ? 'Đang tìm...' : 'Tìm GPS'}
-                </button>
-                <button
-                  type="button"
-                  title="Lấy tọa độ GPS tại vị trí bạn đang đứng"
-                  onClick={async () => {
-                    try {
-                      const pos = await getCurrentDeviceLocation();
-                      setEditProjLatitude(String(pos.latitude));
-                      setEditProjLongitude(String(pos.longitude));
-                      triggerToast(`Đã lấy tọa độ GPS thiết bị: ${pos.latitude.toFixed(5)}, ${pos.longitude.toFixed(5)}`, 'success');
-                    } catch (err: any) {
-                      triggerToast(err.message || 'Không thể lấy GPS hiện tại', 'warning');
-                    }
-                  }}
-                  className="px-2.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold border border-slate-200 flex items-center gap-1 shrink-0"
-                >
-                  <span className="material-symbols-outlined text-[16px]">my_location</span>
-                  GPS hiện tại
-                </button>
+                  placeholder="Nhập địa chỉ, tỉnh/thành phố..."
+                  className="w-full pl-3 pr-8 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none text-xs"
+                />
+                {isGeocodingEdit && (
+                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 animate-spin material-symbols-outlined text-sm">
+                    sync
+                  </span>
+                )}
               </div>
             </div>
-          </div>
-
-          {/* Thiết lập Tọa độ & Bán kính chấm công dự án (ERP Corporate Styling) */}
-          <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-3">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold text-slate-700 uppercase tracking-tight flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-base text-slate-500">pin_drop</span>
-                Tọa độ GPS & Bán kính chấm công công trường
-              </span>
-              {editProjLatitude && editProjLongitude && (
-                <a
-                  href={`https://www.google.com/maps?q=${editProjLatitude},${editProjLongitude}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-[11px] font-bold text-primary hover:underline flex items-center gap-1"
-                >
-                  <span>Xem trên Google Maps</span>
-                  <span className="material-symbols-outlined text-[13px]">open_in_new</span>
-                </a>
-              )}
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-500 mb-1">Vĩ độ (Latitude)</label>
-                <input
-                  type="number"
-                  step="any"
-                  value={editProjLatitude}
-                  onChange={(e) => setEditProjLatitude(e.target.value)}
-                  placeholder="VD: 10.77688"
-                  className="w-full px-2.5 py-1.5 border border-slate-200 bg-white rounded-md text-xs font-mono font-medium focus:ring-1 focus:ring-primary focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-500 mb-1">Kinh độ (Longitude)</label>
-                <input
-                  type="number"
-                  step="any"
-                  value={editProjLongitude}
-                  onChange={(e) => setEditProjLongitude(e.target.value)}
-                  placeholder="VD: 106.70089"
-                  className="w-full px-2.5 py-1.5 border border-slate-200 bg-white rounded-md text-xs font-mono font-medium focus:ring-1 focus:ring-primary focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-500 mb-1">Bán kính hợp lệ (mét)</label>
-                <input
-                  type="number"
-                  min="50"
-                  max="10000"
-                  step="50"
-                  value={editProjRadiusMeters}
-                  onChange={(e) => setEditProjRadiusMeters(Number(e.target.value) || 500)}
-                  placeholder="500"
-                  className="w-full px-2.5 py-1.5 border border-slate-200 bg-white rounded-md text-xs font-mono font-medium focus:ring-1 focus:ring-primary focus:outline-none"
-                />
-              </div>
-            </div>
-            <p className="mt-1.5 text-[11px] text-slate-400">
-              * Nhân sự chọn chấm công tại dự án này sẽ được xác minh vị trí theo bán kính trên.
-            </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -2699,116 +2649,37 @@ export const ProjectManagementPage: React.FC = () => {
             </div>
             <div>
               <label className="block font-bold text-slate-700 mb-1">Địa điểm công trình</label>
-              <div className="flex gap-1.5">
-                <input value={newProjLocation} onChange={(event) => setNewProjLocation(event.target.value)} placeholder="Nhập địa chỉ, tỉnh/thành phố..." className="flex-1 px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none text-xs" />
-                <button
-                  type="button"
-                  title="Tìm tọa độ từ địa chỉ đã nhập"
-                  disabled={isGeocodingNew || !newProjLocation.trim()}
-                  onClick={async () => {
-                    if (!newProjLocation.trim()) return;
-                    setIsGeocodingNew(true);
-                    try {
-                      const res = await geocodeAddress(newProjLocation);
-                      if (res) {
-                        setNewProjLatitude(String(res.latitude));
-                        setNewProjLongitude(String(res.longitude));
-                        triggerToast(`Đã tìm thấy tọa độ: ${res.latitude.toFixed(5)}, ${res.longitude.toFixed(5)}`, 'success');
-                      } else {
-                        triggerToast('Không tìm thấy tọa độ cho địa chỉ này. Vui lòng nhập chi tiết hơn hoặc dùng nút lấy GPS hiện tại.', 'warning');
+              <div className="relative">
+                <input
+                  value={newProjLocation}
+                  onChange={(event) => setNewProjLocation(event.target.value)}
+                  onBlur={async () => {
+                    const loc = newProjLocation.trim();
+                    if (loc.length >= 3 && (!newProjLatitude || !newProjLongitude)) {
+                      setIsGeocodingNew(true);
+                      try {
+                        const res = await geocodeAddress(loc);
+                        if (res) {
+                          setNewProjLatitude(String(res.latitude));
+                          setNewProjLongitude(String(res.longitude));
+                        }
+                      } catch {
+                        // ignore error in background
+                      } finally {
+                        setIsGeocodingNew(false);
                       }
-                    } catch {
-                      triggerToast('Lỗi khi tra cứu tọa độ địa chỉ', 'warning');
-                    } finally {
-                      setIsGeocodingNew(false);
                     }
                   }}
-                  className="px-2.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold border border-slate-200 flex items-center gap-1 shrink-0 disabled:opacity-50"
-                >
-                  <span className="material-symbols-outlined text-[16px]">search</span>
-                  {isGeocodingNew ? 'Đang tìm...' : 'Tìm GPS'}
-                </button>
-                <button
-                  type="button"
-                  title="Lấy tọa độ GPS tại vị trí bạn đang đứng"
-                  onClick={async () => {
-                    try {
-                      const pos = await getCurrentDeviceLocation();
-                      setNewProjLatitude(String(pos.latitude));
-                      setNewProjLongitude(String(pos.longitude));
-                      triggerToast(`Đã lấy tọa độ GPS thiết bị: ${pos.latitude.toFixed(5)}, ${pos.longitude.toFixed(5)}`, 'success');
-                    } catch (err: any) {
-                      triggerToast(err.message || 'Không thể lấy GPS hiện tại', 'warning');
-                    }
-                  }}
-                  className="px-2.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold border border-slate-200 flex items-center gap-1 shrink-0"
-                >
-                  <span className="material-symbols-outlined text-[16px]">my_location</span>
-                  GPS hiện tại
-                </button>
+                  placeholder="Nhập địa chỉ, tỉnh/thành phố..."
+                  className="w-full pl-3 pr-8 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none text-xs"
+                />
+                {isGeocodingNew && (
+                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 animate-spin material-symbols-outlined text-sm">
+                    sync
+                  </span>
+                )}
               </div>
             </div>
-          </div>
-
-          {/* Thiết lập Tọa độ & Bán kính chấm công dự án (ERP Corporate Styling) */}
-          <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-3">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold text-slate-700 uppercase tracking-tight flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-base text-slate-500">pin_drop</span>
-                Tọa độ GPS & Bán kính chấm công công trường
-              </span>
-              {newProjLatitude && newProjLongitude && (
-                <a
-                  href={`https://www.google.com/maps?q=${newProjLatitude},${newProjLongitude}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-[11px] font-bold text-primary hover:underline flex items-center gap-1"
-                >
-                  <span>Xem trên Google Maps</span>
-                  <span className="material-symbols-outlined text-[13px]">open_in_new</span>
-                </a>
-              )}
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-500 mb-1">Vĩ độ (Latitude)</label>
-                <input
-                  type="number"
-                  step="any"
-                  value={newProjLatitude}
-                  onChange={(e) => setNewProjLatitude(e.target.value)}
-                  placeholder="VD: 10.77688"
-                  className="w-full px-2.5 py-1.5 border border-slate-200 bg-white rounded-md text-xs font-mono font-medium focus:ring-1 focus:ring-primary focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-500 mb-1">Kinh độ (Longitude)</label>
-                <input
-                  type="number"
-                  step="any"
-                  value={newProjLongitude}
-                  onChange={(e) => setNewProjLongitude(e.target.value)}
-                  placeholder="VD: 106.70089"
-                  className="w-full px-2.5 py-1.5 border border-slate-200 bg-white rounded-md text-xs font-mono font-medium focus:ring-1 focus:ring-primary focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-500 mb-1">Bán kính hợp lệ (mét)</label>
-                <input
-                  type="number"
-                  min="50"
-                  max="10000"
-                  step="50"
-                  value={newProjRadiusMeters}
-                  onChange={(e) => setNewProjRadiusMeters(Number(e.target.value) || 500)}
-                  placeholder="500"
-                  className="w-full px-2.5 py-1.5 border border-slate-200 bg-white rounded-md text-xs font-mono font-medium focus:ring-1 focus:ring-primary focus:outline-none"
-                />
-              </div>
-            </div>
-            <p className="mt-1.5 text-[11px] text-slate-400">
-              * Nhân sự chọn chấm công tại dự án này sẽ được xác minh vị trí theo bán kính trên.
-            </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div><label className="block font-bold text-slate-700 mb-1">Chủ đầu tư</label><input value={newProjClient} onChange={(event) => setNewProjClient(event.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none" /></div>
