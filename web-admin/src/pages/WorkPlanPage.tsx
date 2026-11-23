@@ -740,10 +740,18 @@ export const WorkPlanPage: React.FC = () => {
             <h1 className="page-title text-sm md:text-base font-extrabold text-slate-900 border-l-4 border-primary pl-2 shrink-0">
               Lịch & Kế hoạch
             </h1>
+            <button
+              type="button"
+              onClick={() => openAddModal()}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-primary hover:bg-blue-700 text-white rounded-md text-xs font-bold transition-colors shadow-sm cursor-pointer whitespace-nowrap"
+            >
+              <span className="material-symbols-outlined text-base">add_task</span>
+              <span>Lên kế hoạch</span>
+            </button>
           </div>
         </div>
 
-        {/* Right Controls: Cài đặt cảnh báo, Chuyển đổi Tháng/Tuần/Lộ trình, + Lên kế hoạch mới */}
+        {/* Right Controls: Cài đặt cảnh báo và Chuyển đổi Tháng/Tuần/Lộ trình */}
         <div className="flex items-center gap-2 flex-wrap md:flex-nowrap justify-between md:justify-end w-full md:w-auto">
           {/* Cài đặt cảnh báo thời hạn */}
           <div className="relative">
@@ -939,15 +947,6 @@ export const WorkPlanPage: React.FC = () => {
             </button>
           </div>
 
-          {/* Button + Lên kế hoạch mới */}
-          <button
-            type="button"
-            onClick={() => openAddModal()}
-            className="flex items-center gap-1.5 px-3 py-1 bg-primary hover:bg-blue-700 text-white rounded-md text-xs font-bold transition-colors shadow-sm cursor-pointer whitespace-nowrap"
-          >
-            <span className="material-symbols-outlined text-base">add_task</span>
-            <span>+ Lên kế hoạch mới</span>
-          </button>
         </div>
       </div>
 
