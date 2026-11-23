@@ -333,7 +333,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
 
     const attendanceSubItems = [
       {
-        label: 'Chấm công',
+        label: 'Công và lương',
         path: '/attendance?tab=attendance',
         icon: 'fingerprint',
         isActive: (pathname: string, search: string) => {

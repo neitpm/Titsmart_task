@@ -1522,7 +1522,7 @@ export const AttendancePage: React.FC = () => {
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           <div className="flex items-center border-l-4 border-primary pl-2">
             <h1 className="page-title text-xs sm:text-sm md:text-base font-extrabold text-slate-900 shrink-0">
-              {mainTab === 'attendance' ? 'Chấm công' : mainTab === 'leave' ? 'Nghỉ phép' : 'Chấm công bù'}
+              {mainTab === 'attendance' ? 'Công và lương' : mainTab === 'leave' ? 'Nghỉ phép' : 'Chấm công bù'}
             </h1>
           </div>
 
@@ -1535,7 +1535,7 @@ export const AttendancePage: React.FC = () => {
                 mainTab === 'attendance' ? 'bg-white text-primary shadow-xs' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              Chấm công
+              Công và lương
             </button>
             <button
               type="button"
