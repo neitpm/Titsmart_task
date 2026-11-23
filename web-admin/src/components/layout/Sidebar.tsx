@@ -338,7 +338,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
         icon: 'fingerprint',
         isActive: (pathname: string, search: string) => {
           const sp = new URLSearchParams(search);
-          return pathname === '/attendance' && (sp.get('tab') === 'attendance' || !sp.get('tab'));
+          const tab = sp.get('tab');
+          return pathname === '/attendance' && (tab === 'attendance' || tab === 'payroll' || tab === 'salary' || !tab);
         }
       },
       {
@@ -357,15 +358,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
         isActive: (pathname: string, search: string) => {
           const sp = new URLSearchParams(search);
           return pathname === '/attendance' && (sp.get('tab') === 'adjustment' || sp.get('tab') === 'adjustments' || sp.get('tab') === 'cham-cong-bu');
-        }
-      },
-      {
-        label: 'Bảng công & Lương',
-        path: '/attendance?tab=payroll',
-        icon: 'receipt_long',
-        isActive: (pathname: string, search: string) => {
-          const sp = new URLSearchParams(search);
-          return pathname === '/attendance' && (sp.get('tab') === 'payroll' || sp.get('tab') === 'salary');
         }
       }
     ];

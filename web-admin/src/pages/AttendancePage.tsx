@@ -170,6 +170,7 @@ export const AttendancePage: React.FC = () => {
   }, [user, isAdmin]);
 
   const [mainTab, setMainTab] = useState<'attendance' | 'leave' | 'adjustment' | 'payroll'>('attendance');
+  const [attendanceSubTab, setAttendanceSubTab] = useState<'timesheet' | 'logs'>('timesheet');
   const [highlightLeaveId, setHighlightLeaveId] = useState<string | null>(null);
   const [isHighlightActive, setIsHighlightActive] = useState<boolean>(false);
   const [logs, setLogs] = useState<AttendanceLog[]>(cachedLogs);
@@ -407,7 +408,11 @@ export const AttendancePage: React.FC = () => {
     } else if (tabParam === 'adjustment' || tabParam === 'adjustments' || tabParam === 'cham-cong-bu') {
       setMainTab('adjustment');
     } else if (tabParam === 'payroll' || tabParam === 'salary' || tabParam === 'bang-luong') {
-      setMainTab('payroll');
+      setMainTab('attendance');
+      setAttendanceSubTab('timesheet');
+    } else if (tabParam === 'logs' || tabParam === 'nhat-ky') {
+      setMainTab('attendance');
+      setAttendanceSubTab('logs');
     } else if (tabParam === 'attendance') {
       setMainTab('attendance');
     }
@@ -1517,7 +1522,7 @@ export const AttendancePage: React.FC = () => {
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           <div className="flex items-center border-l-4 border-primary pl-2">
             <h1 className="page-title text-xs sm:text-sm md:text-base font-extrabold text-slate-900 shrink-0">
-              {mainTab === 'attendance' ? 'Chấm công' : mainTab === 'leave' ? 'Nghỉ phép' : mainTab === 'adjustment' ? 'Chấm công bù' : 'Bảng công & Lương'}
+              {mainTab === 'attendance' ? 'Chấm công' : mainTab === 'leave' ? 'Nghỉ phép' : 'Chấm công bù'}
             </h1>
           </div>
 
@@ -1550,22 +1555,44 @@ export const AttendancePage: React.FC = () => {
             >
               Bù công
             </button>
-            <button
-              type="button"
-              onClick={() => setMainTab('payroll')}
-              className={`px-2.5 py-1 rounded-md font-bold transition-all cursor-pointer flex items-center gap-1 ${
-                mainTab === 'payroll' ? 'bg-primary text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <span className="material-symbols-outlined text-[14px]">draw</span>
-              Bảng công & Lương
-            </button>
           </div>
+
+          {/* Sub-view switcher khi ở tab Chấm công: Bảng chấm công vs Nhật ký vào/ra */}
+          {mainTab === 'attendance' && (
+            <div className="hidden sm:flex items-center gap-0.5 bg-blue-50/80 p-0.5 rounded-lg border border-blue-200/80 text-xs ml-1 sm:ml-2">
+              <button
+                type="button"
+                onClick={() => setAttendanceSubTab('timesheet')}
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-md font-bold transition-all cursor-pointer ${
+                  attendanceSubTab === 'timesheet'
+                    ? 'bg-primary text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+                title="Bảng tổng hợp chấm công tháng & Bảng lương"
+              >
+                <span className="material-symbols-outlined text-[14px]">calendar_month</span>
+                <span>Bảng chấm công</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setAttendanceSubTab('logs')}
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-md font-bold transition-all cursor-pointer ${
+                  attendanceSubTab === 'logs'
+                    ? 'bg-primary text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+                title="Nhật ký chi tiết các lượt Check-in/out GPS & Ảnh"
+              >
+                <span className="material-symbols-outlined text-[14px]">history</span>
+                <span>Nhật ký vào/ra</span>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Desktop-only Right controls (My/All switcher + Action Button) pushed to far right */}
         <div className="hidden md:flex items-center gap-1.5 lg:gap-2 shrink-0">
-          {canViewAll && (
+          {canViewAll && (mainTab !== 'attendance' || attendanceSubTab === 'logs') && (
             <div className="inline-flex items-center gap-0.5 bg-slate-100 rounded-lg p-0.5 border border-slate-200 text-xs shrink-0">
               <button
                 onClick={() => setTab('my')}
@@ -1579,146 +1606,171 @@ export const AttendancePage: React.FC = () => {
           )}
 
           {mainTab === 'attendance' ? (
-            <div className="flex items-center gap-2">
-              {/* Desktop Date Filter for Attendance */}
-              <div className="flex items-center gap-1.5 shrink-0">
-                <div className="flex items-center gap-1.5 border border-slate-200 rounded-lg px-1.5 py-0.5 bg-slate-50 shadow-xs h-8">
-                  <span className="text-slate-400 font-medium whitespace-nowrap text-[11px] ml-0.5">Từ</span>
+            attendanceSubTab === 'timesheet' ? (
+              <div className="flex items-center gap-2">
+                {canViewAll && (
+                  <button
+                    type="button"
+                    onClick={() => setShowConfigModal(true)}
+                    className="flex items-center justify-center gap-1.5 px-2.5 sm:px-3 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs rounded-lg border border-indigo-200 transition-colors shrink-0 h-8 cursor-pointer shadow-xs active:scale-95"
+                    title="Cài đặt hình thức chấm công (Theo ca / GPS / Thời gian)"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">tune</span>
+                    <span className="hidden sm:inline">Cài đặt chấm công</span>
+                  </button>
+                )}
+
+                <button
+                  onClick={() => setShowCheckInModal(true)}
+                  className="flex items-center justify-center gap-1.5 px-2 sm:px-2.5 py-1 bg-primary hover:bg-blue-800 text-white font-bold text-xs rounded-lg shadow-sm transition-colors shrink-0 h-8 cursor-pointer active:scale-95"
+                  title="Chấm công"
+                >
+                  <span className="material-symbols-outlined text-[18px]">fingerprint</span>
+                  <span className="hidden sm:inline">Chấm công</span>
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                {/* Desktop Date Filter for Attendance */}
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <div className="flex items-center gap-1.5 border border-slate-200 rounded-lg px-1.5 py-0.5 bg-slate-50 shadow-xs h-8">
+                    <span className="text-slate-400 font-medium whitespace-nowrap text-[11px] ml-0.5">Từ</span>
+                    <input
+                      type="date"
+                      value={filterDateFrom}
+                      onChange={e => setFilterDateFrom(e.target.value)}
+                      className="bg-transparent border-none outline-none text-xs w-[88px] text-slate-700 cursor-pointer"
+                    />
+                    <span className="text-slate-300">|</span>
+                    <span className="text-slate-400 font-medium whitespace-nowrap text-[11px]">Đến</span>
+                    <input
+                      type="date"
+                      value={filterDateTo}
+                      onChange={e => setFilterDateTo(e.target.value)}
+                      className="bg-transparent border-none outline-none text-xs w-[88px] text-slate-700 cursor-pointer"
+                    />
+                    {(filterDateFrom || filterDateTo) && (
+                      <button
+                        type="button"
+                        onClick={() => { setFilterDateFrom(''); setFilterDateTo(''); }}
+                        className="text-slate-400 hover:text-slate-600 px-0.5 text-xs font-bold"
+                        title="Xóa lọc ngày"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* User filter if viewing all */}
+                {canViewAll && tab === 'all' && (
+                  <div className="hidden lg:flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-slate-400 text-[18px]">person</span>
+                    <CustomSelect value={filterUser} onChange={e => setFilterUser(e.target.value)}
+                      searchable={true}
+                      className="px-2.5 py-1 border border-slate-200 rounded text-xs focus:ring-1 focus:ring-primary focus:outline-none bg-slate-50 min-w-[140px] h-8">
+                      <option value="">Tất cả nhân viên</option>
+                      {engineers.map(e => (
+                        <option key={e.id} value={e.id}>{e.name}</option>
+                      ))}
+                    </CustomSelect>
+                  </div>
+                )}
+
+                {/* Desktop Search for Attendance */}
+                <div className="relative flex items-center">
+                  <span className="material-symbols-outlined absolute left-2 text-slate-400 text-sm pointer-events-none">search</span>
                   <input
-                    type="date"
-                    value={filterDateFrom}
-                    onChange={e => setFilterDateFrom(e.target.value)}
-                    className="bg-transparent border-none outline-none text-xs w-[88px] text-slate-700 cursor-pointer"
+                    type="text"
+                    placeholder="Tìm kiếm..."
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    className="pl-7 pr-6 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-primary focus:outline-none h-8 w-24 md:w-28 lg:w-36 transition-colors"
                   />
-                  <span className="text-slate-300">|</span>
-                  <span className="text-slate-400 font-medium whitespace-nowrap text-[11px]">Đến</span>
-                  <input
-                    type="date"
-                    value={filterDateTo}
-                    onChange={e => setFilterDateTo(e.target.value)}
-                    className="bg-transparent border-none outline-none text-xs w-[88px] text-slate-700 cursor-pointer"
-                  />
-                  {(filterDateFrom || filterDateTo) && (
+                  {searchQuery && (
                     <button
                       type="button"
-                      onClick={() => { setFilterDateFrom(''); setFilterDateTo(''); }}
-                      className="text-slate-400 hover:text-slate-600 px-0.5 text-xs font-bold"
-                      title="Xóa lọc ngày"
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-2 text-slate-400 hover:text-slate-600 cursor-pointer"
                     >
-                      ✕
+                      <span className="material-symbols-outlined text-xs">close</span>
                     </button>
                   )}
                 </div>
-              </div>
 
-              {/* User filter if viewing all */}
-              {canViewAll && tab === 'all' && (
-                <div className="hidden lg:flex items-center gap-1.5">
-                  <span className="material-symbols-outlined text-slate-400 text-[18px]">person</span>
-                  <CustomSelect value={filterUser} onChange={e => setFilterUser(e.target.value)}
-                    searchable={true}
-                    className="px-2.5 py-1 border border-slate-200 rounded text-xs focus:ring-1 focus:ring-primary focus:outline-none bg-slate-50 min-w-[140px] h-8">
-                    <option value="">Tất cả nhân viên</option>
-                    {engineers.map(e => (
-                      <option key={e.id} value={e.id}>{e.name}</option>
-                    ))}
-                  </CustomSelect>
-                </div>
-              )}
+                {/* Export file for Attendance */}
+                {filteredLogs.length > 0 && (
+                  <div className="relative shrink-0">
+                    <button
+                      onClick={() => setShowExportMenu(!showExportMenu)}
+                      className="flex items-center justify-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-bold text-xs rounded-lg border border-emerald-200 transition-colors shadow-xs cursor-pointer h-8"
+                      title="Xuất file"
+                    >
+                      <span className="material-symbols-outlined text-[15px]">file_download</span>
+                      <span>Xuất file</span>
+                      <span className="material-symbols-outlined text-xs">expand_more</span>
+                    </button>
+                    {showExportMenu && (
+                      <div className="fixed inset-0 z-40" onClick={() => setShowExportMenu(false)} />
+                    )}
+                    {showExportMenu && (
+                      <div className="absolute right-0 top-full mt-1 w-64 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-50 animate-in fade-in zoom-in duration-100">
+                        <button
+                          onClick={() => { setShowExportMenu(false); handleExportMonthlyTitsmart(); }}
+                          className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
+                          title="Xuất bảng chấm công Excel theo mẫu TITSMART"
+                        >
+                          <span className="material-symbols-outlined text-base text-emerald-600">grid_on</span>
+                          Excel (.xlsx)
+                        </button>
+                        <button
+                          onClick={() => { setShowExportMenu(false); handleExportExcel('csv'); }}
+                          className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 border-t border-slate-100 cursor-pointer"
+                        >
+                          <span className="material-symbols-outlined text-base text-teal-600">csv</span>
+                          CSV (.csv)
+                        </button>
+                        <button
+                          onClick={() => { setShowExportMenu(false); window.print(); }}
+                          className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 border-t border-slate-100 cursor-pointer"
+                        >
+                          <span className="material-symbols-outlined text-base text-red-600">picture_as_pdf</span>
+                          PDF (.pdf)
+                        </button>
+                        <button
+                          onClick={() => { setShowExportMenu(false); handleExportExcel('docx'); }}
+                          className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 border-t border-slate-100 cursor-pointer"
+                        >
+                          <span className="material-symbols-outlined text-base text-blue-600">description</span>
+                          Word (.docx)
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
 
-              {/* Desktop Search for Attendance */}
-              <div className="relative flex items-center">
-                <span className="material-symbols-outlined absolute left-2 text-slate-400 text-sm pointer-events-none">search</span>
-                <input
-                  type="text"
-                  placeholder="Tìm kiếm..."
-                  value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
-                  className="pl-7 pr-6 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-primary focus:outline-none h-8 w-24 md:w-28 lg:w-36 transition-colors"
-                />
-                {searchQuery && (
+                {canViewAll && (
                   <button
                     type="button"
-                    onClick={() => setSearchQuery('')}
-                    className="absolute right-2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                    onClick={() => setShowConfigModal(true)}
+                    className="flex items-center justify-center gap-1.5 px-2.5 sm:px-3 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs rounded-lg border border-indigo-200 transition-colors shrink-0 h-8 cursor-pointer shadow-xs active:scale-95"
+                    title="Cài đặt hình thức chấm công (Theo ca / GPS / Thời gian)"
                   >
-                    <span className="material-symbols-outlined text-xs">close</span>
+                    <span className="material-symbols-outlined text-[16px]">tune</span>
+                    <span className="hidden sm:inline">Cài đặt chấm công</span>
                   </button>
                 )}
-              </div>
 
-              {/* Export file for Attendance */}
-              {filteredLogs.length > 0 && (
-                <div className="relative shrink-0">
-                  <button
-                    onClick={() => setShowExportMenu(!showExportMenu)}
-                    className="flex items-center justify-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-bold text-xs rounded-lg border border-emerald-200 transition-colors shadow-xs cursor-pointer h-8"
-                    title="Xuất file"
-                  >
-                    <span className="material-symbols-outlined text-[15px]">file_download</span>
-                    <span>Xuất file</span>
-                    <span className="material-symbols-outlined text-xs">expand_more</span>
-                  </button>
-                  {showExportMenu && (
-                    <div className="fixed inset-0 z-40" onClick={() => setShowExportMenu(false)} />
-                  )}
-                  {showExportMenu && (
-                    <div className="absolute right-0 top-full mt-1 w-64 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-50 animate-in fade-in zoom-in duration-100">
-                      <button
-                        onClick={() => { setShowExportMenu(false); handleExportMonthlyTitsmart(); }}
-                        className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
-                        title="Xuất bảng chấm công Excel theo mẫu TITSMART"
-                      >
-                        <span className="material-symbols-outlined text-base text-emerald-600">grid_on</span>
-                        Excel (.xlsx)
-                      </button>
-                      <button
-                        onClick={() => { setShowExportMenu(false); handleExportExcel('csv'); }}
-                        className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 border-t border-slate-100 cursor-pointer"
-                      >
-                        <span className="material-symbols-outlined text-base text-teal-600">csv</span>
-                        CSV (.csv)
-                      </button>
-                      <button
-                        onClick={() => { setShowExportMenu(false); window.print(); }}
-                        className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 border-t border-slate-100 cursor-pointer"
-                      >
-                        <span className="material-symbols-outlined text-base text-red-600">picture_as_pdf</span>
-                        PDF (.pdf)
-                      </button>
-                      <button
-                        onClick={() => { setShowExportMenu(false); handleExportExcel('docx'); }}
-                        className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 border-t border-slate-100 cursor-pointer"
-                      >
-                        <span className="material-symbols-outlined text-base text-blue-600">description</span>
-                        Word (.docx)
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {canViewAll && (
                 <button
-                  type="button"
-                  onClick={() => setShowConfigModal(true)}
-                  className="flex items-center justify-center gap-1.5 px-2.5 sm:px-3 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs rounded-lg border border-indigo-200 transition-colors shrink-0 h-8 cursor-pointer shadow-xs active:scale-95"
-                  title="Cài đặt hình thức chấm công (Theo ca / GPS / Thời gian)"
+                  onClick={() => setShowCheckInModal(true)}
+                  className="flex items-center justify-center gap-1.5 px-2 sm:px-2.5 py-1 bg-primary hover:bg-blue-800 text-white font-bold text-xs rounded-lg shadow-sm transition-colors shrink-0 h-8 cursor-pointer active:scale-95"
+                  title="Chấm công"
                 >
-                  <span className="material-symbols-outlined text-[16px]">tune</span>
-                  <span className="hidden sm:inline">Cài đặt chấm công</span>
+                  <span className="material-symbols-outlined text-[18px]">fingerprint</span>
+                  <span className="hidden sm:inline">Chấm công</span>
                 </button>
-              )}
-
-              <button
-                onClick={() => setShowCheckInModal(true)}
-                className="flex items-center justify-center gap-1.5 px-2 sm:px-2.5 py-1 bg-primary hover:bg-blue-800 text-white font-bold text-xs rounded-lg shadow-sm transition-colors shrink-0 h-8 cursor-pointer active:scale-95"
-                title="Chấm công"
-              >
-                <span className="material-symbols-outlined text-[18px]">fingerprint</span>
-                <span className="hidden sm:inline">Chấm công</span>
-              </button>
-            </div>
+              </div>
+            )
           ) : mainTab === 'leave' ? (
             <div className="flex items-center gap-2">
               {/* Desktop Date Filter for Leave */}
@@ -1946,8 +1998,68 @@ export const AttendancePage: React.FC = () => {
       </header>
 
       {mainTab === 'attendance' ? (
-        <div className="flex-1 w-full max-w-full overflow-hidden flex flex-col bg-slate-50">
-          {/* Check-in / Check-out & Search Bar (Mobile only) */}
+        attendanceSubTab === 'timesheet' ? (
+          /* BẢNG CHẤM CÔNG & LƯƠNG TRỰC TIẾP TRONG TAB CHẤM CÔNG */
+          <div className="flex-1 w-full max-w-full overflow-y-auto bg-slate-50 flex flex-col">
+            {/* Mobile sub-tab switcher for Attendance */}
+            <div className="bg-white border-b border-slate-200 px-3 py-1.5 flex items-center justify-between gap-2 sm:hidden shrink-0">
+              <div className="flex items-center gap-1 bg-blue-50/80 p-0.5 rounded-md border border-blue-200/80 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setAttendanceSubTab('timesheet')}
+                  className="px-2.5 py-0.5 rounded font-bold text-xs bg-primary text-white shadow-xs"
+                >
+                  Bảng chấm công
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAttendanceSubTab('logs')}
+                  className="px-2.5 py-0.5 rounded font-bold text-xs text-slate-600 hover:text-slate-900"
+                >
+                  Nhật ký vào/ra
+                </button>
+              </div>
+
+              <button
+                onClick={() => setShowCheckInModal(true)}
+                className="flex items-center justify-center gap-1 px-2.5 py-1 bg-primary text-white font-bold text-xs rounded-lg shadow-sm"
+              >
+                <span className="material-symbols-outlined text-[16px]">fingerprint</span>
+                Chấm công
+              </button>
+            </div>
+
+            <MonthlyPayrollTab
+              logs={logs}
+              leaves={leaves}
+              adjustments={adjustments}
+              showToast={showToast}
+              isAdmin={isAdmin}
+            />
+          </div>
+        ) : (
+          <div className="flex-1 w-full max-w-full overflow-hidden flex flex-col bg-slate-50">
+            {/* Mobile sub-tab switcher for Attendance */}
+            <div className="bg-white border-b border-slate-200 px-3 py-1.5 flex items-center justify-between gap-2 sm:hidden shrink-0">
+              <div className="flex items-center gap-1 bg-blue-50/80 p-0.5 rounded-md border border-blue-200/80 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setAttendanceSubTab('timesheet')}
+                  className="px-2.5 py-0.5 rounded font-bold text-xs text-slate-600 hover:text-slate-900"
+                >
+                  Bảng chấm công
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAttendanceSubTab('logs')}
+                  className="px-2.5 py-0.5 rounded font-bold text-xs bg-primary text-white shadow-xs"
+                >
+                  Nhật ký vào/ra
+                </button>
+              </div>
+            </div>
+
+            {/* Check-in / Check-out & Search Bar (Mobile only) */}
           <div className="bg-white border-b border-slate-200 shadow-xs shrink-0 md:hidden">
             <div className="px-3 py-2 sm:px-4 sm:py-2 flex items-center justify-between gap-2">
               {canViewAll ? (
@@ -2126,6 +2238,7 @@ export const AttendancePage: React.FC = () => {
             </PullToRefresh>
           </div>
         </div>
+        )
       ) : mainTab === 'leave' ? (
         /* Tab Xin nghỉ phép */
         <div className="flex-1 w-full max-w-full overflow-hidden flex flex-col bg-slate-50">
