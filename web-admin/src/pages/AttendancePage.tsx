@@ -1526,37 +1526,6 @@ export const AttendancePage: React.FC = () => {
             </h1>
           </div>
 
-          {/* Quick tab switcher inside page */}
-          <div className="hidden sm:flex items-center gap-0.5 bg-slate-100 p-0.5 rounded-lg border border-slate-200 text-xs ml-2">
-            <button
-              type="button"
-              onClick={() => setMainTab('attendance')}
-              className={`px-2.5 py-1 rounded-md font-bold transition-all cursor-pointer ${
-                mainTab === 'attendance' ? 'bg-white text-primary shadow-xs' : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Chấm công
-            </button>
-            <button
-              type="button"
-              onClick={() => setMainTab('leave')}
-              className={`px-2.5 py-1 rounded-md font-bold transition-all cursor-pointer ${
-                mainTab === 'leave' ? 'bg-white text-primary shadow-xs' : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Nghỉ phép
-            </button>
-            <button
-              type="button"
-              onClick={() => setMainTab('adjustment')}
-              className={`px-2.5 py-1 rounded-md font-bold transition-all cursor-pointer ${
-                mainTab === 'adjustment' ? 'bg-white text-primary shadow-xs' : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Bù công
-            </button>
-          </div>
-
           {/* Sub-view switcher khi ở tab Chấm công: Bảng chấm công vs Nhật ký vào/ra */}
           {mainTab === 'attendance' && (
             <div className="hidden sm:flex items-center gap-0.5 bg-blue-50/80 p-0.5 rounded-lg border border-blue-200/80 text-xs ml-1 sm:ml-2">
