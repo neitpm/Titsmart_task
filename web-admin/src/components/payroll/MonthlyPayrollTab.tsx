@@ -327,16 +327,17 @@ export const MonthlyPayrollTab: React.FC<MonthlyPayrollTabProps> = ({
             </div>
           </div>
 
-          {/* 4 CARD CHỈ SỐ TỔNG QUAN (PHONG CÁCH CHUẨN ERP DOANH NGHIỆP) */}
-          <div className="grid grid-cols-2 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-slate-200 border-b border-slate-200 bg-white">
+          {/* 4 CARD CHỈ SỐ TỔNG QUAN (PHONG CÁCH CHUẨN ERP DOANH NGHIỆP, NỔI BẬT SẮC NÉT) */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 p-3 bg-slate-100/70 border-b border-slate-200">
             {/* 1. Công thực tế */}
-            <div className="bg-white p-3.5">
-              <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1">
-                Ngày công thực tế
+            <div className="bg-white p-3.5 rounded-lg border border-slate-200 shadow-2xs flex flex-col justify-between">
+              <div className="flex items-center justify-between text-slate-500 mb-1">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-600">Ngày công thực tế</span>
+                <span className="material-symbols-outlined text-slate-400 text-[18px]">event_available</span>
               </div>
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-2xl font-bold text-slate-900">{myPayrollItem.actualWorkingDays}</span>
-                <span className="text-xs text-slate-500 font-normal">/ {myPayrollItem.standardWorkingDays} công chuẩn</span>
+              <div className="flex items-baseline gap-1.5 my-0.5">
+                <span className="text-2xl font-black text-slate-900">{myPayrollItem.actualWorkingDays}</span>
+                <span className="text-xs text-slate-500 font-medium">/ {myPayrollItem.standardWorkingDays} công</span>
               </div>
               <div className="text-[11px] text-slate-500 mt-1 flex items-center gap-1.5">
                 <span>{myPayrollItem.paidLeaveDays} phép năm</span>
@@ -346,45 +347,50 @@ export const MonthlyPayrollTab: React.FC<MonthlyPayrollTabProps> = ({
             </div>
 
             {/* 2. Công trường & Đi ngoài */}
-            <div className="bg-white p-3.5">
-              <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1">
-                Công trường / Công tác
+            <div className="bg-white p-3.5 rounded-lg border border-slate-200 shadow-2xs flex flex-col justify-between">
+              <div className="flex items-center justify-between text-slate-500 mb-1">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-600">Công trường / Đi ngoài</span>
+                <span className="material-symbols-outlined text-slate-400 text-[18px]">engineering</span>
               </div>
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-2xl font-bold text-slate-900">{myPayrollItem.fieldWorkDays}</span>
-                <span className="text-xs text-slate-500 font-normal">ngày tại công trường</span>
+              <div className="flex items-baseline gap-1.5 my-0.5">
+                <span className="text-2xl font-black text-slate-900">{myPayrollItem.fieldWorkDays}</span>
+                <span className="text-xs text-slate-500 font-medium">ngày công trường</span>
               </div>
               <div className="text-[11px] text-slate-500 mt-1">
-                Công tác ngoài: {myPayrollItem.remoteWorkDays} ngày
+                Công tác ngoài: <strong className="text-slate-700">{myPayrollItem.remoteWorkDays}</strong> ngày
               </div>
             </div>
 
             {/* 3. Tăng ca OT */}
-            <div className="bg-white p-3.5">
-              <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1">
-                Giờ làm thêm (OT)
+            <div className="bg-white p-3.5 rounded-lg border border-slate-200 shadow-2xs flex flex-col justify-between">
+              <div className="flex items-center justify-between text-slate-500 mb-1">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-600">Giờ làm thêm (OT)</span>
+                <span className="material-symbols-outlined text-slate-400 text-[18px]">schedule</span>
               </div>
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-2xl font-bold text-slate-900">
+              <div className="flex items-baseline gap-1.5 my-0.5">
+                <span className="text-2xl font-black text-slate-900">
                   {myPayrollItem.otHoursNormal + myPayrollItem.otHoursSunday + myPayrollItem.otHoursHoliday}
                 </span>
-                <span className="text-xs text-slate-500 font-normal">giờ làm thêm</span>
+                <span className="text-xs text-slate-500 font-medium">giờ làm thêm</span>
               </div>
-              <div className="text-[11px] text-slate-500 mt-1">
-                Tiền OT: {showSalaryAmounts ? formatVND(myPayrollItem.otPay) : '•••••• đ'}
+              <div className="text-[11px] text-slate-600 mt-1 font-medium">
+                Tiền OT: <strong className="text-slate-900">{showSalaryAmounts ? formatVND(myPayrollItem.otPay) : '•••••• đ'}</strong>
               </div>
             </div>
 
-            {/* 4. Thực lĩnh (Net Salary) - Tối giản sang trọng, không đổ khối màu xanh đặc */}
-            <div className="bg-white p-3.5">
-              <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1">
-                Thực lĩnh tháng
+            {/* 4. Thực lĩnh (Net Salary) - Nổi bật sang trọng theo chuẩn tài chính */}
+            <div className="bg-blue-50/60 p-3.5 rounded-lg border border-blue-200/90 shadow-2xs flex flex-col justify-between">
+              <div className="flex items-center justify-between text-blue-900 mb-1">
+                <span className="text-[11px] font-extrabold uppercase tracking-wider text-blue-900">Thực lĩnh tháng</span>
+                <span className="material-symbols-outlined text-primary text-[18px]">payments</span>
               </div>
-              <div className="text-2xl font-black text-slate-900 tracking-tight">
-                {showSalaryAmounts ? formatVND(myPayrollItem.netSalary) : '•••••••• đ'}
+              <div className="my-0.5">
+                <span className="text-2xl font-black text-primary tracking-tight font-mono">
+                  {showSalaryAmounts ? formatVND(myPayrollItem.netSalary) : '•••••••• đ'}
+                </span>
               </div>
-              <div className="text-[11px] text-slate-500 mt-1">
-                Tổng thu nhập: {showSalaryAmounts ? formatVND(myPayrollItem.grossIncome) : '•••••• đ'}
+              <div className="text-[11px] text-blue-900/80 mt-1 font-medium">
+                Tổng thu nhập: <strong className="text-blue-950">{showSalaryAmounts ? formatVND(myPayrollItem.grossIncome) : '•••••• đ'}</strong>
               </div>
             </div>
           </div>
