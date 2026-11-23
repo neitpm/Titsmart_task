@@ -1340,22 +1340,8 @@ export const ProjectManagementPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Nhóm thao tác bên phải: Chuyển dạng Thẻ / Bảng + Ô tìm kiếm + Nút Tạo dự án mới */}
+        {/* Nhóm thao tác bên phải: Ô tìm kiếm + Nút Tạo dự án mới */}
         <div className="flex items-center gap-2 shrink-0 ml-auto">
-          {/* Chuyển chế độ xem đa dạng dạng combobox */}
-          <CustomSelect
-            value={viewMode}
-            onChange={(e) => handleViewModeChange(e.target.value as ProjectViewMode)}
-            className="h-[34px] min-w-[140px] sm:min-w-[160px] rounded-md border border-slate-200 bg-white px-2.5 text-xs font-bold text-slate-700 shadow-2xs outline-none focus:border-primary shrink-0 cursor-pointer"
-            title="Chế độ hiển thị danh sách dự án"
-          >
-            <option value="grid">⊞ Dạng thẻ</option>
-            <option value="compact_grid">▦ Thẻ thu gọn</option>
-            <option value="table">☰ Bảng gọn</option>
-            <option value="table_detailed">☷ Bảng chi tiết</option>
-            <option value="kanban">▥ Bảng Kanban</option>
-          </CustomSelect>
-
           <div className="relative w-44 sm:w-52 md:w-60 flex items-center min-w-0">
             <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-base">search</span>
             <input
