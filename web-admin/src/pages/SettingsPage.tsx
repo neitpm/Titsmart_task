@@ -154,6 +154,7 @@ export const SettingsPage: React.FC = () => {
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
+  const engineers = useRealtimeStore((state) => state.engineers || []);
   // Tab Phân quyền & Cấu hình công ty dành cho Company Admin / Quản trị viên
   const isSysAdmin = isSystemAdmin(user);
   const isDir = isDirector(user);
@@ -161,11 +162,6 @@ export const SettingsPage: React.FC = () => {
   const canManageRoles = isCompanyAdmin || hasPermission(user, 'MANAGE_PERMISSIONS');
   const isAdmin = isCompanyAdmin;
   const canViewLogs = isCompanyAdmin || hasPermission(user, 'VIEW_ACTIVITY_LOG');
-  const currentEngineer = useMemo(() => engineers.find((engineer) =>
-    engineer.id === user?.id ||
-    (user?.username && engineer.username === user.username) ||
-    (user?.name && engineer.name?.trim().toLowerCase() === user.name.trim().toLowerCase())
-  ), [engineers, user]);
 
   // Nếu không phải Quản trị viên công ty, không được xem tab Cấu hình công ty (general) & Phân quyền (roles)
   const isGeneralStaff = !isCompanyAdmin;
@@ -316,6 +312,11 @@ export const SettingsPage: React.FC = () => {
   const activityLogs = useRealtimeStore(state => state.activityLogs);
   const projects = useRealtimeStore(state => state.projects);
   const engineers = useRealtimeStore(state => state.engineers || []);
+  const currentEngineer = useMemo(() => engineers.find((engineer) =>
+    engineer.id === user?.id ||
+    (user?.username && engineer.username === user.username) ||
+    (user?.name && engineer.name?.trim().toLowerCase() === user.name.trim().toLowerCase())
+  ), [engineers, user]);
   const logActivity = useRealtimeStore(state => state.logActivity);
   const fetchActivityLogs = useRealtimeStore(state => state.fetchActivityLogs);
 
