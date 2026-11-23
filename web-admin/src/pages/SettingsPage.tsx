@@ -590,7 +590,7 @@ export const SettingsPage: React.FC = () => {
       {/* Main Settings Layout (Left Nav + Right Content) */}
       <div className="flex-1 flex overflow-hidden">
         {/* Left Settings Sidebar */}
-        <aside className="w-56 md:w-64 bg-white border-r border-slate-200 p-3 flex flex-col justify-between shrink-0 overflow-y-auto custom-scrollbar">
+        <aside className="w-52 md:w-56 bg-white border-r border-slate-200 p-3 flex flex-col justify-between shrink-0 overflow-y-auto custom-scrollbar">
           <div className="space-y-4">
             {/* Cấu hình công ty (Dành cho Company Admin) */}
             {!isGeneralStaff && (
@@ -674,10 +674,10 @@ export const SettingsPage: React.FC = () => {
                 </button>
                 {isAppSettingsMenuOpen && <div className="ml-3 border-l-2 border-blue-100 pl-3 space-y-0.5">
                   <button type="button" onClick={() => setActiveTab('appearance')} className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs font-semibold text-left ${activeTab === 'appearance' ? 'bg-slate-100 text-slate-900' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'}`}>
-                    <span className="material-symbols-outlined text-[16px] text-slate-400">palette</span><span>Giao diện thanh điều hướng</span>
+                    <span className="material-symbols-outlined text-[16px] text-slate-400">palette</span><span>Giao diện</span>
                   </button>
                   <button type="button" onClick={() => setActiveTab('notifications')} className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs font-semibold text-left ${activeTab === 'notifications' ? 'bg-slate-100 text-slate-900' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'}`}>
-                    <span className="material-symbols-outlined text-[16px] text-slate-400">notifications</span><span>Thông báo & Chuông</span>
+                    <span className="material-symbols-outlined text-[16px] text-slate-400">notifications</span><span>Thông báo</span>
                   </button>
                 </div>}
               </nav>
