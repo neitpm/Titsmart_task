@@ -1916,7 +1916,7 @@ export const SettingsPage: React.FC = () => {
                     <div>
                       <h3 className="text-base font-extrabold text-slate-900">{user?.name || user?.username}</h3>
                       <p className="text-xs text-slate-500">Tên đăng nhập: <strong className="font-mono text-slate-700">{user?.username}</strong></p>
-                      <span className="inline-block mt-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-primary border border-blue-200">
+                  <span className="inline-block mt-1 px-2.5 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-primary border border-blue-200">
                         {user?.role === 'admin' ? 'Quản trị viên (Admin)' : (user?.title || user?.role || 'Nhân viên')}
                       </span>
                     </div>
@@ -1939,7 +1939,7 @@ export const SettingsPage: React.FC = () => {
                     ))}
                   </div>
 
-                  <div className="flex items-center justify-between p-3.5 rounded-xl bg-slate-50 border border-slate-200/80">
+                  <div className="flex items-center justify-between p-3.5 rounded-md bg-slate-50 border border-slate-200/80">
                     <div className="flex items-center gap-3">
                       <span className="material-symbols-outlined text-xl text-slate-600">lock_reset</span>
                       <div>
@@ -1950,7 +1950,7 @@ export const SettingsPage: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setIsChangePasswordOpen(true)}
-                      className="px-4 py-2 rounded-xl text-xs font-bold bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 transition-colors shadow-2xs cursor-pointer"
+                      className="px-4 py-2 rounded-md text-xs font-bold bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 transition-colors shadow-2xs cursor-pointer"
                     >
                       Đổi mật khẩu
                     </button>
