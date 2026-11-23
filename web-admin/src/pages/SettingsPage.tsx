@@ -155,6 +155,11 @@ export const SettingsPage: React.FC = () => {
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
   const engineers = useRealtimeStore((state) => state.engineers || []);
+  const currentEngineer = useMemo(() => engineers.find((engineer) =>
+    engineer.id === user?.id ||
+    (user?.username && engineer.username === user.username) ||
+    (user?.name && engineer.name?.trim().toLowerCase() === user.name.trim().toLowerCase())
+  ), [engineers, user]);
   // Tab Phân quyền & Cấu hình công ty dành cho Company Admin / Quản trị viên
   const isSysAdmin = isSystemAdmin(user);
   const isDir = isDirector(user);
@@ -311,12 +316,6 @@ export const SettingsPage: React.FC = () => {
   // Activity Logs Store & State
   const activityLogs = useRealtimeStore(state => state.activityLogs);
   const projects = useRealtimeStore(state => state.projects);
-  const engineers = useRealtimeStore(state => state.engineers || []);
-  const currentEngineer = useMemo(() => engineers.find((engineer) =>
-    engineer.id === user?.id ||
-    (user?.username && engineer.username === user.username) ||
-    (user?.name && engineer.name?.trim().toLowerCase() === user.name.trim().toLowerCase())
-  ), [engineers, user]);
   const logActivity = useRealtimeStore(state => state.logActivity);
   const fetchActivityLogs = useRealtimeStore(state => state.fetchActivityLogs);
 
