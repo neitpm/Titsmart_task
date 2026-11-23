@@ -658,6 +658,7 @@ export const SettingsPage: React.FC = () => {
                     ['contract', 'Hợp đồng', 'description'], ['projects', 'Dự án', 'folder_open'],
                     ['payroll', 'Bảng lương', 'payments'], ['journal', 'Nhật ký cá nhân', 'history'],
                   ] as const).map(([key, label, icon]) => <button key={key} type="button" onClick={() => { setActiveTab('account'); setPersonalTab(key); }} className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs font-semibold text-left ${activeTab === 'account' && personalTab === key ? 'bg-slate-100 text-slate-900' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'}`}><span className="material-symbols-outlined text-[16px] text-slate-400">{icon}</span><span>{label}</span></button>)}
+                  <button type="button" onClick={() => setIsConfirmLogoutOpen(true)} className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs font-semibold text-left text-red-600 hover:bg-red-50 hover:text-red-700"><span className="material-symbols-outlined text-[16px]">logout</span><span>Đăng xuất</span></button>
                 </div>
                 <button
                   type="button"
@@ -715,15 +716,6 @@ export const SettingsPage: React.FC = () => {
                 Tài khoản của bạn
               </div>
               <nav className="space-y-1">
-                <button
-                  type="button"
-                  onClick={() => setIsConfirmLogoutOpen(true)}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-red-600 hover:bg-red-50 hover:text-red-700 transition-all text-left cursor-pointer"
-                  title="Đăng xuất khỏi hệ thống"
-                >
-                  <span className="material-symbols-outlined text-lg">logout</span>
-                  <span>Đăng xuất</span>
-                </button>
               </nav>
             </div>
           </div>
