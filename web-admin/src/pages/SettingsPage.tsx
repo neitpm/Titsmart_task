@@ -326,7 +326,6 @@ export const SettingsPage: React.FC = () => {
   const personalTasks = tasks.filter((task: any) => String(task.assignedEngineerId || '').toLowerCase() === String(user?.id || '').toLowerCase() || String(task.assignedEngineerName || '').trim().toLowerCase() === String(user?.name || '').trim().toLowerCase());
   const personalProjects = projects.filter((project: any) => (currentEngineer?.projectCodes || []).some(code => String(code).toLowerCase() === String(project.code || project.id).toLowerCase()));
   const [personalTab, setPersonalTab] = useState<'profile' | 'overview' | 'attendance' | 'leave' | 'contract' | 'projects' | 'payroll' | 'journal'>('overview');
-  const [securityOpen, setSecurityOpen] = useState(false);
   const [personalAttendance, setPersonalAttendance] = useState<any[]>([]);
   const [personalLeaves, setPersonalLeaves] = useState<any[]>([]);
   const [personalPayroll, setPersonalPayroll] = useState<any[]>([]);
@@ -1912,20 +1911,14 @@ export const SettingsPage: React.FC = () => {
                     ))}
                   </div>
 
-                  <button type="button" onClick={() => setSecurityOpen(open => !open)} className="w-full flex items-center justify-between rounded-md border border-slate-200 bg-slate-50 px-4 py-3 text-left hover:bg-slate-100">
-                    <span className="flex items-center gap-3"><span className="material-symbols-outlined text-xl text-slate-600">security</span><span className="text-xs font-bold text-slate-800">Bảo mật tài khoản</span></span>
-                    <span className="material-symbols-outlined text-slate-500">{securityOpen ? 'expand_less' : 'expand_more'}</span>
-                  </button>
-                  {securityOpen && <>
-                  <div className="flex items-center justify-between gap-4">
-                    <div><span className="text-xs font-bold text-slate-800 block">Thao tác tài khoản</span><span className="text-[11px] text-slate-500">Chọn một thao tác để tiếp tục.</span></div>
-                    <select defaultValue="" onChange={(event) => { if (event.target.value === 'password') setIsChangePasswordOpen(true); if (event.target.value === 'logout') setIsConfirmLogoutOpen(true); event.target.value = ''; }} className="min-w-48 rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 outline-none focus:border-primary">
-                      <option value="">Chọn thao tác</option>
-                      <option value="password">Đổi mật khẩu</option>
-                      <option value="logout">Đăng xuất</option>
-                    </select>
+                  <div className="flex items-center justify-between p-3.5 rounded-md bg-slate-50 border border-slate-200/80">
+                    <div className="flex items-center gap-3"><span className="material-symbols-outlined text-xl text-slate-600">lock_reset</span><div><span className="text-xs font-bold text-slate-800 block">Đổi mật khẩu tài khoản</span><span className="text-[11px] text-slate-500">Nên cập nhật định kỳ để bảo đảm an toàn dữ liệu</span></div></div>
+                    <button type="button" onClick={() => setIsChangePasswordOpen(true)} className="px-4 py-2 rounded-md text-xs font-bold bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 transition-colors shadow-2xs cursor-pointer">Đổi mật khẩu</button>
                   </div>
-                  </>}
+                  <div className="flex items-center justify-between border-t border-slate-200 pt-3">
+                    <div><span className="text-xs font-bold text-slate-800 block">Phiên đăng nhập</span><span className="text-[11px] text-slate-500">Kết thúc phiên làm việc trên thiết bị này.</span></div>
+                    <button type="button" onClick={() => setIsConfirmLogoutOpen(true)} className="px-4 py-2 rounded-md text-xs font-bold bg-red-50 border border-red-200 hover:bg-red-100 text-red-600 transition-colors cursor-pointer">Đăng xuất</button>
+                  </div>
                 </div>}
 
                 {personalTab !== 'overview' && personalTab !== 'profile' && <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-2xs">
