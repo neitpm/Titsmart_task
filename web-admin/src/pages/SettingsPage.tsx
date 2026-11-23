@@ -153,6 +153,7 @@ const getActivityModule = (action?: string): Exclude<ActivityModule, 'all'> => {
 export const SettingsPage: React.FC = () => {
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
+  const updateUser = useAuthStore((state) => state.updateUser);
   const logout = useAuthStore((state) => state.logout);
   const engineers = useRealtimeStore((state) => state.engineers || []);
   const currentEngineer = useMemo(() => engineers.find((engineer) =>
@@ -160,6 +161,45 @@ export const SettingsPage: React.FC = () => {
     (user?.username && engineer.username === user.username) ||
     (user?.name && engineer.name?.trim().toLowerCase() === user.name.trim().toLowerCase())
   ), [engineers, user]);
+  const updateEngineer = useRealtimeStore((state) => state.updateEngineer);
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [profileForm, setProfileForm] = useState({ name: '', email: '', phone: '', joinDate: '', address: '', identityNumber: '', emergencyContactName: '', emergencyPhone: '' });
+
+  useEffect(() => {
+    if (!currentEngineer) return;
+    setProfileForm({
+      name: currentEngineer.name || user?.name || '',
+      email: currentEngineer.email || user?.email || '',
+      phone: currentEngineer.phone || user?.phone || '',
+      joinDate: currentEngineer.joinDate || '',
+      address: currentEngineer.address || '',
+      identityNumber: currentEngineer.identityNumber || '',
+      emergencyContactName: currentEngineer.emergencyContactName || '',
+      emergencyPhone: currentEngineer.emergencyPhone || '',
+    });
+  }, [currentEngineer, user]);
+
+  const handleSaveProfile = async () => {
+    if (!currentEngineer || !profileForm.name.trim() || isSavingProfile) return;
+    setIsSavingProfile(true);
+    try {
+      await updateEngineer(currentEngineer.id, {
+        ...profileForm,
+        name: profileForm.name.trim(),
+        email: profileForm.email.trim(),
+        projectCodes: currentEngineer.projectCodes || [],
+        permissions: currentEngineer.permissions || [],
+      });
+      if (user) updateUser({ ...user, name: profileForm.name.trim(), email: profileForm.email.trim(), phone: profileForm.phone });
+      setIsEditingProfile(false);
+      triggerToast('Đã cập nhật thông tin tài khoản!', 'success');
+    } catch (error: any) {
+      triggerToast(`Không thể cập nhật: ${error?.message || 'Lỗi không xác định'}`, 'error');
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
   // Tab Phân quyền & Cấu hình công ty dành cho Company Admin / Quản trị viên
   const isSysAdmin = isSystemAdmin(user);
   const isDir = isDirector(user);
@@ -1884,20 +1924,27 @@ export const SettingsPage: React.FC = () => {
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 border-b border-slate-100 pb-4">
-                    {[
-                      ['Email', user?.email || currentEngineer?.email],
-                      ['Số điện thoại', user?.phone || currentEngineer?.phone],
-                      ['Ngày vào công ty', currentEngineer?.joinDate],
-                      ['Địa chỉ', currentEngineer?.address],
-                      ['Số CCCD', currentEngineer?.identityNumber],
-                      ['Liên hệ khẩn cấp', currentEngineer?.emergencyContactName],
-                      ['SĐT khẩn cấp', currentEngineer?.emergencyPhone],
-                    ].map(([label, value]) => (
-                      <div key={label} className="border border-slate-200 rounded-md bg-slate-50 px-3 py-2">
+                    {([
+                      ['name', 'Họ tên'], ['email', 'Email'], ['phone', 'Số điện thoại'],
+                      ['joinDate', 'Ngày vào công ty'], ['address', 'Địa chỉ'], ['identityNumber', 'Số CCCD'],
+                      ['emergencyContactName', 'Liên hệ khẩn cấp'], ['emergencyPhone', 'SĐT khẩn cấp'],
+                    ] as const).map(([key, label]) => (
+                      <div key={key} className="border border-slate-200 rounded-md bg-slate-50 px-3 py-2">
                         <div className="text-[10px] font-bold uppercase text-slate-400">{label}</div>
-                        <div className="mt-0.5 text-xs font-semibold text-slate-700 break-words">{value || 'Chưa cập nhật'}</div>
+                        {isEditingProfile ? (
+                          <input type={key === 'joinDate' ? 'date' : key === 'email' ? 'email' : 'text'} value={profileForm[key]} onChange={(event) => setProfileForm(prev => ({ ...prev, [key]: event.target.value }))} className="mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1.5 text-xs font-semibold text-slate-700 outline-none focus:border-primary" />
+                        ) : (
+                          <div className="mt-0.5 text-xs font-semibold text-slate-700 break-words">{profileForm[key] || 'Chưa cập nhật'}</div>
+                        )}
                       </div>
                     ))}
+                  </div>
+
+                  <div className="flex justify-end gap-2">
+                    {isEditingProfile ? <>
+                      <button type="button" onClick={() => setIsEditingProfile(false)} className="rounded-md border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50">Hủy</button>
+                      <button type="button" onClick={handleSaveProfile} disabled={isSavingProfile} className="rounded-md bg-primary px-4 py-2 text-xs font-bold text-white hover:opacity-90 disabled:opacity-60">{isSavingProfile ? 'Đang lưu...' : 'Lưu thay đổi'}</button>
+                    </> : <button type="button" onClick={() => setIsEditingProfile(true)} className="rounded-md border border-primary/30 bg-primary/5 px-4 py-2 text-xs font-bold text-primary hover:bg-primary/10">Chỉnh sửa thông tin</button>}
                   </div>
 
                   <div className="flex items-center justify-between p-3.5 rounded-xl bg-slate-50 border border-slate-200/80">
