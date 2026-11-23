@@ -775,14 +775,6 @@ export const WorkPlanPage: React.FC = () => {
             <h1 className="page-title text-sm md:text-base font-extrabold text-slate-900 border-l-4 border-primary pl-2 shrink-0">
               Lịch & Kế hoạch
             </h1>
-            <button
-              type="button"
-              onClick={() => openAddModal()}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-primary hover:bg-blue-700 text-white rounded-md text-xs font-bold transition-colors shadow-sm cursor-pointer whitespace-nowrap"
-            >
-              <span className="material-symbols-outlined text-base">add_task</span>
-              <span>Lên kế hoạch</span>
-            </button>
           </div>
         </div>
 
@@ -944,7 +936,6 @@ export const WorkPlanPage: React.FC = () => {
             <button type="button" onClick={() => { setPlanScope('personal'); setSelectedProject('all'); }} className={`px-3 py-1.5 border-b-2 text-xs font-bold transition-colors ${planScope === 'personal' ? 'border-primary text-primary' : 'border-transparent text-slate-500 hover:text-slate-800'}`}>Kế hoạch cá nhân</button>
             {canViewSharedPlans && <>
               <button type="button" onClick={() => setPlanScope('project')} className={`px-3 py-1.5 border-b-2 text-xs font-bold transition-colors ${planScope === 'project' ? 'border-primary text-primary' : 'border-transparent text-slate-500 hover:text-slate-800'}`}>Kế hoạch dự án</button>
-              <button type="button" onClick={() => { setPlanScope('all_projects'); setSelectedProject('all'); }} className={`px-3 py-1.5 border-b-2 text-xs font-bold transition-colors ${planScope === 'all_projects' ? 'border-primary text-primary' : 'border-transparent text-slate-500 hover:text-slate-800'}`}>Tất cả dự án</button>
             </>}
           </div>
 
@@ -981,6 +972,15 @@ export const WorkPlanPage: React.FC = () => {
               <span>Lộ trình</span>
             </button>
           </div>
+
+          <button
+            type="button"
+            onClick={() => openAddModal()}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-primary hover:bg-blue-700 text-white rounded-md text-xs font-bold transition-colors shadow-sm cursor-pointer whitespace-nowrap"
+          >
+            <span className="material-symbols-outlined text-base">add_task</span>
+            <span>Lên kế hoạch</span>
+          </button>
 
         </div>
       </div>
