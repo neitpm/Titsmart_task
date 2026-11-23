@@ -130,20 +130,20 @@ export const AccountPage: React.FC = () => {
       <div className="p-6 md:p-8 space-y-4 max-w-7xl mx-auto w-full">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Panel */}
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 flex flex-col items-center justify-center min-h-[360px]">
-            <div className="w-28 h-28 rounded-[24px] bg-slate-100 text-slate-400 border border-slate-200 flex items-center justify-center shadow-lg mb-6">
+          <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-8 flex flex-col items-center justify-center min-h-[360px]">
+            <div className="w-28 h-28 rounded-lg bg-slate-100 text-slate-400 border border-slate-200 flex items-center justify-center shadow-sm mb-6">
               <span className="material-symbols-outlined text-[64px]">person</span>
             </div>
             <h3 className="text-lg font-extrabold text-slate-900 mb-2">
               {user?.name || engineer?.name || 'Admin'}
             </h3>
-            <span className="px-4 py-1.5 rounded-full bg-blue-50 text-primary border border-blue-100 text-sm font-bold">
+            <span className="px-3.5 py-1 rounded-md bg-blue-50 text-primary border border-blue-100 text-xs font-bold">
               {user?.title || 'Quản trị viên'}
             </span>
           </div>
 
           {/* Right Panel */}
-          <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-200 p-8 flex flex-col justify-between min-h-[360px]">
+          <div className="lg:col-span-2 bg-white rounded-lg shadow-sm border border-slate-200 p-8 flex flex-col justify-between min-h-[360px]">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <Info label="Họ tên" value={user?.name || engineer?.name || 'Admin'} icon="person" />
               <Info label="Tên đăng nhập" value={user?.username || 'admin'} icon="badge" />
@@ -156,7 +156,7 @@ export const AccountPage: React.FC = () => {
               <button 
                 type="button"
                 onClick={() => setIsChangePasswordOpen(true)} 
-                className="flex items-center gap-2 px-5 py-2.5 rounded-lg border border-slate-200 text-slate-700 text-sm font-bold hover:bg-slate-50 transition-colors"
+                className="flex items-center gap-2 px-4 py-2 rounded-md border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-50 transition-colors"
               >
                 <span className="material-symbols-outlined text-lg">lock_reset</span>
                 Đổi mật khẩu
@@ -165,7 +165,7 @@ export const AccountPage: React.FC = () => {
                 type="button"
                 onClick={() => setIsConfirmLogoutOpen(true)} 
                 disabled={isLoggingOut}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-red-600 text-white text-sm font-bold hover:bg-red-700 transition-colors shadow-sm disabled:opacity-50 cursor-pointer"
+                className="flex items-center gap-2 px-4 py-2 rounded-md bg-red-600 text-white text-xs font-bold hover:bg-red-700 transition-colors shadow-xs disabled:opacity-50 cursor-pointer"
               >
                 {isLoggingOut ? (
                   <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
@@ -179,14 +179,14 @@ export const AccountPage: React.FC = () => {
         </div>
 
         {/* SECTION: BẢNG CHẤM CÔNG & PHIẾU LƯƠNG TRÊN TÀI KHOẢN */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8 space-y-5">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
+        <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-5 md:p-6 space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3.5">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-blue-50 text-primary border border-blue-100 flex items-center justify-center">
-                <span className="material-symbols-outlined text-2xl">receipt_long</span>
+              <div className="w-9 h-9 rounded-md bg-blue-50 text-primary border border-blue-100 flex items-center justify-center">
+                <span className="material-symbols-outlined text-xl">receipt_long</span>
               </div>
               <div>
-                <h3 className="text-base font-extrabold text-slate-900 uppercase tracking-wide">
+                <h3 className="text-sm font-extrabold text-slate-900 uppercase tracking-wide">
                   Bảng Chấm Công & Bảng Lương Trên Tài Khoản
                 </h3>
                 <p className="text-xs text-slate-500">
@@ -196,12 +196,12 @@ export const AccountPage: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs">
-                <span className="material-symbols-outlined text-[16px] text-primary ml-1">calendar_month</span>
+              <div className="flex items-center gap-1.5 bg-slate-100 p-0.5 rounded-md border border-slate-200 text-xs">
+                <span className="material-symbols-outlined text-[15px] text-primary ml-1">calendar_month</span>
                 <select
                   value={selectedMonth}
                   onChange={e => setSelectedMonth(Number(e.target.value))}
-                  className="bg-white border border-slate-200 rounded-lg px-2.5 py-1 font-bold text-primary focus:outline-none cursor-pointer"
+                  className="bg-white border border-slate-200 rounded px-2 py-0.5 font-bold text-primary focus:outline-none cursor-pointer"
                 >
                   {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
                     <option key={m} value={m}>Tháng {m}</option>
@@ -210,7 +210,7 @@ export const AccountPage: React.FC = () => {
                 <select
                   value={selectedYear}
                   onChange={e => setSelectedYear(Number(e.target.value))}
-                  className="bg-white border border-slate-200 rounded-lg px-2.5 py-1 font-bold text-slate-800 focus:outline-none cursor-pointer"
+                  className="bg-white border border-slate-200 rounded px-2 py-0.5 font-bold text-slate-800 focus:outline-none cursor-pointer"
                 >
                   {[2024, 2025, 2026, 2027].map(y => (
                     <option key={y} value={y}>Năm {y}</option>
@@ -221,10 +221,10 @@ export const AccountPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setShowSalaryAmounts(p => !p)}
-                className="flex items-center gap-1 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-xl border border-slate-200 text-xs font-bold transition cursor-pointer"
+                className="flex items-center gap-1 px-2.5 py-1 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-md border border-slate-200 text-xs font-bold transition cursor-pointer"
                 title={showSalaryAmounts ? 'Ẩn số tiền lương' : 'Hiện số tiền lương'}
               >
-                <span className="material-symbols-outlined text-[16px]">
+                <span className="material-symbols-outlined text-[15px]">
                   {showSalaryAmounts ? 'visibility_off' : 'visibility'}
                 </span>
                 <span>{showSalaryAmounts ? 'Ẩn tiền' : 'Hiện tiền'}</span>
@@ -233,24 +233,24 @@ export const AccountPage: React.FC = () => {
           </div>
 
           {myAccountPayroll && (
-            <div className="space-y-4">
+            <div className="space-y-3.5">
               {/* BANNER TRẠNG THÁI KÝ */}
-              <div className={`p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+              <div className={`p-3.5 rounded-lg border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
                 myAccountPayroll.signatureStatus === 'signed'
                   ? 'bg-emerald-50/90 border-emerald-300 text-emerald-950'
                   : myAccountPayroll.signatureStatus === 'disputed'
                   ? 'bg-amber-50/90 border-amber-300 text-amber-950'
                   : 'bg-blue-50/90 border-blue-300 text-blue-950'
               }`}>
-                <div className="flex items-start gap-3">
-                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
+                <div className="flex items-start gap-2.5">
+                  <div className={`w-8 h-8 rounded-md flex items-center justify-center shrink-0 ${
                     myAccountPayroll.signatureStatus === 'signed'
                       ? 'bg-emerald-600 text-white'
                       : myAccountPayroll.signatureStatus === 'disputed'
                       ? 'bg-amber-600 text-white'
                       : 'bg-primary text-white animate-pulse'
                   }`}>
-                    <span className="material-symbols-outlined text-xl">
+                    <span className="material-symbols-outlined text-lg">
                       {myAccountPayroll.signatureStatus === 'signed' ? 'verified' : myAccountPayroll.signatureStatus === 'disputed' ? 'warning' : 'draw'}
                     </span>
                   </div>
@@ -263,11 +263,11 @@ export const AccountPage: React.FC = () => {
                           ? 'Đang có phản hồi khiếu nại'
                           : 'Chờ bạn ký xác nhận tháng này'}
                       </span>
-                      <span className="text-[10.5px] font-bold px-2 py-0.5 rounded-full bg-white/80 border">
+                      <span className="text-[10.5px] font-bold px-2 py-0.5 rounded bg-white/80 border">
                         Tháng {selectedMonth}/{selectedYear}
                       </span>
                     </div>
-                    <p className="text-xs mt-1 opacity-90 leading-relaxed">
+                    <p className="text-xs mt-0.5 opacity-90 leading-relaxed">
                       {myAccountPayroll.signatureStatus === 'signed' ? (
                         <>Đã ký điện tử lúc <b>{myAccountPayroll.signedAt ? new Date(myAccountPayroll.signedAt).toLocaleString('vi-VN') : ''}</b>.</>
                       ) : myAccountPayroll.signatureStatus === 'disputed' ? (
@@ -283,7 +283,7 @@ export const AccountPage: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setViewingSlipItem(myAccountPayroll)}
-                    className="flex items-center gap-1 px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-lg text-xs font-bold shadow-xs transition cursor-pointer"
+                    className="flex items-center gap-1 px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-md text-xs font-bold shadow-xs transition cursor-pointer"
                   >
                     <span className="material-symbols-outlined text-[15px]">visibility</span>
                     Xem phiếu A4
@@ -294,7 +294,7 @@ export const AccountPage: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => setDisputingItem(myAccountPayroll)}
-                        className="flex items-center gap-1 px-2.5 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 rounded-lg text-xs font-bold transition cursor-pointer"
+                        className="flex items-center gap-1 px-2.5 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 rounded-md text-xs font-bold transition cursor-pointer"
                       >
                         <span className="material-symbols-outlined text-[15px]">chat_bubble</span>
                         Phản hồi
@@ -302,7 +302,7 @@ export const AccountPage: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => setSigningItem(myAccountPayroll)}
-                        className="flex items-center gap-1.5 px-3.5 py-1.5 bg-primary hover:bg-blue-800 text-white rounded-lg text-xs font-extrabold shadow-xs transition cursor-pointer"
+                        className="flex items-center gap-1.5 px-3.5 py-1.5 bg-primary hover:bg-blue-800 text-white rounded-md text-xs font-extrabold shadow-xs transition cursor-pointer"
                       >
                         <span className="material-symbols-outlined text-[16px]">draw</span>
                         Ký xác nhận ngay
@@ -314,24 +314,24 @@ export const AccountPage: React.FC = () => {
 
               {/* 4 THẺ SỐ LIỆU */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/70">
+                <div className="p-3 rounded-lg border border-slate-200 bg-slate-50/70">
                   <span className="text-[10.5px] uppercase font-bold text-slate-400 block mb-1">Công thực tế</span>
                   <div className="flex items-baseline gap-1">
                     <span className="text-xl font-black text-slate-800">{myAccountPayroll.actualWorkingDays}</span>
                     <span className="text-xs text-slate-400 font-medium">/ {myAccountPayroll.standardWorkingDays} công</span>
                   </div>
                 </div>
-                <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/70">
+                <div className="p-3 rounded-lg border border-slate-200 bg-slate-50/70">
                   <span className="text-[10.5px] uppercase font-bold text-slate-400 block mb-1">Công trường / Đi ngoài</span>
                   <div className="text-xl font-black text-amber-700">{myAccountPayroll.fieldWorkDays} <span className="text-xs text-slate-400 font-medium">ngày</span></div>
                 </div>
-                <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/70">
+                <div className="p-3 rounded-lg border border-slate-200 bg-slate-50/70">
                   <span className="text-[10.5px] uppercase font-bold text-slate-400 block mb-1">Làm thêm giờ (OT)</span>
                   <div className="text-xl font-black text-indigo-700">
                     {myAccountPayroll.otHoursNormal + myAccountPayroll.otHoursSunday + myAccountPayroll.otHoursHoliday} <span className="text-xs text-slate-400 font-medium">giờ</span>
                   </div>
                 </div>
-                <div className="p-3.5 rounded-xl border border-emerald-300 bg-emerald-50/50">
+                <div className="p-3 rounded-lg border border-emerald-300 bg-emerald-50/50">
                   <span className="text-[10.5px] uppercase font-bold text-emerald-700 block mb-1">THỰC LĨNH THÁNG</span>
                   <div className="text-xl font-black text-emerald-800">
                     {showSalaryAmounts ? formatVND(myAccountPayroll.netSalary) : '•••••••• đ'}
@@ -430,14 +430,14 @@ export const AccountPage: React.FC = () => {
             <button
               type="button"
               onClick={() => setIsConfirmLogoutOpen(false)}
-              className="px-4 py-2 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
+              className="px-4 py-2 rounded-md text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
             >
               Hủy bỏ
             </button>
             <button
               type="button"
               onClick={handleLogout}
-              className="px-4 py-2 rounded-xl text-xs font-bold bg-red-600 hover:bg-red-700 text-white transition-colors shadow-2xs cursor-pointer flex items-center gap-1.5"
+              className="px-4 py-2 rounded-md text-xs font-bold bg-red-600 hover:bg-red-700 text-white transition-colors shadow-2xs cursor-pointer flex items-center gap-1.5"
             >
               <span className="material-symbols-outlined text-sm">logout</span>
               <span>Đăng xuất</span>
@@ -458,7 +458,7 @@ export const AccountPage: React.FC = () => {
 };
 
 const Info = ({ label, value, icon }: { label: string; value: string; icon: string }) => (
-  <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 flex items-start gap-4 transition-all duration-300 hover:shadow-sm hover:bg-white hover:border-blue-200 group">
+  <div className="rounded-lg border border-slate-200 bg-slate-50/80 p-4 flex items-start gap-4 transition-all duration-300 hover:shadow-sm hover:bg-white hover:border-blue-200 group">
     <span className="material-symbols-outlined text-primary text-lg group-hover:scale-110 transition-transform">{icon}</span>
     <div className="min-w-0 flex-1">
       <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1">{label}</div>

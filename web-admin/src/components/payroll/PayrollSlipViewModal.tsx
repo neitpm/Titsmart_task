@@ -39,7 +39,7 @@ export const PayrollSlipViewModal: React.FC<PayrollSlipViewModalProps> = ({
           {/* Print Styles helper */}
           <div className="flex items-center justify-between no-print border-b border-slate-200 pb-2.5">
             <div className="flex items-center gap-2">
-              <span className={`px-2.5 py-1 rounded-full text-xs font-bold border flex items-center gap-1 ${
+              <span className={`px-2.5 py-1 rounded text-xs font-bold border flex items-center gap-1 ${
                 isSigned
                   ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
                   : isDisputed
@@ -63,7 +63,7 @@ export const PayrollSlipViewModal: React.FC<PayrollSlipViewModalProps> = ({
               <button
                 type="button"
                 onClick={handlePrint}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition cursor-pointer"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md text-xs font-bold transition cursor-pointer"
               >
                 <span className="material-symbols-outlined text-[16px]">print</span>
                 In phiếu A4
@@ -74,7 +74,7 @@ export const PayrollSlipViewModal: React.FC<PayrollSlipViewModalProps> = ({
                   <button
                     type="button"
                     onClick={() => setIsDisputeModalOpen(true)}
-                    className="flex items-center gap-1 px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-lg text-xs font-bold transition cursor-pointer"
+                    className="flex items-center gap-1 px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-md text-xs font-bold transition cursor-pointer"
                   >
                     <span className="material-symbols-outlined text-[16px]">chat_bubble</span>
                     Phản hồi
@@ -82,7 +82,7 @@ export const PayrollSlipViewModal: React.FC<PayrollSlipViewModalProps> = ({
                   <button
                     type="button"
                     onClick={() => setIsSignModalOpen(true)}
-                    className="flex items-center gap-1.5 px-3.5 py-1.5 bg-primary hover:bg-blue-800 text-white rounded-lg text-xs font-bold transition cursor-pointer shadow-xs"
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 bg-primary hover:bg-blue-800 text-white rounded-md text-xs font-bold transition cursor-pointer shadow-xs"
                   >
                     <span className="material-symbols-outlined text-[16px]">draw</span>
                     Ký xác nhận
@@ -93,7 +93,7 @@ export const PayrollSlipViewModal: React.FC<PayrollSlipViewModalProps> = ({
           </div>
 
           {/* Phiếu in ấn chuẩn định dạng A4 */}
-          <div className="bg-white p-6 border border-slate-200 rounded-2xl shadow-xs print:border-none print:shadow-none print:p-0">
+          <div className="bg-white p-6 border border-slate-200 rounded-lg shadow-xs print:border-none print:shadow-none print:p-0">
             {/* Header doanh nghiệp */}
             <div className="flex items-start justify-between border-b-2 border-slate-900 pb-4 mb-4">
               <div>
@@ -113,7 +113,7 @@ export const PayrollSlipViewModal: React.FC<PayrollSlipViewModalProps> = ({
             </div>
 
             {/* Thông tin nhân viên */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-3 bg-slate-50 rounded-xl mb-4 text-xs">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-3 bg-slate-50 rounded-lg mb-4 text-xs">
               <div>
                 <span className="text-slate-500 text-[11px] block">Họ và tên:</span>
                 <span className="font-extrabold text-slate-900">{payrollItem.userName}</span>
@@ -139,34 +139,34 @@ export const PayrollSlipViewModal: React.FC<PayrollSlipViewModalProps> = ({
                 I. TỔNG HỢP CHẤM CÔNG TRONG THÁNG
               </h4>
               <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2 text-xs">
-                <div className="p-2 rounded-lg border border-slate-200 bg-white">
+                <div className="p-2 rounded border border-slate-200 bg-white">
                   <span className="text-slate-500 text-[10.5px] block">Công chuẩn:</span>
                   <span className="font-extrabold text-slate-800 text-sm">{payrollItem.standardWorkingDays}</span>
                 </div>
-                <div className="p-2 rounded-lg border border-blue-200 bg-blue-50/50">
+                <div className="p-2 rounded border border-blue-200 bg-blue-50/50">
                   <span className="text-blue-700 text-[10.5px] block font-medium">Công thực tế:</span>
                   <span className="font-extrabold text-blue-900 text-sm">{payrollItem.actualWorkingDays}</span>
                 </div>
-                <div className="p-2 rounded-lg border border-amber-200 bg-amber-50/50">
+                <div className="p-2 rounded border border-amber-200 bg-amber-50/50">
                   <span className="text-amber-800 text-[10.5px] block font-medium">Tại công trường:</span>
                   <span className="font-extrabold text-amber-900 text-sm">{payrollItem.fieldWorkDays}</span>
                 </div>
-                <div className="p-2 rounded-lg border border-purple-200 bg-purple-50/50">
+                <div className="p-2 rounded border border-purple-200 bg-purple-50/50">
                   <span className="text-purple-800 text-[10.5px] block font-medium">Đi công tác:</span>
                   <span className="font-extrabold text-purple-900 text-sm">{payrollItem.remoteWorkDays}</span>
                 </div>
-                <div className="p-2 rounded-lg border border-emerald-200 bg-emerald-50/50">
+                <div className="p-2 rounded border border-emerald-200 bg-emerald-50/50">
                   <span className="text-emerald-800 text-[10.5px] block font-medium">Phép năm (hưởng lương):</span>
                   <span className="font-extrabold text-emerald-900 text-sm">{payrollItem.paidLeaveDays}</span>
                 </div>
-                <div className="p-2 rounded-lg border border-slate-200 bg-white">
+                <div className="p-2 rounded border border-slate-200 bg-white">
                   <span className="text-slate-500 text-[10.5px] block">Nghỉ không lương (KP):</span>
                   <span className="font-extrabold text-slate-700 text-sm">{payrollItem.unpaidLeaveDays}</span>
                 </div>
               </div>
 
               {/* Giờ làm thêm */}
-              <div className="mt-2 text-xs text-slate-600 bg-slate-50 p-2.5 rounded-lg flex items-center justify-between">
+              <div className="mt-2 text-xs text-slate-600 bg-slate-50 p-2.5 rounded-md flex items-center justify-between">
                 <span>
                   <b>Làm thêm giờ (OT):</b> Ngày thường: <b>{payrollItem.otHoursNormal}h</b> (1.5x) | Chủ nhật: <b>{payrollItem.otHoursSunday}h</b> (2.0x) | Lễ: <b>{payrollItem.otHoursHoliday}h</b> (3.0x)
                 </span>
@@ -185,7 +185,7 @@ export const PayrollSlipViewModal: React.FC<PayrollSlipViewModalProps> = ({
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* CỘT THU NHẬP */}
-                <div className="border border-slate-200 rounded-xl overflow-hidden">
+                <div className="border border-slate-200 rounded-lg overflow-hidden">
                   <div className="bg-slate-100 px-3 py-1.5 font-bold text-xs text-slate-800 border-b border-slate-200 flex justify-between">
                     <span>A. CÁC KHOẢN THU NHẬP</span>
                     <span>SỐ TIỀN (VNĐ)</span>
@@ -243,7 +243,7 @@ export const PayrollSlipViewModal: React.FC<PayrollSlipViewModalProps> = ({
                 </div>
 
                 {/* CỘT KHẤU TRỪ */}
-                <div className="border border-slate-200 rounded-xl overflow-hidden flex flex-col justify-between">
+                <div className="border border-slate-200 rounded-lg overflow-hidden flex flex-col justify-between">
                   <div>
                     <div className="bg-slate-100 px-3 py-1.5 font-bold text-xs text-slate-800 border-b border-slate-200 flex justify-between">
                       <span>B. CÁC KHOẢN KHẤU TRỪ</span>
@@ -276,7 +276,7 @@ export const PayrollSlipViewModal: React.FC<PayrollSlipViewModalProps> = ({
                   </div>
 
                   {/* THỰC LĨNH BOX */}
-                  <div className="p-3.5 bg-gradient-to-r from-emerald-500 to-teal-600 text-white m-3 rounded-xl flex items-center justify-between shadow-xs">
+                  <div className="p-3 bg-gradient-to-r from-emerald-500 to-teal-600 text-white m-3 rounded-md flex items-center justify-between shadow-xs">
                     <div>
                       <span className="text-[11px] font-bold uppercase tracking-wider block opacity-90">
                         THỰC LĨNH TIỀN LƯƠNG:
@@ -295,7 +295,7 @@ export const PayrollSlipViewModal: React.FC<PayrollSlipViewModalProps> = ({
             <div className="pt-4 border-t-2 border-slate-200">
               <div className="grid grid-cols-3 gap-4 text-center">
                 {/* 1. Người lao động */}
-                <div className="flex flex-col items-center justify-between min-h-[160px] p-2 bg-slate-50/50 rounded-xl border border-slate-100">
+                <div className="flex flex-col items-center justify-between min-h-[160px] p-2 bg-slate-50/50 rounded-lg border border-slate-100">
                   <div>
                     <h5 className="text-xs font-bold text-slate-800 uppercase">NGƯỜI LAO ĐỘNG</h5>
                     <p className="text-[10px] text-slate-400 italic">(Ký, ghi rõ họ tên)</p>
@@ -309,7 +309,7 @@ export const PayrollSlipViewModal: React.FC<PayrollSlipViewModalProps> = ({
                           alt="Chữ ký người lao động"
                           className="max-h-16 max-w-[160px] object-contain drop-shadow-xs"
                         />
-                        <span className="text-[9.5px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 mt-1">
+                        <span className="text-[9.5px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 mt-1">
                           Đã ký số: {payrollItem.signedAt ? new Date(payrollItem.signedAt).toLocaleDateString('vi-VN') : ''}
                         </span>
                       </div>
@@ -320,7 +320,7 @@ export const PayrollSlipViewModal: React.FC<PayrollSlipViewModalProps> = ({
                           <button
                             type="button"
                             onClick={() => setIsSignModalOpen(true)}
-                            className="mt-1.5 px-3 py-1 bg-primary text-white text-[11px] font-bold rounded-lg shadow-xs hover:bg-blue-800 transition cursor-pointer no-print"
+                            className="mt-1.5 px-3 py-1 bg-primary text-white text-[11px] font-bold rounded-md shadow-xs hover:bg-blue-800 transition cursor-pointer no-print"
                           >
                             ✍️ Ký xác nhận
                           </button>
@@ -335,7 +335,7 @@ export const PayrollSlipViewModal: React.FC<PayrollSlipViewModalProps> = ({
                 </div>
 
                 {/* 2. Kế toán trưởng */}
-                <div className="flex flex-col items-center justify-between min-h-[160px] p-2 bg-slate-50/50 rounded-xl border border-slate-100">
+                <div className="flex flex-col items-center justify-between min-h-[160px] p-2 bg-slate-50/50 rounded-lg border border-slate-100">
                   <div>
                     <h5 className="text-xs font-bold text-slate-800 uppercase">NGƯỜI LẬP BIỂU / KẾ TOÁN</h5>
                     <p className="text-[10px] text-slate-400 italic">(Ký, họ tên)</p>
@@ -343,7 +343,7 @@ export const PayrollSlipViewModal: React.FC<PayrollSlipViewModalProps> = ({
 
                   <div className="my-2 flex flex-col items-center justify-center min-h-[70px]">
                     <span className="text-sm font-serif italic text-blue-900 font-bold">Kế toán tiền lương</span>
-                    <span className="text-[9.5px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200 mt-1">
+                    <span className="text-[9.5px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200 mt-1">
                       Đã đối soát số liệu
                     </span>
                   </div>
@@ -352,7 +352,7 @@ export const PayrollSlipViewModal: React.FC<PayrollSlipViewModalProps> = ({
                 </div>
 
                 {/* 3. Giám đốc duyệt */}
-                <div className="flex flex-col items-center justify-between min-h-[160px] p-2 bg-slate-50/50 rounded-xl border border-slate-100">
+                <div className="flex flex-col items-center justify-between min-h-[160px] p-2 bg-slate-50/50 rounded-lg border border-slate-100">
                   <div>
                     <h5 className="text-xs font-bold text-slate-800 uppercase">GIÁM ĐỐC DUYỆT</h5>
                     <p className="text-[10px] text-slate-400 italic">(Ký, đóng dấu)</p>

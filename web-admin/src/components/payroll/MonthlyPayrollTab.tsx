@@ -175,15 +175,15 @@ export const MonthlyPayrollTab: React.FC<MonthlyPayrollTabProps> = ({
   return (
     <div className="space-y-4">
       {/* HEADER: BỘ LỌC THỜI GIAN & CHẾ ĐỘ XEM */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3">
+      <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs">
-            <span className="material-symbols-outlined text-[18px] text-primary ml-1.5">calendar_month</span>
+          <div className="flex items-center gap-1.5 bg-slate-100 p-0.5 rounded-md border border-slate-200 text-xs">
+            <span className="material-symbols-outlined text-[17px] text-primary ml-1">calendar_month</span>
             <span className="font-bold text-slate-700">Tháng:</span>
             <select
               value={selectedMonth}
               onChange={e => setSelectedMonth(Number(e.target.value))}
-              className="bg-white border border-slate-200 rounded-lg px-2.5 py-1 font-bold text-primary focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
+              className="bg-white border border-slate-200 rounded px-2 py-0.5 font-bold text-primary focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer text-xs"
             >
               {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
                 <option key={m} value={m}>Tháng {m}</option>
@@ -193,7 +193,7 @@ export const MonthlyPayrollTab: React.FC<MonthlyPayrollTabProps> = ({
             <select
               value={selectedYear}
               onChange={e => setSelectedYear(Number(e.target.value))}
-              className="bg-white border border-slate-200 rounded-lg px-2.5 py-1 font-bold text-slate-800 focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
+              className="bg-white border border-slate-200 rounded px-2 py-0.5 font-bold text-slate-800 focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer text-xs"
             >
               {[2024, 2025, 2026, 2027].map(y => (
                 <option key={y} value={y}>Năm {y}</option>
@@ -204,10 +204,10 @@ export const MonthlyPayrollTab: React.FC<MonthlyPayrollTabProps> = ({
           <button
             type="button"
             onClick={() => setShowSalaryAmounts(prev => !prev)}
-            className="flex items-center gap-1 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-xl border border-slate-200 text-xs font-bold transition cursor-pointer"
+            className="flex items-center gap-1 px-2.5 py-1 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-md border border-slate-200 text-xs font-bold transition cursor-pointer"
             title={showSalaryAmounts ? 'Ẩn số tiền lương bảo mật' : 'Hiển thị số tiền lương'}
           >
-            <span className="material-symbols-outlined text-[16px]">
+            <span className="material-symbols-outlined text-[15px]">
               {showSalaryAmounts ? 'visibility_off' : 'visibility'}
             </span>
             <span>{showSalaryAmounts ? 'Ẩn số tiền' : 'Hiện số tiền'}</span>
@@ -216,29 +216,29 @@ export const MonthlyPayrollTab: React.FC<MonthlyPayrollTabProps> = ({
 
         {/* Chuyển đổi giữa Chế độ cá nhân & Chế độ quản trị (Admin) */}
         {isAdmin && (
-          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs">
+          <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-md border border-slate-200 text-xs">
             <button
               type="button"
               onClick={() => setViewScope('my')}
-              className={`flex items-center gap-1 px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
+              className={`flex items-center gap-1 px-3 py-1 rounded font-bold transition-all cursor-pointer ${
                 viewScope === 'my'
                   ? 'bg-white text-primary shadow-xs'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              <span className="material-symbols-outlined text-[16px]">person</span>
+              <span className="material-symbols-outlined text-[15px]">person</span>
               Bảng lương của tôi
             </button>
             <button
               type="button"
               onClick={() => setViewScope('all')}
-              className={`flex items-center gap-1 px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
+              className={`flex items-center gap-1 px-3 py-1 rounded font-bold transition-all cursor-pointer ${
                 viewScope === 'all'
                   ? 'bg-primary text-white shadow-xs'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              <span className="material-symbols-outlined text-[16px]">group</span>
+              <span className="material-symbols-outlined text-[15px]">group</span>
               Toàn bộ nhân sự ({adminStats.signed}/{adminStats.total} đã ký)
             </button>
           </div>
@@ -247,24 +247,24 @@ export const MonthlyPayrollTab: React.FC<MonthlyPayrollTabProps> = ({
 
       {/* ===================== VIEW 1: BẢNG LƯƠNG & CHẤM CÔNG CÁ NHÂN ===================== */}
       {viewScope === 'my' && myPayrollItem && (
-        <div className="space-y-4">
+        <div className="space-y-3.5">
           {/* BANNER TRẠNG THÁI KÝ XÁC NHẬN */}
-          <div className={`p-4 rounded-2xl border flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-xs ${
+          <div className={`p-3.5 rounded-lg border flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-xs ${
             myPayrollItem.signatureStatus === 'signed'
               ? 'bg-emerald-50/90 border-emerald-300 text-emerald-950'
               : myPayrollItem.signatureStatus === 'disputed'
               ? 'bg-amber-50/90 border-amber-300 text-amber-950'
               : 'bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-300 text-blue-950'
           }`}>
-            <div className="flex items-start gap-3">
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+            <div className="flex items-start gap-2.5">
+              <div className={`w-9 h-9 rounded-md flex items-center justify-center shrink-0 ${
                 myPayrollItem.signatureStatus === 'signed'
                   ? 'bg-emerald-600 text-white'
                   : myPayrollItem.signatureStatus === 'disputed'
                   ? 'bg-amber-600 text-white'
                   : 'bg-primary text-white animate-pulse'
               }`}>
-                <span className="material-symbols-outlined text-2xl">
+                <span className="material-symbols-outlined text-xl">
                   {myPayrollItem.signatureStatus === 'signed'
                     ? 'verified'
                     : myPayrollItem.signatureStatus === 'disputed'
@@ -275,19 +275,19 @@ export const MonthlyPayrollTab: React.FC<MonthlyPayrollTabProps> = ({
 
               <div>
                 <div className="flex items-center gap-2">
-                  <h4 className="text-sm font-extrabold uppercase tracking-wide">
+                  <h4 className="text-xs font-extrabold uppercase tracking-wide">
                     {myPayrollItem.signatureStatus === 'signed'
                       ? 'ĐÃ KÝ XÁC NHẬN BẢNG CÔNG & LƯƠNG'
                       : myPayrollItem.signatureStatus === 'disputed'
                       ? 'ĐANG KHIẾU NẠI / CHỜ KẾ TOÁN XỬ LÝ'
                       : 'CHỜ BẠN KÝ XÁC NHẬN BẢNG CÔNG & LƯƠNG'}
                   </h4>
-                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-white/80 border">
+                  <span className="text-[10.5px] font-bold px-2 py-0.5 rounded bg-white/80 border">
                     Tháng {selectedMonth}/{selectedYear}
                   </span>
                 </div>
 
-                <p className="text-xs mt-1 opacity-90 leading-relaxed">
+                <p className="text-xs mt-0.5 opacity-90 leading-relaxed">
                   {myPayrollItem.signatureStatus === 'signed' ? (
                     <>
                       Bạn đã ký xác nhận điện tử vào lúc{' '}
@@ -311,9 +311,9 @@ export const MonthlyPayrollTab: React.FC<MonthlyPayrollTabProps> = ({
               <button
                 type="button"
                 onClick={() => setViewingSlipItem(myPayrollItem)}
-                className="flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold shadow-xs transition cursor-pointer"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-md text-xs font-bold shadow-xs transition cursor-pointer"
               >
-                <span className="material-symbols-outlined text-[16px]">visibility</span>
+                <span className="material-symbols-outlined text-[15px]">visibility</span>
                 Xem chi tiết & In phiếu A4
               </button>
 
@@ -322,18 +322,18 @@ export const MonthlyPayrollTab: React.FC<MonthlyPayrollTabProps> = ({
                   <button
                     type="button"
                     onClick={() => setDisputingItem(myPayrollItem)}
-                    className="flex items-center gap-1 px-3 py-2 bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 rounded-xl text-xs font-bold transition cursor-pointer"
+                    className="flex items-center gap-1 px-3 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 rounded-md text-xs font-bold transition cursor-pointer"
                   >
-                    <span className="material-symbols-outlined text-[16px]">chat_bubble</span>
+                    <span className="material-symbols-outlined text-[15px]">chat_bubble</span>
                     Phản hồi
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setSigningItem(myPayrollItem)}
-                    className="flex items-center gap-1.5 px-4 py-2 bg-primary hover:bg-blue-800 text-white rounded-xl text-xs font-extrabold shadow-sm transition cursor-pointer"
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 bg-primary hover:bg-blue-800 text-white rounded-md text-xs font-extrabold shadow-sm transition cursor-pointer"
                   >
-                    <span className="material-symbols-outlined text-[18px]">draw</span>
+                    <span className="material-symbols-outlined text-[16px]">draw</span>
                     Ký xác nhận ngay
                   </button>
                 </>
@@ -344,7 +344,7 @@ export const MonthlyPayrollTab: React.FC<MonthlyPayrollTabProps> = ({
           {/* 4 CARD CHỈ SỐ TỔNG QUAN */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {/* 1. Công thực tế */}
-            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+            <div className="bg-white p-3.5 rounded-lg border border-slate-200 shadow-xs">
               <div className="flex items-center justify-between text-slate-500 mb-1">
                 <span className="text-[11px] font-bold uppercase tracking-wider">Ngày công thực tế</span>
                 <span className="material-symbols-outlined text-primary text-xl">fact_check</span>
@@ -361,7 +361,7 @@ export const MonthlyPayrollTab: React.FC<MonthlyPayrollTabProps> = ({
             </div>
 
             {/* 2. Công trường & Đi ngoài */}
-            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+            <div className="bg-white p-3.5 rounded-lg border border-slate-200 shadow-xs">
               <div className="flex items-center justify-between text-slate-500 mb-1">
                 <span className="text-[11px] font-bold uppercase tracking-wider">Công trường / Công tác</span>
                 <span className="material-symbols-outlined text-amber-600 text-xl">foundation</span>
@@ -376,7 +376,7 @@ export const MonthlyPayrollTab: React.FC<MonthlyPayrollTabProps> = ({
             </div>
 
             {/* 3. Tăng ca OT */}
-            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+            <div className="bg-white p-3.5 rounded-lg border border-slate-200 shadow-xs">
               <div className="flex items-center justify-between text-slate-500 mb-1">
                 <span className="text-[11px] font-bold uppercase tracking-wider">Giờ làm thêm (OT)</span>
                 <span className="material-symbols-outlined text-indigo-600 text-xl">more_time</span>
@@ -393,7 +393,7 @@ export const MonthlyPayrollTab: React.FC<MonthlyPayrollTabProps> = ({
             </div>
 
             {/* 4. Thực lĩnh (Net Salary) */}
-            <div className="bg-gradient-to-br from-emerald-600 to-teal-700 text-white p-4 rounded-2xl shadow-xs">
+            <div className="bg-gradient-to-br from-emerald-600 to-teal-700 text-white p-3.5 rounded-lg shadow-xs">
               <div className="flex items-center justify-between opacity-90 mb-1">
                 <span className="text-[11px] font-bold uppercase tracking-wider">THỰC LĨNH THÁNG</span>
                 <span className="material-symbols-outlined text-xl">account_balance_wallet</span>
@@ -408,12 +408,12 @@ export const MonthlyPayrollTab: React.FC<MonthlyPayrollTabProps> = ({
           </div>
 
           {/* CHI TIẾT 2 CỘT: BẢNG LƯƠNG & BẢNG NHẬT KÝ CHẤM CÔNG */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5">
             {/* CỘT TRÁI: BẢNG NHẬT KÝ CHẤM CÔNG TỪNG NGÀY TRONG THÁNG (7 COLS) */}
-            <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-              <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/70">
+            <div className="lg:col-span-7 bg-white rounded-lg border border-slate-200 shadow-xs overflow-hidden">
+              <div className="p-3 border-b border-slate-200 flex items-center justify-between bg-slate-50/70">
                 <div className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-primary text-lg">calendar_today</span>
+                  <span className="material-symbols-outlined text-primary text-base">calendar_today</span>
                   <h3 className="text-xs font-extrabold text-slate-800 uppercase tracking-wide">
                     Nhật ký chấm công Tháng {selectedMonth}/{selectedYear}
                   </h3>
@@ -455,7 +455,7 @@ export const MonthlyPayrollTab: React.FC<MonthlyPayrollTabProps> = ({
                             {d.dayOfWeek}
                           </td>
                           <td className="p-2.5 whitespace-nowrap">
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border inline-flex items-center gap-1 ${
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold border inline-flex items-center gap-1 ${
                               d.status === 'present'
                                 ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                                 : d.status === 'field'
@@ -495,18 +495,18 @@ export const MonthlyPayrollTab: React.FC<MonthlyPayrollTabProps> = ({
             </div>
 
             {/* CỘT PHẢI: BẢNG CHI TIẾT TÍNH LƯƠNG & CHỮ KÝ (5 COLS) */}
-            <div className="lg:col-span-5 space-y-4">
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-                <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/70">
+            <div className="lg:col-span-5 space-y-3.5">
+              <div className="bg-white rounded-lg border border-slate-200 shadow-xs overflow-hidden">
+                <div className="p-3 border-b border-slate-200 flex items-center justify-between bg-slate-50/70">
                   <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-primary text-lg">receipt_long</span>
+                    <span className="material-symbols-outlined text-primary text-base">receipt_long</span>
                     <h3 className="text-xs font-extrabold text-slate-800 uppercase tracking-wide">
                       Chi tiết thu nhập & khấu trừ
                     </h3>
                   </div>
                 </div>
 
-                <div className="p-4 space-y-2 text-xs">
+                <div className="p-3.5 space-y-1.5 text-xs">
                   <div className="flex justify-between py-1 border-b border-dashed border-slate-100">
                     <span className="text-slate-600">Lương cơ bản theo HĐ:</span>
                     <span className="font-bold text-slate-800">
@@ -586,7 +586,7 @@ export const MonthlyPayrollTab: React.FC<MonthlyPayrollTabProps> = ({
                   )}
 
                   {/* THỰC LĨNH BOX */}
-                  <div className="p-3 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl flex items-center justify-between mt-3 shadow-xs">
+                  <div className="p-3 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-lg flex items-center justify-between mt-2.5 shadow-xs">
                     <div>
                       <span className="text-[10px] font-bold uppercase tracking-wider block opacity-90">THỰC LĨNH:</span>
                       <span className="text-xs opacity-80">(Chuyển khoản)</span>
@@ -600,7 +600,7 @@ export const MonthlyPayrollTab: React.FC<MonthlyPayrollTabProps> = ({
 
               {/* KHUNG CHỮ KÝ ĐÃ KÝ */}
               {myPayrollItem.signatureStatus === 'signed' && (
-                <div className="bg-white rounded-2xl border border-emerald-300 p-4 shadow-xs flex items-center justify-between">
+                <div className="bg-white rounded-lg border border-emerald-300 p-3.5 shadow-xs flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     {myPayrollItem.signatureImage && (
                       <img
@@ -621,7 +621,7 @@ export const MonthlyPayrollTab: React.FC<MonthlyPayrollTabProps> = ({
                   <button
                     type="button"
                     onClick={() => setViewingSlipItem(myPayrollItem)}
-                    className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-xs transition cursor-pointer"
+                    className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded text-xs transition cursor-pointer"
                   >
                     Xem phiếu
                   </button>
@@ -634,16 +634,16 @@ export const MonthlyPayrollTab: React.FC<MonthlyPayrollTabProps> = ({
 
       {/* ===================== VIEW 2: QUẢN TRỊ VIÊN XEM TOÀN BỘ NHÂN SỰ ===================== */}
       {viewScope === 'all' && isAdmin && (
-        <div className="space-y-4">
+        <div className="space-y-3.5">
           {/* STATS BARS DÀNH CHO ADMIN */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs">
+            <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-xs">
               <span className="text-[11px] font-bold text-slate-500 uppercase block">Tổng số nhân sự</span>
               <span className="text-2xl font-black text-slate-800">{adminStats.total}</span>
               <span className="text-[11px] text-slate-400 block mt-0.5">Tháng {selectedMonth}/{selectedYear}</span>
             </div>
 
-            <div className="bg-white p-3.5 rounded-2xl border border-emerald-300 shadow-xs bg-emerald-50/30">
+            <div className="bg-white p-3 rounded-lg border border-emerald-300 shadow-xs bg-emerald-50/30">
               <span className="text-[11px] font-bold text-emerald-700 uppercase block flex items-center gap-1">
                 <span className="material-symbols-outlined text-[15px]">verified</span>
                 Đã ký xác nhận
@@ -654,7 +654,7 @@ export const MonthlyPayrollTab: React.FC<MonthlyPayrollTabProps> = ({
               </span>
             </div>
 
-            <div className="bg-white p-3.5 rounded-2xl border border-blue-200 shadow-xs">
+            <div className="bg-white p-3 rounded-lg border border-blue-200 shadow-xs">
               <span className="text-[11px] font-bold text-blue-700 uppercase block flex items-center gap-1">
                 <span className="material-symbols-outlined text-[15px]">hourglass_top</span>
                 Chờ ký xác nhận
@@ -663,7 +663,7 @@ export const MonthlyPayrollTab: React.FC<MonthlyPayrollTabProps> = ({
               <span className="text-[11px] text-slate-400 block mt-0.5">Chưa thực hiện ký</span>
             </div>
 
-            <div className="bg-white p-3.5 rounded-2xl border border-amber-300 shadow-xs bg-amber-50/30">
+            <div className="bg-white p-3 rounded-lg border border-amber-300 shadow-xs bg-amber-50/30">
               <span className="text-[11px] font-bold text-amber-800 uppercase block flex items-center gap-1">
                 <span className="material-symbols-outlined text-[15px]">warning</span>
                 Có khiếu nại / phản hồi
@@ -674,27 +674,27 @@ export const MonthlyPayrollTab: React.FC<MonthlyPayrollTabProps> = ({
           </div>
 
           {/* THANH TÌM KIẾM & BỘ LỌC ADMIN */}
-          <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3">
+          <div className="bg-white p-2.5 rounded-lg border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2 flex-1 max-w-md">
               <div className="relative w-full">
-                <span className="material-symbols-outlined absolute left-3 top-2.5 text-slate-400 text-lg">search</span>
+                <span className="material-symbols-outlined absolute left-2.5 top-2 text-slate-400 text-base">search</span>
                 <input
                   type="text"
                   value={adminSearch}
                   onChange={e => setAdminSearch(e.target.value)}
                   placeholder="Tìm theo tên, mã nhân viên, chức danh..."
-                  className="w-full pl-9 pr-3 py-1.5 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-primary focus:outline-none"
+                  className="w-full pl-8 pr-3 py-1 border border-slate-200 rounded text-xs focus:ring-1 focus:ring-primary focus:outline-none"
                 />
               </div>
             </div>
 
-            <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-xl border border-slate-200 text-xs">
+            <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded border border-slate-200 text-xs">
               {(['all', 'signed', 'pending', 'disputed'] as const).map(st => (
                 <button
                   key={st}
                   type="button"
                   onClick={() => setAdminStatusFilter(st)}
-                  className={`px-3 py-1.5 rounded-lg font-bold transition cursor-pointer ${
+                  className={`px-2.5 py-1 rounded font-bold transition cursor-pointer ${
                     adminStatusFilter === st
                       ? 'bg-white text-primary shadow-xs'
                       : 'text-slate-600 hover:text-slate-900'
@@ -707,7 +707,7 @@ export const MonthlyPayrollTab: React.FC<MonthlyPayrollTabProps> = ({
           </div>
 
           {/* BẢNG TỔNG HỢP TOÀN BỘ NHÂN SỰ */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+          <div className="bg-white rounded-lg border border-slate-200 shadow-xs overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-xs text-left">
                 <thead className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200 text-[11px]">
@@ -747,7 +747,7 @@ export const MonthlyPayrollTab: React.FC<MonthlyPayrollTabProps> = ({
                         {showSalaryAmounts ? formatVND(item.netSalary) : '•••••• đ'}
                       </td>
                       <td className="p-3 text-center whitespace-nowrap">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border inline-flex items-center gap-1 ${
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold border inline-flex items-center gap-1 ${
                           item.signatureStatus === 'signed'
                             ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
                             : item.signatureStatus === 'disputed'
@@ -775,7 +775,7 @@ export const MonthlyPayrollTab: React.FC<MonthlyPayrollTabProps> = ({
                         <button
                           type="button"
                           onClick={() => setViewingSlipItem(item)}
-                          className="px-2.5 py-1 bg-slate-100 hover:bg-primary hover:text-white text-slate-700 rounded-lg text-[11px] font-bold transition cursor-pointer"
+                          className="px-2.5 py-1 bg-slate-100 hover:bg-primary hover:text-white text-slate-700 rounded-md text-[11px] font-bold transition cursor-pointer"
                         >
                           Chi tiết
                         </button>

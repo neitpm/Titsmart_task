@@ -201,7 +201,7 @@ export const DigitalSignatureModal: React.FC<DigitalSignatureModalProps> = ({
     <Modal isOpen={isOpen} onClose={onClose} title="KÝ XÁC NHẬN BẢNG CÔNG & BẢNG LƯƠNG" size="md">
       <div className="space-y-4">
         {/* Tóm tắt thông tin tháng ký */}
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-3.5">
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-3">
           <div className="flex items-center justify-between border-b border-blue-200/70 pb-2 mb-2">
             <div>
               <span className="text-[11px] font-bold uppercase tracking-wider text-primary">Kỳ thanh toán:</span>
@@ -216,13 +216,13 @@ export const DigitalSignatureModal: React.FC<DigitalSignatureModalProps> = ({
           </div>
 
           <div className="grid grid-cols-2 gap-2 text-xs">
-            <div className="bg-white/80 p-2 rounded-lg border border-blue-100">
+            <div className="bg-white/80 p-2 rounded-md border border-blue-100">
               <span className="text-slate-500 block text-[11px]">Công thực tế / Chuẩn:</span>
               <span className="font-extrabold text-slate-800 text-sm">
                 {payrollItem.actualWorkingDays} <span className="text-xs text-slate-400 font-normal">/ {payrollItem.standardWorkingDays} công</span>
               </span>
             </div>
-            <div className="bg-white/80 p-2 rounded-lg border border-blue-100">
+            <div className="bg-white/80 p-2 rounded-md border border-blue-100">
               <span className="text-slate-500 block text-[11px]">Thực lĩnh (Net):</span>
               <span className="font-extrabold text-emerald-600 text-sm">
                 {formatVND(payrollItem.netSalary)}
@@ -239,7 +239,7 @@ export const DigitalSignatureModal: React.FC<DigitalSignatureModalProps> = ({
               Chữ ký người lao động:
             </label>
 
-            <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200 text-xs">
+            <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-md border border-slate-200 text-xs">
               <button
                 type="button"
                 onClick={() => setSignMode('draw')}
@@ -263,7 +263,7 @@ export const DigitalSignatureModal: React.FC<DigitalSignatureModalProps> = ({
 
           {signMode === 'draw' ? (
             <div className="space-y-1.5">
-              <div className="relative border-2 border-dashed border-slate-300 rounded-xl overflow-hidden bg-slate-50/60 touch-none">
+              <div className="relative border-2 border-dashed border-slate-300 rounded-lg overflow-hidden bg-slate-50/60 touch-none">
                 <canvas
                   ref={canvasRef}
                   onMouseDown={startDrawing}
@@ -305,7 +305,7 @@ export const DigitalSignatureModal: React.FC<DigitalSignatureModalProps> = ({
               </div>
             </div>
           ) : (
-            <div className="border border-slate-200 rounded-xl p-4 bg-slate-50 flex flex-col items-center justify-center min-h-[176px] text-center">
+            <div className="border border-slate-200 rounded-lg p-4 bg-slate-50 flex flex-col items-center justify-center min-h-[176px] text-center">
               <div className="text-2xl font-bold italic text-blue-900 font-serif tracking-wide border-b-2 border-dotted border-blue-900 pb-2 px-6">
                 {payrollItem.userName}
               </div>
@@ -320,7 +320,7 @@ export const DigitalSignatureModal: React.FC<DigitalSignatureModalProps> = ({
         </div>
 
         {/* Cam kết của người lao động */}
-        <label className="flex items-start gap-2.5 p-3 rounded-lg border border-slate-200 bg-slate-50/70 cursor-pointer hover:bg-slate-50 transition">
+        <label className="flex items-start gap-2.5 p-3 rounded-md border border-slate-200 bg-slate-50/70 cursor-pointer hover:bg-slate-50 transition">
           <input
             type="checkbox"
             checked={isAgreed}
@@ -338,7 +338,7 @@ export const DigitalSignatureModal: React.FC<DigitalSignatureModalProps> = ({
             type="button"
             onClick={onClose}
             disabled={isSubmitting}
-            className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-xs transition cursor-pointer"
+            className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-md text-xs transition cursor-pointer"
           >
             Hủy
           </button>
@@ -346,7 +346,7 @@ export const DigitalSignatureModal: React.FC<DigitalSignatureModalProps> = ({
             type="button"
             onClick={handleConfirmSignature}
             disabled={isSubmitting || !isAgreed || (signMode === 'draw' && !hasDrawn)}
-            className="flex items-center gap-1.5 px-5 py-2 bg-primary hover:bg-blue-800 disabled:opacity-50 text-white font-bold rounded-lg text-xs shadow-sm transition cursor-pointer"
+            className="flex items-center gap-1.5 px-5 py-2 bg-primary hover:bg-blue-800 disabled:opacity-50 text-white font-bold rounded-md text-xs shadow-xs transition cursor-pointer"
           >
             {isSubmitting ? (
               <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />

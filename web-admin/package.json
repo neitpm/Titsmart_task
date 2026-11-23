@@ -9,6 +9,7 @@
     "dev": "vite --host --mode production",
     "dev:local": "vite --host --mode development",
     "dev:web": "cross-env WEB_ONLY=true vite --host --mode production",
+    "dev:web:local": "cross-env WEB_ONLY=true vite --host --mode development",
     "build": "tsc && vite build --mode production",
     "build:mobile": "vite build --config vite.config.mobile.ts --mode production && npx cap sync",
     "build:mobile:local": "vite build --config vite.config.mobile.ts --mode development && npx cap sync",

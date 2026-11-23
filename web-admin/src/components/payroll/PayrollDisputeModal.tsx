@@ -56,7 +56,7 @@ export const PayrollDisputeModal: React.FC<PayrollDisputeModalProps> = ({
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="PHẢN HỒI / THẮC MẮC BẢNG CÔNG & LƯƠNG" size="md">
       <div className="space-y-4">
-        <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900">
+        <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-900">
           <p className="font-bold flex items-center gap-1 text-amber-800">
             <span className="material-symbols-outlined text-[16px]">info</span>
             Gửi thắc mắc đến Kế toán & Ban Giám đốc:
@@ -75,7 +75,7 @@ export const PayrollDisputeModal: React.FC<PayrollDisputeModalProps> = ({
             value={disputeNote}
             onChange={e => setDisputeNote(e.target.value)}
             placeholder="Ví dụ: Ngày 15/10 em có đi công trường dự án Đắk Mil nhưng bảng công chưa tính phụ cấp công trường; hoặc ngày 20/10 em có tăng ca 3 tiếng..."
-            className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none resize-none leading-relaxed"
+            className="w-full px-3 py-2 border border-slate-200 rounded-md text-xs focus:ring-1 focus:ring-amber-500 focus:outline-none resize-none leading-relaxed"
           />
         </div>
 
@@ -84,7 +84,7 @@ export const PayrollDisputeModal: React.FC<PayrollDisputeModalProps> = ({
             type="button"
             onClick={onClose}
             disabled={isSubmitting}
-            className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-xs transition cursor-pointer"
+            className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-md text-xs transition cursor-pointer"
           >
             Đóng
           </button>
@@ -92,7 +92,7 @@ export const PayrollDisputeModal: React.FC<PayrollDisputeModalProps> = ({
             type="button"
             onClick={handleSubmit}
             disabled={isSubmitting || !disputeNote.trim()}
-            className="flex items-center gap-1.5 px-5 py-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white font-bold rounded-lg text-xs shadow-sm transition cursor-pointer"
+            className="flex items-center gap-1.5 px-5 py-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white font-bold rounded-md text-xs shadow-xs transition cursor-pointer"
           >
             {isSubmitting ? (
               <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
