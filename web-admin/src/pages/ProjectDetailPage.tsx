@@ -84,6 +84,7 @@ export const ProjectDetailPage: React.FC = () => {
   // Tabs for the project detail view
   const baseTabs = useMemo(() => [
     { label: 'Tổng quan', path: `/projects/${projectId}/overview`, icon: 'dashboard' },
+    { label: 'Kế hoạch', path: `/projects/${projectId}/plan`, icon: 'calendar_month' },
     { label: 'Tiến độ', path: `/projects/${projectId}/tasks`, icon: 'fact_check' },
     { label: 'Vật tư & Chi phí', path: `/projects/${projectId}/cost-plan`, icon: 'account_balance_wallet' },
     { label: 'Hồ sơ', path: `/projects/${projectId}/documents`, icon: 'file_present', requireAdmin: true },
