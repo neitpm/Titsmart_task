@@ -2,7 +2,7 @@ name: Build Electron & Android App
 
 on:
   push:
-    branches: [ "main", "fix/excel-import-logic-sync" ]
+    branches: [ "main", "fix/excel-import-logic-sync", "codex/realtime-sync-release-3.8.490" ]
 
 permissions:
   contents: write
