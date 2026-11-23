@@ -319,8 +319,16 @@ export const SettingsPage: React.FC = () => {
   // Activity Logs Store & State
   const activityLogs = useRealtimeStore(state => state.activityLogs);
   const projects = useRealtimeStore(state => state.projects);
+  const tasks = useRealtimeStore(state => state.tasks || []);
   const logActivity = useRealtimeStore(state => state.logActivity);
   const fetchActivityLogs = useRealtimeStore(state => state.fetchActivityLogs);
+  const personalTasks = tasks.filter((task: any) =>
+    String(task.assignedEngineerId || '').toLowerCase() === String(user?.id || '').toLowerCase() ||
+    String(task.assignedEngineerName || '').trim().toLowerCase() === String(user?.name || '').trim().toLowerCase()
+  );
+  const personalProjects = projects.filter((project: any) =>
+    (currentEngineer?.projectCodes || []).some(code => String(code).toLowerCase() === String(project.code || project.id).toLowerCase())
+  );
 
   const logFundConfigChange = async (enabled: boolean) => {
     try {
@@ -559,7 +567,7 @@ export const SettingsPage: React.FC = () => {
       {/* Top Header Bar synchronized pl-3 */}
       <section className="bg-white border-b border-slate-200 pl-3 pr-14 md:pr-16 h-12 flex items-center shadow-sm shrink-0">
         <h2 className="page-title text-base md:text-lg font-extrabold text-slate-900 border-l-4 border-primary pl-2 uppercase tracking-wide">
-          CÀI ĐẶT HỆ THỐNG
+          CÀI ĐẶT VÀ CÁ NHÂN
         </h2>
       </section>
 

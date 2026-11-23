@@ -257,7 +257,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
         title: '',
         collapsible: false,
         items: [
-          { label: 'Cài đặt hệ thống', path: '/settings', icon: 'settings' },
+          { label: 'Cài đặt và cá nhân', path: '/settings', icon: 'settings' },
           { label: 'Nhật ký kỹ thuật', path: '/activity-log', icon: 'history' }
         ]
       }];
@@ -729,7 +729,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
                       navigate('/settings');
                     }}
                     className="flex items-center gap-1.5 text-xs font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-100 px-3 py-1.5 rounded-xl transition-colors shadow-2xs cursor-pointer"
-                    title="Cài đặt hệ thống"
+                    title="Cài đặt và cá nhân"
                   >
                     <span className="material-symbols-outlined text-base text-slate-600">
                       settings
