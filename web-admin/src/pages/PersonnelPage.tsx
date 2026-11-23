@@ -515,7 +515,9 @@ export const PersonnelPage: React.FC = () => {
       triggerToast('Vui lòng chờ ảnh tải lên hoàn tất trước khi lưu!', 'warning');
       return;
     }
-    if (selectedProjectCodes.length === 0) {
+    // Nhân sự mới cần được gán ít nhất một dự án; hồ sơ đã có thì vẫn
+    // cho phép lưu thông tin cá nhân/ảnh kể cả khi không gán dự án nào.
+    if (!editingPersonId && selectedProjectCodes.length === 0) {
       triggerToast('Vui lòng chọn ít nhất 1 dự án cho nhân sự!', 'warning');
       return;
     }
