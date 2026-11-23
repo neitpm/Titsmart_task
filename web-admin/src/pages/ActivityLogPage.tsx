@@ -7,6 +7,8 @@ import { useAuthStore, isSystemAdmin, isDirector, hasPermission } from '../servi
 import { Modal } from '../components/common/Modal';
 import { PullToRefresh } from '../components/common/PullToRefresh';
 import { getLogNavigatePath, formatAuditDetail } from '../components/common/AuditInfoCell';
+import { useUIStore } from '../services/uiStore';
+import { ViewModeToolbar, resolveViewMode, AppViewMode } from '../components/common/ViewModeToolbar';
 
 const parseDateKey = (timestamp: string): string => {
   const value = (timestamp || '').trim();
@@ -136,6 +138,13 @@ const renderActionText = (text: string, fullDetail: boolean = false) => {
 
 export const ActivityLogPage: React.FC = () => {
   const navigate = useNavigate();
+
+  // Chế độ xem theo chuẩn appViewMode chung và toolbar
+  // Nhật ký KHÔNG dùng Kanban -> tự động fallback Kanban về 'table_detailed'
+  const appViewMode = useUIStore(s => s.appViewMode);
+  const setAppViewMode = useUIStore(s => s.setAppViewMode);
+  const supportedActivityModes: AppViewMode[] = ['grid', 'compact_grid', 'table', 'table_detailed'];
+  const viewMode = resolveViewMode(appViewMode, supportedActivityModes);
   const activityLogs = useRealtimeStore(state => state.activityLogs);
   const projects = useRealtimeStore(state => state.projects);
   const fetchActivityLogs = useRealtimeStore(state => state.fetchActivityLogs);
@@ -315,6 +324,13 @@ export const ActivityLogPage: React.FC = () => {
                 <span className="hidden sm:inline">Xóa lọc</span>
               </button>
             )}
+
+            {/* ViewMode Toolbar cho Nhật ký (Không Kanban, tự chuyển sang bảng chi tiết) */}
+            <ViewModeToolbar
+              currentMode={viewMode}
+              onModeChange={setAppViewMode}
+              supportedModes={supportedActivityModes}
+            />
 
             {/* Export File Dropdown Menu */}
             <div className="relative shrink-0">
