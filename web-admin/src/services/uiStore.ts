@@ -29,7 +29,6 @@ interface UIStoreState {
   setAppViewMode: (val: UIStoreState['appViewMode']) => void;
   setTablePaginationMode: (val: 'infinite' | 'pagination') => void;
   setTablePageSize: (val: number) => void;
-  setAppViewMode: (val: UIStoreState['appViewMode']) => void;
   setSidebarHoverToExpand: (val: boolean) => void;
   setSidebarShowToggleButton: (val: boolean) => void;
   setIsSidebarExpanded: (val: boolean | ((prev: boolean) => boolean)) => void;
