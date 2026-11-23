@@ -227,6 +227,8 @@ export const SettingsPage: React.FC = () => {
     setShowChatWidget,
     tablePaginationMode,
     tablePageSize,
+    appViewMode,
+    setAppViewMode,
     setTablePaginationMode,
     setTablePageSize,
   } = useUIStore();
@@ -1602,6 +1604,23 @@ export const SettingsPage: React.FC = () => {
                         ))}
                       </div>
                     </div>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-3 p-4 rounded-xl bg-slate-50 border border-slate-200/80">
+                    <div className="flex items-center gap-3">
+                      <span className="material-symbols-outlined text-xl text-primary">view_quilt</span>
+                      <div>
+                        <span className="text-xs font-bold text-slate-800 block">Kiểu hiển thị chung</span>
+                        <span className="text-[11px] text-slate-500">Áp dụng làm kiểu mặc định cho các màn hình danh sách có hỗ trợ.</span>
+                      </div>
+                    </div>
+                    <select value={appViewMode} onChange={e => { setAppViewMode(e.target.value as typeof appViewMode); triggerToast('Đã lưu kiểu hiển thị chung.', 'success'); }} className="rounded-md border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-700 outline-none focus:border-primary focus:ring-1 focus:ring-primary/20">
+                      <option value="grid">Dạng thẻ</option>
+                      <option value="compact_grid">Thẻ thu gọn</option>
+                      <option value="table">Bảng gọn</option>
+                      <option value="table_detailed">Bảng chi tiết</option>
+                      <option value="kanban">Bảng Kanban</option>
+                    </select>
                   </div>
                 </div>
               </div>

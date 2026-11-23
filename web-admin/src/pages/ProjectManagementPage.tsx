@@ -177,14 +177,7 @@ export const ProjectManagementPage: React.FC = () => {
   const [filterDateTo, setFilterDateTo] = useState('');
 
   // Chế độ xem đa dạng: Thẻ tiêu chuẩn, Thẻ thu gọn, Bảng gọn, Bảng chi tiết, Bảng Kanban
-  const [viewMode, setViewMode] = useState<ProjectViewMode>(() => {
-    return (localStorage.getItem('titsmart_project_view_mode') as ProjectViewMode) || 'grid';
-  });
-
-  const handleViewModeChange = (mode: ProjectViewMode) => {
-    setViewMode(mode);
-    localStorage.setItem('titsmart_project_view_mode', mode);
-  };
+  const viewMode = useUIStore(s => s.appViewMode) as ProjectViewMode;
   const tablePaginationMode = useUIStore(s => s.tablePaginationMode);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState<number>(24);
@@ -1290,20 +1283,6 @@ export const ProjectManagementPage: React.FC = () => {
 
         {/* Nhóm thao tác bên phải: Chuyển dạng Thẻ / Bảng + Ô tìm kiếm + Nút Tạo dự án mới */}
         <div className="flex items-center gap-2 shrink-0 ml-auto">
-          {/* Chuyển chế độ xem đa dạng dạng combobox */}
-          <CustomSelect
-            value={viewMode}
-            onChange={(e) => handleViewModeChange(e.target.value as ProjectViewMode)}
-            className="h-[34px] min-w-[140px] sm:min-w-[160px] rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-bold text-slate-700 shadow-2xs outline-none focus:border-primary shrink-0 cursor-pointer"
-            title="Chế độ hiển thị danh sách dự án"
-          >
-            <option value="grid">⊞ Dạng thẻ</option>
-            <option value="compact_grid">▦ Thẻ thu gọn</option>
-            <option value="table">☰ Bảng gọn</option>
-            <option value="table_detailed">☷ Bảng chi tiết</option>
-            <option value="kanban">▥ Bảng Kanban</option>
-          </CustomSelect>
-
           <div className="relative w-44 sm:w-52 md:w-60 flex items-center min-w-0">
             <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-base">search</span>
             <input
