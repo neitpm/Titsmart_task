@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase';
+import { supabase, isCloudSupabase } from '../lib/supabase';
 
 /**
  * Nén hình ảnh phía Client bằng HTML5 Canvas để giảm dung lượng file xuống < 300KB-500KB
@@ -117,6 +117,19 @@ export async function uploadAttachment(
     // 1. Nén ảnh nếu là hình ảnh (tiết kiệm 75% băng thông Egress & Storage)
     if (isImage) {
       uploadData = await compressImage(file, 1280, 1280, 0.75);
+    }
+
+    // Local Supabase instances may not have the Storage bucket/policies provisioned.
+    // Keep local development usable by storing a compact image data URL in the
+    // engineer record; production continues to use the shared Storage bucket.
+    if (!isCloudSupabase && isImage) {
+      const localBlob = await compressImage(file, 800, 800, 0.6);
+      return {
+        url: await blobToBase64(localBlob),
+        type: 'image',
+        name: originalName,
+        size: localBlob.size
+      };
     }
 
     // 2. Tạo tên file duy nhất không dấu
