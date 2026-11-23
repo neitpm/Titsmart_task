@@ -431,6 +431,38 @@ export const WorkPlanPage: React.FC = () => {
   }, [analyzedTasks]);
 
   // Filtered task list
+  const personalIdentityKeys = useMemo(() => {
+    const keys = new Set<string>();
+    const addKey = (value?: string | null) => {
+      const normalized = String(value || '').trim().toLowerCase();
+      if (normalized) keys.add(normalized);
+    };
+
+    addKey(user?.id);
+    addKey(user?.username);
+    addKey(user?.email);
+    addKey(user?.name);
+
+    // The account ID and the personnel ID can differ in older local data.
+    // Include every linked personnel identity so personal plans remain visible.
+    engineers.forEach((engineer) => {
+      const sameUser = [engineer.id, engineer.authUserId, engineer.username, engineer.email, engineer.name]
+        .some((value) => {
+          const normalized = String(value || '').trim().toLowerCase();
+          return normalized && keys.has(normalized);
+        });
+      if (sameUser) {
+        addKey(engineer.id);
+        addKey(engineer.authUserId);
+        addKey(engineer.username);
+        addKey(engineer.email);
+        addKey(engineer.name);
+      }
+    });
+
+    return keys;
+  }, [engineers, user]);
+
   const filteredTasks = useMemo(() => {
     return analyzedTasks.filter((t) => {
       const currentUserId = String(user?.id || '').toLowerCase();
@@ -442,8 +474,7 @@ export const WorkPlanPage: React.FC = () => {
       const assignerName = String(t.assignerName || '').trim().toLowerCase();
 
       if (planScope === 'personal') {
-        const isMine = (currentUserId && (assigneeId === currentUserId || assignerId === currentUserId)) ||
-          (currentUsername && (assigneeId === currentUsername || assignerId === currentUsername)) ||
+        const isMine = personalIdentityKeys.has(assigneeId) || personalIdentityKeys.has(assignerId) ||
           (currentUserName && (assigneeName === currentUserName || assignerName === currentUserName));
         if (!isMine) return false;
       } else if (planScope === 'project') {
@@ -497,7 +528,7 @@ export const WorkPlanPage: React.FC = () => {
 
       return true;
     });
-  }, [analyzedTasks, selectedProject, selectedAssignee, planScope, statusFilter, searchKeyword, user]);
+  }, [analyzedTasks, selectedProject, selectedAssignee, planScope, statusFilter, searchKeyword, user, personalIdentityKeys]);
 
   // Month navigation helpers
   const year = currentDate.getFullYear();
