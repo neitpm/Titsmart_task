@@ -570,19 +570,19 @@ export const DashboardPage: React.FC = () => {
       <div className="flex-1 overflow-y-auto overflow-x-hidden p-2 sm:p-3 space-y-3 w-full min-w-0 max-w-full">
         
         {/* TOP SUMMARY KPI CARDS */}
-        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3.5 w-full min-w-0">
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 w-full min-w-0">
           
           {/* Card 1: Tổng dự án */}
-          <div onClick={() => navigate('/projects')} className="bg-white rounded-xl p-3.5 sm:p-4 border border-slate-200 shadow-xs hover:shadow-md hover:border-blue-300 transition-all cursor-pointer flex flex-col justify-between min-w-0 group">
-            <div className="flex items-center gap-2.5 mb-2">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-600 shrink-0 group-hover:scale-105 transition-transform">
-                <span className="material-symbols-outlined text-[20px]">folder</span>
+          <div onClick={() => navigate('/projects')} className="bg-white rounded-lg p-3.5 border border-slate-200 shadow-2xs hover:shadow-xs hover:border-slate-300 transition-all cursor-pointer flex flex-col justify-between min-w-0 group">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-md bg-slate-100 text-slate-700 shrink-0">
+                <span className="material-symbols-outlined text-[18px]">folder</span>
               </div>
-              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-tight truncate">Tổng dự án</h3>
+              <h3 className="text-xs font-bold text-slate-600 uppercase tracking-tight truncate">Tổng dự án</h3>
             </div>
             <div className="text-xl sm:text-2xl font-black text-slate-900 truncate">{topMetrics.totalProjects}</div>
             <div className="mt-2 text-[11px] font-semibold text-slate-500 truncate">
-              <span className="text-blue-600 font-bold">{topMetrics.activeProjects}</span> đang triển khai
+              <span className="text-slate-800 font-bold">{topMetrics.activeProjects}</span> đang triển khai
             </div>
           </div>
 
@@ -594,65 +594,65 @@ export const DashboardPage: React.FC = () => {
                 el.scrollIntoView({ behavior: 'smooth' });
               }
             }} 
-            className="bg-white rounded-xl p-3.5 sm:p-4 border border-slate-200 shadow-xs hover:shadow-md hover:border-emerald-300 transition-all cursor-pointer flex flex-col justify-between min-w-0 group"
+            className="bg-white rounded-lg p-3.5 border border-slate-200 shadow-2xs hover:shadow-xs hover:border-slate-300 transition-all cursor-pointer flex flex-col justify-between min-w-0 group"
           >
-            <div className="flex items-center gap-2.5 mb-2">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 shrink-0 group-hover:scale-105 transition-transform">
-                <span className="material-symbols-outlined text-[20px]">account_balance_wallet</span>
+            <div className="flex items-center gap-2 mb-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-md bg-slate-100 text-slate-700 shrink-0">
+                <span className="material-symbols-outlined text-[18px]">account_balance_wallet</span>
               </div>
-              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-tight truncate">Đã chi thực tế</h3>
+              <h3 className="text-xs font-bold text-slate-600 uppercase tracking-tight truncate">Đã chi thực tế</h3>
             </div>
-            <div className="text-lg sm:text-xl font-black text-rose-600 truncate" title={formatCurrency(topMetrics.totalExpenseSpent)}>
+            <div className="text-lg sm:text-xl font-black text-slate-900 truncate" title={formatCurrency(topMetrics.totalExpenseSpent)}>
               {formatCurrency(topMetrics.totalExpenseSpent)}
             </div>
             <div className="mt-2 text-[11px] font-semibold text-slate-500 truncate" title={`Tồn quỹ: ${formatCurrency(topMetrics.totalExpenseBalance)} (Quỹ nhận: ${formatCurrency(topMetrics.totalExpenseFund)})`}>
-              Tồn: <span className={`font-bold ${topMetrics.totalExpenseBalance >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>{formatCurrency(topMetrics.totalExpenseBalance)}</span>
+              Tồn quỹ: <span className={`font-bold ${topMetrics.totalExpenseBalance >= 0 ? 'text-emerald-700' : 'text-rose-600'}`}>{formatCurrency(topMetrics.totalExpenseBalance)}</span>
             </div>
           </div>
 
           {/* Card 3: Chấm công hôm nay */}
-          <div onClick={() => navigate('/attendance')} className="bg-white rounded-xl p-3.5 sm:p-4 border border-slate-200 shadow-xs hover:shadow-md hover:border-cyan-300 transition-all cursor-pointer flex flex-col justify-between min-w-0 group">
-            <div className="flex items-center gap-2.5 mb-2">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-cyan-50 text-cyan-600 shrink-0 group-hover:scale-105 transition-transform">
-                <span className="material-symbols-outlined text-[20px]">how_to_reg</span>
+          <div onClick={() => navigate('/attendance')} className="bg-white rounded-lg p-3.5 border border-slate-200 shadow-2xs hover:shadow-xs hover:border-slate-300 transition-all cursor-pointer flex flex-col justify-between min-w-0 group">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-md bg-slate-100 text-slate-700 shrink-0">
+                <span className="material-symbols-outlined text-[18px]">how_to_reg</span>
               </div>
-              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-tight truncate">Chấm công hôm nay</h3>
+              <h3 className="text-xs font-bold text-slate-600 uppercase tracking-tight truncate">Chấm công hôm nay</h3>
             </div>
             <div className="text-xl sm:text-2xl font-black text-slate-900 truncate">
               {topMetrics.attendanceTodayCount} <span className="text-sm font-semibold text-slate-500">/ {topMetrics.activeEngineers}</span>
             </div>
             <div className="mt-2 text-[11px] font-semibold text-slate-500 truncate">
-              <span className="text-cyan-600 font-bold">
+              <span className="text-slate-800 font-bold">
                 {topMetrics.activeEngineers > 0 ? Math.round((topMetrics.attendanceTodayCount / topMetrics.activeEngineers) * 100) : 0}%
               </span> nhân sự đã điểm danh
             </div>
           </div>
 
           {/* Card 4: Hồ sơ dự án */}
-          <div onClick={() => navigate('/document-tracking')} className="bg-white rounded-xl p-3.5 sm:p-4 border border-slate-200 shadow-xs hover:shadow-md hover:border-rose-300 transition-all cursor-pointer flex flex-col justify-between min-w-0 group">
-            <div className="flex items-center gap-2.5 mb-2">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-50 text-rose-600 shrink-0 group-hover:scale-105 transition-transform">
-                <span className="material-symbols-outlined text-[20px]">description</span>
+          <div onClick={() => navigate('/document-tracking')} className="bg-white rounded-lg p-3.5 border border-slate-200 shadow-2xs hover:shadow-xs hover:border-slate-300 transition-all cursor-pointer flex flex-col justify-between min-w-0 group">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-md bg-slate-100 text-slate-700 shrink-0">
+                <span className="material-symbols-outlined text-[18px]">description</span>
               </div>
-              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-tight truncate">Hồ sơ dự án</h3>
+              <h3 className="text-xs font-bold text-slate-600 uppercase tracking-tight truncate">Hồ sơ dự án</h3>
             </div>
             <div className="text-xl sm:text-2xl font-black text-slate-900 truncate">{topMetrics.totalDocs}</div>
             <div className="mt-2 text-[11px] font-semibold text-slate-500 truncate">
-              <span className="text-rose-600 font-bold">{topMetrics.completedDocs}</span> đã hoàn thành/gửi
+              <span className="text-slate-800 font-bold">{topMetrics.completedDocs}</span> đã hoàn thành/gửi
             </div>
           </div>
 
           {/* Card 5: Vật tư & Mua sắm */}
-          <div onClick={() => navigate('/materials')} className="bg-white rounded-xl p-3.5 sm:p-4 border border-slate-200 shadow-xs hover:shadow-md hover:border-amber-300 transition-all cursor-pointer flex flex-col justify-between min-w-0 group">
-            <div className="flex items-center gap-2.5 mb-2">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-50 text-amber-600 shrink-0 group-hover:scale-105 transition-transform">
-                <span className="material-symbols-outlined text-[20px]">inventory_2</span>
+          <div onClick={() => navigate('/materials')} className="bg-white rounded-lg p-3.5 border border-slate-200 shadow-2xs hover:shadow-xs hover:border-slate-300 transition-all cursor-pointer flex flex-col justify-between min-w-0 group">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-md bg-slate-100 text-slate-700 shrink-0">
+                <span className="material-symbols-outlined text-[18px]">inventory_2</span>
               </div>
-              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-tight truncate">Vật tư & Mua sắm</h3>
+              <h3 className="text-xs font-bold text-slate-600 uppercase tracking-tight truncate">Vật tư & Mua sắm</h3>
             </div>
             <div className="text-xl sm:text-2xl font-black text-slate-900 truncate">{materialPlans.length}</div>
             <div className="mt-2 text-[11px] font-semibold text-slate-500 truncate">
-              <span className="text-amber-600 font-bold">{purchasingPlans.length}</span> kế hoạch thu mua
+              <span className="text-slate-800 font-bold">{purchasingPlans.length}</span> kế hoạch thu mua
             </div>
           </div>
 
@@ -663,20 +663,19 @@ export const DashboardPage: React.FC = () => {
                 navigate('/personnel');
               }
             }} 
-            className={`bg-white rounded-xl p-3.5 sm:p-4 border border-slate-200 shadow-xs transition-all flex flex-col justify-between min-w-0 group ${isDirectorUser ? 'hover:shadow-md hover:border-indigo-300 cursor-pointer' : 'cursor-default'}`}
+            className={`bg-white rounded-lg p-3.5 border border-slate-200 shadow-2xs transition-all flex flex-col justify-between min-w-0 group ${isDirectorUser ? 'hover:shadow-xs hover:border-slate-300 cursor-pointer' : 'cursor-default'}`}
           >
-            <div className="flex items-center gap-2.5 mb-2">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 shrink-0 group-hover:scale-105 transition-transform">
-                <span className="material-symbols-outlined text-[20px]">groups</span>
+            <div className="flex items-center gap-2 mb-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-md bg-slate-100 text-slate-700 shrink-0">
+                <span className="material-symbols-outlined text-[18px]">groups</span>
               </div>
-              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-tight truncate">Nhân sự</h3>
+              <h3 className="text-xs font-bold text-slate-600 uppercase tracking-tight truncate">Nhân sự</h3>
             </div>
-            <div className="text-xl sm:text-2xl font-black text-slate-900 truncate">{topMetrics.activeEngineers}</div>
+            <div className="text-xl sm:text-2xl font-black text-slate-900 truncate">{engineers.length}</div>
             <div className="mt-2 text-[11px] font-semibold text-slate-500 truncate">
-              <span className="text-indigo-600 font-bold">{topMetrics.activeEngineers}</span> kỹ sư & chuyên viên
+              <span className="text-slate-800 font-bold">{topMetrics.activeEngineers}</span> đang hoạt động
             </div>
           </div>
-
         </div>
 
         {/* BẢNG DASHBOARD THEO DÕI TỒN QUỸ & CHI PHÍ THEO NHÂN SỰ */}

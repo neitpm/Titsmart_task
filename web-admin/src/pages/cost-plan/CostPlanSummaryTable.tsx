@@ -233,7 +233,7 @@ export const CostPlanSummaryTable: React.FC<CostPlanSummaryTableProps> = ({
           <div className="flex gap-2 md:gap-3 w-full items-stretch justify-start min-w-max">
             
             {/* THẺ 1: QUỸ CÔNG TRÌNH / QUỸ CÁ NHÂN */}
-            <div className="flex-1 min-w-[140px] md:min-w-[170px] max-w-[240px] bg-white shadow-xs rounded-xl overflow-hidden border border-slate-200/80 hover:border-blue-300 transition-all flex flex-col justify-between p-2.5 md:p-3">
+            <div className="flex-1 min-w-[140px] md:min-w-[170px] max-w-[240px] bg-white shadow-2xs rounded-lg overflow-hidden border border-slate-200/80 hover:border-slate-300 transition-all flex flex-col justify-between p-2.5 md:p-3">
               <div className="flex items-center justify-between gap-1 text-[11px] font-bold text-slate-500 uppercase tracking-tight">
                 <div className="flex items-center gap-1 text-blue-700">
                   <span className="material-symbols-outlined text-[15px]">account_balance_wallet</span>
@@ -276,9 +276,9 @@ export const CostPlanSummaryTable: React.FC<CostPlanSummaryTableProps> = ({
             </div>
 
             {/* THẺ 2: TỔNG CHI */}
-            <div className="flex-1 min-w-[140px] md:min-w-[170px] max-w-[240px] bg-white shadow-xs rounded-xl overflow-hidden border border-slate-200/80 hover:border-indigo-300 transition-all flex flex-col justify-between p-2.5 md:p-3">
-              <div className="flex items-center gap-1 text-[11px] font-bold text-indigo-700 uppercase tracking-tight">
-                <span className="material-symbols-outlined text-[15px]">payments</span>
+            <div className="flex-1 min-w-[140px] md:min-w-[170px] max-w-[240px] bg-white shadow-2xs rounded-lg overflow-hidden border border-slate-200/80 hover:border-slate-300 transition-all flex flex-col justify-between p-2.5 md:p-3">
+              <div className="flex items-center gap-1 text-[11px] font-bold text-slate-700 uppercase tracking-tight">
+                <span className="material-symbols-outlined text-[15px] text-slate-500">payments</span>
                 <span>{isPersonalFiltered ? `ĐÃ CHI (${selectedSpender})` : 'TỔNG ĐÃ CHI'}</span>
               </div>
               <div className="mt-1 text-sm md:text-base font-black text-slate-900 tracking-tight">
@@ -287,7 +287,7 @@ export const CostPlanSummaryTable: React.FC<CostPlanSummaryTableProps> = ({
             </div>
 
             {/* THẺ 3: TỒN QUỸ */}
-            <div className={`flex-1 min-w-[150px] md:min-w-[190px] max-w-[260px] bg-white shadow-xs rounded-xl overflow-hidden border ${
+            <div className={`flex-1 min-w-[150px] md:min-w-[190px] max-w-[260px] bg-white shadow-2xs rounded-lg overflow-hidden border ${
               currentTon < 0 ? 'border-red-300 bg-red-50/20' : 'border-emerald-300 bg-emerald-50/20'
             } transition-all flex flex-col justify-between p-2.5 md:p-3`}>
               <div className="flex items-center justify-between gap-1 text-[11px] font-bold uppercase tracking-tight">
@@ -313,17 +313,17 @@ export const CostPlanSummaryTable: React.FC<CostPlanSummaryTableProps> = ({
             {/* THẺ 4: TỔNG HỢP NHANH SỐ NHÂN SỰ */}
             <div 
               onClick={() => setViewMode('grid')}
-              className="flex-1 min-w-[150px] md:min-w-[210px] max-w-[280px] bg-gradient-to-r from-blue-50/80 to-indigo-50/80 hover:from-blue-100/80 hover:to-indigo-100/80 cursor-pointer shadow-xs rounded-xl overflow-hidden border border-blue-200/80 transition-all flex flex-col justify-between p-2.5 md:p-3 select-none group"
+              className="flex-1 min-w-[150px] md:min-w-[210px] max-w-[280px] bg-slate-50 hover:bg-slate-100/80 cursor-pointer shadow-2xs rounded-lg overflow-hidden border border-slate-200 transition-all flex flex-col justify-between p-2.5 md:p-3 select-none group"
               title="Bấm để xem bảng chi tiết từng nhân sự"
             >
-              <div className="flex items-center justify-between gap-1 text-[11px] font-bold text-blue-900 uppercase tracking-tight">
+              <div className="flex items-center justify-between gap-1 text-[11px] font-bold text-slate-700 uppercase tracking-tight">
                 <div className="flex items-center gap-1">
-                  <span className="material-symbols-outlined text-[16px] text-blue-600">group</span>
+                  <span className="material-symbols-outlined text-[16px] text-slate-500">group</span>
                   <span>THEO NHÂN SỰ</span>
                 </div>
-                <span className="material-symbols-outlined text-[16px] text-blue-500 group-hover:translate-x-0.5 transition-transform">table_rows</span>
+                <span className="material-symbols-outlined text-[16px] text-slate-400 group-hover:translate-x-0.5 transition-transform">table_rows</span>
               </div>
-              <div className="mt-1 flex items-center justify-between text-xs text-blue-700 font-semibold">
+              <div className="mt-1 flex items-center justify-between text-xs text-slate-700 font-semibold">
                 <span>{spenderNames.length} nhân sự / đối tượng</span>
                 <span className="text-[11px] text-primary font-bold underline">Mở bảng &gt;</span>
               </div>

@@ -2405,27 +2405,27 @@ export const AttendancePage: React.FC = () => {
                           </div>
                           <div>
                             {l.status === 'PENDING_STEP1' && (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
                                 Chờ Quản lý duyệt
                               </span>
                             )}
                             {l.status === 'PENDING' && (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
                                 {l.step1ReviewerId ? 'Chờ Quản lý duyệt' : 'Chờ Lãnh đạo duyệt'}
                               </span>
                             )}
                             {l.status === 'APPROVED_STEP1' && (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200 animate-pulse">
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-800 border border-blue-200">
                                 Quản lý đã duyệt • Chờ Lãnh đạo
                               </span>
                             )}
                             {l.status === 'APPROVED' && (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
                                 Đã duyệt hoàn tất
                               </span>
                             )}
                             {l.status === 'REJECTED' && (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-800 border border-red-200">
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-red-50 text-red-800 border border-red-200">
                                 Từ chối
                               </span>
                             )}
@@ -2617,27 +2617,27 @@ export const AttendancePage: React.FC = () => {
                           </td>
                           <td className="p-3 text-center whitespace-nowrap">
                             {l.status === 'PENDING_STEP1' && (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                              <span className="px-2 py-0.5 rounded text-[10px] sm:text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
                                 Chờ Quản lý duyệt
                               </span>
                             )}
                             {l.status === 'PENDING' && (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                              <span className="px-2 py-0.5 rounded text-[10px] sm:text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
                                 {l.step1ReviewerId ? 'Chờ Quản lý duyệt' : 'Chờ Lãnh đạo duyệt'}
                               </span>
                             )}
                             {l.status === 'APPROVED_STEP1' && (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold bg-blue-100 text-blue-800 border border-blue-200 animate-pulse">
+                              <span className="px-2 py-0.5 rounded text-[10px] sm:text-[11px] font-bold bg-blue-50 text-blue-800 border border-blue-200">
                                 Quản lý đã duyệt • Chờ Lãnh đạo
                               </span>
                             )}
                             {l.status === 'APPROVED' && (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                              <span className="px-2 py-0.5 rounded text-[10px] sm:text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
                                 Đã duyệt hoàn tất
                               </span>
                             )}
                             {l.status === 'REJECTED' && (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold bg-red-100 text-red-800 border border-red-200">
+                              <span className="px-2 py-0.5 rounded text-[10px] sm:text-[11px] font-bold bg-red-50 text-red-800 border border-red-200">
                                 Từ chối
                               </span>
                             )}
@@ -2823,11 +2823,11 @@ export const AttendancePage: React.FC = () => {
                             <span className="font-bold text-slate-900 text-xs">{adj.userName}</span>
                             <span className="ml-2 px-2 py-0.5 rounded-md text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200">{adj.adjustmentType}</span>
                           </div>
-                          {adj.status === 'PENDING_STEP1' && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">Chờ Quản lý</span>}
-                          {adj.status === 'PENDING' && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">Chờ duyệt</span>}
-                          {adj.status === 'APPROVED_STEP1' && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800">QL đã duyệt</span>}
-                          {adj.status === 'APPROVED' && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">Đã duyệt hoàn tất</span>}
-                          {adj.status === 'REJECTED' && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-800">Từ chối</span>}
+                          {adj.status === 'PENDING_STEP1' && <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">Chờ Quản lý</span>}
+                          {adj.status === 'PENDING' && <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">Chờ duyệt</span>}
+                          {adj.status === 'APPROVED_STEP1' && <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-800 border border-blue-200">QL đã duyệt</span>}
+                          {adj.status === 'APPROVED' && <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">Đã duyệt hoàn tất</span>}
+                          {adj.status === 'REJECTED' && <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-red-50 text-red-800 border border-red-200">Từ chối</span>}
                         </div>
 
                         <div className="text-xs text-slate-600 space-y-1 bg-slate-50 p-2.5 rounded-lg border border-slate-100">
@@ -2912,11 +2912,11 @@ export const AttendancePage: React.FC = () => {
                             <td className="p-3 text-slate-600 max-w-[150px] truncate" title={adj.projectName}>{adj.projectName || '—'}</td>
                             <td className="p-3 text-slate-600 max-w-[200px] truncate" title={adj.reason}>{adj.reason}</td>
                             <td className="p-3 text-center whitespace-nowrap">
-                              {adj.status === 'PENDING_STEP1' && <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">Chờ Quản lý duyệt</span>}
-                              {adj.status === 'PENDING' && <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">Chờ duyệt</span>}
-                              {adj.status === 'APPROVED_STEP1' && <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 animate-pulse">Quản lý đã duyệt • Chờ BGD</span>}
-                              {adj.status === 'APPROVED' && <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">Đã duyệt hoàn tất</span>}
-                              {adj.status === 'REJECTED' && <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-800">Từ chối</span>}
+                              {adj.status === 'PENDING_STEP1' && <span className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">Chờ Quản lý duyệt</span>}
+                              {adj.status === 'PENDING' && <span className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">Chờ duyệt</span>}
+                              {adj.status === 'APPROVED_STEP1' && <span className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-800 border border-blue-200">Quản lý đã duyệt • Chờ BGD</span>}
+                              {adj.status === 'APPROVED' && <span className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">Đã duyệt hoàn tất</span>}
+                              {adj.status === 'REJECTED' && <span className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-red-50 text-red-800 border border-red-200">Từ chối</span>}
                             </td>
                             <td className="p-3 text-slate-600">
                               {adj.step1ReviewerName ? (

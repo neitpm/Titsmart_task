@@ -542,14 +542,14 @@ export const MyTasksPage: React.FC = () => {
         <button
           type="button"
           onClick={() => setStatusFilter('all')}
-          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
+          className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
             statusFilter === 'all'
-              ? 'bg-slate-900 text-white shadow-xs'
+              ? 'bg-slate-900 text-white shadow-2xs'
               : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
           }`}
         >
           <span>Tất cả</span>
-          <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-extrabold ${statusFilter === 'all' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-700'}`}>
+          <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${statusFilter === 'all' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-700'}`}>
             {stats.all}
           </span>
         </button>
@@ -557,14 +557,14 @@ export const MyTasksPage: React.FC = () => {
         <button
           type="button"
           onClick={() => setStatusFilter('pending')}
-          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
+          className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
             statusFilter === 'pending'
-              ? 'bg-slate-900 text-white shadow-xs'
+              ? 'bg-slate-900 text-white shadow-2xs'
               : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
           }`}
         >
           <span>Chờ nhận</span>
-          <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-extrabold ${statusFilter === 'pending' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-700'}`}>
+          <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${statusFilter === 'pending' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-700'}`}>
             {stats.pending}
           </span>
         </button>
@@ -572,14 +572,14 @@ export const MyTasksPage: React.FC = () => {
         <button
           type="button"
           onClick={() => setStatusFilter('in_progress')}
-          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
+          className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
             statusFilter === 'in_progress'
-              ? 'bg-slate-900 text-white shadow-xs'
+              ? 'bg-slate-900 text-white shadow-2xs'
               : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
           }`}
         >
           <span>Đang làm</span>
-          <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-extrabold ${statusFilter === 'in_progress' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-700'}`}>
+          <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${statusFilter === 'in_progress' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-700'}`}>
             {stats.inProgress}
           </span>
         </button>
@@ -587,14 +587,14 @@ export const MyTasksPage: React.FC = () => {
         <button
           type="button"
           onClick={() => setStatusFilter('review')}
-          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
+          className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
             statusFilter === 'review'
-              ? 'bg-slate-900 text-white shadow-xs'
+              ? 'bg-slate-900 text-white shadow-2xs'
               : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
           }`}
         >
           <span>Chờ nghiệm thu</span>
-          <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-extrabold ${statusFilter === 'review' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-700'}`}>
+          <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${statusFilter === 'review' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-700'}`}>
             {stats.review}
           </span>
         </button>
@@ -602,14 +602,14 @@ export const MyTasksPage: React.FC = () => {
         <button
           type="button"
           onClick={() => setStatusFilter('completed')}
-          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
+          className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
             statusFilter === 'completed'
-              ? 'bg-slate-900 text-white shadow-xs'
+              ? 'bg-slate-900 text-white shadow-2xs'
               : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
           }`}
         >
           <span>Hoàn thành</span>
-          <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-extrabold ${statusFilter === 'completed' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-700'}`}>
+          <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${statusFilter === 'completed' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-700'}`}>
             {stats.completed}
           </span>
         </button>
@@ -618,14 +618,14 @@ export const MyTasksPage: React.FC = () => {
           <button
             type="button"
             onClick={() => setStatusFilter('overdue')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
+            className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
               statusFilter === 'overdue'
-                ? 'bg-slate-900 text-white shadow-xs'
+                ? 'bg-slate-900 text-white shadow-2xs'
                 : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
             }`}
           >
             <span>Trễ hạn</span>
-            <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-extrabold ${statusFilter === 'overdue' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-700'}`}>
+            <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${statusFilter === 'overdue' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-700'}`}>
               {stats.overdue}
             </span>
           </button>

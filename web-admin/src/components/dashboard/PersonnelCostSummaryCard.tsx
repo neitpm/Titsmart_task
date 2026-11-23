@@ -156,14 +156,14 @@ export const PersonnelCostSummaryCard: React.FC<PersonnelCostSummaryProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden flex flex-col mb-1">
+    <div className="bg-white rounded-lg border border-slate-200 shadow-2xs overflow-hidden flex flex-col mb-1">
       {/* HEADER SECTION */}
       <div className="bg-slate-50/70 border-b border-slate-200 px-3 py-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <span className="material-symbols-outlined text-primary text-[18px]">account_balance_wallet</span>
           <h2 className="text-xs sm:text-sm font-extrabold text-slate-900 uppercase tracking-tight flex items-center gap-1.5">
             <span>Chi phí & Tồn quỹ theo nhân sự</span>
-            <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-blue-100 text-blue-800">
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-800">
               {summaryData.list.length}
             </span>
           </h2>
@@ -300,7 +300,7 @@ export const PersonnelCostSummaryCard: React.FC<PersonnelCostSummaryProps> = ({
                         {money(item.balance)}
                       </td>
                       <td className="py-2 px-3 text-center">
-                        <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                        <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold ${
                           isOver
                             ? 'bg-red-100 text-red-700 border border-red-200'
                             : item.balance === 0
@@ -439,19 +439,19 @@ export const PersonnelCostSummaryCard: React.FC<PersonnelCostSummaryProps> = ({
 
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
-            <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 flex flex-col max-h-[85vh]">
+            <div className="bg-white rounded-lg shadow-xl border border-slate-200 w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 flex flex-col max-h-[85vh]">
               {/* Modal Header */}
-              <div className="px-5 py-3.5 bg-gradient-to-r from-slate-50 to-blue-50/50 border-b border-slate-200 flex items-center justify-between">
+              <div className="px-5 py-3.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-xs">
-                    <span className="material-symbols-outlined text-[20px]">
+                  <div className="w-8 h-8 rounded-md bg-slate-200 text-slate-800 flex items-center justify-center">
+                    <span className="material-symbols-outlined text-[18px]">
                       {item.name === 'DỰ ÁN' ? 'apartment' : 'person'}
                     </span>
                   </div>
                   <div>
                     <h3 className="font-extrabold text-slate-900 text-sm sm:text-base flex items-center gap-2">
                       <span>Phân bổ chi phí: {item.name}</span>
-                      <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-blue-100 text-blue-800">
+                      <span className="text-xs px-2 py-0.5 rounded font-bold bg-blue-100 text-blue-800">
                         {projEntries.length} dự án
                       </span>
                     </h3>
@@ -463,24 +463,24 @@ export const PersonnelCostSummaryCard: React.FC<PersonnelCostSummaryProps> = ({
                 <button
                   type="button"
                   onClick={() => setSelectedSpenderDetail(null)}
-                  className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors"
+                  className="w-8 h-8 rounded-md flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors"
                 >
                   <span className="material-symbols-outlined text-[20px]">close</span>
                 </button>
               </div>
 
               {/* Summary stat cards */}
-              <div className="grid grid-cols-3 gap-3 p-4 bg-slate-50/60 border-b border-slate-100 text-xs">
-                <div className="bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs">
+              <div className="grid grid-cols-3 gap-3 p-4 bg-slate-50 border-b border-slate-200 text-xs">
+                <div className="bg-white p-2.5 rounded-lg border border-slate-200 shadow-2xs">
                   <div className="text-slate-500 text-[11px]">Tổng quỹ nhận</div>
-                  <div className="font-bold text-sm text-blue-700">{money(item.totalFund)} đ</div>
+                  <div className="font-bold text-sm text-slate-900">{money(item.totalFund)} đ</div>
                 </div>
-                <div className="bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs">
+                <div className="bg-white p-2.5 rounded-lg border border-slate-200 shadow-2xs">
                   <div className="text-slate-500 text-[11px]">Tổng đã chi</div>
-                  <div className="font-bold text-sm text-indigo-700">{money(item.totalSpent)} đ</div>
+                  <div className="font-bold text-sm text-slate-900">{money(item.totalSpent)} đ</div>
                 </div>
-                <div className={`p-2.5 rounded-xl border shadow-2xs ${
-                  item.balance < 0 ? 'bg-red-50/80 border-red-200 text-red-700' : 'bg-emerald-50/80 border-emerald-200 text-emerald-800'
+                <div className={`p-2.5 rounded-lg border shadow-2xs ${
+                  item.balance < 0 ? 'bg-red-50/80 border-red-200 text-red-700' : 'bg-slate-50 border-slate-200 text-slate-900'
                 }`}>
                   <div className="text-[11px] opacity-80">Tổng tồn quỹ</div>
                   <div className="font-bold text-sm">{money(item.balance)} đ</div>

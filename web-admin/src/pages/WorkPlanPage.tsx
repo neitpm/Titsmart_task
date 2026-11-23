@@ -918,9 +918,9 @@ export const WorkPlanPage: React.FC = () => {
 
         {/* Proactive Alert Banner (Displays if Overdue or Due Soon) */}
         {(stats.overdue > 0 || stats.dueSoon > 0 || stats.dueToday > 0) && (
-          <div className="bg-gradient-to-r from-amber-500/10 via-rose-500/10 to-blue-500/10 border border-amber-300 rounded-lg p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
+          <div className="bg-amber-50/80 border border-amber-200 rounded-lg p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-md bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-xs">
+              <div className="w-8 h-8 rounded-md bg-amber-600 text-white flex items-center justify-center shrink-0">
                 <span className="material-symbols-outlined text-lg">alarm</span>
               </div>
               <div>
@@ -932,12 +932,12 @@ export const WorkPlanPage: React.FC = () => {
                     </span>
                   )}
                   {stats.dueToday > 0 && (
-                    <span className="px-2 py-0.5 rounded bg-amber-500 text-white text-[11px] font-bold">
+                    <span className="px-2 py-0.5 rounded bg-amber-600 text-white text-[11px] font-bold">
                       {stats.dueToday} Đến hạn hôm nay
                     </span>
                   )}
                   {stats.dueSoon > 0 && (
-                    <span className="px-2 py-0.5 rounded bg-blue-600 text-white text-[11px] font-bold">
+                    <span className="px-2 py-0.5 rounded bg-slate-700 text-white text-[11px] font-bold">
                       {stats.dueSoon} Sắp đến hạn (≤ {formatAlertConfigLabel(alertConfig)})
                     </span>
                   )}
