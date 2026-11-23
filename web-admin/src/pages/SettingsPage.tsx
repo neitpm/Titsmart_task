@@ -1880,13 +1880,6 @@ export const SettingsPage: React.FC = () => {
                   </p>
                 </div>
 
-                <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-3">
-                  {([
-                    ['profile', 'Hồ sơ cá nhân'], ['overview', 'Tổng quan cá nhân'], ['attendance', 'Chấm công'], ['leave', 'Nghỉ phép'],
-                    ['contract', 'Hợp đồng'], ['projects', 'Dự án'], ['payroll', 'Bảng lương'], ['journal', 'Nhật ký cá nhân'],
-                  ] as const).map(([key, label]) => <button key={key} type="button" onClick={() => setPersonalTab(key)} className={`rounded-md border px-3 py-2 text-xs font-bold ${personalTab === key ? 'border-primary bg-primary text-white' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'}`}>{label}</button>)}
-                </div>
-
                 {personalTab === 'profile' && <div className="bg-white rounded-lg border border-slate-200 shadow-2xs p-6 space-y-4">
                   <div className="flex items-center gap-4 pb-4 border-b border-slate-100">
                     <div className="w-16 h-16 rounded-md bg-primary/10 text-primary flex items-center justify-center font-bold text-2xl border border-primary/20 overflow-hidden">
