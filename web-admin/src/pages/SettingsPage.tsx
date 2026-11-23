@@ -12,6 +12,7 @@ import { Modal } from '../components/common/Modal';
 import { registerWebDeviceToken } from '../services/notificationDispatchService';
 import { requestSystemNotificationPermission, sendSystemNotification } from '../services/systemNotificationService';
 import { exportToStyledExcel } from '../utils/excelExportUtils';
+import { api } from '../services/apiSupabase';
 
 type SettingsTab = 'general' | 'roles' | 'categories' | 'appearance' | 'notifications' | 'activity_logs' | 'account';
 
@@ -319,8 +320,24 @@ export const SettingsPage: React.FC = () => {
   // Activity Logs Store & State
   const activityLogs = useRealtimeStore(state => state.activityLogs);
   const projects = useRealtimeStore(state => state.projects);
+  const tasks = useRealtimeStore(state => state.tasks || []);
   const logActivity = useRealtimeStore(state => state.logActivity);
   const fetchActivityLogs = useRealtimeStore(state => state.fetchActivityLogs);
+  const personalTasks = tasks.filter((task: any) => String(task.assignedEngineerId || '').toLowerCase() === String(user?.id || '').toLowerCase() || String(task.assignedEngineerName || '').trim().toLowerCase() === String(user?.name || '').trim().toLowerCase());
+  const personalProjects = projects.filter((project: any) => (currentEngineer?.projectCodes || []).some(code => String(code).toLowerCase() === String(project.code || project.id).toLowerCase()));
+  const [personalTab, setPersonalTab] = useState<'overview' | 'attendance' | 'leave' | 'contract' | 'projects' | 'payroll' | 'journal'>('overview');
+  const [personalAttendance, setPersonalAttendance] = useState<any[]>([]);
+  const [personalLeaves, setPersonalLeaves] = useState<any[]>([]);
+  const [personalPayroll, setPersonalPayroll] = useState<any[]>([]);
+  useEffect(() => {
+    if (!user || activeTab !== 'account') return;
+    Promise.all([api.attendance.getByUser(user.id, user.name), api.leaves.getAll(), api.payroll.getAll(new Date().getMonth() + 1, new Date().getFullYear())]).then(([attendance, leaves, payroll]) => {
+      setPersonalAttendance(Array.isArray(attendance) ? attendance : []);
+      const names = [user.name, currentEngineer?.name].filter(Boolean).map(value => String(value).trim().toLowerCase());
+      setPersonalLeaves((Array.isArray(leaves) ? leaves : []).filter((item: any) => names.includes(String(item.userName || item.employeeName || item.requesterName || '').trim().toLowerCase()) || String(item.userId || item.employeeId || '') === String(user.id)));
+      setPersonalPayroll((Array.isArray(payroll) ? payroll : []).filter((item: any) => String(item.userId || item.user_id || '') === String(user.id) || names.includes(String(item.userName || item.employeeName || '').trim().toLowerCase())));
+    }).catch(() => {});
+  }, [activeTab, user, currentEngineer]);
 
   const logFundConfigChange = async (enabled: boolean) => {
     try {
@@ -1872,6 +1889,13 @@ export const SettingsPage: React.FC = () => {
                   </p>
                 </div>
 
+                <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-3">
+                  {([
+                    ['overview', 'Tổng quan cá nhân'], ['attendance', 'Chấm công'], ['leave', 'Nghỉ phép'],
+                    ['contract', 'Hợp đồng'], ['projects', 'Dự án'], ['payroll', 'Bảng lương'], ['journal', 'Nhật ký cá nhân'],
+                  ] as const).map(([key, label]) => <button key={key} type="button" onClick={() => setPersonalTab(key)} className={`rounded-md border px-3 py-2 text-xs font-bold ${personalTab === key ? 'border-primary bg-primary text-white' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'}`}>{label}</button>)}
+                </div>
+
                 <div className="bg-white rounded-lg border border-slate-200 shadow-2xs p-6 space-y-4">
                   <div className="flex items-center gap-4 pb-4 border-b border-slate-100">
                     <div className="w-16 h-16 rounded-md bg-primary/10 text-primary flex items-center justify-center font-bold text-2xl border border-primary/20 overflow-hidden">
@@ -1920,6 +1944,15 @@ export const SettingsPage: React.FC = () => {
                     </button>
                   </div>
                 </div>
+
+                {personalTab !== 'overview' && <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-2xs">
+                  {personalTab === 'attendance' && <><h3 className="mb-3 text-base font-extrabold text-slate-800">Chấm công cá nhân</h3><p className="mb-3 text-xs text-slate-500">Tổng bản ghi chấm công: <b>{personalAttendance.length}</b></p>{personalAttendance.slice(0, 20).map((item: any, index) => <div key={item.id || index} className="grid grid-cols-3 gap-3 border-b border-slate-100 py-2 text-xs"><span>{item.checkInTime || item.check_in_time || item.date || '-'}</span><span>Vào: {item.checkInTime || item.check_in_time || '-'}</span><span>Ra: {item.checkOutTime || item.check_out_time || '-'}</span></div>)}{!personalAttendance.length && <p className="text-xs text-slate-400">Chưa có dữ liệu chấm công trên local.</p>}</>}
+                  {personalTab === 'leave' && <><h3 className="mb-3 text-base font-extrabold text-slate-800">Nghỉ phép cá nhân</h3>{personalLeaves.map((item: any, index) => <div key={item.id || index} className="border-b border-slate-100 py-3 text-xs"><b>{item.leaveType || item.type || 'Nghỉ phép'}</b><span className="ml-3 text-slate-500">{item.startDate || item.start_date || '-'} → {item.endDate || item.end_date || '-'}</span><span className="ml-3 text-primary">{item.status || 'Chờ duyệt'}</span></div>)}{!personalLeaves.length && <p className="text-xs text-slate-400">Chưa có đơn nghỉ phép cá nhân trên local.</p>}</>}
+                  {personalTab === 'contract' && <><h3 className="mb-3 text-base font-extrabold text-slate-800">Hợp đồng với công ty</h3><div className="grid grid-cols-2 gap-3 text-xs"><div className="rounded-md bg-slate-50 p-3">Loại hợp đồng: Chưa cập nhật</div><div className="rounded-md bg-slate-50 p-3">Số hợp đồng: Chưa cập nhật</div><div className="rounded-md bg-slate-50 p-3">Ngày ký: Chưa cập nhật</div><div className="rounded-md bg-slate-50 p-3">Ngày kết thúc: Chưa cập nhật</div></div><p className="mt-3 text-xs text-slate-400">Local hiện chưa có bảng dữ liệu hợp đồng.</p></>}
+                  {personalTab === 'projects' && <><h3 className="mb-3 text-base font-extrabold text-slate-800">Dự án đang tham gia</h3>{personalProjects.map((project: any) => <div key={project.id} className="border-b border-slate-100 py-3 text-xs"><b>{project.name}</b><span className="ml-3 text-slate-500">{project.code || project.id}</span></div>)}{!personalProjects.length && <p className="text-xs text-slate-400">Chưa có dự án được gán.</p>}</>}
+                  {personalTab === 'payroll' && <><h3 className="mb-3 text-base font-extrabold text-slate-800">Bảng lương cá nhân</h3>{personalPayroll.map((item: any, index) => <div key={item.id || index} className="grid grid-cols-3 gap-3 border-b border-slate-100 py-3 text-xs"><span>Tháng {item.month || '-'}/{item.year || '-'}</span><span>Thực lĩnh: {item.netSalary || item.net_salary || item.takeHomePay || '-'}</span><span>{item.status || item.signatureStatus || 'Chưa xác nhận'}</span></div>)}{!personalPayroll.length && <p className="text-xs text-slate-400">Chưa có bảng lương cá nhân trên local.</p>}</>}
+                  {personalTab === 'journal' && <><h3 className="mb-3 text-base font-extrabold text-slate-800">Nhật ký cá nhân</h3><p className="text-xs text-slate-500">Các thao tác và dữ liệu cá nhân liên quan đến chấm công, nghỉ phép, công việc và bảng lương sẽ hiển thị tại đây.</p></>}
+                </div>}
               </div>
             )}
 
