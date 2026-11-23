@@ -2887,7 +2887,7 @@ export const AttendancePage: React.FC = () => {
         </div>
       ) : mainTab === 'payroll' ? (
         /* Tab Bảng công & Lương (Ký xác nhận) */
-        <div className="flex-1 w-full max-w-full overflow-y-auto p-3 sm:p-4 md:p-6 bg-slate-50">
+        <div className="flex-1 w-full max-w-full overflow-y-auto bg-slate-50">
           <MonthlyPayrollTab
             logs={logs}
             leaves={leaves}

@@ -173,9 +173,9 @@ export const MonthlyPayrollTab: React.FC<MonthlyPayrollTabProps> = ({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="w-full flex flex-col">
       {/* HEADER: BỘ LỌC THỜI GIAN & CHẾ ĐỘ XEM */}
-      <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3">
+      <div className="bg-white px-3 sm:px-4 py-2 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2.5 shrink-0 sticky top-0 z-20">
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1.5 bg-slate-100 p-0.5 rounded-md border border-slate-200 text-xs">
             <span className="material-symbols-outlined text-[17px] text-primary ml-1">calendar_month</span>
@@ -247,9 +247,9 @@ export const MonthlyPayrollTab: React.FC<MonthlyPayrollTabProps> = ({
 
       {/* ===================== VIEW 1: BẢNG LƯƠNG & CHẤM CÔNG CÁ NHÂN ===================== */}
       {viewScope === 'my' && myPayrollItem && (
-        <div className="space-y-3.5">
+        <div className="w-full flex flex-col">
           {/* BANNER TRẠNG THÁI KÝ XÁC NHẬN */}
-          <div className={`p-3.5 rounded-lg border flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-xs ${
+          <div className={`px-3 sm:px-4 py-2.5 border-b flex flex-col md:flex-row md:items-center justify-between gap-3 ${
             myPayrollItem.signatureStatus === 'signed'
               ? 'bg-emerald-50/90 border-emerald-300 text-emerald-950'
               : myPayrollItem.signatureStatus === 'disputed'
@@ -342,9 +342,9 @@ export const MonthlyPayrollTab: React.FC<MonthlyPayrollTabProps> = ({
           </div>
 
           {/* 4 CARD CHỈ SỐ TỔNG QUAN */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-slate-200 border-b border-slate-200 bg-white">
             {/* 1. Công thực tế */}
-            <div className="bg-white p-3.5 rounded-lg border border-slate-200 shadow-xs">
+            <div className="bg-white p-3 sm:p-3.5">
               <div className="flex items-center justify-between text-slate-500 mb-1">
                 <span className="text-[11px] font-bold uppercase tracking-wider">Ngày công thực tế</span>
                 <span className="material-symbols-outlined text-primary text-xl">fact_check</span>
@@ -361,7 +361,7 @@ export const MonthlyPayrollTab: React.FC<MonthlyPayrollTabProps> = ({
             </div>
 
             {/* 2. Công trường & Đi ngoài */}
-            <div className="bg-white p-3.5 rounded-lg border border-slate-200 shadow-xs">
+            <div className="bg-white p-3 sm:p-3.5">
               <div className="flex items-center justify-between text-slate-500 mb-1">
                 <span className="text-[11px] font-bold uppercase tracking-wider">Công trường / Công tác</span>
                 <span className="material-symbols-outlined text-amber-600 text-xl">foundation</span>
@@ -376,7 +376,7 @@ export const MonthlyPayrollTab: React.FC<MonthlyPayrollTabProps> = ({
             </div>
 
             {/* 3. Tăng ca OT */}
-            <div className="bg-white p-3.5 rounded-lg border border-slate-200 shadow-xs">
+            <div className="bg-white p-3 sm:p-3.5">
               <div className="flex items-center justify-between text-slate-500 mb-1">
                 <span className="text-[11px] font-bold uppercase tracking-wider">Giờ làm thêm (OT)</span>
                 <span className="material-symbols-outlined text-indigo-600 text-xl">more_time</span>
@@ -393,7 +393,7 @@ export const MonthlyPayrollTab: React.FC<MonthlyPayrollTabProps> = ({
             </div>
 
             {/* 4. Thực lĩnh (Net Salary) */}
-            <div className="bg-gradient-to-br from-emerald-600 to-teal-700 text-white p-3.5 rounded-lg shadow-xs">
+            <div className="bg-gradient-to-br from-emerald-600 to-teal-700 text-white p-3 sm:p-3.5">
               <div className="flex items-center justify-between opacity-90 mb-1">
                 <span className="text-[11px] font-bold uppercase tracking-wider">THỰC LĨNH THÁNG</span>
                 <span className="material-symbols-outlined text-xl">account_balance_wallet</span>
@@ -408,9 +408,9 @@ export const MonthlyPayrollTab: React.FC<MonthlyPayrollTabProps> = ({
           </div>
 
           {/* CHI TIẾT 2 CỘT: BẢNG LƯƠNG & BẢNG NHẬT KÝ CHẤM CÔNG */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5">
+          <div className="grid grid-cols-1 lg:grid-cols-12 bg-white border-b border-slate-200">
             {/* CỘT TRÁI: BẢNG NHẬT KÝ CHẤM CÔNG TỪNG NGÀY TRONG THÁNG (7 COLS) */}
-            <div className="lg:col-span-7 bg-white rounded-lg border border-slate-200 shadow-xs overflow-hidden">
+            <div className="lg:col-span-7 border-b lg:border-b-0 lg:border-r border-slate-200 flex flex-col">
               <div className="p-3 border-b border-slate-200 flex items-center justify-between bg-slate-50/70">
                 <div className="flex items-center gap-2">
                   <span className="material-symbols-outlined text-primary text-base">calendar_today</span>
@@ -423,7 +423,7 @@ export const MonthlyPayrollTab: React.FC<MonthlyPayrollTabProps> = ({
                 </span>
               </div>
 
-              <div className="overflow-x-auto max-h-[460px] overflow-y-auto">
+              <div className="overflow-x-auto max-h-[520px] overflow-y-auto">
                 <table className="w-full text-xs text-left">
                   <thead className="bg-slate-100 text-slate-700 font-bold sticky top-0 border-b border-slate-200 z-10 text-[11px]">
                     <tr>
@@ -495,7 +495,7 @@ export const MonthlyPayrollTab: React.FC<MonthlyPayrollTabProps> = ({
             </div>
 
             {/* CỘT PHẢI: BẢNG CHI TIẾT TÍNH LƯƠNG & CHỮ KÝ (5 COLS) */}
-            <div className="lg:col-span-5 space-y-3.5">
+            <div className="lg:col-span-5 bg-slate-50/50 p-3 sm:p-4 space-y-3">
               <div className="bg-white rounded-lg border border-slate-200 shadow-xs overflow-hidden">
                 <div className="p-3 border-b border-slate-200 flex items-center justify-between bg-slate-50/70">
                   <div className="flex items-center gap-2">
@@ -634,16 +634,16 @@ export const MonthlyPayrollTab: React.FC<MonthlyPayrollTabProps> = ({
 
       {/* ===================== VIEW 2: QUẢN TRỊ VIÊN XEM TOÀN BỘ NHÂN SỰ ===================== */}
       {viewScope === 'all' && isAdmin && (
-        <div className="space-y-3.5">
+        <div className="w-full flex flex-col">
           {/* STATS BARS DÀNH CHO ADMIN */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-xs">
+          <div className="grid grid-cols-2 sm:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-slate-200 border-b border-slate-200 bg-white">
+            <div className="bg-white p-3">
               <span className="text-[11px] font-bold text-slate-500 uppercase block">Tổng số nhân sự</span>
               <span className="text-2xl font-black text-slate-800">{adminStats.total}</span>
               <span className="text-[11px] text-slate-400 block mt-0.5">Tháng {selectedMonth}/{selectedYear}</span>
             </div>
 
-            <div className="bg-white p-3 rounded-lg border border-emerald-300 shadow-xs bg-emerald-50/30">
+            <div className="bg-emerald-50/40 p-3">
               <span className="text-[11px] font-bold text-emerald-700 uppercase block flex items-center gap-1">
                 <span className="material-symbols-outlined text-[15px]">verified</span>
                 Đã ký xác nhận
@@ -654,7 +654,7 @@ export const MonthlyPayrollTab: React.FC<MonthlyPayrollTabProps> = ({
               </span>
             </div>
 
-            <div className="bg-white p-3 rounded-lg border border-blue-200 shadow-xs">
+            <div className="bg-white p-3">
               <span className="text-[11px] font-bold text-blue-700 uppercase block flex items-center gap-1">
                 <span className="material-symbols-outlined text-[15px]">hourglass_top</span>
                 Chờ ký xác nhận
@@ -663,7 +663,7 @@ export const MonthlyPayrollTab: React.FC<MonthlyPayrollTabProps> = ({
               <span className="text-[11px] text-slate-400 block mt-0.5">Chưa thực hiện ký</span>
             </div>
 
-            <div className="bg-white p-3 rounded-lg border border-amber-300 shadow-xs bg-amber-50/30">
+            <div className="bg-amber-50/40 p-3">
               <span className="text-[11px] font-bold text-amber-800 uppercase block flex items-center gap-1">
                 <span className="material-symbols-outlined text-[15px]">warning</span>
                 Có khiếu nại / phản hồi
@@ -674,7 +674,7 @@ export const MonthlyPayrollTab: React.FC<MonthlyPayrollTabProps> = ({
           </div>
 
           {/* THANH TÌM KIẾM & BỘ LỌC ADMIN */}
-          <div className="bg-white p-2.5 rounded-lg border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3">
+          <div className="bg-slate-50 px-3 sm:px-4 py-2 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 shrink-0">
             <div className="flex items-center gap-2 flex-1 max-w-md">
               <div className="relative w-full">
                 <span className="material-symbols-outlined absolute left-2.5 top-2 text-slate-400 text-base">search</span>
@@ -683,12 +683,12 @@ export const MonthlyPayrollTab: React.FC<MonthlyPayrollTabProps> = ({
                   value={adminSearch}
                   onChange={e => setAdminSearch(e.target.value)}
                   placeholder="Tìm theo tên, mã nhân viên, chức danh..."
-                  className="w-full pl-8 pr-3 py-1 border border-slate-200 rounded text-xs focus:ring-1 focus:ring-primary focus:outline-none"
+                  className="w-full pl-8 pr-3 py-1 bg-white border border-slate-200 rounded text-xs focus:ring-1 focus:ring-primary focus:outline-none"
                 />
               </div>
             </div>
 
-            <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded border border-slate-200 text-xs">
+            <div className="flex items-center gap-1 bg-white p-0.5 rounded border border-slate-200 text-xs">
               {(['all', 'signed', 'pending', 'disputed'] as const).map(st => (
                 <button
                   key={st}
@@ -696,7 +696,7 @@ export const MonthlyPayrollTab: React.FC<MonthlyPayrollTabProps> = ({
                   onClick={() => setAdminStatusFilter(st)}
                   className={`px-2.5 py-1 rounded font-bold transition cursor-pointer ${
                     adminStatusFilter === st
-                      ? 'bg-white text-primary shadow-xs'
+                      ? 'bg-primary text-white shadow-xs'
                       : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
@@ -707,7 +707,7 @@ export const MonthlyPayrollTab: React.FC<MonthlyPayrollTabProps> = ({
           </div>
 
           {/* BẢNG TỔNG HỢP TOÀN BỘ NHÂN SỰ */}
-          <div className="bg-white rounded-lg border border-slate-200 shadow-xs overflow-hidden">
+          <div className="bg-white overflow-x-auto">
             <div className="overflow-x-auto">
               <table className="w-full text-xs text-left">
                 <thead className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200 text-[11px]">
