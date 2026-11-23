@@ -1721,6 +1721,17 @@ export const SettingsPage: React.FC = () => {
                     </div>
                   </div>
                 </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="rounded-md border border-slate-200 bg-white p-4 shadow-2xs"><div className="text-[10px] font-bold uppercase text-slate-400">Công tháng này</div><div className="mt-1 text-2xl font-extrabold text-primary">-</div><div className="text-[11px] text-slate-500">Đang cập nhật</div></div>
+                  <div className="rounded-md border border-slate-200 bg-white p-4 shadow-2xs"><div className="text-[10px] font-bold uppercase text-slate-400">Đơn nghỉ</div><div className="mt-1 text-2xl font-extrabold text-primary">-</div><div className="text-[11px] text-slate-500">Xem chi tiết tại Chấm công</div></div>
+                  <div className="rounded-md border border-slate-200 bg-white p-4 shadow-2xs"><div className="text-[10px] font-bold uppercase text-slate-400">Công việc</div><div className="mt-1 text-2xl font-extrabold text-primary">{personalTasks.length}</div><div className="text-[11px] text-slate-500">Việc được giao</div></div>
+                  <div className="rounded-md border border-slate-200 bg-white p-4 shadow-2xs"><div className="text-[10px] font-bold uppercase text-slate-400">Dự án</div><div className="mt-1 text-2xl font-extrabold text-primary">{personalProjects.length}</div><div className="text-[11px] text-slate-500">Đang tham gia</div></div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="rounded-md border border-slate-200 bg-white p-4 shadow-2xs"><h3 className="text-sm font-extrabold text-slate-800 mb-3">Dự án đang làm</h3>{personalProjects.length ? personalProjects.map((project: any) => <div key={project.id} className="border-b border-slate-100 py-2 last:border-0"><div className="text-xs font-bold text-slate-800">{project.name}</div><div className="text-[11px] text-slate-500">{project.code || 'Dự án'} · {project.status || 'Đang thực hiện'}</div></div>) : <p className="text-xs text-slate-400">Chưa có dự án được gán.</p>}</div>
+                  <div className="rounded-md border border-slate-200 bg-white p-4 shadow-2xs"><h3 className="text-sm font-extrabold text-slate-800 mb-3">Công việc gần đây</h3>{personalTasks.slice(0, 5).map((task: any) => <div key={task.id} className="border-b border-slate-100 py-2 last:border-0"><div className="text-xs font-semibold text-slate-700">{task.name}</div><div className="text-[11px] text-slate-500">{task.projectName || task.projectCode || 'Công việc'} · {task.status || 'Chưa làm'}</div></div>)}{personalTasks.length === 0 && <p className="text-xs text-slate-400">Chưa có công việc được giao.</p>}</div>
+                </div>
               </div>
             )}
 
