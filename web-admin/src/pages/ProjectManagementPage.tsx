@@ -220,62 +220,6 @@ export const ProjectManagementPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const isSubmittingRef = useRef(false);
   const [loadingMessage, setLoadingMessage] = useState('');
-  const [isScanningAllCoords, setIsScanningAllCoords] = useState(false);
-  const [showConfirmScanModal, setShowConfirmScanModal] = useState(false);
-  const [unlocatedProjectsCount, setUnlocatedProjectsCount] = useState(0);
-
-  // Mở modal xác nhận quét tọa độ tự động cho các dự án cũ có địa chỉ
-  const handleOpenScanConfirm = () => {
-    const unlocated = projects.filter(p => (p.location || '').trim().length >= 3 && (p.latitude === undefined || p.longitude === undefined));
-    if (unlocated.length === 0) {
-      triggerToast('Tất cả các dự án có địa chỉ đều đã được cập nhật tọa độ GPS!', 'info');
-      return;
-    }
-    setUnlocatedProjectsCount(unlocated.length);
-    setShowConfirmScanModal(true);
-  };
-
-  // Quét và cập nhật tọa độ tự động cho các dự án cũ có địa chỉ nhưng chưa có tọa độ
-  const handleAutoGeocodeAllProjects = async () => {
-    const unlocatedProjects = projects.filter(p => (p.location || '').trim().length >= 3 && (p.latitude === undefined || p.longitude === undefined));
-    if (unlocatedProjects.length === 0) {
-      triggerToast('Tất cả các dự án có địa chỉ đều đã được cập nhật tọa độ GPS!', 'info');
-      return;
-    }
-
-    setIsScanningAllCoords(true);
-    let successCount = 0;
-    try {
-      for (const p of unlocatedProjects) {
-        try {
-          const res = await geocodeAddress(p.location);
-          if (res) {
-            await updateProject(p.id, {
-              latitude: res.latitude,
-              longitude: res.longitude,
-              radiusMeters: p.radiusMeters || 500,
-            });
-            successCount++;
-          }
-          // Khoảng nghỉ ngắn 800ms để tránh bị rate-limit Nominatim API
-          await new Promise(r => setTimeout(r, 800));
-        } catch (itemErr) {
-          console.warn('Geocode single project error:', p.name, itemErr);
-        }
-      }
-
-      await fetchProjects();
-      if (successCount > 0) {
-        triggerToast(`Đã cập nhật tọa độ thành công cho ${successCount}/${unlocatedProjects.length} dự án!`, 'success');
-      } else {
-        triggerToast('Không thể xác định tọa độ từ các địa chỉ hiện tại. Vui lòng kiểm tra lại địa chỉ hoặc nhập tay tọa độ.', 'warning');
-      }
-    } catch (err: any) {
-      triggerToast(err.message || 'Lỗi khi quét tọa độ hàng loạt', 'warning');
-    } finally {
-      setIsScanningAllCoords(false);
-    }
-  };
 
   const toggleEngineerId = (id: string) => {
     setSelectedEngineerIds(prev => prev.includes(id) ? prev.filter(e => e !== id) : [...prev, id]);
@@ -1378,7 +1322,7 @@ export const ProjectManagementPage: React.FC = () => {
           <CustomSelect
             value={viewMode}
             onChange={(e) => handleViewModeChange(e.target.value as ProjectViewMode)}
-            className="h-[34px] min-w-[140px] sm:min-w-[160px] rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-bold text-slate-700 shadow-2xs outline-none focus:border-primary shrink-0 cursor-pointer"
+            className="h-[34px] min-w-[140px] sm:min-w-[160px] rounded-md border border-slate-200 bg-white px-2.5 text-xs font-bold text-slate-700 shadow-2xs outline-none focus:border-primary shrink-0 cursor-pointer"
             title="Chế độ hiển thị danh sách dự án"
           >
             <option value="grid">⊞ Dạng thẻ</option>
@@ -1408,20 +1352,7 @@ export const ProjectManagementPage: React.FC = () => {
             )}
           </div>
           {hasPermission(user, "CREATE_PROJECTS") && (
-            <>
-              <button
-                type="button"
-                disabled={isScanningAllCoords}
-                onClick={handleOpenScanConfirm}
-                title="Tự động tìm tọa độ GPS cho các dự án cũ có địa chỉ nhưng chưa có tọa độ"
-                className="hidden sm:flex items-center justify-center gap-1 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 px-2.5 h-[34px] rounded-lg text-xs font-bold shadow-2xs whitespace-nowrap shrink-0 cursor-pointer disabled:opacity-50"
-              >
-                <span className={`material-symbols-outlined text-[16px] text-slate-500 ${isScanningAllCoords ? 'animate-spin' : ''}`}>
-                  {isScanningAllCoords ? 'sync' : 'explore'}
-                </span>
-                <span>{isScanningAllCoords ? 'Đang quét GPS...' : 'Quét GPS dự án cũ'}</span>
-              </button>
-              <button
+            <button
                 type="button"
                 onClick={() => {
                   setNewProjName('');
@@ -1445,7 +1376,6 @@ export const ProjectManagementPage: React.FC = () => {
                 <span className="material-symbols-outlined text-[16px]">add</span>
                 <span>Tạo dự án mới</span>
               </button>
-            </>
           )}
         </div>
       </section>
@@ -3001,18 +2931,6 @@ export const ProjectManagementPage: React.FC = () => {
           <div className="flex justify-end gap-2 pt-2"><button type="button" onClick={() => { setIsNewProjectModalOpen(false); setPendingProjectTasks([]); }} className="px-4 py-2 border border-slate-200 rounded-lg font-semibold text-slate-600 hover:bg-slate-100">{TEXT.cancel}</button><button type="submit" disabled={loading}  className="px-5 py-2 bg-primary text-white rounded-lg font-bold hover:opacity-90 disabled:opacity-50">{TEXT.create}</button></div>
         </form>
       </Modal>
-
-      <ConfirmModal
-        isOpen={showConfirmScanModal}
-        onClose={() => setShowConfirmScanModal(false)}
-        onConfirm={handleAutoGeocodeAllProjects}
-        title="Quét tọa độ GPS dự án"
-        message={`Tìm thấy ${unlocatedProjectsCount} dự án có địa chỉ nhưng chưa có tọa độ GPS. Bạn có muốn hệ thống tự động tìm và cập nhật tọa độ cho các dự án này không?`}
-        confirmText="Bắt đầu quét"
-        cancelText="Hủy"
-        icon="explore"
-        isDestructive={false}
-      />
     </div>
   );
 };
