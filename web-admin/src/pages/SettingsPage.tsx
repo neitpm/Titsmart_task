@@ -170,7 +170,10 @@ export const SettingsPage: React.FC = () => {
 
   // Nếu không phải Quản trị viên công ty, không được xem tab Cấu hình công ty (general) & Phân quyền (roles)
   const isGeneralStaff = !isCompanyAdmin;
-  const [activeTab, setActiveTab] = useState<SettingsTab>(isCompanyAdmin ? 'general' : 'appearance');
+  const [activeTab, setActiveTab] = useState<SettingsTab>(() => {
+    const requestedTab = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('tab') : null;
+    return requestedTab === 'account' ? 'account' : (isCompanyAdmin ? 'general' : 'appearance');
+  });
   const [isConfirmLogoutOpen, setIsConfirmLogoutOpen] = useState(false);
 
   const handleLogout = async () => {

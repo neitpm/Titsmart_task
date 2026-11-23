@@ -582,7 +582,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
             {/* User Profile */}
             <button
               type="button"
-              onClick={() => navigate('/settings')}
+              onClick={() => navigate('/settings?tab=account')}
               title={!isExpanded ? (isSystemAdminUser ? "Cài đặt & Quản trị" : "Cài đặt & Tài khoản") : undefined}
               className="flex items-center rounded-lg transition-all overflow-hidden h-10 w-full px-1 gap-2 hover:bg-slate-100 cursor-pointer"
             >
