@@ -327,6 +327,7 @@ export const SettingsPage: React.FC = () => {
   const personalProjects = projects.filter((project: any) => (currentEngineer?.projectCodes || []).some(code => String(code).toLowerCase() === String(project.code || project.id).toLowerCase()));
   const [personalTab, setPersonalTab] = useState<'profile' | 'overview' | 'attendance' | 'leave' | 'contract' | 'projects' | 'payroll' | 'journal'>('overview');
   const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [isAccountActionMenuOpen, setIsAccountActionMenuOpen] = useState(false);
   const [personalAttendance, setPersonalAttendance] = useState<any[]>([]);
   const [personalLeaves, setPersonalLeaves] = useState<any[]>([]);
   const [personalPayroll, setPersonalPayroll] = useState<any[]>([]);
@@ -1912,12 +1913,16 @@ export const SettingsPage: React.FC = () => {
                     ))}
                   </div>
                   <div className="flex justify-end gap-2 pt-1">
-                    <select defaultValue="" onChange={(event) => { if (event.target.value === 'password') setIsChangePasswordOpen(true); if (event.target.value === 'logout') setIsConfirmLogoutOpen(true); if (event.target.value === 'edit') setIsEditingProfile(true); event.target.value = ''; }} className="min-w-52 rounded-md border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-800 shadow-2xs outline-none focus:border-primary focus:ring-1 focus:ring-primary">
-                      <option value="">Bảo mật tài khoản</option>
-                      <option value="edit">Chỉnh sửa thông tin</option>
-                      <option value="password">Đổi mật khẩu</option>
-                      <option value="logout">Đăng xuất</option>
-                    </select>
+                    <div className="relative min-w-52">
+                      <button type="button" onClick={() => setIsAccountActionMenuOpen(open => !open)} className="flex w-full items-center justify-between rounded-md border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-800 shadow-2xs hover:bg-slate-50">
+                        <span>Thao tác tài khoản</span><span className="material-symbols-outlined text-base text-slate-500">{isAccountActionMenuOpen ? 'expand_less' : 'expand_more'}</span>
+                      </button>
+                      {isAccountActionMenuOpen && <div className="absolute right-0 z-30 mt-1 w-full overflow-hidden rounded-md border border-slate-200 bg-white p-1 shadow-lg">
+                        <button type="button" onClick={() => { setIsEditingProfile(true); setIsAccountActionMenuOpen(false); }} className="block w-full rounded px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-100">Chỉnh sửa thông tin</button>
+                        <button type="button" onClick={() => { setIsChangePasswordOpen(true); setIsAccountActionMenuOpen(false); }} className="block w-full rounded px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-100">Đổi mật khẩu</button>
+                        <button type="button" onClick={() => { setIsConfirmLogoutOpen(true); setIsAccountActionMenuOpen(false); }} className="block w-full rounded px-3 py-2 text-left text-xs font-semibold text-red-600 hover:bg-red-50">Đăng xuất</button>
+                      </div>}
+                    </div>
                   </div>
 
                 </div>}
