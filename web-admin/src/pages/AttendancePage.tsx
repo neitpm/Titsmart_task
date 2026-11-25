@@ -9,6 +9,7 @@ import { Modal } from '../components/common/Modal';
 import { ConfirmModal } from '../components/common/ConfirmModal';
 import { CustomSelect } from '../components/common/CustomSelect';
 import { Toast } from '../components/common/Toast';
+import { TabOverview } from '../components/common/TabOverview';
 import * as XLSX from 'xlsx';
 import { exportToStyledExcel } from '../utils/excelExportUtils';
 import { exportMonthlyAttendanceTitsmart } from '../utils/exportMonthlyAttendance';
@@ -173,7 +174,7 @@ export const AttendancePage: React.FC = () => {
     );
   }, [user, isAdmin]);
 
-  const [mainTab, setMainTab] = useState<'attendance' | 'leave' | 'adjustment' | 'payroll'>('attendance');
+  const [mainTab, setMainTab] = useState<'overview' | 'attendance' | 'leave' | 'adjustment' | 'payroll'>('attendance');
   const [attendanceSubTab, setAttendanceSubTab] = useState<'timesheet' | 'logs'>('timesheet');
   const [highlightLeaveId, setHighlightLeaveId] = useState<string | null>(null);
   const [isHighlightActive, setIsHighlightActive] = useState<boolean>(false);
@@ -423,6 +424,8 @@ export const AttendancePage: React.FC = () => {
     } else if (tabParam === 'logs' || tabParam === 'nhat-ky') {
       setMainTab('attendance');
       setAttendanceSubTab('logs');
+    } else if (tabParam === 'overview') {
+      setMainTab('overview');
     } else if (tabParam === 'attendance') {
       setMainTab('attendance');
     }
@@ -1556,7 +1559,7 @@ export const AttendancePage: React.FC = () => {
               arrow_forward_ios
             </span>
             <h1 className="text-xs sm:text-sm md:text-base font-bold text-slate-700 shrink-0">
-              {mainTab === 'attendance' ? 'Chấm công' : mainTab === 'leave' ? 'Xin nghỉ' : mainTab === 'payroll' ? 'Bảng lương' : 'Bù công'}
+              {mainTab === 'overview' ? 'Tổng quan' : mainTab === 'attendance' ? 'Chấm công' : mainTab === 'leave' ? 'Xin nghỉ' : mainTab === 'payroll' ? 'Bảng lương' : 'Bù công'}
             </h1>
           </div>
 
@@ -1608,7 +1611,80 @@ export const AttendancePage: React.FC = () => {
             </div>
           )}
 
-          {mainTab === 'attendance' ? (
+          {mainTab === 'overview' ? (
+        <div className="flex-1 overflow-y-auto bg-slate-50">
+          <TabOverview
+            kpis={[
+              {
+                id: 'attendance',
+                label: 'Chấm công',
+                value: logs.length,
+                subValue: 'lượt ghi nhận',
+                onClick: () => setMainTab('attendance'),
+                tone: 'primary',
+              },
+              {
+                id: 'leave_pending',
+                label: 'Đơn nghỉ chờ duyệt',
+                value: leaves.filter((l) => String(l.status || '').toLowerCase() === 'pending').length,
+                onClick: () => setMainTab('leave'),
+                tone: 'warning',
+              },
+              {
+                id: 'leave_approved',
+                label: 'Đơn nghỉ đã duyệt',
+                value: leaves.filter((l) => String(l.status || '').toLowerCase() === 'approved').length,
+                onClick: () => setMainTab('leave'),
+                tone: 'success',
+              },
+              {
+                id: 'adjustment',
+                label: 'Chấm công bù',
+                value: 'Quản lý',
+                onClick: () => setMainTab('adjustment'),
+                tone: 'info',
+              },
+            ]}
+          />
+          <div className="p-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+            <button
+              type="button"
+              onClick={() => setMainTab('attendance')}
+              className="text-left p-3 bg-white border border-slate-200 rounded-md hover:border-primary transition-colors cursor-pointer"
+            >
+              <div className="text-xs font-bold text-slate-900">Bảng chấm công</div>
+              <div className="text-[11px] text-slate-500 mt-0.5">Theo dõi vào/ra, đi muộn và tổng công tháng</div>
+            </button>
+            <button
+              type="button"
+              onClick={() => setMainTab('leave')}
+              className="text-left p-3 bg-white border border-slate-200 rounded-md hover:border-primary transition-colors cursor-pointer"
+            >
+              <div className="text-xs font-bold text-slate-900">Đơn xin nghỉ phép</div>
+              <div className="text-[11px] text-slate-500 mt-0.5">Tạo đơn, duyệt phép và xem số ngày phép còn lại</div>
+            </button>
+            <button
+              type="button"
+              onClick={() => setMainTab('adjustment')}
+              className="text-left p-3 bg-white border border-slate-200 rounded-md hover:border-primary transition-colors cursor-pointer"
+            >
+              <div className="text-xs font-bold text-slate-900">Chấm công bù</div>
+              <div className="text-[11px] text-slate-500 mt-0.5">Gửi và xét duyệt yêu cầu chấm công bù</div>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setMainTab('attendance');
+                setAttendanceSubTab('timesheet');
+              }}
+              className="text-left p-3 bg-white border border-slate-200 rounded-md hover:border-primary transition-colors cursor-pointer"
+            >
+              <div className="text-xs font-bold text-slate-900">Bảng lương</div>
+              <div className="text-[11px] text-slate-500 mt-0.5">Xem bảng tính lương và chi tiết thu nhập</div>
+            </button>
+          </div>
+        </div>
+      ) : mainTab === 'attendance' ? (
             attendanceSubTab === 'timesheet' ? (
               <div className="flex items-center gap-2">
                 {canViewAll && (
@@ -2000,7 +2076,80 @@ export const AttendancePage: React.FC = () => {
         </div>
       </header>
 
-      {mainTab === 'attendance' ? (
+      {mainTab === 'overview' ? (
+        <div className="flex-1 overflow-y-auto bg-slate-50">
+          <TabOverview
+            kpis={[
+              {
+                id: 'attendance',
+                label: 'Chấm công',
+                value: logs.length,
+                subValue: 'lượt ghi nhận',
+                onClick: () => setMainTab('attendance'),
+                tone: 'primary',
+              },
+              {
+                id: 'leave_pending',
+                label: 'Đơn nghỉ chờ duyệt',
+                value: leaves.filter((l) => String(l.status || '').toLowerCase() === 'pending').length,
+                onClick: () => setMainTab('leave'),
+                tone: 'warning',
+              },
+              {
+                id: 'leave_approved',
+                label: 'Đơn nghỉ đã duyệt',
+                value: leaves.filter((l) => String(l.status || '').toLowerCase() === 'approved').length,
+                onClick: () => setMainTab('leave'),
+                tone: 'success',
+              },
+              {
+                id: 'adjustment',
+                label: 'Chấm công bù',
+                value: 'Quản lý',
+                onClick: () => setMainTab('adjustment'),
+                tone: 'info',
+              },
+            ]}
+          />
+          <div className="p-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+            <button
+              type="button"
+              onClick={() => setMainTab('attendance')}
+              className="text-left p-3 bg-white border border-slate-200 rounded-md hover:border-primary transition-colors cursor-pointer"
+            >
+              <div className="text-xs font-bold text-slate-900">Bảng chấm công</div>
+              <div className="text-[11px] text-slate-500 mt-0.5">Theo dõi vào/ra, đi muộn và tổng công tháng</div>
+            </button>
+            <button
+              type="button"
+              onClick={() => setMainTab('leave')}
+              className="text-left p-3 bg-white border border-slate-200 rounded-md hover:border-primary transition-colors cursor-pointer"
+            >
+              <div className="text-xs font-bold text-slate-900">Đơn xin nghỉ phép</div>
+              <div className="text-[11px] text-slate-500 mt-0.5">Tạo đơn, duyệt phép và xem số ngày phép còn lại</div>
+            </button>
+            <button
+              type="button"
+              onClick={() => setMainTab('adjustment')}
+              className="text-left p-3 bg-white border border-slate-200 rounded-md hover:border-primary transition-colors cursor-pointer"
+            >
+              <div className="text-xs font-bold text-slate-900">Chấm công bù</div>
+              <div className="text-[11px] text-slate-500 mt-0.5">Gửi và xét duyệt yêu cầu chấm công bù</div>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setMainTab('attendance');
+                setAttendanceSubTab('timesheet');
+              }}
+              className="text-left p-3 bg-white border border-slate-200 rounded-md hover:border-primary transition-colors cursor-pointer"
+            >
+              <div className="text-xs font-bold text-slate-900">Bảng lương</div>
+              <div className="text-[11px] text-slate-500 mt-0.5">Xem bảng tính lương và chi tiết thu nhập</div>
+            </button>
+          </div>
+        </div>
+      ) : mainTab === 'attendance' ? (
         attendanceSubTab === 'timesheet' ? (
           /* BẢNG CHẤM CÔNG & LƯƠNG TRỰC TIẾP TRONG TAB CHẤM CÔNG */
           <div className="flex-1 w-full max-w-full overflow-y-auto bg-slate-50 flex flex-col">

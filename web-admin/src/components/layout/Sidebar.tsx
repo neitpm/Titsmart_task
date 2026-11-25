@@ -420,7 +420,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
       },
       { 
         label: 'Công và lương', 
-        path: '/attendance', 
+        path: '/attendance?tab=overview', 
         icon: 'schedule', 
         req: 'VIEW_TASKS',
         children: attendanceSubItems
