@@ -57,8 +57,6 @@ export const TabOverview: React.FC<TabOverviewProps> = ({
   emptyActionText = 'Không có mục nào cần xử lý ngay',
   className = '',
 }) => {
-  const [showChart, setShowChart] = useState(true);
-
   if (error) {
     return (
       <div className={`border-b border-slate-200 bg-rose-50/50 px-3 py-2 flex items-center justify-between gap-2 text-xs ${className}`}>
@@ -113,35 +111,23 @@ export const TabOverview: React.FC<TabOverviewProps> = ({
         })}
       </div>
 
-      {/* Thanh bật/tắt biểu đồ nếu tab có cấu hình biểu đồ */}
+      {/* Biểu đồ mặc định luôn hiển thị trực tiếp nếu tab có cấu hình biểu đồ */}
       {chartContent && (
-        <div className="border-t border-slate-100 px-3 py-1.5 bg-slate-50/50">
-          <div className="flex items-center justify-between">
+        <div className="border-t border-slate-100 px-3 py-2 bg-slate-50/50">
+          <div className="flex items-center justify-between mb-1.5">
             <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
               {chartTitle || 'Biểu đồ phân tích'}
             </span>
-            <button
-              type="button"
-              onClick={() => setShowChart((prev) => !prev)}
-              className="text-xs font-semibold text-primary hover:underline cursor-pointer flex items-center gap-1"
-            >
-              <span className="material-symbols-outlined text-[15px]">
-                {showChart ? 'expand_less' : 'bar_chart'}
-              </span>
-              {showChart ? 'Thu gọn biểu đồ' : 'Xem biểu đồ'}
-            </button>
           </div>
-          {showChart && (
-            <div className="mt-2 pt-2 border-t border-slate-200/70">
-              {hasChartData ? (
-                chartContent
-              ) : (
-                <div className="py-6 text-center text-xs text-slate-400">
-                  {emptyChartText}
-                </div>
-              )}
-            </div>
-          )}
+          <div className="pt-1 border-t border-slate-200/70">
+            {hasChartData ? (
+              chartContent
+            ) : (
+              <div className="py-6 text-center text-xs text-slate-400">
+                {emptyChartText}
+              </div>
+            )}
+          </div>
         </div>
       )}
       {/* Danh sách cảnh báo & việc cần xử lý ngay */}

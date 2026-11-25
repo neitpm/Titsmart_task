@@ -101,7 +101,7 @@ export const ProjectWorkPlanTab: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [assigneeFilter, setAssigneeFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState<FilterStatusType>('all');
-  const [showChart, setShowChart] = useState(false);
+  const [showChart, setShowChart] = useState(true);
 
   // Modal Lập kế hoạch mới
   const [isModalOpen, setIsModalOpen] = useState(false);
