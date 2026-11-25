@@ -16,6 +16,8 @@ import { isUserTaskAssignee, isUserTaskAssigner, isUserTaskFollower, getTaskFoll
 import { EmployeePeriodToolbar } from '../components/tasks/EmployeePeriodToolbar';
 import { TimePeriodType, getDateRangeForPeriod, isTaskInPeriod, isTaskAssignedToPerson, getTaskTimeBounds } from '../utils/taskPeriodFilter';
 import { useUIStore } from '../services/uiStore';
+import { TabOverview } from '../components/common/TabOverview';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from 'recharts';
 
 export const TaskAssignmentPage: React.FC = () => {
   const navigate = useNavigate();
@@ -1187,6 +1189,90 @@ export const TaskAssignmentPage: React.FC = () => {
       {activeTab === 'direct' ? (
         /* GIAO DIỆN GIAO VIỆC TRỰC TIẾP / VIỆC PHÁT SINH (EDGE-TO-EDGE & TỐI ƯU MOBILE) */
         <div className="flex-1 overflow-hidden flex flex-col bg-white">
+          <TabOverview
+            kpis={[
+              {
+                id: 'all',
+                label: 'Tổng việc',
+                value: directKpiStats.total,
+                active: directFilterStatus === 'all',
+                onClick: () => setDirectFilterStatus('all'),
+                tone: 'default',
+              },
+              {
+                id: 'pending',
+                label: 'Chờ nhận',
+                value: directKpiStats.pending,
+                active: directFilterStatus === 'pending',
+                onClick: () => setDirectFilterStatus('pending'),
+                tone: 'info',
+              },
+              {
+                id: 'in_progress',
+                label: 'Đang làm',
+                value: directKpiStats.inProgress,
+                active: directFilterStatus === 'in_progress',
+                onClick: () => setDirectFilterStatus('in_progress'),
+                tone: 'primary',
+              },
+              {
+                id: 'overdue',
+                label: 'Quá hạn',
+                value: directKpiStats.overdue,
+                active: directFilterStatus === 'overdue',
+                onClick: () => setDirectFilterStatus('overdue'),
+                tone: 'danger',
+              },
+              {
+                id: 'completed',
+                label: 'Hoàn thành',
+                value: directKpiStats.completed,
+                active: directFilterStatus === 'completed',
+                onClick: () => setDirectFilterStatus('completed'),
+                tone: 'success',
+              },
+            ]}
+            chartTitle="Phân bố công việc theo trạng thái (Bấm vào cột để lọc)"
+            hasChartData={directKpiStats.total > 0}
+            chartContent={
+              <div className="h-44 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={[
+                      { key: 'pending', name: 'Chờ nhận', count: directKpiStats.pending, fill: '#0284c7' },
+                      { key: 'in_progress', name: 'Đang làm', count: directKpiStats.inProgress, fill: '#1d4ed8' },
+                      { key: 'overdue', name: 'Quá hạn', count: directKpiStats.overdue, fill: '#e11d48' },
+                      { key: 'completed', name: 'Hoàn thành', count: directKpiStats.completed, fill: '#059669' },
+                    ]}
+                    margin={{ top: 8, right: 16, left: 0, bottom: 4 }}
+                  >
+                    <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#475569' }} axisLine={false} tickLine={false} />
+                    <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} width={32} />
+                    <Tooltip cursor={{ fill: '#f1f5f9' }} contentStyle={{ fontSize: '12px', borderRadius: '6px' }} />
+                    <Bar
+                      dataKey="count"
+                      name="Số việc"
+                      radius={[4, 4, 0, 0]}
+                      barSize={38}
+                      className="cursor-pointer"
+                      onClick={(entry: any) => {
+                        if (entry?.key) setDirectFilterStatus(entry.key);
+                      }}
+                    >
+                      {[
+                        { key: 'pending', fill: '#0284c7' },
+                        { key: 'in_progress', fill: '#1d4ed8' },
+                        { key: 'overdue', fill: '#e11d48' },
+                        { key: 'completed', fill: '#059669' },
+                      ].map((item) => (
+                        <Cell key={item.key} fill={item.fill} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            }
+          />
           
           {/* Thanh Filter Nhân sự & Thời gian (Ngày / Tháng / Quý) */}
           <div className="border-b border-slate-200/80 bg-slate-50/70 px-3 sm:px-4 py-1.5 flex flex-wrap items-center justify-between gap-2 shrink-0">
