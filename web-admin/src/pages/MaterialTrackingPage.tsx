@@ -1370,9 +1370,9 @@ export const MaterialTrackingPage: React.FC = () => {
         />
       )}
             {!projectId && (
-        <section className="sticky top-0 z-30 border-b border-slate-200 bg-white pl-3 pr-12 sm:pr-14 md:pr-16 py-1 md:py-0 md:h-12 shadow-sm">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between h-full">
-            <div className="flex items-center gap-1.5 h-8 md:h-auto mb-1 md:mb-0 shrink-0">
+        <>
+          <header className="sticky top-0 z-30 border-b border-slate-200 bg-white px-3 py-2.5 flex items-center justify-between">
+            <div className="flex items-center gap-1.5 shrink-0">
               <span className="page-title text-sm md:text-base font-extrabold text-slate-900 border-l-4 border-primary pl-2 shrink-0">
                 Tổng kho
               </span>
@@ -1383,8 +1383,9 @@ export const MaterialTrackingPage: React.FC = () => {
                 {activeTab === 'OVERVIEW' ? 'Tổng quan' : activeTab === 'IMPORT' ? 'Nhập kho' : activeTab === 'EXPORT' ? 'Xuất kho' : 'Tồn kho'}
               </h2>
             </div>
-
-            <div className="flex items-center gap-2 justify-between md:justify-end w-full md:w-auto pt-0.5 md:pt-0">
+          </header>
+          <section className="border-b border-slate-200 bg-white px-3 py-2 flex flex-wrap items-center justify-between gap-2 relative z-20 shrink-0">
+            <div className="flex items-center gap-2 justify-between md:justify-end w-full">
               {/* Mobile & Desktop Search Input */}
               <div className="relative flex-1 md:w-60 min-w-0">
                 <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs">search</span>
@@ -1552,8 +1553,8 @@ export const MaterialTrackingPage: React.FC = () => {
                 )}
               </div>
             </div>
-          </div>
-        </section>
+          </section>
+        </>
       )}
 
       {projectId && portalNode && createPortal(
