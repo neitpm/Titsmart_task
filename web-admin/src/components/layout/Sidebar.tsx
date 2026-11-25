@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useRealtimeStore } from '../../services/realtimeStore';
 import { useAuthStore, hasPermission, isSystemAdmin, isDirector } from '../../services/authStore';
@@ -14,6 +14,7 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, toggleSidebar: toggleSidebarProp }) => {
   const projects = useRealtimeStore((state) => state.projects);
   const notifications = useRealtimeStore((state) => state.notifications);
+  const engineers = useRealtimeStore((state) => state.engineers || []);
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
   const { 
@@ -46,6 +47,25 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
   const isAdmin = isDirectorUser || isSystemAdminUser || user?.role === 'pm' || hasPermission(user, 'ASSIGN_TASKS');
   const defaultTaskPath = isAdmin ? '/task-assignment?tab=overview' : '/my-tasks';
   const sidebarRef = useRef<HTMLElement>(null);
+
+  // Avatar người dùng hiện tại (nếu có cập nhật thì lấy, chưa cập nhật thì fallback sang icon mặc định)
+  const currentEngineer = useMemo(() => {
+    if (!user) return null;
+    return engineers.find(e => 
+      e.id === user.id ||
+      (user.username && e.username === user.username) ||
+      (user.name && e.name?.trim().toLowerCase() === user.name.trim().toLowerCase()) ||
+      (user.email && e.email === user.email) ||
+      (user.phone && e.phone === user.phone)
+    );
+  }, [engineers, user]);
+
+  const userAvatarUrl = (user as any)?.avatar || (user as any)?.avatarUrl || (currentEngineer as any)?.avatar || (currentEngineer as any)?.avatarUrl || null;
+  const [avatarLoadFailed, setAvatarLoadFailed] = useState(false);
+
+  useEffect(() => {
+    setAvatarLoadFailed(false);
+  }, [userAvatarUrl]);
 
   const activeCompanyName = companyName?.trim() || 'TITSMART';
   const activeCompanySlogan = companySlogan?.trim() || 'Project Manager';
@@ -593,8 +613,17 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
               title={!isExpanded ? (isSystemAdminUser ? "Cài đặt & Quản trị" : "Cài đặt & Tài khoản") : undefined}
               className="flex items-center rounded-lg transition-all overflow-hidden h-10 w-full px-1 gap-2 hover:bg-slate-100 cursor-pointer"
             >
-              <div className="w-8 h-8 flex-shrink-0 flex items-center justify-center text-slate-500">
-                <span className="material-symbols-outlined text-[20px]">person</span>
+              <div className="w-8 h-8 flex-shrink-0 flex items-center justify-center text-slate-500 rounded-full overflow-hidden border border-slate-200 bg-slate-50">
+                {userAvatarUrl && !avatarLoadFailed ? (
+                  <img 
+                    src={userAvatarUrl} 
+                    alt={user?.name || "Avatar"} 
+                    className="w-full h-full object-cover" 
+                    onError={() => setAvatarLoadFailed(true)} 
+                  />
+                ) : (
+                  <span className="material-symbols-outlined text-[20px] text-slate-500">person</span>
+                )}
               </div>
               <div className={`text-left leading-tight flex-1 min-w-0 transition-opacity duration-200 ${isExpanded ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
                 <span className="block font-bold text-xs text-slate-800 truncate" title={user?.name}>
@@ -717,8 +746,17 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
             {user && (
               <div className="mx-4 mt-2 p-3 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 overflow-hidden min-w-0 flex-1">
-                  <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs shrink-0">
-                    {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
+                  <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center shrink-0 overflow-hidden border border-slate-200">
+                    {userAvatarUrl && !avatarLoadFailed ? (
+                      <img 
+                        src={userAvatarUrl} 
+                        alt={user.name || "Avatar"} 
+                        className="w-full h-full object-cover" 
+                        onError={() => setAvatarLoadFailed(true)} 
+                      />
+                    ) : (
+                      <span className="material-symbols-outlined text-[20px] text-slate-500">person</span>
+                    )}
                   </div>
                   <div className="truncate">
                     <div className="text-xs font-bold text-slate-800 truncate">{user.name || user.username}</div>
