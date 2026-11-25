@@ -21,6 +21,7 @@ export const ProjectDetailPage: React.FC = () => {
       if (tab === 'DOCS') return 'Chứng từ';
       if (tab === 'FINANCE') return 'Thanh toán';
       if (tab === 'EXPENSE') return 'Chi phí';
+      if (tab === 'PAYMENT_REQUEST') return 'Yêu cầu thanh toán';
       return 'Đặt hàng';
     }
     return '';

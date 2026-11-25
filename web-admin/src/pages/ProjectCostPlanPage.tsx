@@ -1492,7 +1492,7 @@ export const ProjectCostPlanPage: React.FC = () => {
   };
 
   const { projectId } = useParams();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const initialTab = searchParams.get('tab') || 'TECH';
   const initialSpender = searchParams.get('spender') || 'all';
 
@@ -2845,7 +2845,65 @@ export const ProjectCostPlanPage: React.FC = () => {
       )}
 
       {/* TAB CONTENTS */}
-      <div className="bg-white border-x border-b border-slate-200 shadow-xs overflow-hidden flex-1">
+      <div className="bg-white border-x border-b border-slate-200 shadow-xs overflow-hidden flex-1 flex flex-col">
+        {/* SUB-TAB NAVIGATION BAR (Đặt hàng | Chứng từ | Yêu cầu thanh toán | Theo dõi thanh toán | Chi phí) */}
+        <div className="bg-slate-50 border-b border-slate-200 px-3 md:px-5 py-1.5 flex items-center justify-between gap-2 overflow-x-auto custom-scrollbar shrink-0 select-none">
+          <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+            {[
+              { id: 'TECH', label: 'Đặt hàng', icon: 'list_alt' },
+              { id: 'DOCS', label: 'Chứng từ', icon: 'description' },
+              { id: 'PAYMENT_REQUEST', label: 'Yêu cầu thanh toán', icon: 'payments', highlight: true },
+              { id: 'FINANCE', label: 'Theo dõi thanh toán', icon: 'query_stats' },
+              { id: 'EXPENSE', label: 'Chi phí & Cấp quỹ', icon: 'receipt_long' },
+            ].map(tab => {
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => {
+                    setActiveTab(tab.id);
+                    setSearchParams(prev => {
+                      const next = new URLSearchParams(prev);
+                      next.set('tab', tab.id);
+                      return next;
+                    });
+                  }}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                    isActive
+                      ? 'bg-white text-primary shadow-xs border border-slate-200/90'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 border border-transparent'
+                  }`}
+                >
+                  <span className={`material-symbols-outlined text-[16px] ${isActive ? 'text-primary' : 'text-slate-400'}`}>
+                    {tab.icon}
+                  </span>
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {activeTab !== 'PAYMENT_REQUEST' && (
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('PAYMENT_REQUEST');
+                setSearchParams(prev => {
+                  const next = new URLSearchParams(prev);
+                  next.set('tab', 'PAYMENT_REQUEST');
+                  next.set('create', 'true');
+                  return next;
+                });
+              }}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100 text-xs font-bold transition-colors shrink-0 whitespace-nowrap cursor-pointer"
+              title="Tạo yêu cầu thanh toán mới"
+            >
+              <span className="material-symbols-outlined text-[15px]">add</span>
+              <span>Tạo YC thanh toán</span>
+            </button>
+          )}
+        </div>
 
         {/* MATERIAL PLAN TAB */}
         {(activeTab === 'TECH' || activeTab === 'DOCS' || activeTab === 'FINANCE') && (
@@ -3127,6 +3185,24 @@ export const ProjectCostPlanPage: React.FC = () => {
                       >
                         <span className="material-symbols-outlined text-[18px] text-blue-600">account_balance_wallet</span>
                         <span>Tạo yêu cầu cấp quỹ</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowExpenseActionMenu(false);
+                          setActiveTab('PAYMENT_REQUEST');
+                          setSearchParams(prev => {
+                            const next = new URLSearchParams(prev);
+                            next.set('tab', 'PAYMENT_REQUEST');
+                            next.set('create', 'true');
+                            return next;
+                          });
+                        }}
+                        className="w-full flex items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-bold text-indigo-700 hover:bg-indigo-50 cursor-pointer transition-colors border-t border-slate-100 mt-1 pt-1.5"
+                      >
+                        <span className="material-symbols-outlined text-[18px] text-indigo-600">payments</span>
+                        <span>Tạo yêu cầu thanh toán</span>
                       </button>
                     </div>
                   )}
@@ -3415,6 +3491,14 @@ export const ProjectCostPlanPage: React.FC = () => {
             engineers={engineers}
             selectedProjectCode={selectedProject}
             onSelectProjectCode={(code) => setSelectedProject(code)}
+            autoOpenCreateModal={searchParams.get('create') === 'true'}
+            onCloseCreateModal={() => {
+              setSearchParams(prev => {
+                const next = new URLSearchParams(prev);
+                next.delete('create');
+                return next;
+              });
+            }}
             onCreateExpenseFromPayment={(payment) => {
               // Gợi ý / tự động mở modal tạo chi phí thực tế từ yêu cầu đã thanh toán
               setNewExpenseData({

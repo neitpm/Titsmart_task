@@ -16,6 +16,8 @@ interface PaymentRequestTabProps {
   onSelectProjectCode?: (code: string) => void;
   onRequestCreatedOrUpdated?: () => void;
   onCreateExpenseFromPayment?: (payment: PaymentRequest) => void;
+  autoOpenCreateModal?: boolean;
+  onCloseCreateModal?: () => void;
 }
 
 const STATUS_LABELS: Record<PaymentRequestStatus, { label: string; tone: string; badgeClass: string }> = {
@@ -43,7 +45,9 @@ export const PaymentRequestTab: React.FC<PaymentRequestTabProps> = ({
   selectedProjectCode = '',
   onSelectProjectCode,
   onRequestCreatedOrUpdated,
-  onCreateExpenseFromPayment
+  onCreateExpenseFromPayment,
+  autoOpenCreateModal = false,
+  onCloseCreateModal
 }) => {
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'info' | 'warning' } | null>(null);
   const triggerToast = (message: string, type: 'success' | 'info' | 'warning' | 'error' = 'success') => {
@@ -63,7 +67,13 @@ export const PaymentRequestTab: React.FC<PaymentRequestTabProps> = ({
   const [filterDateTo, setFilterDateTo] = useState('');
 
   // Modals
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(autoOpenCreateModal);
+
+  useEffect(() => {
+    if (autoOpenCreateModal) {
+      setIsCreateModalOpen(true);
+    }
+  }, [autoOpenCreateModal]);
   const [detailModalRequest, setDetailModalRequest] = useState<PaymentRequest | null>(null);
   const [actionReasonModal, setActionReasonModal] = useState<{
     isOpen: boolean;
@@ -837,7 +847,10 @@ export const PaymentRequestTab: React.FC<PaymentRequestTabProps> = ({
       {/* 4. MODAL TẠO YÊU CẦU THANH TOÁN */}
       <Modal
         isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
+        onClose={() => {
+          setIsCreateModalOpen(false);
+          if (onCloseCreateModal) onCloseCreateModal();
+        }}
         title="Tạo Yêu cầu Thanh toán"
         icon="payments"
         size="2xl"
