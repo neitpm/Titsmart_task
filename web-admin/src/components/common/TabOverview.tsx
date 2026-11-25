@@ -57,7 +57,7 @@ export const TabOverview: React.FC<TabOverviewProps> = ({
   emptyActionText = 'Không có mục nào cần xử lý ngay',
   className = '',
 }) => {
-  const [showChart, setShowChart] = useState(false);
+  const [showChart, setShowChart] = useState(true);
 
   if (error) {
     return (
