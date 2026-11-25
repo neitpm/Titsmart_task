@@ -1562,42 +1562,27 @@ export const AttendancePage: React.FC = () => {
               {mainTab === 'overview' ? 'Tổng quan' : mainTab === 'attendance' ? 'Chấm công' : mainTab === 'leave' ? 'Xin nghỉ' : mainTab === 'payroll' ? 'Bảng lương' : 'Bù công'}
             </h1>
           </div>
-
-          {/* Sub-view switcher khi ở tab Chấm công: Bảng chấm công vs Nhật ký vào/ra */}
-          {mainTab === 'attendance' && (
-            <div className="hidden sm:flex items-center gap-0.5 bg-blue-50/80 p-0.5 rounded-lg border border-blue-200/80 text-xs ml-1 sm:ml-2">
-              <button
-                type="button"
-                onClick={() => setAttendanceSubTab('timesheet')}
-                className={`flex items-center gap-1 px-2.5 py-1 rounded-md font-bold transition-all cursor-pointer ${
-                  attendanceSubTab === 'timesheet'
-                    ? 'bg-primary text-white shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-                title="Bảng tổng hợp chấm công tháng & Bảng lương"
-              >
-                <span className="material-symbols-outlined text-[14px]">calendar_month</span>
-                <span>Bảng chấm công</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setAttendanceSubTab('logs')}
-                className={`flex items-center gap-1 px-2.5 py-1 rounded-md font-bold transition-all cursor-pointer ${
-                  attendanceSubTab === 'logs'
-                    ? 'bg-primary text-white shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-                title="Nhật ký chi tiết các lượt Check-in/out GPS & Ảnh"
-              >
-                <span className="material-symbols-outlined text-[14px]">history</span>
-                <span>Nhật ký vào/ra</span>
-              </button>
-            </div>
-          )}
         </div>
+      </header>
 
-        {/* Desktop-only Right controls (My/All switcher + Action Button) pushed to far right */}
-        <div className="hidden md:flex items-center gap-1.5 lg:gap-2 shrink-0">
+      {mainTab !== 'overview' && (
+        <section className="border-b border-slate-200 bg-white px-3 py-1.5 flex flex-wrap items-center justify-between gap-2 shrink-0">
+          <div className="flex items-center gap-2">
+            {mainTab === 'attendance' && (
+              <CustomSelect
+                value={attendanceSubTab}
+                onChange={(e) => setAttendanceSubTab(e.target.value as 'timesheet' | 'logs')}
+                className="h-[34px] min-w-[165px] rounded-md border border-slate-200 bg-white px-2.5 text-xs font-bold text-slate-700 shadow-2xs outline-none focus:border-primary"
+                title="Chọn chế độ xem chấm công"
+              >
+                <option value="timesheet">Bảng chấm công</option>
+                <option value="logs">Nhật ký vào/ra</option>
+              </CustomSelect>
+            )}
+          </div>
+
+          {/* Desktop-only Right controls (My/All switcher + Action Button) pushed to far right */}
+          <div className="flex items-center gap-1.5 lg:gap-2 shrink-0 ml-auto">
           {canViewAll && (mainTab !== 'attendance' || attendanceSubTab === 'logs') && (
             <div className="inline-flex items-center gap-0.5 bg-slate-100 rounded-lg p-0.5 border border-slate-200 text-xs shrink-0">
               <button
@@ -2001,7 +1986,8 @@ export const AttendancePage: React.FC = () => {
             </div>
           ) : null}
         </div>
-      </header>
+      </section>
+      )}
 
       {mainTab === 'overview' ? (
         <div className="flex-1 overflow-y-auto bg-slate-50">
