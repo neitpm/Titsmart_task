@@ -126,6 +126,27 @@ const getDiffDays = (targetYMD: string, baseYMD: string): number => {
   return Math.round((target - base) / (1000 * 60 * 60 * 24));
 };
 
+const isTaskSectionHeader = (node: any) => {
+  if (node?.isSectionHeader) return true;
+  if (String(node?.notes || '').toLowerCase().includes('[section]')) return true;
+  const vol = Number(node?.volume || 0);
+  const unitVal = String(node?.unit || '').trim();
+  const name = String(node?.name || '').trim();
+  const stt = String(node?.stt || '').trim();
+  const romanRegex = /^(I|II|III|IV|V|VI|VII|VIII|IX|X|XI|XII|XIII|XIV|XV|XVI|XVII|XVIII|XIX|XX)$/i;
+
+  if (romanRegex.test(stt) || /^[A-Z]{1,2}$/i.test(stt)) return true;
+  if (name.endsWith(':') && (vol === 0 || !vol) && (unitVal === '' || unitVal === '-')) return true;
+
+  const hasNoVolumeAndUnit = (vol === 0 || !vol) && (unitVal === '' || unitVal === '-');
+  if (hasNoVolumeAndUnit) {
+    if (!stt.includes('.')) return true;
+    if (/^\d+\.\d+$/.test(stt)) return true;
+    if (name === name.toUpperCase() && /[A-ZÀ-Ỹ]/.test(name)) return true;
+  }
+  return false;
+};
+
 export const WorkPlanPage: React.FC = () => {
   const navigate = useNavigate();
   const tasks = useRealtimeStore((state) => state.tasks);
@@ -354,9 +375,9 @@ export const WorkPlanPage: React.FC = () => {
     }
   };
 
-  // Map and analyze tasks
+  // Map and analyze tasks (Loại trừ toàn bộ đầu mục / tiêu đề nhóm)
   const analyzedTasks = useMemo(() => {
-    const list = tasks.filter((t) => !t.isSectionHeader && t.name && t.name.trim());
+    const list = tasks.filter((t) => !isTaskSectionHeader(t) && t.name && t.name.trim());
     const totalAlertMin = getAlertConfigTotalMinutes(alertConfig);
     const now = new Date();
 

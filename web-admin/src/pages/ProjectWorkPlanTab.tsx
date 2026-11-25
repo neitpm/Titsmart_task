@@ -40,6 +40,27 @@ const formatDateVN = (dateStr?: string): string => {
   return dateStr;
 };
 
+const isTaskSectionHeader = (node: any) => {
+  if (node?.isSectionHeader) return true;
+  if (String(node?.notes || '').toLowerCase().includes('[section]')) return true;
+  const vol = Number(node?.volume || 0);
+  const unitVal = String(node?.unit || '').trim();
+  const name = String(node?.name || '').trim();
+  const stt = String(node?.stt || '').trim();
+  const romanRegex = /^(I|II|III|IV|V|VI|VII|VIII|IX|X|XI|XII|XIII|XIV|XV|XVI|XVII|XVIII|XIX|XX)$/i;
+
+  if (romanRegex.test(stt) || /^[A-Z]{1,2}$/i.test(stt)) return true;
+  if (name.endsWith(':') && (vol === 0 || !vol) && (unitVal === '' || unitVal === '-')) return true;
+
+  const hasNoVolumeAndUnit = (vol === 0 || !vol) && (unitVal === '' || unitVal === '-');
+  if (hasNoVolumeAndUnit) {
+    if (!stt.includes('.')) return true;
+    if (/^\d+\.\d+$/.test(stt)) return true;
+    if (name === name.toUpperCase() && /[A-ZÀ-Ỹ]/.test(name)) return true;
+  }
+  return false;
+};
+
 export const ProjectWorkPlanTab: React.FC = () => {
   const { projectId } = useParams();
   const projects = useRealtimeStore((state) => state.projects);
@@ -104,14 +125,16 @@ export const ProjectWorkPlanTab: React.FC = () => {
     setToast({ show: true, message, type });
   };
 
-  // Tất cả công việc thuộc riêng dự án đang mở
+  // Tất cả công việc thuộc riêng dự án đang mở (Loại trừ toàn bộ đầu mục / tiêu đề nhóm)
   const projectTasks = useMemo(() => {
     if (!projectCode) return [];
     const pCodeNorm = String(projectCode).trim().toLowerCase();
     return tasks.filter((t) => {
+      if (isTaskSectionHeader(t)) return false;
       const tCode = String(t.projectCode || '').trim().toLowerCase();
       const tId = String((t as any).projectId || '').trim().toLowerCase();
-      return tCode === pCodeNorm || tId === pCodeNorm;
+      const isBelong = tCode === pCodeNorm || tId === pCodeNorm;
+      return isBelong && Boolean(t.name && t.name.trim());
     });
   }, [tasks, projectCode]);
 
