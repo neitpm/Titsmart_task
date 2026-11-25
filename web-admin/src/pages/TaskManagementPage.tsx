@@ -560,8 +560,8 @@ export const TaskManagementPage: React.FC = () => {
   const handleUpdateTaskSync = (id: string, updates: Partial<Task>) => {
     updateTask(id, updates);
 
-    // Đồng bộ nếu có thay đổi STT hoặc Tên công việc/đầu mục
-    if (updates.name !== undefined || updates.stt !== undefined) {
+    // Đồng bộ nếu có thay đổi STT, Tên công việc/đầu mục hoặc Đơn vị tính
+    if (updates.name !== undefined || updates.stt !== undefined || updates.unit !== undefined) {
       const existingTask = tasks.find(t => t.id === id);
       if (existingTask) {
         const norm = (s?: string) => String(s || '').trim().toLowerCase().replace(/\s+/g, ' ');
@@ -576,6 +576,7 @@ export const TaskManagementPage: React.FC = () => {
           updateMaterialPlan(matchingMat.id, {
             ...(updates.name !== undefined ? { jobContent: updates.name } : {}),
             ...(updates.stt !== undefined ? { stt: updates.stt } : {}),
+            ...(updates.unit !== undefined ? { unit: updates.unit } : {}),
           });
         }
 
@@ -590,6 +591,7 @@ export const TaskManagementPage: React.FC = () => {
           updatePurchasingPlan(matchingPur.id, {
             ...(updates.name !== undefined ? { content: updates.name } : {}),
             ...(updates.stt !== undefined ? { stt: updates.stt } : {}),
+            ...(updates.unit !== undefined ? { unit: updates.unit } : {}),
           });
         }
       }
