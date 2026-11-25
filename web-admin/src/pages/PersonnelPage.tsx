@@ -173,14 +173,16 @@ export const PersonnelPage: React.FC = () => {
   const user = useAuthStore(state => state.user);
   const navigate = useNavigate();
   const isDirectorUser = isDirector(user);
-  const isCompanyAdminUser = user?.companyRole === 'company_admin' || user?.role === 'admin' || isDirectorUser;
+  const isSysAdminUser = isSystemAdmin(user);
+  const isCompanyAdminUser = user?.companyRole === 'company_admin' || user?.role === 'admin' || isDirectorUser || isSysAdminUser;
+  const canViewPersonnel = isCompanyAdminUser || hasPermission(user, 'VIEW_USERS') || hasPermission(user, 'MANAGE_USERS');
 
-  // CHẶN BẢO MẬT: Chỉ Company Admin hoặc Ban Giám Đốc công ty mới có quyền vào quản trị Nhân sự
+  // CHẶN BẢO MẬT: Kiểm tra quyền xem danh sách Nhân sự
   useEffect(() => {
-    if (user && !isCompanyAdminUser) {
+    if (user && !canViewPersonnel) {
       navigate('/dashboard', { replace: true });
     }
-  }, [user, isCompanyAdminUser, navigate]);
+  }, [user, canViewPersonnel, navigate]);
   const [role, setRole] = useState(user?.role || 'Nhân viên');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');

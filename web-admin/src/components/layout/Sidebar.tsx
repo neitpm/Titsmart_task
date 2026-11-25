@@ -455,7 +455,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
         req: 'VIEW_TASKS',
         children: attendanceSubItems
       },
-      { label: 'Nhân sự', path: '/personnel', icon: 'groups' }
+      { label: 'Nhân sự', path: '/personnel', icon: 'groups', req: 'VIEW_USERS' }
     ];
 
     return [{
