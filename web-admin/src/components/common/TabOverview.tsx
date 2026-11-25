@@ -113,17 +113,17 @@ export const TabOverview: React.FC<TabOverviewProps> = ({
 
       {/* Biểu đồ mặc định luôn hiển thị trực tiếp nếu tab có cấu hình biểu đồ */}
       {chartContent && (
-        <div className="border-t border-slate-100 px-2 py-2 bg-slate-50/50">
+        <div className="border-t border-slate-100 px-2 pt-1.5 pb-0 bg-slate-50/50">
           <div className="flex items-center justify-between mb-1">
             <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
               {chartTitle || 'Biểu đồ phân tích'}
             </span>
           </div>
-          <div className="pt-1 border-t border-slate-200/70">
+          <div className="border-t border-slate-200/70">
             {hasChartData ? (
               chartContent
             ) : (
-              <div className="py-6 text-center text-xs text-slate-400">
+              <div className="py-4 text-center text-xs text-slate-400">
                 {emptyChartText}
               </div>
             )}

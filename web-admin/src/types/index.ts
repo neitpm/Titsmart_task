@@ -531,14 +531,17 @@ export interface FundRequest {
 export type PaymentRequestType = 'supplier' | 'advance_refund' | 'subcontractor' | 'other';
 
 export type PaymentRequestStatus =
-  | 'DRAFT'                    // Nháp
-  | 'PENDING_APPROVAL'        // Chờ duyệt
-  | 'NEED_MORE_INFO'          // Yêu cầu bổ sung
-  | 'APPROVED'                // Đã duyệt
-  | 'PENDING_PAYMENT'         // Chờ thanh toán (Kế toán tiếp nhận)
-  | 'PAID'                    // Đã thanh toán (Hoàn tất)
-  | 'REJECTED'                // Từ chối
-  | 'CANCELLED';              // Hủy
+  | 'DRAFT'                        // Nháp
+  | 'PENDING_FUND_PAYMENT'         // Chờ người cầm quỹ chi (≤ hạn mức, không cần kế toán duyệt)
+  | 'PENDING_ACCOUNTANT_APPROVAL'  // Chờ kế toán duyệt (> hạn mức)
+  | 'PENDING_DELEGATE_APPROVAL'    // Kế toán vắng – Chờ cấp trên duyệt thay
+  | 'PENDING_APPROVAL'             // Chờ duyệt (legacy / dự phòng)
+  | 'NEED_MORE_INFO'               // Yêu cầu bổ sung
+  | 'APPROVED'                     // Đã duyệt (> hạn mức, chờ chi quỹ)
+  | 'PENDING_PAYMENT'              // Chờ chi quỹ (sau khi kế toán/cấp trên duyệt)
+  | 'PAID'                         // Đã thanh toán (Hoàn tất)
+  | 'REJECTED'                     // Từ chối
+  | 'CANCELLED';                   // Hủy
 
 export interface PaymentRequestAuditLog {
   action: string;
@@ -616,6 +619,23 @@ export interface PaymentRequest {
 
   // Hồ sơ đính kèm (báo giá, hợp đồng, biên bản nghiệm thu, hóa đơn, hoàn ứng...)
   attachments: PaymentRequestAttachment[];
+
+  // Luồng nghiệp vụ mới: Người cầm quỹ
+  fundHolderId?: string;
+  fundHolderName?: string;
+  fundConfirmedAt?: string;        // Thời điểm người cầm quỹ xác nhận đã chi
+  fundConfirmedNote?: string;      // Ghi chú khi chi quỹ
+  fundDocUrl?: string;
+  fundDocName?: string;
+
+  // Luồng nghiệp vụ mới: Kế toán / Cấp trên duyệt thay
+  delegateApproverId?: string;     // ID cấp trên kế toán duyệt thay
+  delegateApproverName?: string;
+  delegateApprovedAt?: string;
+  delegateReason?: string;         // Lý do ủy quyền / kế toán vắng
+
+  // Hạn mức áp dụng tại thời điểm tạo (snapshot từ cấu hình)
+  amountThreshold?: number;        // Hạn mức tại thời điểm gửi
 
   // Lịch sử luồng duyệt
   history?: PaymentRequestAuditLog[];
