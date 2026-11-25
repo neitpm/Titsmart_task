@@ -2376,27 +2376,7 @@ export const MaterialAndPurchasingTab: React.FC<MaterialAndPurchasingTabProps> =
         if (totalRows === 0) return null;
 
         if (tablePaginationMode === 'infinite') {
-          const currentCount = Math.min(visibleLimit, totalRows);
-          const hasMore = visibleLimit < totalRows;
-          return (
-            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-white px-4 py-2 text-xs text-slate-600 shrink-0 select-none">
-              <div className="flex items-center gap-2">
-                <span className="font-semibold text-slate-700 whitespace-nowrap">
-                  Hiển thị <span className="text-primary font-bold">{currentCount}</span> / {totalRows} mục
-                </span>
-                {hasMore && (
-                  <span className="hidden sm:inline-flex items-center gap-1 text-[11px] text-slate-400">
-                    • Tự động nạp thêm khi cuộn
-                  </span>
-                )}
-              </div>
-              <div>
-                {!hasMore && (
-                  <span className="text-[11px] text-slate-400">Đã hiển thị tất cả ({totalRows})</span>
-                )}
-              </div>
-            </div>
-          );
+          return null;
         }
 
         const effectivePageSize = tablePageSize || 25;

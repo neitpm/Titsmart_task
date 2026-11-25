@@ -3344,29 +3344,7 @@ export const ProjectCostPlanPage: React.FC = () => {
 
             {/* Pagination Controls for Cash Flow / Expenses */}
             {combinedCashFlow.length > 0 && (
-              tablePaginationMode === 'infinite' ? (
-                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-white px-4 py-2.5 text-xs text-slate-600 rounded-b-xl select-none shadow-xs">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-slate-700 whitespace-nowrap">
-                      Hiển thị <span className="text-primary font-bold">{Math.min(expenseVisibleLimit, combinedCashFlow.length)}</span> / {combinedCashFlow.length} khoản mục
-                    </span>
-                    {expenseVisibleLimit < combinedCashFlow.length && (
-                      <span className="hidden sm:inline-flex items-center gap-1 text-[11px] text-slate-400">
-                        • Cuộn xuống để tải thêm...
-                      </span>
-                    )}
-                  </div>
-                  {expenseVisibleLimit < combinedCashFlow.length && (
-                    <button
-                      type="button"
-                      onClick={() => setExpenseVisibleLimit(combinedCashFlow.length)}
-                      className="text-primary font-semibold hover:underline cursor-pointer text-xs"
-                    >
-                      Xem tất cả ({combinedCashFlow.length})
-                    </button>
-                  )}
-                </div>
-              ) : (
+              tablePaginationMode === 'infinite' ? null : (
                 <div className="flex flex-wrap items-center justify-center gap-4 px-4 py-2.5 bg-slate-50 border-t border-slate-200 text-xs text-slate-600 rounded-b-xl select-none">
                   <div className="flex items-center gap-2">
                     <span>Hiển thị {combinedCashFlow.length === 0 ? 0 : (expensePage - 1) * effectiveExpensePageSize + 1}-{Math.min(expensePage * effectiveExpensePageSize, combinedCashFlow.length)} / {combinedCashFlow.length} khoản mục</span>

@@ -1775,27 +1775,7 @@ export const TaskAssignmentPage: React.FC = () => {
           {/* Pagination Controls for Direct Tasks */}
           {directDisplayedTasks.length > 0 && (() => {
             if (tablePaginationMode === 'infinite') {
-              const currentCount = Math.min(directVisibleLimit, directDisplayedTasks.length);
-              const hasMore = directVisibleLimit < directDisplayedTasks.length;
-              return (
-                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-white px-4 py-2 text-xs text-slate-600 shrink-0 select-none shadow-xs">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-slate-700 whitespace-nowrap">
-                      Hiển thị <span className="text-primary font-bold">{currentCount}</span> / {directDisplayedTasks.length} công việc phát sinh
-                    </span>
-                    {hasMore && (
-                      <span className="hidden sm:inline-flex items-center gap-1 text-[11px] text-slate-400">
-                        • Tự động nạp thêm khi cuộn
-                      </span>
-                    )}
-                  </div>
-                  <div>
-                    {!hasMore && (
-                      <span className="text-[11px] text-slate-400">Đã hiển thị tất cả ({directDisplayedTasks.length})</span>
-                    )}
-                  </div>
-                </div>
-              );
+              return null;
             }
 
             return (
@@ -2296,27 +2276,7 @@ export const TaskAssignmentPage: React.FC = () => {
           {/* Pagination Controls for Project Tasks */}
           {projectDisplayedTasks.length > 0 && (() => {
             if (tablePaginationMode === 'infinite') {
-              const currentCount = Math.min(projectVisibleLimit, projectDisplayedTasks.length);
-              const hasMore = projectVisibleLimit < projectDisplayedTasks.length;
-              return (
-                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-white px-4 py-2 text-xs text-slate-600 shrink-0 select-none shadow-xs">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-slate-700 whitespace-nowrap">
-                      Hiển thị <span className="text-primary font-bold">{currentCount}</span> / {projectDisplayedTasks.length} công việc dự án
-                    </span>
-                    {hasMore && (
-                      <span className="hidden sm:inline-flex items-center gap-1 text-[11px] text-slate-400">
-                        • Tự động nạp thêm khi cuộn
-                      </span>
-                    )}
-                  </div>
-                  <div>
-                    {!hasMore && (
-                      <span className="text-[11px] text-slate-400">Đã hiển thị tất cả ({projectDisplayedTasks.length})</span>
-                    )}
-                  </div>
-                </div>
-              );
+              return null;
             }
 
             return (

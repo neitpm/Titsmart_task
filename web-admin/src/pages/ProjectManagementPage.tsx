@@ -2351,27 +2351,7 @@ export const ProjectManagementPage: React.FC = () => {
             {enhancedProjects.length > 0 && viewMode !== 'kanban' && (() => {
               const isTableStyle = viewMode === 'table' || viewMode === 'table_detailed';
               if (tablePaginationMode === 'infinite') {
-                const currentCount = Math.min(projectVisibleLimit, enhancedProjects.length);
-                const hasMore = projectVisibleLimit < enhancedProjects.length;
-                return (
-                  <div className={`flex flex-col sm:flex-row items-center justify-between gap-3 bg-white border border-slate-200 px-3 sm:px-4 py-2 sm:py-2.5 ${isTableStyle ? 'rounded-none border-x-0 mx-0 mt-0' : 'rounded-xl mt-2'} shadow-xs text-xs font-semibold text-slate-600`}>
-                    <div className="flex items-center gap-2">
-                      <span>
-                        Hiển thị <strong className="text-primary font-bold">{currentCount}</strong> / <strong className="text-slate-800">{enhancedProjects.length}</strong> dự án
-                      </span>
-                      {hasMore && (
-                        <span className="hidden sm:inline-flex items-center gap-1 text-[11px] text-slate-400">
-                          • Tự động nạp thêm khi cuộn
-                        </span>
-                      )}
-                    </div>
-                    <div>
-                      {!hasMore && (
-                        <span className="text-[11px] text-slate-400">Đã hiển thị tất cả ({enhancedProjects.length})</span>
-                      )}
-                    </div>
-                  </div>
-                );
+                return null;
               }
 
               return (
