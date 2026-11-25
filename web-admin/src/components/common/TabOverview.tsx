@@ -77,7 +77,7 @@ export const TabOverview: React.FC<TabOverviewProps> = ({
   return (
     <div className={`border-b border-slate-200 bg-white ${className}`}>
       {/* KPI Grid - tối đa 5 cột, sát lề, không gradient, bo nhẹ rounded-md */}
-      <div className="px-3 py-2 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+      <div className="px-2 py-1.5 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1.5">
         {kpis.slice(0, 5).map((kpi) => {
           const tone = TONE_CLASSES[kpi.tone || 'default'];
           const clickable = Boolean(kpi.onClick);
@@ -87,7 +87,7 @@ export const TabOverview: React.FC<TabOverviewProps> = ({
               type="button"
               disabled={!clickable}
               onClick={kpi.onClick}
-              className={`text-left px-3 py-2 rounded-md border transition-colors ${
+              className={`text-left px-2.5 py-1.5 rounded-md border transition-colors ${
                 kpi.active
                   ? tone.activeBorder
                   : 'border-slate-200 bg-white hover:bg-slate-50/80'
@@ -113,8 +113,8 @@ export const TabOverview: React.FC<TabOverviewProps> = ({
 
       {/* Biểu đồ mặc định luôn hiển thị trực tiếp nếu tab có cấu hình biểu đồ */}
       {chartContent && (
-        <div className="border-t border-slate-100 px-3 py-2 bg-slate-50/50">
-          <div className="flex items-center justify-between mb-1.5">
+        <div className="border-t border-slate-100 px-2 py-2 bg-slate-50/50">
+          <div className="flex items-center justify-between mb-1">
             <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
               {chartTitle || 'Biểu đồ phân tích'}
             </span>
@@ -132,7 +132,7 @@ export const TabOverview: React.FC<TabOverviewProps> = ({
       )}
       {/* Danh sách cảnh báo & việc cần xử lý ngay */}
       {actionItems && (
-        <div className="border-t border-slate-200 bg-white px-3 py-2">
+        <div className="border-t border-slate-200 bg-white px-2 py-2">
           <div className="text-[11px] font-bold uppercase tracking-wide text-slate-600 mb-1.5">
             {actionTitle || 'Cảnh báo & Việc cần xử lý ngay'}
           </div>
@@ -154,7 +154,7 @@ export const TabOverview: React.FC<TabOverviewProps> = ({
                     key={item.id}
                     type="button"
                     onClick={item.onClick}
-                    className={`w-full text-left px-3 py-2 flex items-center justify-between gap-2 bg-white hover:bg-slate-50 transition-colors ${
+                    className={`w-full text-left px-3 py-1.5 flex items-center justify-between gap-2 bg-white hover:bg-slate-50 transition-colors ${
                       item.onClick ? 'cursor-pointer' : 'cursor-default'
                     }`}
                   >
