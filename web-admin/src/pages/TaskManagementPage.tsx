@@ -674,6 +674,8 @@ const hasSyncedRef = useRef(false);
   // Column Filters
   const [filterSection, setFilterSection] = useState<string>('all');
   const [filterUnit, setFilterUnit] = useState<string>('all');
+  const [filterDateFrom, setFilterDateFrom] = useState<string>('');
+  const [filterDateTo, setFilterDateTo] = useState<string>('');
   const [isScrolledHorizontally, setIsScrolledHorizontally] = useState(false);
   
   // Detailed Attribute Filters
@@ -2281,6 +2283,10 @@ const hasSyncedRef = useRef(false);
     const pct = Math.round((t.progress || 0) * 100);
     const matchesSection = filterSection === 'all' || t.sectionName === filterSection;
     const matchesUnit = filterUnit === 'all' || t.unit === filterUnit;
+    const rawDate = String(t.dueDate || (t as any).startDate || t.createdAt || '').slice(0, 10);
+    const matchesDateFrom = !filterDateFrom || (rawDate && rawDate >= filterDateFrom);
+    const matchesDateTo = !filterDateTo || (rawDate && rawDate <= filterDateTo);
+    const matchesDateRange = t.isSectionHeader || (matchesDateFrom && matchesDateTo);
         const matchesPurchase = filterPurchase === 'all' || t.purchaseStatus === filterPurchase;
     const matchesConstr = filterConstr === 'all' || t.constrStatus === filterConstr;
     const currentUser = authStore?.user;
@@ -2296,12 +2302,13 @@ const hasSyncedRef = useRef(false);
       matchesTask &&
       matchesSection &&
       matchesUnit &&
+      matchesDateRange &&
       matchesPurchase &&
       matchesConstr &&
       matchesAssign &&
       matchesSearch
     );
-  }), [tasks, engineers, effectiveProjectCode, selectedTaskId, filterSection, filterUnit, filterPurchase, filterConstr, assignFilter, searchTerm]);
+  }), [tasks, engineers, effectiveProjectCode, selectedTaskId, filterSection, filterUnit, filterDateFrom, filterDateTo, filterPurchase, filterConstr, assignFilter, searchTerm]);
 
   const toRoman = (num: number): string => {
     const roman: Record<string, number> = {
@@ -2838,6 +2845,37 @@ const hasSyncedRef = useRef(false);
 
             <div className="flex items-center gap-1.5">
               <span className="text-slate-500 font-medium whitespace-nowrap text-[11px]">ĐVT:</span>
+              <div className="flex items-center gap-1 bg-white border border-slate-200 rounded px-1.5 h-7 shadow-xs text-[11px] shrink-0">
+                <span className="text-slate-400 font-medium whitespace-nowrap">Từ</span>
+                <input
+                  type="date"
+                  value={filterDateFrom}
+                  onChange={(e) => setFilterDateFrom(e.target.value)}
+                  className="bg-transparent border-none outline-none text-[11px] w-[92px] text-slate-700 cursor-pointer font-medium"
+                />
+                <span className="text-slate-300">|</span>
+                <span className="text-slate-400 font-medium whitespace-nowrap">Đến</span>
+                <input
+                  type="date"
+                  value={filterDateTo}
+                  onChange={(e) => setFilterDateTo(e.target.value)}
+                  className="bg-transparent border-none outline-none text-[11px] w-[92px] text-slate-700 cursor-pointer font-medium"
+                />
+                {(filterDateFrom || filterDateTo) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFilterDateFrom('');
+                      setFilterDateTo('');
+                    }}
+                    className="text-slate-400 hover:text-slate-600 p-0.5 rounded cursor-pointer"
+                    title="Xóa bộ lọc ngày"
+                  >
+                    <span className="material-symbols-outlined text-[12px]">close</span>
+                  </button>
+                )}
+              </div>
+
               <CustomSelect
                 value={filterUnit}
                 onChange={(e) => setFilterUnit(e.target.value)}
