@@ -1302,16 +1302,40 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ isSidebar = 
 
     if (newlyArrived.length > 0) {
       const topNotif = newlyArrived[0];
-      const cleanTitle = (topNotif.title || 'Thông báo TITSMART')
-        .replace(/[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]/gu, '')
-        .trim();
+      const osStorageKey = `titsmart_os_notified_${user?.id || 'guest'}`;
+      let osNotifiedIds: string[] = [];
+      try {
+        osNotifiedIds = JSON.parse(localStorage.getItem(osStorageKey) || '[]');
+      } catch {
+        osNotifiedIds = [];
+      }
 
-      sendSystemNotification({
-        id: topNotif.id,
-        title: cleanTitle || 'Thông báo mới',
-        body: topNotif.message || 'Bạn có thông báo mới từ hệ thống TITSMART.',
-        url: topNotif.link
-      });
+      const isAppFocused =
+        typeof document !== 'undefined' &&
+        document.visibilityState === 'visible' &&
+        typeof document.hasFocus === 'function' &&
+        document.hasFocus();
+
+      // Quy tắc 1 nguồn: chỉ bắn banner hệ điều hành khi app đang ẩn/không focus và ID chưa từng bắn
+      if (!isAppFocused && !osNotifiedIds.includes(topNotif.id)) {
+        const cleanTitle = (topNotif.title || 'Thông báo TITSMART')
+          .replace(/[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]/gu, '')
+          .trim();
+
+        sendSystemNotification({
+          id: topNotif.id,
+          title: cleanTitle || 'Thông báo mới',
+          body: topNotif.message || 'Bạn có thông báo mới từ hệ thống TITSMART.',
+          url: topNotif.link
+        });
+
+        try {
+          const nextIds = [topNotif.id, ...osNotifiedIds].slice(0, 200);
+          localStorage.setItem(osStorageKey, JSON.stringify(nextIds));
+        } catch {
+          // ignore storage quota errors
+        }
+      }
 
       newlyArrived.forEach(n => knownNotificationIdsRef.current.add(n.id));
     }
