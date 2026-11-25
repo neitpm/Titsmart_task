@@ -567,7 +567,7 @@ export const DashboardPage: React.FC = () => {
       </section>
 
       {/* MAIN CONTENT AREA */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden p-2 sm:p-3 space-y-3 w-full min-w-0 max-w-full">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden p-0 space-y-2 w-full min-w-0 max-w-full">
         
         {/* TOP SUMMARY KPI CARDS */}
         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 w-full min-w-0">
