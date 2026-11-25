@@ -363,9 +363,9 @@ export const ProjectOverviewTab: React.FC = () => {
   }
 
   return (
-    <div className="p-1 sm:p-2 md:p-2.5 space-y-3 overflow-y-auto bg-slate-50 flex-1">
+    <div className="p-0 space-y-2 overflow-y-auto bg-slate-50 flex-1">
       {/* OPTION B: THANH METRIC RIBBON LIỀN MẠCH (DASHBOARD RIBBON) */}
-      <div className="bg-white rounded-xl border border-slate-200/90 shadow-2xs overflow-hidden">
+      <div className="bg-white border-b border-slate-200/90 shadow-2xs overflow-hidden">
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-7 divide-y sm:divide-y-0 divide-slate-100 xl:divide-x divide-slate-100">
           
           {/* 1. Tiến độ công việc */}
@@ -544,9 +544,10 @@ export const ProjectOverviewTab: React.FC = () => {
       </div>
 
       {/* CHARTS */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Task Chart */}
-        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+      <div className="px-2 sm:px-3 md:px-4 space-y-4 pb-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* Task Chart */}
+          <div className="bg-white border border-slate-200 rounded-lg p-4 shadow-2xs">
           <h3 className="text-sm font-bold text-slate-700 mb-4 flex items-center gap-2">
             <span className="material-symbols-outlined text-lg text-slate-400">donut_large</span>
             Trạng thái Công việc
@@ -593,7 +594,7 @@ export const ProjectOverviewTab: React.FC = () => {
         </div>
 
         {/* Info Detail */}
-        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4">
+        <div className="bg-white border border-slate-200 rounded-lg p-4 shadow-2xs space-y-4">
           <h3 className="text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
             <span className="material-symbols-outlined text-lg text-slate-400">info</span>
             Thông tin chi tiết
@@ -628,7 +629,7 @@ export const ProjectOverviewTab: React.FC = () => {
       {/* WIDGETS DƯỚI CÙNG */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Cost Bar Chart */}
-        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+        <div className="bg-white border border-slate-200 rounded-lg p-4 shadow-2xs">
           <h3 className="text-sm font-bold text-slate-700 mb-4 flex items-center gap-2">
             <span className="material-symbols-outlined text-lg text-slate-400">bar_chart</span>
             Biểu đồ Chi phí
@@ -655,7 +656,7 @@ export const ProjectOverviewTab: React.FC = () => {
         </div>
 
         {/* Field Logs Timeline */}
-        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4">
+        <div className="bg-white border border-slate-200 rounded-lg p-4 shadow-2xs space-y-4">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-sm font-bold text-slate-700 flex items-center gap-2">
               <span className="material-symbols-outlined text-lg text-slate-400">history</span>
@@ -700,7 +701,7 @@ export const ProjectOverviewTab: React.FC = () => {
       </div>
 
       {/* SECTION: CÔNG VIỆC NHÂN VIÊN */}
-      <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4">
+      <div className="bg-white border border-slate-200 rounded-lg p-4 shadow-2xs space-y-4">
         <div className="flex justify-between items-center mb-2">
           <h3 className="text-sm font-bold text-slate-700 flex items-center gap-2">
             <span className="material-symbols-outlined text-lg text-slate-400">assignment_ind</span>
@@ -823,6 +824,7 @@ export const ProjectOverviewTab: React.FC = () => {
             </button>
           </div>
         )}
+      </div>
       </div>
 
     </div>
