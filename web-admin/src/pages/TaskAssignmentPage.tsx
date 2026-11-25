@@ -1189,63 +1189,70 @@ export const TaskAssignmentPage: React.FC = () => {
         </div>
       </div>
 
-      {activeTab === 'overview' ? (
+      {activeTab === 'overview' ? (() => {
+        const todayStr = new Date().toISOString().split('T')[0];
+        const allActionableTasks = tasks.filter((t) => !isTaskSectionHeaderItem(t));
+        const pendingCount = allActionableTasks.filter((t) => String(t.status) === 'pending' || (!t.assignedEngineerId && !isTaskActuallyDone(t))).length;
+        const inProgressCount = allActionableTasks.filter((t) => !isTaskActuallyDone(t) && (String(t.status) === 'in_progress' || String(t.status) === 'review')).length;
+        const overdueCount = allActionableTasks.filter((t) => !isTaskActuallyDone(t) && t.dueDate && String(t.dueDate).slice(0, 10) < todayStr).length;
+        const completedCount = allActionableTasks.filter((t) => isTaskActuallyDone(t)).length;
+        return (
         <div className="flex-1 overflow-y-auto bg-slate-50">
           <TabOverview
             kpis={[
               {
                 id: 'all',
-                label: 'Tổng việc phát sinh',
-                value: directKpiStats.total,
+                label: 'Tổng công việc',
+                value: allActionableTasks.length,
                 onClick: () => {
-                  setDirectFilterStatus('all');
-                  setActiveTab('direct');
+                  setProjectFilterStatus('all');
+                  setActiveTab('project_tasks');
                 },
                 tone: 'default',
               },
               {
                 id: 'pending',
-                label: 'Chờ nhận',
-                value: directKpiStats.pending,
+                label: 'Chờ nhận / Chưa giao',
+                value: pendingCount,
                 onClick: () => {
-                  setDirectFilterStatus('pending');
-                  setActiveTab('direct');
+                  setProjectFilterStatus('unassigned');
+                  setActiveTab('project_tasks');
                 },
                 tone: 'info',
               },
               {
                 id: 'in_progress',
                 label: 'Đang làm',
-                value: directKpiStats.inProgress,
+                value: inProgressCount,
                 onClick: () => {
-                  setDirectFilterStatus('in_progress');
-                  setActiveTab('direct');
+                  setProjectFilterStatus('in_progress');
+                  setActiveTab('project_tasks');
                 },
                 tone: 'primary',
               },
               {
                 id: 'overdue',
                 label: 'Quá hạn',
-                value: directKpiStats.overdue,
+                value: overdueCount,
                 onClick: () => {
-                  setDirectFilterStatus('overdue');
-                  setActiveTab('direct');
+                  setProjectFilterStatus('overdue');
+                  setActiveTab('project_tasks');
                 },
                 tone: 'danger',
               },
               {
                 id: 'completed',
                 label: 'Hoàn thành',
-                value: directKpiStats.completed,
+                value: completedCount,
                 onClick: () => {
-                  setDirectFilterStatus('completed');
-                  setActiveTab('direct');
+                  setProjectFilterStatus('completed');
+                  setActiveTab('project_tasks');
                 },
                 tone: 'success',
               },
             ]}
             chartTitle="Phân bố trạng thái & Xu hướng 7 ngày gần nhất"
-            hasChartData={directKpiStats.total > 0}
+            hasChartData={allActionableTasks.length > 0}
             chartContent={
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                 <div className="h-52 w-full bg-white border border-slate-200 rounded-md p-2">
@@ -1253,10 +1260,10 @@ export const TaskAssignmentPage: React.FC = () => {
                   <ResponsiveContainer width="100%" height="88%">
                     <BarChart
                       data={[
-                        { key: 'pending', name: 'Chờ nhận', count: directKpiStats.pending, fill: '#0284c7' },
-                        { key: 'in_progress', name: 'Đang làm', count: directKpiStats.inProgress, fill: '#1d4ed8' },
-                        { key: 'overdue', name: 'Quá hạn', count: directKpiStats.overdue, fill: '#e11d48' },
-                        { key: 'completed', name: 'Hoàn thành', count: directKpiStats.completed, fill: '#059669' },
+                        { key: 'unassigned', name: 'Chờ nhận', count: pendingCount, fill: '#0284c7' },
+                        { key: 'in_progress', name: 'Đang làm', count: inProgressCount, fill: '#1d4ed8' },
+                        { key: 'overdue', name: 'Quá hạn', count: overdueCount, fill: '#e11d48' },
+                        { key: 'completed', name: 'Hoàn thành', count: completedCount, fill: '#059669' },
                       ]}
                       margin={{ top: 8, right: 12, left: 0, bottom: 4 }}
                     >
@@ -1272,13 +1279,13 @@ export const TaskAssignmentPage: React.FC = () => {
                         className="cursor-pointer"
                         onClick={(entry: any) => {
                           if (entry?.key) {
-                            setDirectFilterStatus(entry.key);
-                            setActiveTab('direct');
+                            setProjectFilterStatus(entry.key);
+                            setActiveTab('project_tasks');
                           }
                         }}
                       >
                         {[
-                          { key: 'pending', fill: '#0284c7' },
+                          { key: 'unassigned', fill: '#0284c7' },
                           { key: 'in_progress', fill: '#1d4ed8' },
                           { key: 'overdue', fill: '#e11d48' },
                           { key: 'completed', fill: '#059669' },
@@ -1298,9 +1305,9 @@ export const TaskAssignmentPage: React.FC = () => {
                         d.setDate(d.getDate() - (6 - i));
                         const iso = d.toISOString().split('T')[0];
                         const label = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
-                        const createdCount = tasks.filter((t) => String(t.createdAt || '').startsWith(iso)).length;
-                        const completedCount = tasks.filter((t) => isTaskActuallyDone(t) && String(t.completedAt || t.updatedAt || '').startsWith(iso)).length;
-                        return { label, created: createdCount, completed: completedCount };
+                        const createdCount = allActionableTasks.filter((t) => String(t.createdAt || '').startsWith(iso)).length;
+                        const doneCount = allActionableTasks.filter((t) => isTaskActuallyDone(t) && String(t.completedAt || t.updatedAt || '').startsWith(iso)).length;
+                        return { label, created: createdCount, completed: doneCount };
                       })}
                       margin={{ top: 8, right: 12, left: 0, bottom: 4 }}
                     >
@@ -1315,19 +1322,19 @@ export const TaskAssignmentPage: React.FC = () => {
                 </div>
               </div>
             }
-            actionTitle="Việc phát sinh cần xử lý ngay"
-            actionItems={tasks
-              .filter((t) => !t.projectCode && !isTaskActuallyDone(t))
+            actionTitle="Công việc cần xử lý ngay"
+            actionItems={allActionableTasks
+              .filter((t) => !isTaskActuallyDone(t))
               .slice(0, 6)
               .map((t) => ({
                 id: String(t.id),
                 title: t.name || 'Công việc không tên',
-                subtitle: `Phụ trách: ${(t as any).assigneeName || (t as any).assignedTo || 'Chưa giao'}${t.dueDate ? ` • Hạn: ${t.dueDate}` : ''}`,
-                badge: String(t.status) === 'pending' ? 'Chờ nhận' : 'Đang làm',
-                badgeTone: String(t.status) === 'pending' ? 'info' : 'warning',
-                onClick: () => setActiveTab('direct'),
+                subtitle: `${t.projectCode ? `[${t.projectCode}] ` : ''}Phụ trách: ${t.assignedEngineerName || (t as any).assigneeName || 'Chưa giao'}${t.dueDate ? ` • Hạn: ${t.dueDate}` : ''}`,
+                badge: t.dueDate && String(t.dueDate).slice(0, 10) < todayStr ? 'Quá hạn' : String(t.status) === 'pending' ? 'Chờ nhận' : 'Đang làm',
+                badgeTone: t.dueDate && String(t.dueDate).slice(0, 10) < todayStr ? 'danger' : String(t.status) === 'pending' ? 'info' : 'warning',
+                onClick: () => setActiveTab(t.projectCode ? 'project_tasks' : 'direct'),
               }))}
-            emptyActionText="Không có công việc phát sinh nào đang tồn đọng"
+            emptyActionText="Không có công việc nào đang tồn đọng"
           />
           <div className="p-3 grid grid-cols-1 sm:grid-cols-3 gap-2">
             <button
@@ -1356,7 +1363,8 @@ export const TaskAssignmentPage: React.FC = () => {
             </button>
           </div>
         </div>
-      ) : activeTab === 'direct' ? (
+        );
+      })() : activeTab === 'direct' ? (
         /* GIAO DIỆN GIAO VIỆC TRỰC TIẾP / VIỆC PHÁT SINH (EDGE-TO-EDGE & TỐI ƯU MOBILE) */
         <div className="flex-1 overflow-hidden flex flex-col bg-white">
           <TabOverview
