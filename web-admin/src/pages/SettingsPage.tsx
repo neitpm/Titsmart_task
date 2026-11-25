@@ -175,7 +175,10 @@ export const SettingsPage: React.FC = () => {
   const isGeneralStaff = !isCompanyAdmin;
   const [activeTab, setActiveTab] = useState<SettingsTab>(() => {
     const requestedTab = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('tab') : null;
-    return requestedTab === 'account' ? 'account' : (isCompanyAdmin ? 'general' : 'appearance');
+    if (requestedTab === 'general' || requestedTab === 'roles' || requestedTab === 'categories' || requestedTab === 'appearance' || requestedTab === 'notifications' || requestedTab === 'activity_logs') {
+      return requestedTab;
+    }
+    return 'account';
   });
   const [isConfirmLogoutOpen, setIsConfirmLogoutOpen] = useState(false);
 
