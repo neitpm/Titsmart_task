@@ -10,6 +10,15 @@ export interface TabOverviewKpi {
   tone?: 'default' | 'primary' | 'danger' | 'warning' | 'success' | 'info';
 }
 
+export interface TabOverviewActionItem {
+  id: string;
+  title: string;
+  subtitle?: string;
+  badge?: string;
+  badgeTone?: 'danger' | 'warning' | 'info' | 'default';
+  onClick?: () => void;
+}
+
 export interface TabOverviewProps {
   kpis: TabOverviewKpi[];
   loading?: boolean;
@@ -19,6 +28,9 @@ export interface TabOverviewProps {
   hasChartData?: boolean;
   chartContent?: React.ReactNode;
   emptyChartText?: string;
+  actionTitle?: string;
+  actionItems?: TabOverviewActionItem[];
+  emptyActionText?: string;
   className?: string;
 }
 
@@ -40,6 +52,9 @@ export const TabOverview: React.FC<TabOverviewProps> = ({
   hasChartData = false,
   chartContent,
   emptyChartText = 'Chưa có dữ liệu biểu đồ',
+  actionTitle,
+  actionItems,
+  emptyActionText = 'Không có mục nào cần xử lý ngay',
   className = '',
 }) => {
   const [showChart, setShowChart] = useState(false);
@@ -125,6 +140,52 @@ export const TabOverview: React.FC<TabOverviewProps> = ({
                   {emptyChartText}
                 </div>
               )}
+            </div>
+          )}
+        </div>
+      )}
+      {/* Danh sách cảnh báo & việc cần xử lý ngay */}
+      {actionItems && (
+        <div className="border-t border-slate-200 bg-white px-3 py-2">
+          <div className="text-[11px] font-bold uppercase tracking-wide text-slate-600 mb-1.5">
+            {actionTitle || 'Cảnh báo & Việc cần xử lý ngay'}
+          </div>
+          {actionItems.length === 0 ? (
+            <div className="text-xs text-slate-400 py-2">{emptyActionText}</div>
+          ) : (
+            <div className="divide-y divide-slate-100 border border-slate-200 rounded-md overflow-hidden">
+              {actionItems.slice(0, 8).map((item) => {
+                const badgeCls =
+                  item.badgeTone === 'danger'
+                    ? 'bg-rose-50 text-rose-700 border-rose-200'
+                    : item.badgeTone === 'warning'
+                    ? 'bg-amber-50 text-amber-700 border-amber-200'
+                    : item.badgeTone === 'info'
+                    ? 'bg-sky-50 text-sky-700 border-sky-200'
+                    : 'bg-slate-50 text-slate-600 border-slate-200';
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={item.onClick}
+                    className={`w-full text-left px-3 py-2 flex items-center justify-between gap-2 bg-white hover:bg-slate-50 transition-colors ${
+                      item.onClick ? 'cursor-pointer' : 'cursor-default'
+                    }`}
+                  >
+                    <div className="min-w-0">
+                      <div className="text-xs font-semibold text-slate-800 truncate">{item.title}</div>
+                      {item.subtitle && (
+                        <div className="text-[11px] text-slate-500 truncate mt-0.5">{item.subtitle}</div>
+                      )}
+                    </div>
+                    {item.badge && (
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded border shrink-0 ${badgeCls}`}>
+                        {item.badge}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>

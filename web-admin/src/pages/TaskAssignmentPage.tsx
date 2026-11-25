@@ -1287,6 +1287,19 @@ export const TaskAssignmentPage: React.FC = () => {
                 </ResponsiveContainer>
               </div>
             }
+            actionTitle="Việc phát sinh cần xử lý ngay"
+            actionItems={tasks
+              .filter((t) => !t.projectCode && !isTaskActuallyDone(t))
+              .slice(0, 6)
+              .map((t) => ({
+                id: String(t.id),
+                title: t.name || 'Công việc không tên',
+                subtitle: `Phụ trách: ${(t as any).assigneeName || (t as any).assignedTo || 'Chưa giao'}${t.dueDate ? ` • Hạn: ${t.dueDate}` : ''}`,
+                badge: String(t.status) === 'pending' ? 'Chờ nhận' : 'Đang làm',
+                badgeTone: String(t.status) === 'pending' ? 'info' : 'warning',
+                onClick: () => setActiveTab('direct'),
+              }))}
+            emptyActionText="Không có công việc phát sinh nào đang tồn đọng"
           />
           <div className="p-3 grid grid-cols-1 sm:grid-cols-3 gap-2">
             <button
@@ -1401,6 +1414,19 @@ export const TaskAssignmentPage: React.FC = () => {
                 </ResponsiveContainer>
               </div>
             }
+            actionTitle="Việc phát sinh cần xử lý ngay"
+            actionItems={tasks
+              .filter((t) => !t.projectCode && !isTaskActuallyDone(t))
+              .slice(0, 6)
+              .map((t) => ({
+                id: String(t.id),
+                title: t.name || 'Công việc không tên',
+                subtitle: `Phụ trách: ${(t as any).assigneeName || (t as any).assignedTo || 'Chưa giao'}${t.dueDate ? ` • Hạn: ${t.dueDate}` : ''}`,
+                badge: String(t.status) === 'pending' ? 'Chờ nhận' : 'Đang làm',
+                badgeTone: String(t.status) === 'pending' ? 'info' : 'warning',
+                onClick: () => setActiveTab('direct'),
+              }))}
+            emptyActionText="Không có công việc phát sinh nào đang tồn đọng"
           />
           
           {/* Thanh Filter Nhân sự & Thời gian (Ngày / Tháng / Quý) */}

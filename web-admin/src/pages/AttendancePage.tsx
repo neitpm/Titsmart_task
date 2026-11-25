@@ -2037,6 +2037,19 @@ export const AttendancePage: React.FC = () => {
                 tone: 'info',
               },
             ]}
+            actionTitle="Đơn nghỉ phép chờ duyệt cần xử lý"
+            actionItems={leaves
+              .filter((l) => String(l.status || '').toLowerCase() === 'pending')
+              .slice(0, 6)
+              .map((l) => ({
+                id: String(l.id),
+                title: `${l.userName || 'Nhân sự'} - ${l.leaveType || 'Nghỉ phép'}`,
+                subtitle: `${l.startDate || ''} đến ${l.endDate || ''}${l.reason ? ` • ${l.reason}` : ''}`,
+                badge: 'Chờ duyệt',
+                badgeTone: 'warning',
+                onClick: () => setMainTab('leave'),
+              }))}
+            emptyActionText="Không có đơn nghỉ phép nào đang chờ duyệt"
           />
           <div className="p-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
             <button
