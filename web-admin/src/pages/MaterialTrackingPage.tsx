@@ -1842,18 +1842,20 @@ export const MaterialTrackingPage: React.FC = () => {
                   tone: 'danger',
                 },
                 {
+                  id: 'total_value',
+                  label: 'Tổng giá trị tồn',
+                  value: `${filteredMaterials
+                    .reduce((sum, m) => sum + (m.currentStock ?? m.initialStock ?? 0) * (m.unitPrice || 0), 0)
+                    .toLocaleString('vi-VN')} đ`,
+                  onClick: () => setActiveTab('STOCK'),
+                  tone: 'info',
+                },
+                {
                   id: 'import_tab',
                   label: 'Nhập kho',
                   value: 'Xem phiếu',
                   onClick: () => setActiveTab('IMPORT'),
                   tone: 'primary',
-                },
-                {
-                  id: 'export_tab',
-                  label: 'Xuất kho',
-                  value: 'Xem phiếu',
-                  onClick: () => setActiveTab('EXPORT'),
-                  tone: 'warning',
                 },
               ]}
               chartTitle="Tình trạng tồn kho vật tư"
