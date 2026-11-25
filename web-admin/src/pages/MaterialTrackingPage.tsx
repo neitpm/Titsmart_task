@@ -12,6 +12,8 @@ import { Material, InventoryTransaction } from '../types';
 import { CustomSelect } from '@/components/common/CustomSelect';
 import { MaterialHistoryModal } from './materials/MaterialHistoryModal';
 import { PullToRefresh } from '../components/common/PullToRefresh';
+import { TabOverview } from '../components/common/TabOverview';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from 'recharts';
 
 const PURCHASE_STATUSES = ['Chưa đặt hàng', 'Đã đặt hàng', 'Đã có hàng', 'Hàng gia công'];
 const CONSTRUCTION_STATUSES = ['Chưa thi công', 'Đang thi công', 'Đã thi công', 'VƯỚNG MẮC'];
@@ -1814,6 +1816,73 @@ export const MaterialTrackingPage: React.FC = () => {
 
         {activeTab === 'OVERVIEW' && (
           <>
+            <TabOverview
+              kpis={[
+                {
+                  id: 'total',
+                  label: 'Tổng mặt hàng',
+                  value: filteredMaterials.length,
+                  tone: 'default',
+                },
+                {
+                  id: 'in_stock',
+                  label: 'Còn tồn kho',
+                  value: filteredMaterials.filter((m) => ((m as any).stock ?? (m as any).quantity ?? 0) > 0).length,
+                  tone: 'success',
+                },
+                {
+                  id: 'low_stock',
+                  label: 'Hết hàng / Cần nhập',
+                  value: filteredMaterials.filter((m) => ((m as any).stock ?? (m as any).quantity ?? 0) <= 0).length,
+                  tone: 'danger',
+                },
+                {
+                  id: 'import_tab',
+                  label: 'Nhập kho',
+                  value: 'Xem phiếu',
+                  onClick: () => setActiveTab('IMPORT'),
+                  tone: 'primary',
+                },
+                {
+                  id: 'export_tab',
+                  label: 'Xuất kho',
+                  value: 'Xem phiếu',
+                  onClick: () => setActiveTab('EXPORT'),
+                  tone: 'warning',
+                },
+              ]}
+              chartTitle="Tình trạng tồn kho vật tư"
+              hasChartData={filteredMaterials.length > 0}
+              chartContent={
+                <div className="h-44 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={[
+                        {
+                          name: 'Còn tồn kho',
+                          count: filteredMaterials.filter((m) => ((m as any).stock ?? (m as any).quantity ?? 0) > 0).length,
+                          fill: '#059669',
+                        },
+                        {
+                          name: 'Hết hàng / Cần nhập',
+                          count: filteredMaterials.filter((m) => ((m as any).stock ?? (m as any).quantity ?? 0) <= 0).length,
+                          fill: '#e11d48',
+                        },
+                      ]}
+                      margin={{ top: 8, right: 16, left: 0, bottom: 4 }}
+                    >
+                      <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#475569' }} axisLine={false} tickLine={false} />
+                      <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} width={32} />
+                      <Tooltip cursor={{ fill: '#f1f5f9' }} contentStyle={{ fontSize: '12px', borderRadius: '6px' }} />
+                      <Bar dataKey="count" name="Số mặt hàng" radius={[4, 4, 0, 0]} barSize={44}>
+                        <Cell fill="#059669" />
+                        <Cell fill="#e11d48" />
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              }
+            />
             <PullToRefresh onRefresh={async () => { await fetchMaterials(projectId); }} className="overflow-auto custom-scrollbar flex-1 pb-16 md:pb-0">
               <table className="w-full text-left border-collapse">
                  <thead 
