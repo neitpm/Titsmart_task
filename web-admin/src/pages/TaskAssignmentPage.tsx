@@ -293,11 +293,12 @@ export const TaskAssignmentPage: React.FC = () => {
   };
   
   const [filterProjectCode, setFilterProjectCode] = useState(() => searchParams.get('project') || 'all');
-  const urlTab = searchParams.get('tab') as 'project_tasks' | 'unassigned' | 'assigned' | 'completed' | 'direct' | 'my-tasks' | null;
+  const urlTab = searchParams.get('tab') as 'overview' | 'project_tasks' | 'unassigned' | 'assigned' | 'completed' | 'direct' | 'my-tasks' | null;
   const highlightedTaskId = searchParams.get('taskId');
   const highlightKeyword = searchParams.get('highlight')?.toLowerCase().trim() || null;
   const [isHighlightActive, setIsHighlightActive] = useState<boolean>(false);
-  const [activeTab, setActiveTab] = useState<'project_tasks' | 'unassigned' | 'assigned' | 'completed' | 'direct' | 'my-tasks'>(() => {
+  const [activeTab, setActiveTab] = useState<'overview' | 'project_tasks' | 'unassigned' | 'assigned' | 'completed' | 'direct' | 'my-tasks'>(() => {
+    if (urlTab === 'overview') return 'overview';
     if (urlTab === 'direct') return 'direct';
     return 'project_tasks';
   });
@@ -573,7 +574,7 @@ export const TaskAssignmentPage: React.FC = () => {
   }, [highlightedTaskId, tasks, searchParams]);
 
   useEffect(() => {
-    const qTab = searchParams.get('tab') as 'project_tasks' | 'unassigned' | 'assigned' | 'completed' | 'direct' | 'my-tasks' | null;
+    const qTab = searchParams.get('tab') as 'overview' | 'project_tasks' | 'unassigned' | 'assigned' | 'completed' | 'direct' | 'my-tasks' | null;
     const qStatus = searchParams.get('status') as 'all' | 'unassigned' | 'pending' | 'in_progress' | 'review' | 'completed' | 'overdue' | null;
     const qProject = searchParams.get('project');
     const qPeriod = searchParams.get('period') as TimePeriodType | null;
@@ -585,7 +586,9 @@ export const TaskAssignmentPage: React.FC = () => {
       setFilterPeriodType(qPeriod);
     }
 
-    if (qTab === 'direct') {
+    if (qTab === 'overview') {
+      setActiveTab('overview');
+    } else if (qTab === 'direct') {
       setActiveTab('direct');
       if (qStatus && ['all', 'pending', 'in_progress', 'review', 'completed', 'overdue'].includes(qStatus)) {
         setDirectFilterStatus(qStatus as any);
@@ -1180,13 +1183,139 @@ export const TaskAssignmentPage: React.FC = () => {
               arrow_forward_ios
             </span>
             <h1 className="text-sm md:text-base font-bold text-slate-700 shrink-0">
-              {activeTab === 'direct' ? 'Phát sinh' : 'Dự án'}
+              {activeTab === 'overview' ? 'Tổng quan' : activeTab === 'direct' ? 'Phát sinh' : 'Dự án'}
             </h1>
           </div>
         </div>
       </div>
 
-      {activeTab === 'direct' ? (
+      {activeTab === 'overview' ? (
+        <div className="flex-1 overflow-y-auto bg-slate-50">
+          <TabOverview
+            kpis={[
+              {
+                id: 'all',
+                label: 'Tổng việc phát sinh',
+                value: directKpiStats.total,
+                onClick: () => {
+                  setDirectFilterStatus('all');
+                  setActiveTab('direct');
+                },
+                tone: 'default',
+              },
+              {
+                id: 'pending',
+                label: 'Chờ nhận',
+                value: directKpiStats.pending,
+                onClick: () => {
+                  setDirectFilterStatus('pending');
+                  setActiveTab('direct');
+                },
+                tone: 'info',
+              },
+              {
+                id: 'in_progress',
+                label: 'Đang làm',
+                value: directKpiStats.inProgress,
+                onClick: () => {
+                  setDirectFilterStatus('in_progress');
+                  setActiveTab('direct');
+                },
+                tone: 'primary',
+              },
+              {
+                id: 'overdue',
+                label: 'Quá hạn',
+                value: directKpiStats.overdue,
+                onClick: () => {
+                  setDirectFilterStatus('overdue');
+                  setActiveTab('direct');
+                },
+                tone: 'danger',
+              },
+              {
+                id: 'completed',
+                label: 'Hoàn thành',
+                value: directKpiStats.completed,
+                onClick: () => {
+                  setDirectFilterStatus('completed');
+                  setActiveTab('direct');
+                },
+                tone: 'success',
+              },
+            ]}
+            chartTitle="Phân bố công việc theo trạng thái (Bấm vào cột để mở danh sách)"
+            hasChartData={directKpiStats.total > 0}
+            chartContent={
+              <div className="h-56 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={[
+                      { key: 'pending', name: 'Chờ nhận', count: directKpiStats.pending, fill: '#0284c7' },
+                      { key: 'in_progress', name: 'Đang làm', count: directKpiStats.inProgress, fill: '#1d4ed8' },
+                      { key: 'overdue', name: 'Quá hạn', count: directKpiStats.overdue, fill: '#e11d48' },
+                      { key: 'completed', name: 'Hoàn thành', count: directKpiStats.completed, fill: '#059669' },
+                    ]}
+                    margin={{ top: 8, right: 16, left: 0, bottom: 4 }}
+                  >
+                    <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#475569' }} axisLine={false} tickLine={false} />
+                    <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} width={32} />
+                    <Tooltip cursor={{ fill: '#f1f5f9' }} contentStyle={{ fontSize: '12px', borderRadius: '6px' }} />
+                    <Bar
+                      dataKey="count"
+                      name="Số việc"
+                      radius={[4, 4, 0, 0]}
+                      barSize={44}
+                      className="cursor-pointer"
+                      onClick={(entry: any) => {
+                        if (entry?.key) {
+                          setDirectFilterStatus(entry.key);
+                          setActiveTab('direct');
+                        }
+                      }}
+                    >
+                      {[
+                        { key: 'pending', fill: '#0284c7' },
+                        { key: 'in_progress', fill: '#1d4ed8' },
+                        { key: 'overdue', fill: '#e11d48' },
+                        { key: 'completed', fill: '#059669' },
+                      ].map((item) => (
+                        <Cell key={item.key} fill={item.fill} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            }
+          />
+          <div className="p-3 grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <button
+              type="button"
+              onClick={() => navigate('/task-assignment?tab=unassigned')}
+              className="text-left p-3 bg-white border border-slate-200 rounded-md hover:border-primary transition-colors cursor-pointer"
+            >
+              <div className="text-xs font-bold text-slate-900">Công việc Dự án</div>
+              <div className="text-[11px] text-slate-500 mt-0.5">Xem và giao việc theo từng hạng mục dự án</div>
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/task-assignment?tab=direct')}
+              className="text-left p-3 bg-white border border-slate-200 rounded-md hover:border-primary transition-colors cursor-pointer"
+            >
+              <div className="text-xs font-bold text-slate-900">Công việc Phát sinh</div>
+              <div className="text-[11px] text-slate-500 mt-0.5">Quản lý việc giao trực tiếp và xử lý nhanh</div>
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/work-plan')}
+              className="text-left p-3 bg-white border border-slate-200 rounded-md hover:border-primary transition-colors cursor-pointer"
+            >
+              <div className="text-xs font-bold text-slate-900">Kế hoạch công việc</div>
+              <div className="text-[11px] text-slate-500 mt-0.5">Theo dõi lịch tổng hợp theo tháng, tuần</div>
+            </button>
+          </div>
+        </div>
+      ) : activeTab === 'direct' ? (
         /* GIAO DIỆN GIAO VIỆC TRỰC TIẾP / VIỆC PHÁT SINH (EDGE-TO-EDGE & TỐI ƯU MOBILE) */
         <div className="flex-1 overflow-hidden flex flex-col bg-white">
           <TabOverview

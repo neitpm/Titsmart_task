@@ -44,7 +44,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
   const isSystemAdminUser = isSystemAdmin(user);
   const isDirectorUser = isDirector(user);
   const isAdmin = isDirectorUser || isSystemAdminUser || user?.role === 'pm' || hasPermission(user, 'ASSIGN_TASKS');
-  const defaultTaskPath = isAdmin ? '/task-assignment?tab=unassigned' : '/my-tasks';
+  const defaultTaskPath = isAdmin ? '/task-assignment?tab=overview' : '/my-tasks';
   const sidebarRef = useRef<HTMLElement>(null);
 
   const activeCompanyName = companyName?.trim() || 'TITSMART';
