@@ -736,6 +736,7 @@ const hasSyncedRef = useRef(false);
   const [isEditTaskModalOpen, setIsEditTaskModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [assigningTask, setAssigningTask] = useState<Task | null>(null);
+  const [assignEngineerSearch, setAssignEngineerSearch] = useState<string>('');
   const [assigningUserIds, setAssigningUserIds] = useState<string[]>([]);
   const [assigningFollowerIds, setAssigningFollowerIds] = useState<string[]>([]);
   const [assignDueDate, setAssignDueDate] = useState('');
@@ -966,8 +967,17 @@ const hasSyncedRef = useRef(false);
   // Danh sách nhân viên / kỹ sư cho task đang mở modal giao việc
   const assigningTaskEngineers = React.useMemo(() => {
     const taskProjCode = assigningTask?.projectCode || assigningTask?.projectName || effectiveProjectCode;
-    return getEngineersForProject(taskProjCode, engineers, projects);
-  }, [assigningTask, effectiveProjectCode, engineers, projects]);
+    const list = getEngineersForProject(taskProjCode, engineers, projects)
+      .slice()
+      .sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'vi'));
+    const q = assignEngineerSearch.trim().toLowerCase();
+    if (!q) return list;
+    return list.filter(
+      (eng) =>
+        String(eng.name || '').toLowerCase().includes(q) ||
+        String(eng.title || '').toLowerCase().includes(q)
+    );
+  }, [assigningTask, effectiveProjectCode, engineers, projects, assignEngineerSearch]);
 
   // Danh sách nhân viên / kỹ sư cho task đang mở modal chỉnh sửa
   const editingTaskEngineers = React.useMemo(() => {
@@ -3597,6 +3607,25 @@ const hasSyncedRef = useRef(false);
                 </span>
                 <span className="text-[10px] text-slate-400 font-normal">(Bắt buộc)</span>
               </p>
+              <div className="relative mb-1.5">
+                <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-[15px]">search</span>
+                <input
+                  type="text"
+                  value={assignEngineerSearch}
+                  onChange={(e) => setAssignEngineerSearch(e.target.value)}
+                  placeholder="Tìm kiếm tên nhân sự..."
+                  className="w-full pl-8 pr-7 h-8 border border-slate-200 rounded-md text-xs focus:ring-1 focus:ring-primary focus:outline-none bg-white"
+                />
+                {assignEngineerSearch && (
+                  <button
+                    type="button"
+                    onClick={() => setAssignEngineerSearch('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-[14px]">close</span>
+                  </button>
+                )}
+              </div>
               <div className="h-48 overflow-y-auto border border-slate-200 rounded-lg p-2 space-y-1 bg-slate-50">
                 {assigningTaskEngineers.length === 0 ? (
                   <div className="p-3 text-center text-xs text-slate-500 font-medium">
@@ -3639,6 +3668,25 @@ const hasSyncedRef = useRef(false);
                 </span>
                 <span className="text-[10px] text-slate-400 font-normal">(Tùy chọn)</span>
               </p>
+              <div className="relative mb-1.5">
+                <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-[15px]">search</span>
+                <input
+                  type="text"
+                  value={assignEngineerSearch}
+                  onChange={(e) => setAssignEngineerSearch(e.target.value)}
+                  placeholder="Tìm kiếm tên nhân sự..."
+                  className="w-full pl-8 pr-7 h-8 border border-slate-200 rounded-md text-xs focus:ring-1 focus:ring-primary focus:outline-none bg-white"
+                />
+                {assignEngineerSearch && (
+                  <button
+                    type="button"
+                    onClick={() => setAssignEngineerSearch('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-[14px]">close</span>
+                  </button>
+                )}
+              </div>
               <div className="h-48 overflow-y-auto border border-slate-200 rounded-lg p-2 space-y-1 bg-slate-50">
                 {assigningTaskEngineers.length === 0 ? (
                   <div className="p-3 text-center text-xs text-slate-500 font-medium">
