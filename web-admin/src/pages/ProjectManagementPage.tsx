@@ -26,7 +26,6 @@ import { isUserMemberOfProject } from '../utils/projectMemberUtils';
 import { isNotificationForUser } from '../components/common/NotificationBell';
 import { PullToRefresh } from '../components/common/PullToRefresh';
 import { CustomSelect } from '../components/common/CustomSelect';
-import { TabOverview } from '../components/common/TabOverview';
 import { useUIStore } from '../services/uiStore';
 import { geocodeAddress, getCurrentDeviceLocation } from '../utils/geocodingUtils';
 
@@ -1283,41 +1282,6 @@ export const ProjectManagementPage: React.FC = () => {
           </h1>
         </div>
       </header>
-
-      <TabOverview
-        kpis={[
-          {
-            id: 'all',
-            label: 'Tổng dự án',
-            value: counts.all,
-            active: statusFilter === 'all',
-            onClick: () => setStatusFilter('all'),
-            tone: 'default',
-          },
-          {
-            id: 'active',
-            label: 'Đang triển khai',
-            value: counts.active,
-            active: statusFilter === 'active',
-            onClick: () => setStatusFilter('active'),
-            tone: 'primary',
-          },
-          {
-            id: 'completed',
-            label: 'Hoàn thành',
-            value: counts.completed,
-            active: statusFilter === 'completed',
-            onClick: () => setStatusFilter('completed'),
-            tone: 'success',
-          },
-          {
-            id: 'issues',
-            label: 'Có vấn đề / Trễ',
-            value: allEnhancedProjects.filter((p) => (p.issueTasksCount || 0) > 0).length,
-            tone: 'warning',
-          },
-        ]}
-      />
 
       <section className="border-b border-slate-200 bg-white px-3 py-2 flex flex-wrap items-center justify-between gap-2 relative z-10 shrink-0">
         {/* Nhóm bộ lọc bên trái: Phân loại + Ưu tiên + Ngày */}
