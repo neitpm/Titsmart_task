@@ -17,7 +17,7 @@ import { EmployeePeriodToolbar } from '../components/tasks/EmployeePeriodToolbar
 import { TimePeriodType, getDateRangeForPeriod, isTaskInPeriod, isTaskAssignedToPerson, getTaskTimeBounds } from '../utils/taskPeriodFilter';
 import { useUIStore } from '../services/uiStore';
 import { TabOverview } from '../components/common/TabOverview';
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from 'recharts';
+import { ResponsiveContainer, BarChart, Bar, LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, Cell } from 'recharts';
 
 export const TaskAssignmentPage: React.FC = () => {
   const navigate = useNavigate();
@@ -1244,47 +1244,75 @@ export const TaskAssignmentPage: React.FC = () => {
                 tone: 'success',
               },
             ]}
-            chartTitle="Phân bố công việc theo trạng thái (Bấm vào cột để mở danh sách)"
+            chartTitle="Phân bố trạng thái & Xu hướng 7 ngày gần nhất"
             hasChartData={directKpiStats.total > 0}
             chartContent={
-              <div className="h-56 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={[
-                      { key: 'pending', name: 'Chờ nhận', count: directKpiStats.pending, fill: '#0284c7' },
-                      { key: 'in_progress', name: 'Đang làm', count: directKpiStats.inProgress, fill: '#1d4ed8' },
-                      { key: 'overdue', name: 'Quá hạn', count: directKpiStats.overdue, fill: '#e11d48' },
-                      { key: 'completed', name: 'Hoàn thành', count: directKpiStats.completed, fill: '#059669' },
-                    ]}
-                    margin={{ top: 8, right: 16, left: 0, bottom: 4 }}
-                  >
-                    <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#475569' }} axisLine={false} tickLine={false} />
-                    <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} width={32} />
-                    <Tooltip cursor={{ fill: '#f1f5f9' }} contentStyle={{ fontSize: '12px', borderRadius: '6px' }} />
-                    <Bar
-                      dataKey="count"
-                      name="Số việc"
-                      radius={[4, 4, 0, 0]}
-                      barSize={44}
-                      className="cursor-pointer"
-                      onClick={(entry: any) => {
-                        if (entry?.key) {
-                          setDirectFilterStatus(entry.key);
-                          setActiveTab('direct');
-                        }
-                      }}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                <div className="h-52 w-full bg-white border border-slate-200 rounded-md p-2">
+                  <div className="text-[11px] font-bold text-slate-600 mb-1">Theo trạng thái (Bấm cột để lọc)</div>
+                  <ResponsiveContainer width="100%" height="88%">
+                    <BarChart
+                      data={[
+                        { key: 'pending', name: 'Chờ nhận', count: directKpiStats.pending, fill: '#0284c7' },
+                        { key: 'in_progress', name: 'Đang làm', count: directKpiStats.inProgress, fill: '#1d4ed8' },
+                        { key: 'overdue', name: 'Quá hạn', count: directKpiStats.overdue, fill: '#e11d48' },
+                        { key: 'completed', name: 'Hoàn thành', count: directKpiStats.completed, fill: '#059669' },
+                      ]}
+                      margin={{ top: 8, right: 12, left: 0, bottom: 4 }}
                     >
-                      {[
-                        { key: 'pending', fill: '#0284c7' },
-                        { key: 'in_progress', fill: '#1d4ed8' },
-                        { key: 'overdue', fill: '#e11d48' },
-                        { key: 'completed', fill: '#059669' },
-                      ].map((item) => (
-                        <Cell key={item.key} fill={item.fill} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                      <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#475569' }} axisLine={false} tickLine={false} />
+                      <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} width={28} />
+                      <Tooltip cursor={{ fill: '#f1f5f9' }} contentStyle={{ fontSize: '12px', borderRadius: '6px' }} />
+                      <Bar
+                        dataKey="count"
+                        name="Số việc"
+                        radius={[4, 4, 0, 0]}
+                        barSize={36}
+                        className="cursor-pointer"
+                        onClick={(entry: any) => {
+                          if (entry?.key) {
+                            setDirectFilterStatus(entry.key);
+                            setActiveTab('direct');
+                          }
+                        }}
+                      >
+                        {[
+                          { key: 'pending', fill: '#0284c7' },
+                          { key: 'in_progress', fill: '#1d4ed8' },
+                          { key: 'overdue', fill: '#e11d48' },
+                          { key: 'completed', fill: '#059669' },
+                        ].map((item) => (
+                          <Cell key={item.key} fill={item.fill} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="h-52 w-full bg-white border border-slate-200 rounded-md p-2">
+                  <div className="text-[11px] font-bold text-slate-600 mb-1">Xu hướng tạo mới & hoàn thành (7 ngày)</div>
+                  <ResponsiveContainer width="100%" height="88%">
+                    <LineChart
+                      data={Array.from({ length: 7 }, (_, i) => {
+                        const d = new Date();
+                        d.setDate(d.getDate() - (6 - i));
+                        const iso = d.toISOString().split('T')[0];
+                        const label = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+                        const createdCount = tasks.filter((t) => String(t.createdAt || '').startsWith(iso)).length;
+                        const completedCount = tasks.filter((t) => isTaskActuallyDone(t) && String(t.completedAt || t.updatedAt || '').startsWith(iso)).length;
+                        return { label, created: createdCount, completed: completedCount };
+                      })}
+                      margin={{ top: 8, right: 12, left: 0, bottom: 4 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                      <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#475569' }} axisLine={false} tickLine={false} />
+                      <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} width={28} />
+                      <Tooltip contentStyle={{ fontSize: '12px', borderRadius: '6px' }} />
+                      <Line type="monotone" dataKey="created" name="Tạo mới" stroke="#1d4ed8" strokeWidth={2} dot={{ r: 3 }} />
+                      <Line type="monotone" dataKey="completed" name="Hoàn thành" stroke="#059669" strokeWidth={2} dot={{ r: 3 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
               </div>
             }
             actionTitle="Việc phát sinh cần xử lý ngay"
