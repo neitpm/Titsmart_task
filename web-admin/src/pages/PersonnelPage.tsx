@@ -18,6 +18,8 @@ import { TimePeriodType, getDateRangeForPeriod, isTaskInPeriod, getTaskTimeBound
 import { cleanNotes } from '../utils/cleanNotesUtils';
 import { uploadAttachment } from '../utils/fileUploadHelper';
 import { useUIStore } from '../services/uiStore';
+import { TabOverview } from '../components/common/TabOverview';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from 'recharts';
 import { ViewModeToolbar, resolveViewMode, AppViewMode } from '../components/common/ViewModeToolbar';
 import { StatusKanbanBoard } from '../components/common/StatusKanbanBoard';
 
@@ -871,6 +873,58 @@ export const PersonnelPage: React.FC = () => {
           </div>
         </div>
       </section>
+
+      <TabOverview
+        kpis={[
+          {
+            id: 'all',
+            label: 'Tổng nhân sự',
+            value: engineers.length,
+            tone: 'default',
+          },
+          {
+            id: 'active',
+            label: 'Đang hoạt động',
+            value: engineers.filter((e) => !e.isLocked).length,
+            tone: 'success',
+          },
+          {
+            id: 'locked',
+            label: 'Đã khóa / Nghỉ',
+            value: engineers.filter((e) => e.isLocked).length,
+            tone: 'danger',
+          },
+          {
+            id: 'filtered',
+            label: 'Hiển thị hiện tại',
+            value: people.length,
+            tone: 'primary',
+          },
+        ]}
+        chartTitle="Trạng thái nhân sự"
+        hasChartData={engineers.length > 0}
+        chartContent={
+          <div className="h-44 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={[
+                  { name: 'Đang hoạt động', count: engineers.filter((e) => !e.isLocked).length, fill: '#059669' },
+                  { name: 'Đã khóa / Nghỉ', count: engineers.filter((e) => e.isLocked).length, fill: '#e11d48' },
+                ]}
+                margin={{ top: 8, right: 16, left: 0, bottom: 4 }}
+              >
+                <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#475569' }} axisLine={false} tickLine={false} />
+                <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} width={32} />
+                <Tooltip cursor={{ fill: '#f1f5f9' }} contentStyle={{ fontSize: '12px', borderRadius: '6px' }} />
+                <Bar dataKey="count" name="Số nhân sự" radius={[4, 4, 0, 0]} barSize={44}>
+                  <Cell fill="#059669" />
+                  <Cell fill="#e11d48" />
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        }
+      />
 
       <div className="flex-1 w-full max-w-full overflow-hidden flex flex-col">
       <section className="flex-1 grid grid-cols-1 gap-0 overflow-hidden">
