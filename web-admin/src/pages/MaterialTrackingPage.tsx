@@ -1368,9 +1368,15 @@ export const MaterialTrackingPage: React.FC = () => {
             {!projectId && (
         <section className="sticky top-0 z-30 border-b border-slate-200 bg-white pl-3 pr-12 sm:pr-14 md:pr-16 py-1 md:py-0 md:h-12 shadow-sm">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between h-full">
-            <div className="flex items-center gap-3 h-8 md:h-auto mb-1 md:mb-0">
-              <h2 className="page-title text-sm md:text-base font-extrabold text-slate-900 border-l-4 border-primary pl-2 shrink-0">
-                {activeTab === 'IMPORT' ? 'Nhật ký nhập kho' : activeTab === 'EXPORT' ? 'Nhật ký xuất kho' : 'Tồn kho tổng hợp'}
+            <div className="flex items-center gap-1.5 h-8 md:h-auto mb-1 md:mb-0 shrink-0">
+              <span className="page-title text-sm md:text-base font-extrabold text-slate-900 border-l-4 border-primary pl-2 shrink-0">
+                Tổng kho
+              </span>
+              <span className="material-symbols-outlined text-slate-400 text-[13px] shrink-0 select-none">
+                arrow_forward_ios
+              </span>
+              <h2 className="text-sm md:text-base font-bold text-slate-700 shrink-0">
+                {activeTab === 'IMPORT' ? 'Nhập kho' : activeTab === 'EXPORT' ? 'Xuất kho' : 'Tồn kho'}
               </h2>
             </div>
 

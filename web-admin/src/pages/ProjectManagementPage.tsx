@@ -1269,9 +1269,15 @@ export const ProjectManagementPage: React.FC = () => {
       <section className="border-b border-slate-200 bg-white shadow-xs px-2 py-2 flex flex-wrap items-center justify-between gap-2.5 relative z-10 shrink-0 no-drag-region electron-no-drag" style={{ WebkitAppRegion: 'no-drag' } as any}>
         {/* Nhóm bộ lọc bên trái: Tiêu đề + Trạng thái + Phân loại + Ngày */}
         <div className="flex items-center gap-2 flex-wrap min-w-0">
-          <div className="border-l-4 border-primary pl-2 flex items-center shrink-0">
-            <h1 className="page-title text-sm md:text-base font-extrabold text-slate-900 shrink-0">
-              {statusFilter === 'active' ? 'Dự án đang triển khai' : statusFilter === 'completed' ? 'Dự án hoàn thành' : 'Tất cả dự án'}
+          <div className="flex items-center gap-1.5 shrink-0">
+            <span className="page-title text-sm md:text-base font-extrabold text-slate-900 border-l-4 border-primary pl-2 shrink-0">
+              Tất cả dự án
+            </span>
+            <span className="material-symbols-outlined text-slate-400 text-[13px] shrink-0 select-none">
+              arrow_forward_ios
+            </span>
+            <h1 className="text-sm md:text-base font-bold text-slate-700 shrink-0">
+              {statusFilter === 'active' ? 'Đang triển khai' : statusFilter === 'completed' ? 'Hoàn thành' : 'Tất cả'}
               <span className="ml-1.5 text-xs font-bold text-slate-500">
                 ({statusFilter === 'active' ? counts.active : statusFilter === 'completed' ? counts.completed : counts.all})
               </span>

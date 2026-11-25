@@ -1548,9 +1548,15 @@ export const AttendancePage: React.FC = () => {
       {/* Header */}
       <header className="sticky top-0 z-30 border-b border-slate-200 bg-white px-2 py-1.5 md:py-0 md:h-12 flex items-center justify-between gap-1.5 shrink-0 pr-14 sm:pr-16">
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-          <div className="flex items-center border-l-4 border-primary pl-2">
-            <h1 className="page-title text-xs sm:text-sm md:text-base font-extrabold text-slate-900 shrink-0">
-              {mainTab === 'attendance' ? 'Chấm công' : mainTab === 'leave' ? 'Nghỉ phép' : 'Chấm công bù'}
+          <div className="flex items-center gap-1.5 shrink-0">
+            <span className="page-title text-xs sm:text-sm md:text-base font-extrabold text-slate-900 border-l-4 border-primary pl-2 shrink-0">
+              Công và lương
+            </span>
+            <span className="material-symbols-outlined text-slate-400 text-[13px] shrink-0 select-none">
+              arrow_forward_ios
+            </span>
+            <h1 className="text-xs sm:text-sm md:text-base font-bold text-slate-700 shrink-0">
+              {mainTab === 'attendance' ? 'Chấm công' : mainTab === 'leave' ? 'Xin nghỉ' : mainTab === 'payroll' ? 'Bảng lương' : 'Bù công'}
             </h1>
           </div>
 

@@ -1170,9 +1170,15 @@ export const TaskAssignmentPage: React.FC = () => {
     <div className="flex flex-col h-full bg-slate-50 w-full overflow-hidden">
       <div className="border-b border-slate-200 bg-white shadow-sm px-3 md:px-6 md:pr-20 py-2.5 md:py-0 md:h-12 flex flex-col md:flex-row justify-between items-start md:items-center gap-2.5 md:gap-2 relative z-50 shrink-0 no-drag-region electron-no-drag" style={{ WebkitAppRegion: 'no-drag' } as any}>
         <div className="flex flex-col sm:flex-row sm:items-center gap-2 md:gap-4 w-full md:w-auto min-w-0">
-          <div className="flex items-center justify-between gap-2 shrink-0 h-7 sm:h-8 md:h-auto pr-12 md:pr-0">
-            <h1 className="page-title text-sm md:text-base font-extrabold text-slate-900 border-l-4 border-primary pl-2 shrink-0">
-              {activeTab === 'direct' ? 'Việc phát sinh' : 'Công việc dự án'}
+          <div className="flex items-center gap-1.5 shrink-0 h-7 sm:h-8 md:h-auto pr-12 md:pr-0">
+            <span className="page-title text-sm md:text-base font-extrabold text-slate-900 border-l-4 border-primary pl-2 shrink-0">
+              Công việc
+            </span>
+            <span className="material-symbols-outlined text-slate-400 text-[13px] shrink-0 select-none">
+              arrow_forward_ios
+            </span>
+            <h1 className="text-sm md:text-base font-bold text-slate-700 shrink-0">
+              {activeTab === 'direct' ? 'Phát sinh' : 'Dự án'}
             </h1>
           </div>
         </div>
