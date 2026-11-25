@@ -363,9 +363,9 @@ export const ProjectOverviewTab: React.FC = () => {
   }
 
   return (
-    <div className="p-0 space-y-2 overflow-y-auto bg-slate-50 flex-1">
+    <div className="p-0 m-0 space-y-0 overflow-y-auto bg-slate-50 flex-1">
       {/* OPTION B: THANH METRIC RIBBON LIỀN MẠCH (DASHBOARD RIBBON) */}
-      <div className="bg-white border-b border-slate-200/90 shadow-2xs overflow-hidden">
+      <div className="bg-white border-b border-slate-200/90 shadow-2xs overflow-hidden w-full">
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-7 divide-y sm:divide-y-0 divide-slate-100 xl:divide-x divide-slate-100">
           
           {/* 1. Tiến độ công việc */}
@@ -544,7 +544,7 @@ export const ProjectOverviewTab: React.FC = () => {
       </div>
 
       {/* CHARTS */}
-      <div className="px-2 sm:px-3 md:px-4 space-y-4 pb-6">
+      <div className="p-2 sm:p-3 md:p-3.5 space-y-3 pb-6">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* Task Chart */}
           <div className="bg-white border border-slate-200 rounded-lg p-4 shadow-2xs">
