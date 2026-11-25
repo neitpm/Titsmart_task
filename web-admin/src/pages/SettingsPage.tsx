@@ -329,7 +329,7 @@ export const SettingsPage: React.FC = () => {
   const fetchActivityLogs = useRealtimeStore(state => state.fetchActivityLogs);
   const personalTasks = tasks.filter((task: any) => String(task.assignedEngineerId || '').toLowerCase() === String(user?.id || '').toLowerCase() || String(task.assignedEngineerName || '').trim().toLowerCase() === String(user?.name || '').trim().toLowerCase());
   const personalProjects = projects.filter((project: any) => (currentEngineer?.projectCodes || []).some(code => String(code).toLowerCase() === String(project.code || project.id).toLowerCase()));
-  const [personalTab, setPersonalTab] = useState<'profile' | 'overview' | 'attendance' | 'leave' | 'contract' | 'projects' | 'payroll' | 'journal'>('overview');
+  const [personalTab, setPersonalTab] = useState<'profile' | 'overview' | 'attendance' | 'leave' | 'contract' | 'projects' | 'payroll' | 'journal'>('profile');
   const [isPersonalMenuOpen, setIsPersonalMenuOpen] = useState(true);
   const [isAppSettingsMenuOpen, setIsAppSettingsMenuOpen] = useState(true);
   const [isEditingProfile, setIsEditingProfile] = useState(false);

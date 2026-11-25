@@ -733,7 +733,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
                   <button
                     onClick={() => {
                       setIsMobileDrawerOpen(false);
-                      navigate('/settings');
+                      navigate('/settings?tab=account');
                     }}
                     className="flex items-center gap-1.5 text-xs font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-100 px-3 py-1.5 rounded-xl transition-colors shadow-2xs cursor-pointer"
                     title="Cài đặt hệ thống"
