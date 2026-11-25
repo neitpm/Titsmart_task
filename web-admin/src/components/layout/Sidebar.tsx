@@ -175,7 +175,17 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
         },
         ...(user?.role !== 'engineer' ? [
           {
-            label: 'Thanh toán',
+            label: 'Yêu cầu thanh toán',
+            path: `/projects/${currentProject.id}/cost-plan?tab=PAYMENT_REQUEST`,
+            icon: 'request_quote',
+            isActive: (pathname: string, search: string) => {
+              if (!pathname.includes('/cost-plan')) return false;
+              const sp = new URLSearchParams(search);
+              return sp.get('tab') === 'PAYMENT_REQUEST';
+            }
+          },
+          {
+            label: 'Theo dõi thanh toán',
             path: `/projects/${currentProject.id}/cost-plan?tab=FINANCE`,
             icon: 'payments',
             isActive: (pathname: string, search: string) => {

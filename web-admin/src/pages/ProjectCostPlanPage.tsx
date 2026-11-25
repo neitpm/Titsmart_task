@@ -13,6 +13,7 @@ import { ImageUpload } from '../components/common/ImageUpload';
 import { ProjectMaterialPlan, ProjectPurchasing, ProjectExpense, LaborPayroll , calculateAutoProgressRatio, PURCHASE_STATUS_OPTIONS } from '../types';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
 import { MaterialAndPurchasingTab } from './cost-plan/MaterialAndPurchasingTab';
+import { PaymentRequestTab } from './cost-plan/PaymentRequestTab';
 import { supabase } from '../lib/supabase';
 import { api } from '../services/apiSupabase';
 
@@ -1540,7 +1541,7 @@ export const ProjectCostPlanPage: React.FC = () => {
   // Đồng bộ tab từ URL searchParams nếu có thay đổi
   useEffect(() => {
     const tabParam = searchParams.get('tab');
-    if (tabParam && ['TECH', 'DOCS', 'FINANCE', 'EXPENSE'].includes(tabParam)) {
+    if (tabParam && ['TECH', 'DOCS', 'FINANCE', 'EXPENSE', 'PAYMENT_REQUEST'].includes(tabParam)) {
       setActiveTab(tabParam);
     } else if (!tabParam) {
       setActiveTab('TECH');
@@ -1562,6 +1563,7 @@ export const ProjectCostPlanPage: React.FC = () => {
       else if (activeTab === 'DOCS') outletContext.setSubTitle('Chứng từ');
       else if (activeTab === 'FINANCE') outletContext.setSubTitle('Thanh toán');
       else if (activeTab === 'EXPENSE') outletContext.setSubTitle('Chi phí');
+      else if (activeTab === 'PAYMENT_REQUEST') outletContext.setSubTitle('Yêu cầu thanh toán');
       else outletContext.setSubTitle('');
     }
 
@@ -3426,6 +3428,32 @@ export const ProjectCostPlanPage: React.FC = () => {
             </div>
             </div>
 )}
+
+        {/* PAYMENT REQUEST TAB */}
+        {activeTab === 'PAYMENT_REQUEST' && (
+          <PaymentRequestTab
+            user={user}
+            projects={projects}
+            engineers={engineers}
+            selectedProjectCode={selectedProject}
+            onSelectProjectCode={(code) => setSelectedProject(code)}
+            onCreateExpenseFromPayment={(payment) => {
+              // Gợi ý / tự động mở modal tạo chi phí thực tế từ yêu cầu đã thanh toán
+              setNewExpenseData({
+                stt: '',
+                date: payment.paidAt?.slice(0, 10) || new Date().toISOString().split('T')[0],
+                content: payment.content || 'Chi phí thanh toán NCC',
+                description: `Thanh toán ${payment.code} cho ${payment.recipientName}`,
+                unit: 'Gói',
+                quantity: 1,
+                unitPrice: payment.totalAmount,
+                notes: `[YCTT:${payment.code}] Ghi nhận từ yêu cầu thanh toán đã chi`,
+                invoiceUrl: payment.paymentDocUrl || ''
+              });
+              setIsNewExpenseOpen(true);
+            }}
+          />
+        )}
 
             </div>
       {/* Xem ảnh / chứng từ / CCCD Modal */}

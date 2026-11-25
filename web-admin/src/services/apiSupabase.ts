@@ -3889,6 +3889,183 @@ export const api = {
     }
   },
 
+  paymentRequests: {
+    getAll: async (options?: { page?: number; pageSize?: number }) => {
+      try {
+        const page = options?.page || 1;
+        const pageSize = options?.pageSize;
+
+        let query = supabase
+          .from('activity_logs')
+          .select('*', { count: 'exact' })
+          .eq('icon', 'PAYMENT_REQUEST')
+          .order('timestamp', { ascending: false });
+
+        if (pageSize && pageSize > 0) {
+          const from = (page - 1) * pageSize;
+          const to = from + pageSize - 1;
+          query = query.range(from, to);
+        }
+
+        let { data, error, count } = await query;
+        if (error) {
+          let retryQuery = supabase
+            .from('activity_logs')
+            .select('*', { count: 'exact' })
+            .eq('icon', 'PAYMENT_REQUEST')
+            .order('timestamp', { ascending: false });
+
+          if (pageSize && pageSize > 0) {
+            const from = (page - 1) * pageSize;
+            const to = from + pageSize - 1;
+            retryQuery = retryQuery.range(from, to);
+          }
+          const res = await retryQuery;
+          data = res.data;
+          error = res.error;
+          count = res.count;
+        }
+
+        if (error) return [];
+
+        const list: any = (data || []).map(row => {
+          try {
+            const payload = typeof row.action === 'string' ? JSON.parse(row.action) : row.action;
+            return { id: row.id, ...payload };
+          } catch { return null; }
+        }).filter(Boolean);
+
+        list.totalCount = count ?? list.length;
+        list.page = page;
+        list.pageSize = pageSize;
+        return list;
+      } catch (err) {
+        return [];
+      }
+    },
+    getById: async (id: string) => {
+      try {
+        const { data, error } = await supabase
+          .from('activity_logs')
+          .select('*')
+          .eq('id', id)
+          .single();
+
+        if (error || !data) return null;
+        const payload = typeof data.action === 'string' ? JSON.parse(data.action) : data.action;
+        return { id: data.id, ...payload };
+      } catch (err) {
+        return null;
+      }
+    },
+    create: async (input: Partial<import('../types').PaymentRequest>) => {
+      const nowIso = new Date().toISOString();
+      const code = input.code || `YCTT-${Date.now().toString().slice(-6)}`;
+      const payload: import('../types').PaymentRequest = {
+        id: '',
+        code,
+        projectCode: input.projectCode || 'COMPANY',
+        projectName: input.projectName || input.projectCode || 'Công ty',
+        paymentType: input.paymentType || 'other',
+        recipientName: input.recipientName || '',
+        content: input.content || '',
+        amount: Number(input.amount) || 0,
+        vatAmount: Number(input.vatAmount) || 0,
+        totalAmount: (Number(input.amount) || 0) + (Number(input.vatAmount) || 0),
+        paymentMethod: input.paymentMethod || 'bank_transfer',
+        bankName: input.bankName || '',
+        bankAccountNumber: input.bankAccountNumber || '',
+        bankAccountHolder: input.bankAccountHolder || '',
+        dueDate: input.dueDate || nowIso.split('T')[0],
+        note: input.note || '',
+        status: input.status || 'PENDING_APPROVAL',
+        creatorId: input.creatorId || '',
+        creatorName: input.creatorName || '',
+        creatorTitle: input.creatorTitle || '',
+        createdAt: nowIso,
+        attachments: input.attachments || [],
+        history: [
+          {
+            action: input.status === 'DRAFT' ? 'Tạo bản nháp yêu cầu thanh toán' : 'Gửi yêu cầu thanh toán',
+            actorId: input.creatorId || '',
+            actorName: input.creatorName || 'Người đề nghị',
+            actorRole: input.creatorTitle || 'Người đề nghị',
+            timestamp: nowIso,
+            note: input.note
+          }
+        ]
+      };
+
+      const { data, error } = await supabase
+        .from('activity_logs')
+        .insert({
+          user: payload.creatorName,
+          project: payload.projectCode,
+          icon: 'PAYMENT_REQUEST',
+          action: JSON.stringify(payload),
+          timestamp: nowIso,
+          badge_bg: 'bg-emerald-50',
+          icon_color: 'text-emerald-600'
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('[createPaymentRequest Error]:', error);
+        throw error;
+      }
+
+      payload.id = data.id;
+      return payload;
+    },
+    update: async (id: string, updates: Partial<import('../types').PaymentRequest>, auditEntry?: import('../types').PaymentRequestAuditLog) => {
+      const { data: existing, error: getErr } = await supabase
+        .from('activity_logs')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (getErr || !existing) throw new Error('Không tìm thấy yêu cầu thanh toán');
+
+      const currentPayload = typeof existing.action === 'string' ? JSON.parse(existing.action) : existing.action;
+      const history = Array.isArray(currentPayload.history) ? [...currentPayload.history] : [];
+      if (auditEntry) {
+        history.push(auditEntry);
+      }
+
+      const mergedPayload: import('../types').PaymentRequest = {
+        ...currentPayload,
+        ...updates,
+        id,
+        history
+      };
+
+      if (updates.amount !== undefined || updates.vatAmount !== undefined) {
+        mergedPayload.totalAmount = (Number(mergedPayload.amount) || 0) + (Number(mergedPayload.vatAmount) || 0);
+      }
+
+      const { error: updateErr } = await supabase
+        .from('activity_logs')
+        .update({
+          action: JSON.stringify(mergedPayload),
+          timestamp: new Date().toISOString()
+        })
+        .eq('id', id);
+
+      if (updateErr) {
+        console.error('[updatePaymentRequest Error]:', updateErr);
+        throw updateErr;
+      }
+
+      return mergedPayload;
+    },
+    delete: async (id: string) => {
+      const { error } = await supabase.from('activity_logs').delete().eq('id', id);
+      if (error) throw error;
+      return { success: true };
+    }
+  },
+
   directMessages: {
     getAll: async () => {
       try {

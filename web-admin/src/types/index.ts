@@ -525,6 +525,102 @@ export interface FundRequest {
   approvedAt?: string;
 }
 
+// ==========================================
+// PAYMENT REQUEST (YÊU CẦU THANH TOÁN)
+// ==========================================
+export type PaymentRequestType = 'supplier' | 'advance_refund' | 'subcontractor' | 'other';
+
+export type PaymentRequestStatus =
+  | 'DRAFT'                    // Nháp
+  | 'PENDING_APPROVAL'        // Chờ duyệt
+  | 'NEED_MORE_INFO'          // Yêu cầu bổ sung
+  | 'APPROVED'                // Đã duyệt
+  | 'PENDING_PAYMENT'         // Chờ thanh toán (Kế toán tiếp nhận)
+  | 'PAID'                    // Đã thanh toán (Hoàn tất)
+  | 'REJECTED'                // Từ chối
+  | 'CANCELLED';              // Hủy
+
+export interface PaymentRequestAuditLog {
+  action: string;
+  actorId: string;
+  actorName: string;
+  actorRole?: string;
+  timestamp: string;
+  note?: string;
+  attachmentUrl?: string;
+}
+
+export interface PaymentRequestAttachment {
+  name: string;
+  url: string;
+  type?: string;
+  size?: number;
+}
+
+export interface PaymentRequest {
+  id: string;
+  code: string;                      // Mã yêu cầu (VD: YCTT-2026-001)
+  projectCode: string;               // Mã dự án hoặc "OFFICE" / "COMPANY" nếu chi phí công ty
+  projectName?: string;
+  paymentType: PaymentRequestType;    // supplier | advance_refund | subcontractor | other
+  recipientName: string;             // Nhà cung cấp hoặc người nhận tiền
+  content: string;                   // Nội dung thanh toán
+  amount: number;                    // Số tiền đề nghị (trước VAT)
+  vatAmount: number;                 // Tiền VAT / thuế
+  totalAmount: number;               // Tổng thanh toán (= amount + vatAmount)
+  paymentMethod: 'bank_transfer' | 'cash'; // Phương thức thanh toán
+  bankName?: string;                 // Ngân hàng
+  bankAccountNumber?: string;        // Số tài khoản
+  bankAccountHolder?: string;        // Chủ tài khoản
+  dueDate: string;                   // Hạn thanh toán (YYYY-MM-DD)
+  note?: string;                     // Ghi chú
+  status: PaymentRequestStatus;      // Trạng thái
+
+  // Người đề nghị
+  creatorId: string;
+  creatorName: string;
+  creatorTitle?: string;
+  createdAt: string;
+
+  // Người duyệt (Chỉ huy / Quản lý dự án / Giám đốc)
+  approverId?: string;
+  approverName?: string;
+  approverTitle?: string;
+  approvedAt?: string;
+  approvalNote?: string;
+
+  // Kế toán xử lý
+  accountantId?: string;
+  accountantName?: string;
+  receivedAt?: string;              // Kế toán tiếp nhận (Chờ thanh toán)
+  paidAt?: string;                  // Kế toán xác nhận đã trả tiền
+  paymentDocUrl?: string;           // UNC hoặc biên lai chi tiền
+  paymentDocName?: string;
+  paymentNote?: string;
+
+  // Liên kết chi phí thực tế (khi đã thanh toán)
+  expenseCreated?: boolean;
+  expenseId?: string;
+
+  // Liên kết nghiệp vụ
+  linkedFundRequestId?: string;     // Nếu hoàn ứng: ID đơn cấp quỹ / tạm ứng trước đó
+  linkedContractNumber?: string;    // Số hợp đồng / đơn đặt hàng nếu có
+
+  // Lý do từ chối hoặc yêu cầu bổ sung
+  rejectReason?: string;
+  rejectedBy?: string;
+  rejectedAt?: string;
+  moreInfoReason?: string;
+  moreInfoRequestedBy?: string;
+  moreInfoRequestedAt?: string;
+
+  // Hồ sơ đính kèm (báo giá, hợp đồng, biên bản nghiệm thu, hóa đơn, hoàn ứng...)
+  attachments: PaymentRequestAttachment[];
+
+  // Lịch sử luồng duyệt
+  history?: PaymentRequestAuditLog[];
+}
+
 export type AttendanceAdjustmentType = 'Bù vào ca' | 'Bù ra ca' | 'Bù cả ngày';
 
 export interface AttendanceAdjustmentRequest {
