@@ -363,7 +363,7 @@ export const MaterialTrackingPage: React.FC = () => {
     return 'OVERVIEW';
   };
 
-  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'IMPORT' | 'EXPORT'>(getInitialTab);
+  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'STOCK' | 'IMPORT' | 'EXPORT'>(getInitialTab);
 
   useEffect(() => {
     const t = searchParams.get('tab')?.toUpperCase();
@@ -371,7 +371,9 @@ export const MaterialTrackingPage: React.FC = () => {
       if (activeTab !== 'IMPORT') setActiveTab('IMPORT');
     } else if (t === 'EXPORT' || t === 'XUAT_KHO' || t === 'XUAT') {
       if (activeTab !== 'EXPORT') setActiveTab('EXPORT');
-    } else if (t === 'OVERVIEW' || t === 'INVENTORY' || t === 'TON_KHO' || !t) {
+    } else if (t === 'STOCK' || t === 'INVENTORY' || t === 'TON_KHO') {
+      if (activeTab !== 'STOCK') setActiveTab('STOCK');
+    } else if (t === 'OVERVIEW' || !t) {
       if (activeTab !== 'OVERVIEW') setActiveTab('OVERVIEW');
     }
   }, [searchParams]);
@@ -1378,7 +1380,7 @@ export const MaterialTrackingPage: React.FC = () => {
                 arrow_forward_ios
               </span>
               <h2 className="text-sm md:text-base font-bold text-slate-700 shrink-0">
-                {activeTab === 'IMPORT' ? 'Nhập kho' : activeTab === 'EXPORT' ? 'Xuất kho' : 'Tồn kho'}
+                {activeTab === 'OVERVIEW' ? 'Tổng quan' : activeTab === 'IMPORT' ? 'Nhập kho' : activeTab === 'EXPORT' ? 'Xuất kho' : 'Tồn kho'}
               </h2>
             </div>
 
@@ -1828,12 +1830,14 @@ export const MaterialTrackingPage: React.FC = () => {
                   id: 'in_stock',
                   label: 'Còn tồn kho',
                   value: filteredMaterials.filter((m) => ((m as any).stock ?? (m as any).quantity ?? 0) > 0).length,
+                  onClick: () => setActiveTab('STOCK'),
                   tone: 'success',
                 },
                 {
                   id: 'low_stock',
                   label: 'Hết hàng / Cần nhập',
                   value: filteredMaterials.filter((m) => ((m as any).stock ?? (m as any).quantity ?? 0) <= 0).length,
+                  onClick: () => setActiveTab('STOCK'),
                   tone: 'danger',
                 },
                 {
@@ -1883,6 +1887,37 @@ export const MaterialTrackingPage: React.FC = () => {
                 </div>
               }
             />
+            <div className="p-3 grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => setActiveTab('STOCK')}
+                className="text-left p-3 bg-white border border-slate-200 rounded-md hover:border-primary transition-colors cursor-pointer"
+              >
+                <div className="text-xs font-bold text-slate-900">Bảng Tồn kho</div>
+                <div className="text-[11px] text-slate-500 mt-0.5">Xem chi tiết số lượng tồn đầu, nhập, xuất và tồn cuối</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('IMPORT')}
+                className="text-left p-3 bg-white border border-slate-200 rounded-md hover:border-primary transition-colors cursor-pointer"
+              >
+                <div className="text-xs font-bold text-slate-900">Phiếu Nhập kho</div>
+                <div className="text-[11px] text-slate-500 mt-0.5">Quản lý lịch sử nhập vật tư theo dự án</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('EXPORT')}
+                className="text-left p-3 bg-white border border-slate-200 rounded-md hover:border-primary transition-colors cursor-pointer"
+              >
+                <div className="text-xs font-bold text-slate-900">Phiếu Xuất kho</div>
+                <div className="text-[11px] text-slate-500 mt-0.5">Theo dõi xuất kho và cấp phát vật tư</div>
+              </button>
+            </div>
+          </>
+        )}
+
+        {activeTab === 'STOCK' && (
+          <>
             <PullToRefresh onRefresh={async () => { await fetchMaterials(projectId); }} className="overflow-auto custom-scrollbar flex-1 pb-16 md:pb-0">
               <table className="w-full text-left border-collapse">
                  <thead 

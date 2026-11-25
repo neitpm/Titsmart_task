@@ -266,6 +266,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
 
     const projectSubItems = [
       {
+        label: 'Tất cả',
+        path: '/projects?status=all',
+        icon: 'apps',
+        isActive: (pathname: string, search: string) => {
+          const sp = new URLSearchParams(search);
+          return pathname === '/projects' && (sp.get('status') === 'all' || !sp.get('status'));
+        }
+      },
+      {
         label: 'Đang triển khai',
         path: '/projects?status=active',
         icon: 'play_circle',
@@ -281,15 +290,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
         isActive: (pathname: string, search: string) => {
           const sp = new URLSearchParams(search);
           return pathname === '/projects' && sp.get('status') === 'completed';
-        }
-      },
-      {
-        label: 'Tất cả',
-        path: '/projects?status=all',
-        icon: 'apps',
-        isActive: (pathname: string, search: string) => {
-          const sp = new URLSearchParams(search);
-          return pathname === '/projects' && (sp.get('status') === 'all' || !sp.get('status'));
         }
       }
     ];
@@ -367,11 +367,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
     const materialSubItems = [
       {
         label: 'Tồn kho',
-        path: '/materials?tab=overview',
+        path: '/materials?tab=stock',
         icon: 'inventory_2',
         isActive: (pathname: string, search: string) => {
           const sp = new URLSearchParams(search);
-          return pathname === '/materials' && (!sp.get('tab') || sp.get('tab') === 'overview' || sp.get('tab') === 'inventory');
+          return pathname === '/materials' && (sp.get('tab') === 'stock' || sp.get('tab') === 'inventory');
         }
       },
       {
@@ -398,7 +398,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
       { label: 'Tổng quan', path: '/dashboard', icon: 'analytics', req: 'VIEW_PROJECTS' },
       { 
         label: 'Tất cả dự án', 
-        path: '/projects?status=active', 
+        path: '/projects?status=all', 
         icon: 'cell_tower', 
         req: 'VIEW_PROJECTS',
         children: projectSubItems
