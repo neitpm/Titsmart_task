@@ -213,6 +213,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
 
       const baseProjectItems = [
           { label: 'Tổng quan', path: `/projects/${currentProject.id}/overview`, icon: 'dashboard', req: 'VIEW_PROJECTS' },
+          { label: 'Kế hoạch', path: `/projects/${currentProject.id}/plan`, icon: 'calendar_month', req: 'VIEW_TASKS' },
           { label: 'Tiến độ', path: `/projects/${currentProject.id}/tasks`, icon: 'fact_check', req: 'VIEW_TASKS' },
           { 
             label: 'Vật tư & Chi phí', 
@@ -509,7 +510,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
                   const isMaterialsSection = item.label === 'Tổng kho' && location.pathname === '/materials';
                   const isCostPlanSection = (item.label === 'Vật tư & Chi phí' || item.path.includes('/cost-plan')) && location.pathname.includes('/cost-plan');
                   const isInventorySection = (item.label === 'Kho Dự án' || item.path.includes('/inventory')) && location.pathname.includes('/inventory');
-                  const isParentActive = isTaskSection || isAttendanceSection || isProjectsSection || isMaterialsSection || isCostPlanSection || isInventorySection;
+                  const isPlanSection = (item.label === 'Kế hoạch' || item.path.includes('/plan')) && location.pathname.includes('/plan');
+                  const isParentActive = isTaskSection || isAttendanceSection || isProjectsSection || isMaterialsSection || isCostPlanSection || isInventorySection || isPlanSection;
                   const isSubOpen = openSubMenus[item.label] ?? true;
                   
                   return (
@@ -752,6 +754,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
       <div className="md:hidden fixed bottom-0 left-0 right-0 h-[calc(56px+env(safe-area-inset-bottom,0px))] bg-white/95 backdrop-blur-md border-t border-slate-200 z-50 flex items-center justify-around px-1 pb-[env(safe-area-inset-bottom,0px)] shadow-[0_-4px_16px_rgba(0,0,0,0.08)] select-none">
         {(currentProject ? [
           { label: 'Tổng quan', path: `/projects/${currentProject.id}/overview`, icon: 'dashboard' },
+          { label: 'Kế hoạch', path: `/projects/${currentProject.id}/plan`, icon: 'calendar_month' },
           { label: 'Công việc', path: `/projects/${currentProject.id}/tasks`, icon: 'fact_check' },
           { label: 'Chi phí', path: `/projects/${currentProject.id}/cost-plan`, icon: 'account_balance_wallet' },
           { label: 'Hồ sơ', path: `/projects/${currentProject.id}/documents`, icon: 'file_present' },
