@@ -173,16 +173,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
             return sp.get('tab') === 'DOCS';
           }
         },
-        {
-          label: 'Yêu cầu thanh toán',
-          path: `/projects/${currentProject.id}/cost-plan?tab=PAYMENT_REQUEST`,
-          icon: 'request_quote',
-          isActive: (pathname: string, search: string) => {
-            if (!pathname.includes('/cost-plan')) return false;
-            const sp = new URLSearchParams(search);
-            return sp.get('tab') === 'PAYMENT_REQUEST';
-          }
-        },
         ...(user?.role !== 'engineer' ? [
           {
             label: 'Theo dõi thanh toán',
@@ -201,10 +191,23 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
             isActive: (pathname: string, search: string) => {
               if (!pathname.includes('/cost-plan')) return false;
               const sp = new URLSearchParams(search);
-              return sp.get('tab') === 'EXPENSE';
+              const tab = sp.get('tab');
+              return tab === 'EXPENSE' || tab === 'PAYMENT_REQUEST';
             }
           }
-        ] : [])
+        ] : [
+          {
+            label: 'Chi phí',
+            path: `/projects/${currentProject.id}/cost-plan?tab=EXPENSE`,
+            icon: 'receipt_long',
+            isActive: (pathname: string, search: string) => {
+              if (!pathname.includes('/cost-plan')) return false;
+              const sp = new URLSearchParams(search);
+              const tab = sp.get('tab');
+              return tab === 'EXPENSE' || tab === 'PAYMENT_REQUEST';
+            }
+          }
+        ])
       ];
 
       const inventorySubItems = [

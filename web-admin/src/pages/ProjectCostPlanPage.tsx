@@ -2885,10 +2885,87 @@ export const ProjectCostPlanPage: React.FC = () => {
 
 
 
-        {/* EXPENSE TAB */}
-        {activeTab === 'EXPENSE' && (
+        {/* EXPENSE & PAYMENT REQUEST TAB (Gộp vào 1 tab Chi phí) */}
+        {(activeTab === 'EXPENSE' || activeTab === 'PAYMENT_REQUEST') && (
           <div className="h-full overflow-y-auto overflow-x-hidden custom-scrollbar bg-white flex flex-col pb-16 md:pb-0" id="expense-unified-view">
+            {/* THANH ĐIỀU HƯỚNG GỘP: PHIẾU CHI VÀ YÊU CẦU CHI */}
+            <div className="flex items-center justify-between px-3 md:px-5 pt-2 pb-0 bg-white border-b border-slate-200 shrink-0">
+              <div className="flex items-center gap-4 text-xs font-bold">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('EXPENSE');
+                    setSearchParams(prev => {
+                      const next = new URLSearchParams(prev);
+                      next.set('tab', 'EXPENSE');
+                      return next;
+                    });
+                  }}
+                  className={`py-2 border-b-2 flex items-center gap-1.5 transition-colors cursor-pointer ${
+                    activeTab === 'EXPENSE'
+                      ? 'border-primary text-primary'
+                      : 'border-transparent text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[16px]">receipt_long</span>
+                  <span>Sổ chi phí & Cấp quỹ</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('PAYMENT_REQUEST');
+                    setSearchParams(prev => {
+                      const next = new URLSearchParams(prev);
+                      next.set('tab', 'PAYMENT_REQUEST');
+                      return next;
+                    });
+                  }}
+                  className={`py-2 border-b-2 flex items-center gap-1.5 transition-colors cursor-pointer ${
+                    activeTab === 'PAYMENT_REQUEST'
+                      ? 'border-primary text-primary'
+                      : 'border-transparent text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[16px]">request_quote</span>
+                  <span>Yêu cầu thanh toán</span>
+                </button>
+              </div>
+            </div>
 
+            {/* NỘI DUNG 1: YÊU CẦU THANH TOÁN */}
+            {activeTab === 'PAYMENT_REQUEST' ? (
+              <PaymentRequestTab
+                user={user}
+                projects={projects}
+                engineers={engineers}
+                selectedProjectCode={selectedProject}
+                onSelectProjectCode={(code) => setSelectedProject(code)}
+                autoOpenCreateModal={searchParams.get('create') === 'true'}
+                onCloseCreateModal={() => {
+                  setSearchParams(prev => {
+                    const next = new URLSearchParams(prev);
+                    next.delete('create');
+                    return next;
+                  });
+                }}
+                onCreateExpenseFromPayment={(payment) => {
+                  setNewExpenseData({
+                    stt: '',
+                    date: payment.paidAt?.slice(0, 10) || new Date().toISOString().split('T')[0],
+                    content: payment.content || 'Chi phí thanh toán NCC',
+                    description: `Thanh toán ${payment.code} cho ${payment.recipientName}`,
+                    unit: 'Gói',
+                    quantity: 1,
+                    unitPrice: payment.totalAmount,
+                    notes: `[YCTT:${payment.code}] Ghi nhận từ yêu cầu thanh toán đã chi`,
+                    invoiceUrl: payment.paymentDocUrl || ''
+                  });
+                  setIsNewExpenseOpen(true);
+                  setActiveTab('EXPENSE');
+                }}
+              />
+            ) : (
+              <>
             {/* 1. BỘ LỌC & CÔNG CỤ (TOOLBAR TRÊN CÙNG) */}
             <div className="flex border-b border-slate-200 bg-slate-50 px-2 sm:px-3 md:px-5 py-2 gap-2 md:gap-3 sticky top-0 z-30 items-center justify-between text-xs text-slate-600 shadow-xs overflow-visible flex-nowrap">
               <div className="hidden md:flex items-center gap-2 md:gap-3 flex-nowrap shrink-0 overflow-x-auto custom-scrollbar">
@@ -3416,41 +3493,9 @@ export const ProjectCostPlanPage: React.FC = () => {
             )}
 
             </div>
-            </div>
-)}
-
-        {/* PAYMENT REQUEST TAB */}
-        {activeTab === 'PAYMENT_REQUEST' && (
-          <PaymentRequestTab
-            user={user}
-            projects={projects}
-            engineers={engineers}
-            selectedProjectCode={selectedProject}
-            onSelectProjectCode={(code) => setSelectedProject(code)}
-            autoOpenCreateModal={searchParams.get('create') === 'true'}
-            onCloseCreateModal={() => {
-              setSearchParams(prev => {
-                const next = new URLSearchParams(prev);
-                next.delete('create');
-                return next;
-              });
-            }}
-            onCreateExpenseFromPayment={(payment) => {
-              // Gợi ý / tự động mở modal tạo chi phí thực tế từ yêu cầu đã thanh toán
-              setNewExpenseData({
-                stt: '',
-                date: payment.paidAt?.slice(0, 10) || new Date().toISOString().split('T')[0],
-                content: payment.content || 'Chi phí thanh toán NCC',
-                description: `Thanh toán ${payment.code} cho ${payment.recipientName}`,
-                unit: 'Gói',
-                quantity: 1,
-                unitPrice: payment.totalAmount,
-                notes: `[YCTT:${payment.code}] Ghi nhận từ yêu cầu thanh toán đã chi`,
-                invoiceUrl: payment.paymentDocUrl || ''
-              });
-              setIsNewExpenseOpen(true);
-            }}
-          />
+            </>
+          )}
+          </div>
         )}
 
             </div>
