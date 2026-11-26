@@ -3,6 +3,8 @@ import { ProjectMaterialPlan, getStatusColorStyle, PURCHASE_STATUS_OPTIONS, CONS
 import { CustomSelect } from '@/components/common/CustomSelect';
 import { compareTaskStt } from '../../utils/taskTreeUtils';
 import { stripDiscussionThread } from '../../utils/taskDiscussion';
+import { useTableColumnResize } from '../../services/useTableColumnResize';
+import { ColumnResizeHandle } from '../../components/common/ColumnResizeHandle';
 
 interface MaterialPlanTabProps {
   data: ProjectMaterialPlan[];
@@ -365,6 +367,60 @@ export const MaterialPlanTab: React.FC<MaterialPlanTabProps> = ({
     setEditingCell(null);
   };
 
+  const defaultColWidths = useMemo(() => {
+    if (subTab === 'TECH') {
+      return {
+        col_stt: 50,
+        col_content: 200,
+        col_unit: 65,
+        col_contract_qty: 85,
+        col_model: 90,
+        col_origin: 80,
+        col_progress: 120,
+        col_tech_brand: 60,
+        col_expected_date: 130,
+        col_updated: 120,
+        col_actions: 60,
+      };
+    }
+    if (subTab === 'ORDER') {
+      return {
+        col_stt: 50,
+        col_content: 200,
+        col_unit: 65,
+        col_contract_qty: 85,
+        col_model: 90,
+        col_origin: 80,
+        col_order_qty: 65,
+        col_order_status: 125,
+        col_available_date: 90,
+        col_issue_content: 110,
+        col_issue_status: 80,
+        col_notes: 110,
+      };
+    }
+    // DOCS
+    return {
+      col_stt: 50,
+      col_content: 200,
+      col_unit: 65,
+      col_contract_qty: 85,
+      col_model: 90,
+      col_origin: 80,
+      col_co: 40,
+      col_cq: 40,
+      col_fire: 60,
+      col_dispatch: 60,
+      col_date: 60,
+      col_notes: 110,
+    };
+  }, [subTab]);
+
+  const { widths: colWidths, startResize } = useTableColumnResize({
+    tableId: `table_material_plan_${subTab}`,
+    defaultWidths: defaultColWidths as unknown as Record<string, number>,
+  });
+
   const maxSttWidth = React.useMemo(() => {
     let maxLen = 3;
     data.forEach(t => {
@@ -478,15 +534,50 @@ export const MaterialPlanTab: React.FC<MaterialPlanTabProps> = ({
       </div>
 
       <div className="w-full max-w-full min-h-0 flex-1 overflow-x-auto custom-scrollbar">
-        <table className="w-full table-fixed border-collapse text-left text-xs" style={{ "--stt-width": `${maxSttWidth}px` } as React.CSSProperties}>
+        <table className="w-full table-fixed min-w-[1150px] border-collapse text-left text-xs" style={{ "--stt-width": `${maxSttWidth}px` } as React.CSSProperties}>
+          <colgroup>
+            <col style={{ width: colWidths.col_stt }} />
+            <col style={{ width: colWidths.col_content }} />
+            <col style={{ width: colWidths.col_unit }} />
+            <col style={{ width: colWidths.col_contract_qty }} />
+            <col style={{ width: colWidths.col_model }} />
+            <col style={{ width: colWidths.col_origin }} />
+            {subTab === 'TECH' && (
+              <>
+                <col style={{ width: colWidths.col_tech_brand }} />
+                <col style={{ width: colWidths.col_expected_date }} />
+                <col style={{ width: colWidths.col_updated }} />
+                <col style={{ width: colWidths.col_progress }} />
+              </>
+            )}
+            {subTab === 'ORDER' && (
+              <>
+                <col style={{ width: (colWidths as any).col_order_qty }} />
+                <col style={{ width: (colWidths as any).col_order_status }} />
+                <col style={{ width: (colWidths as any).col_available_date }} />
+                <col style={{ width: (colWidths as any).col_issue_content }} />
+                <col style={{ width: (colWidths as any).col_issue_status }} />
+              </>
+            )}
+            {subTab === 'DOCS' && (
+              <>
+                <col style={{ width: (colWidths as any).col_co }} />
+                <col style={{ width: (colWidths as any).col_cq }} />
+                <col style={{ width: (colWidths as any).col_fire }} />
+                <col style={{ width: (colWidths as any).col_dispatch }} />
+                <col style={{ width: (colWidths as any).col_date }} />
+              </>
+            )}
+            <col style={{ width: colWidths.col_actions ?? (colWidths as any).col_notes }} />
+          </colgroup>
           <thead className="sticky top-0 z-30 border-b border-slate-200 bg-slate-50 text-[10px] font-extrabold uppercase tracking-tight text-slate-600">
             <tr className="bg-slate-50">
-              <th rowSpan={2} style={{ width: "var(--stt-width)", minWidth: "var(--stt-width)", maxWidth: "var(--stt-width)", borderRight: '1px solid #94a3b8', borderBottom: '1px solid #94a3b8' }} className="sticky left-0 z-20 bg-slate-50 bg-clip-padding px-0.5 py-1 text-center font-extrabold whitespace-nowrap">STT</th>
-              <th rowSpan={2} style={{ minWidth: 280, borderRight: '1px solid #94a3b8', borderBottom: '1px solid #94a3b8'  , left: "var(--stt-width)" }} className="sticky z-20 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] bg-slate-50 bg-clip-padding px-1.5 py-1 font-extrabold text-left " >NỘI DUNG</th>
-              <th rowSpan={2} style={{ width: 65, borderRight: '1px solid #94a3b8', borderBottom: '1px solid #94a3b8' }} className="bg-slate-50 bg-clip-padding px-1 py-1.5 text-center leading-tight">ĐVT</th>
-              <th rowSpan={2} style={{ width: 50, borderRight: '1px solid #94a3b8', borderBottom: '1px solid #94a3b8' }} className="bg-slate-50 bg-clip-padding px-1 py-1.5 text-center leading-tight">KL HĐ</th>
-              <th rowSpan={2} style={{ width: 100, borderRight: "1px solid #94a3b8", borderBottom: "1px solid #94a3b8" }} className="bg-slate-50 bg-clip-padding px-1 py-1.5 text-center leading-tight">MÃ HIỆU</th>
-              <th rowSpan={2} style={{ width: 100, borderRight: "1px solid #94a3b8", borderBottom: "1px solid #94a3b8" }} className="bg-slate-50 bg-clip-padding px-1 py-1.5 text-center leading-tight">XUẤT XỨ</th>
+              <th rowSpan={2} style={{ width: "var(--stt-width)", minWidth: "var(--stt-width)", maxWidth: "var(--stt-width)", borderRight: '1px solid #94a3b8', borderBottom: '1px solid #94a3b8' }} className="sticky left-0 z-20 bg-slate-50 bg-clip-padding px-0.5 py-1 text-center font-extrabold whitespace-nowrap relative">STT<ColumnResizeHandle onMouseDown={(e) => startResize('col_stt', e)} /></th>
+              <th rowSpan={2} style={{ minWidth: 280, borderRight: '1px solid #94a3b8', borderBottom: '1px solid #94a3b8'  , left: "var(--stt-width)" }} className="sticky z-20 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] bg-slate-50 bg-clip-padding px-1.5 py-1 font-extrabold text-left relative" >NỘI DUNG<ColumnResizeHandle onMouseDown={(e) => startResize('col_content', e)} /></th>
+              <th rowSpan={2} style={{ width: 65, borderRight: '1px solid #94a3b8', borderBottom: '1px solid #94a3b8' }} className="bg-slate-50 bg-clip-padding px-1 py-1.5 text-center leading-tight relative">ĐVT<ColumnResizeHandle onMouseDown={(e) => startResize('col_unit', e)} /></th>
+              <th rowSpan={2} style={{ width: 50, borderRight: '1px solid #94a3b8', borderBottom: '1px solid #94a3b8' }} className="bg-slate-50 bg-clip-padding px-1 py-1.5 text-center leading-tight relative">KL HĐ<ColumnResizeHandle onMouseDown={(e) => startResize('col_contract_qty', e)} /></th>
+              <th rowSpan={2} style={{ width: 100, borderRight: "1px solid #94a3b8", borderBottom: "1px solid #94a3b8" }} className="bg-slate-50 bg-clip-padding px-1 py-1.5 text-center leading-tight relative">MÃ HIỆU<ColumnResizeHandle onMouseDown={(e) => startResize('col_model', e)} /></th>
+              <th rowSpan={2} style={{ width: 100, borderRight: "1px solid #94a3b8", borderBottom: "1px solid #94a3b8" }} className="bg-slate-50 bg-clip-padding px-1 py-1.5 text-center leading-tight relative">XUẤT XỨ<ColumnResizeHandle onMouseDown={(e) => startResize('col_origin', e)} /></th>
 
               {subTab === 'TECH' && (
                 <>
@@ -728,7 +819,7 @@ export const MaterialPlanTab: React.FC<MaterialPlanTabProps> = ({
                     )}
                   </td>
                   {/* NỘI DUNG */}
-                  <td className={`sticky z-10 ${stickyBg} group-hover:bg-slate-100 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] border-r border-slate-200 py-0.5 sm:py-1 px-1 sm:px-1.5 align-top text-left overflow-hidden ${fontStyle}`} style={{ left: "var(--stt-width)" }}>
+                  <td className={`sticky z-10 ${stickyBg} group-hover:bg-slate-100 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] border-r border-slate-200 py-0.5 sm:py-1 px-1 sm:px-1.5 align-top text-left overflow-hidden relative ${fontStyle}`} style={{ left: "var(--stt-width)" }}>
                     {editingCell?.id === plan.id && editingCell?.field === 'jobContent' ? (
                       <input
                         type="text"
@@ -750,14 +841,14 @@ export const MaterialPlanTab: React.FC<MaterialPlanTabProps> = ({
                           {plan.jobContent}
                         </span>
                         
-                        <div className="hidden group-hover:flex items-center ml-1 transition-opacity">
+                        <div className="absolute right-1 top-1/2 -translate-y-1/2 hidden group-hover:flex items-center bg-white/95 group-hover:bg-slate-100/95 backdrop-blur-xs pl-1.5 py-0.5 shadow-[-6px_0_10px_-2px_rgba(241,245,249,0.9)] z-20 transition-opacity">
                         {onAddSubtask && (
-                          <button onClick={(e) => { e.stopPropagation(); onAddSubtask(plan, suggestedStt); }} className="ml-1 p-0.5 rounded text-slate-300 hover:text-blue-600 hover:bg-slate-200 transition-colors inline-flex items-center flex-shrink-0" title="thêm hạng mục mới">
+                          <button onClick={(e) => { e.stopPropagation(); onAddSubtask(plan, suggestedStt); }} className="ml-1 p-0.5 rounded text-slate-400 hover:text-blue-600 hover:bg-slate-200 transition-colors inline-flex items-center flex-shrink-0" title="thêm hạng mục mới">
                             <span className="material-symbols-outlined text-[13px]">add_circle</span>
                           </button>
                         )}
                         {onDelete && (
-                          <button onClick={(e) => { e.stopPropagation(); onDelete(plan.id); }} className="ml-1 p-0.5 rounded text-slate-300 hover:text-rose-600 hover:bg-rose-100 transition-colors inline-flex items-center flex-shrink-0" title="Xóa">
+                          <button onClick={(e) => { e.stopPropagation(); onDelete(plan.id); }} className="ml-1 p-0.5 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-100 transition-colors inline-flex items-center flex-shrink-0" title="Xóa">
                             <span className="material-symbols-outlined text-[13px]">delete</span>
                           </button>
                         )}

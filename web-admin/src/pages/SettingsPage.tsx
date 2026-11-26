@@ -223,6 +223,9 @@ export const SettingsPage: React.FC = () => {
     tablePaginationMode,
     tablePageSize,
     appViewMode,
+    enableTableColumnResize,
+    setEnableTableColumnResize,
+    resetTableColumnWidths,
     setAppViewMode,
     setTablePaginationMode,
     setTablePageSize,
@@ -1609,6 +1612,58 @@ export const SettingsPage: React.FC = () => {
                     <CustomSelect value={appViewMode} onChange={e => setAppViewMode(e.target.value as typeof appViewMode)} className="h-9 w-44 rounded-md border border-slate-300 bg-white px-3 text-xs font-bold text-slate-700">
                       <option value="grid">Dạng thẻ</option><option value="compact_grid">Thẻ thu gọn</option><option value="table">Bảng gọn</option><option value="table_detailed">Bảng chi tiết</option><option value="kanban">Bảng Kanban</option>
                     </CustomSelect>
+                  </div>
+
+                  {/* Row 4: Cho phép tùy chỉnh độ rộng cột bảng dữ liệu */}
+                  <div className="flex items-center justify-between gap-3 p-4 rounded-xl bg-slate-50 border border-slate-200/80">
+                    <div className="flex items-center gap-3">
+                      <span className="material-symbols-outlined text-xl text-slate-600">view_column</span>
+                      <div>
+                        <span className="text-xs font-bold text-slate-800 block">Cho phép tùy chỉnh độ rộng cột</span>
+                        <span className="text-[11px] text-slate-500">
+                          {enableTableColumnResize
+                            ? 'Bật: Tất cả bảng dữ liệu nghiệp vụ hiển thị tay nắm kéo mép cột để điều chỉnh.'
+                            : 'Tắt: Bảng dùng độ rộng chuẩn mặc định, không hiện tay kéo.'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {enableTableColumnResize && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            resetTableColumnWidths();
+                            triggerToast('Đã khôi phục toàn bộ độ rộng cột mặc định cho tất cả bảng', 'success');
+                          }}
+                          className="px-2.5 py-1.5 text-[11px] font-bold text-slate-600 hover:text-rose-600 hover:bg-rose-50 rounded-lg border border-slate-200 transition-colors cursor-pointer"
+                          title="Khôi phục lại độ rộng chuẩn ban đầu"
+                        >
+                          Khôi phục mặc định
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const nextVal = !enableTableColumnResize;
+                          setEnableTableColumnResize(nextVal);
+                          triggerToast(
+                            nextVal
+                              ? 'Đã BẬT tính năng kéo chỉnh độ rộng cột trên toàn bộ bảng'
+                              : 'Đã TẮT tính năng kéo chỉnh độ rộng cột (dùng độ rộng chuẩn)',
+                            'success'
+                          );
+                        }}
+                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                          enableTableColumnResize ? 'bg-primary' : 'bg-slate-300'
+                        }`}
+                      >
+                        <span
+                          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                            enableTableColumnResize ? 'translate-x-5' : 'translate-x-0'
+                          }`}
+                        />
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>

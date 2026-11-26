@@ -10,6 +10,7 @@ import { Toast } from '../components/common/Toast';
 import { CustomSelect } from '../components/common/CustomSelect';
 import { ImageUpload } from '../components/common/ImageUpload';
 import { CostPlanSummaryTable } from './cost-plan/CostPlanSummaryTable';
+import { ImportExportDropdown } from '../components/common/ImportExportDropdown';
 import { AuditInfoCell } from '../components/common/AuditInfoCell';
 import { parseInvoiceUrls, serializeInvoiceUrls } from '../utils/fileUploadHelper';
 
@@ -427,79 +428,17 @@ export const OfficeCostsPage: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Nhập file button */}
-          <button
-            onClick={() => {
+          {/* Menu Gộp Nhập / Xuất file */}
+          <ImportExportDropdown
+            onImportClick={() => {
               if (fileInputRef.current) fileInputRef.current.click();
             }}
-            className="flex items-center gap-1.5 border border-blue-200 bg-blue-50 h-[34px] px-3.5 rounded-lg text-xs font-bold text-primary hover:bg-blue-100 active:scale-95 transition-all shadow-xs cursor-pointer"
-            title="Nhập file Excel / CSV"
-          >
-            <span className="material-symbols-outlined text-[16px]">file_upload</span>
-            <span className="hidden sm:inline">Nhập file</span>
-          </button>
-
-          {/* Desktop Export File Dropdown */}
-          <div className="relative hidden md:block">
-            <button
-              onClick={() => setShowExportMenu(!showExportMenu)}
-              className="flex items-center gap-1.5 border border-emerald-200 bg-emerald-50 h-[34px] px-3.5 rounded-lg text-xs font-bold text-emerald-700 hover:bg-emerald-100 active:scale-95 transition-all shadow-xs cursor-pointer relative z-50"
-            >
-              <span className="material-symbols-outlined text-[14px]">file_download</span>
-              <span>Xuất file</span>
-              <span className="material-symbols-outlined text-xs">expand_more</span>
-            </button>
-            {showExportMenu && (
-              <>
-                <div 
-                  className="fixed inset-0 z-[9998]" 
-                  onClick={() => setShowExportMenu(false)}
-                />
-                <div className="absolute right-0 top-full mt-1 w-44 bg-white rounded-xl shadow-2xl border border-slate-200 py-1.5 z-[9999] animate-in fade-in zoom-in duration-100">
-                  <button
-                    onClick={() => {
-                      setShowExportMenu(false);
-                      handleExportExcel();
-                    }}
-                    className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
-                  >
-                    <span className="material-symbols-outlined text-base text-green-600">grid_on</span>
-                    Excel (.xlsx)
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowExportMenu(false);
-                      handleExportExcel();
-                    }}
-                    className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
-                  >
-                    <span className="material-symbols-outlined text-base text-teal-600">csv</span>
-                    CSV (.csv)
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowExportMenu(false);
-                      window.print();
-                    }}
-                    className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
-                  >
-                    <span className="material-symbols-outlined text-base text-red-600">picture_as_pdf</span>
-                    PDF (.pdf)
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowExportMenu(false);
-                      handleExportExcel();
-                    }}
-                    className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
-                  >
-                    <span className="material-symbols-outlined text-base text-blue-600">description</span>
-                    Word (.docx)
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
+            importLabel="Nhập từ file"
+            onExportExcel={handleExportExcel}
+            onExportCsv={handleExportExcel}
+            onExportPdf={() => window.print()}
+            onExportWord={handleExportExcel}
+          />
 
           {hasPermission(user, 'EDIT_EXPENSES') && (
             <button
@@ -574,65 +513,17 @@ export const OfficeCostsPage: React.FC = () => {
             )}
             
             {/* Mobile Export File Button */}
-            <div className="relative shrink-0">
-              <button
-                onClick={() => setShowExportMenu(!showExportMenu)}
-                className="flex items-center justify-center h-9 px-2 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 active:scale-95 transition-all shadow-xs gap-0.5"
-                title="Xuất file"
-              >
-                <span className="material-symbols-outlined text-base">file_download</span>
-                <span className="material-symbols-outlined text-xs">expand_more</span>
-              </button>
-              {showExportMenu && (
-                <div 
-                  className="fixed inset-0 z-40" 
-                  onClick={() => setShowExportMenu(false)}
-                />
-              )}
-              {showExportMenu && (
-                <div className="absolute right-0 top-full mt-1 w-44 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-50 animate-in fade-in zoom-in duration-100">
-                  <button
-                    onClick={() => {
-                      setShowExportMenu(false);
-                      handleExportExcel();
-                    }}
-                    className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2"
-                  >
-                    <span className="material-symbols-outlined text-base text-green-600">grid_on</span>
-                    Excel (.xlsx)
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowExportMenu(false);
-                      handleExportExcel();
-                    }}
-                    className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2"
-                  >
-                    <span className="material-symbols-outlined text-base text-teal-600">csv</span>
-                    CSV (.csv)
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowExportMenu(false);
-                      window.print();
-                    }}
-                    className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2"
-                  >
-                    <span className="material-symbols-outlined text-base text-red-600">picture_as_pdf</span>
-                    PDF (.pdf)
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowExportMenu(false);
-                      handleExportExcel();
-                    }}
-                    className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2"
-                  >
-                    <span className="material-symbols-outlined text-base text-blue-600">description</span>
-                    Word (.docx)
-                  </button>
-                </div>
-              )}
+            <div className="shrink-0">
+              <ImportExportDropdown
+                onImportClick={() => fileInputRef.current?.click()}
+                importLabel="Nhập từ file"
+                onExportExcel={handleExportExcel}
+                onExportCsv={handleExportExcel}
+                onExportPdf={() => window.print()}
+                onExportWord={handleExportExcel}
+                buttonLabel=""
+                buttonClassName="!h-9 !px-2"
+              />
             </div>
           </div>
           

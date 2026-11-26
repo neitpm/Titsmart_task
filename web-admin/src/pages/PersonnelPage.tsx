@@ -1,4 +1,4 @@
-import { Permission } from '../types';
+import { Permission, Engineer } from '../types';
 import { getDefaultPermissions, hasPermission, isDirector } from '../services/authStore';
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -23,6 +23,13 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from 
 import { ViewModeToolbar, resolveViewMode, AppViewMode } from '../components/common/ViewModeToolbar';
 import { StatusKanbanBoard } from '../components/common/StatusKanbanBoard';
 import { PersonnelOverviewModal } from '../components/personnel/PersonnelOverviewModal';
+import { DepartmentManagementModal } from '../components/personnel/DepartmentManagementModal';
+import { DepartmentTransferModal } from '../components/personnel/DepartmentTransferModal';
+import { DepartmentHistoryModal } from '../components/personnel/DepartmentHistoryModal';
+import { useDepartmentStore } from '../services/departmentStore';
+import { ImportExportDropdown } from '../components/common/ImportExportDropdown';
+import { useTableColumnResize } from '../services/useTableColumnResize';
+import { ColumnResizeHandle } from '../components/common/ColumnResizeHandle';
 
 const filters = [
   { key: 'all', label: 'Tất cả' },
@@ -163,6 +170,25 @@ export const PersonnelPage: React.FC = () => {
   const supportedPersonnelModes: AppViewMode[] = ['grid', 'compact_grid', 'table', 'table_detailed', 'kanban'];
   const viewMode = resolveViewMode(appViewMode, supportedPersonnelModes);
 
+  // Cột cho bảng Personnel (Chi tiết)
+  const defaultPersonnelColWidths = useMemo(() => ({
+    col_name: 180,
+    col_code: 90,
+    col_username: 120,
+    col_auth: 160,
+    col_role: 140,
+    col_projects: 140,
+    col_kpi: 130,
+    col_phone: 110,
+    col_status: 100,
+    col_actions: 90,
+  }), []);
+
+  const { widths: colWidths, startResize: startColResize } = useTableColumnResize({
+    tableId: 'table_personnel_detailed',
+    defaultWidths: defaultPersonnelColWidths,
+  });
+
   const [lockedIds, setLockedIds] = useState<string[]>([]);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -208,6 +234,15 @@ export const PersonnelPage: React.FC = () => {
   const [viewingProjectsPerson, setViewingProjectsPerson] = useState<any | null>(null);
   const [projectModalSearch, setProjectModalSearch] = useState('');
   
+  // Department States
+  const departments = useDepartmentStore((s) => s.departments);
+  const fetchDepartments = useDepartmentStore((s) => s.fetchDepartments);
+  const [selectedDepartmentFilter, setSelectedDepartmentFilter] = useState<string>('all');
+  const [isDepartmentModalOpen, setIsDepartmentModalOpen] = useState(false);
+  const [transferringPerson, setTransferringPerson] = useState<Engineer | null>(null);
+  const [historyPerson, setHistoryPerson] = useState<Engineer | null>(null);
+  const [departmentId, setDepartmentId] = useState<string>('');
+
   // Overview Modal state
   const [viewingOverviewPerson, setViewingOverviewPerson] = useState<any | null>(null);
   const [fundRequests, setFundRequests] = useState<any[]>(() => {
@@ -247,6 +282,7 @@ export const PersonnelPage: React.FC = () => {
     fetchTasks();
     fetchAccounting();
     fetchMaterials(undefined);
+    fetchDepartments();
 
     const loadLocalFundRequests = () => {
       try {
@@ -319,6 +355,7 @@ export const PersonnelPage: React.FC = () => {
         'STT': index + 1,
         'Mã nhân viên': p.code,
         'Họ tên': p.name,
+        'Phòng ban': p.departmentName || (p as any).department || 'Chưa phân phòng',
         'Tên đăng nhập': p.username || '',
         'Vai trò': p.role,
         'Đội/Nhóm': p.team || '',
@@ -399,6 +436,7 @@ export const PersonnelPage: React.FC = () => {
     setSelectedProjectCodes([]);
     setIsAllProjects(false);
     setPermissions(getDefaultPermissions('Nhân viên'));
+    setDepartmentId('');
   };
 
   const closeForm = () => {
@@ -463,11 +501,27 @@ export const PersonnelPage: React.FC = () => {
       legacyCode = legacyCode.replace('/THO', '');
     }
 
+    // Tự động phân bổ phòng ban mặc định nếu nhân sự chưa có phòng ban
+    let assignedDeptId = engineer.departmentId;
+    let assignedDeptCode = engineer.departmentCode;
+    let assignedDeptName = engineer.departmentName || (engineer as any).department;
+
+    if (!assignedDeptId && !assignedDeptCode && !assignedDeptName) {
+      const defaultDept = departments.find(d => d.code === 'PB-UNASSIGNED') || departments[0];
+      if (defaultDept) {
+        assignedDeptId = defaultDept.id;
+        assignedDeptCode = defaultDept.code;
+        assignedDeptName = defaultDept.name;
+      }
+    }
+
     return {
       ...engineer,
       assignedProjects,
       code: legacyCode || `TSM-${cleanRole}-${cleanName}`,
-      
+      departmentId: assignedDeptId,
+      departmentCode: assignedDeptCode,
+      departmentName: assignedDeptName,
       team: assignedProjects[0]?.name || 'Chưa gán dự án',
       locked: (engineer as any).isLocked || false,
       username: (engineer as any).username || '',
@@ -486,11 +540,16 @@ export const PersonnelPage: React.FC = () => {
       || (person.phone && person.phone.toLowerCase().includes(term))
       || (termDigits.length >= 3 && personPhoneDigits.includes(termDigits));
 
-    const matchFilter = filter === 'all'
+    const matchDepartment = selectedDepartmentFilter === 'all'
+      || person.departmentId === selectedDepartmentFilter
+      || person.departmentCode?.toUpperCase() === selectedDepartmentFilter.toUpperCase()
+      || departments.find(d => d.id === selectedDepartmentFilter)?.name.toLowerCase() === (person.departmentName || (person as any).department || '').trim().toLowerCase();
+
+    const matchFilter = (filter === 'all'
       || (filter === 'manager' && person.role.includes('Quản lý'))
       || (filter === 'worker' && person.role.includes('Nhân viên'))
       || (filter === 'active' && !person.locked)
-      || (filter === 'locked' && person.locked);
+      || (filter === 'locked' && person.locked)) && matchDepartment;
     return matchFilter && matchSearch;
   }).sort((a, b) => {
     // Sắp xếp ổn định cố định: Theo ngày tạo (created_at / createdAt)
@@ -499,7 +558,7 @@ export const PersonnelPage: React.FC = () => {
     if (timeA && timeB && timeA !== timeB) return timeA - timeB;
     // Nếu cùng ngày tạo hoặc không có ngày: Sắp xếp theo tên A-Z
     return String(a.name || '').localeCompare(String(b.name || ''), 'vi');
-  }), [engineers, filter, searchTerm]);
+  }), [engineers, filter, searchTerm, selectedDepartmentFilter, departments]);
 
   const openCreateModal = () => {
     resetForm();
@@ -528,6 +587,15 @@ export const PersonnelPage: React.FC = () => {
     const initialCodes = Array.isArray(rawProjectCodes) ? rawProjectCodes : [];
     
     setSelectedProjectCodes(initialCodes);
+
+    // Set department
+    const foundDept = departments.find(d =>
+      d.id === eng.departmentId ||
+      d.code?.toUpperCase() === eng.departmentCode?.toUpperCase() ||
+      d.name.toLowerCase() === (eng.departmentName || (eng as any).department || '').trim().toLowerCase()
+    );
+    setDepartmentId(foundDept ? foundDept.id : (eng.departmentId || ''));
+
     setIsFormOpen(true);
   };
 
@@ -570,6 +638,7 @@ export const PersonnelPage: React.FC = () => {
     setSubmitting(true);
     try {
       if (editingPersonId) {
+        const selectedDeptObj = departments.find(d => d.id === departmentId);
         await updateEngineer(editingPersonId, {
           name: name.trim(),
           avatar,
@@ -586,7 +655,10 @@ export const PersonnelPage: React.FC = () => {
           ...(password ? { password } : {}),
           projectCodes: finalProjectCodes,
           permissions,
-        });
+          departmentId: selectedDeptObj ? selectedDeptObj.id : undefined,
+          departmentCode: selectedDeptObj ? selectedDeptObj.code : undefined,
+          departmentName: selectedDeptObj ? selectedDeptObj.name : undefined,
+        } as any);
 
         // Synchronize updated personnel with projects member arrays
         const engId = editingPersonId;
@@ -645,6 +717,7 @@ export const PersonnelPage: React.FC = () => {
           return;
         }
 
+        const selectedDeptObj = departments.find(d => d.id === departmentId);
         const created = await createEngineer({
           name: name.trim(),
           avatar,
@@ -661,7 +734,10 @@ export const PersonnelPage: React.FC = () => {
           password,
           projectCodes: finalProjectCodes,
           permissions,
-        });
+          departmentId: selectedDeptObj ? selectedDeptObj.id : undefined,
+          departmentCode: selectedDeptObj ? selectedDeptObj.code : undefined,
+          departmentName: selectedDeptObj ? selectedDeptObj.name : undefined,
+        } as any);
 
         if (created && created.id) {
           const engId = created.id;
@@ -764,131 +840,28 @@ export const PersonnelPage: React.FC = () => {
             </div>
 
             <span className="h-8 md:h-[34px] px-3 md:px-3 rounded-lg flex items-center bg-blue-50 text-primary text-xs font-bold border border-blue-100 shrink-0">{engineers.filter(e => e.role !== 'Quản trị viên' && e.username !== 'admin').length} nhân sự</span>
-            
-            {/* Desktop Export Dropdown with Standardized Height */}
-            <div className="relative hidden md:block">
-              <button 
-                onClick={() => setShowExportMenu(!showExportMenu)} 
-                className="flex items-center gap-1.5 border border-emerald-200 bg-emerald-50 h-[34px] px-3.5 rounded-lg text-xs font-bold text-emerald-700 hover:bg-emerald-100 active:scale-95 transition-all shadow-xs relative z-50 cursor-pointer"
-                title="Xuất file"
-              >
-                <span className="material-symbols-outlined text-[14px]">file_download</span>
-                <span>Xuất file</span>
-                <span className="material-symbols-outlined text-xs">expand_more</span>
-              </button>
-              {showExportMenu && (
-                <>
-                  <div 
-                    className="fixed inset-0 z-40" 
-                    onClick={() => setShowExportMenu(false)}
-                  />
-                  <div className="absolute right-0 top-full mt-1 w-44 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-50 animate-in fade-in zoom-in duration-100">
-                    <button
-                      onClick={() => {
-                        setShowExportMenu(false);
-                        handleExportExcel();
-                      }}
-                      className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
-                    >
-                      <span className="material-symbols-outlined text-base text-green-600">grid_on</span>
-                      Excel (.xlsx)
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowExportMenu(false);
-                        handleExportExcel();
-                      }}
-                      className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
-                    >
-                      <span className="material-symbols-outlined text-base text-teal-600">csv</span>
-                      CSV (.csv)
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowExportMenu(false);
-                        window.print();
-                      }}
-                      className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
-                    >
-                      <span className="material-symbols-outlined text-base text-red-600">picture_as_pdf</span>
-                      PDF (.pdf)
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowExportMenu(false);
-                        handleExportExcel();
-                      }}
-                      className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
-                    >
-                      <span className="material-symbols-outlined text-base text-blue-600">description</span>
-                      Word (.docx)
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
 
-            {/* Mobile Export Icon Dropdown */}
-            <div className="relative md:hidden shrink-0">
-              <button 
-                onClick={() => setShowExportMenu(!showExportMenu)} 
-                className="flex items-center justify-center h-8 px-2 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 active:scale-95 transition-all shadow-xs gap-0.5"
-                title="Xuất file"
-              >
-                <span className="material-symbols-outlined text-base">file_download</span>
-                <span className="material-symbols-outlined text-xs">expand_more</span>
-              </button>
-              {showExportMenu && (
-                <>
-                  <div 
-                    className="fixed inset-0 z-[9998]" 
-                    onClick={() => setShowExportMenu(false)}
-                  />
-                  <div className="absolute right-0 top-full mt-1 w-44 bg-white rounded-xl shadow-2xl border border-slate-200 py-1.5 z-[9999] animate-in fade-in zoom-in duration-100">
-                    <button
-                      onClick={() => {
-                        setShowExportMenu(false);
-                        handleExportExcel();
-                      }}
-                      className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2"
-                    >
-                      <span className="material-symbols-outlined text-base text-green-600">grid_on</span>
-                      Excel (.xlsx)
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowExportMenu(false);
-                        handleExportExcel();
-                      }}
-                      className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2"
-                    >
-                      <span className="material-symbols-outlined text-base text-teal-600">csv</span>
-                      CSV (.csv)
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowExportMenu(false);
-                        window.print();
-                      }}
-                      className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2"
-                    >
-                      <span className="material-symbols-outlined text-base text-red-600">picture_as_pdf</span>
-                      PDF (.pdf)
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowExportMenu(false);
-                        handleExportExcel();
-                      }}
-                      className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2"
-                    >
-                      <span className="material-symbols-outlined text-base text-blue-600">description</span>
-                      Word (.docx)
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
+            {/* Nút Quản lý Phòng ban */}
+            <button
+              type="button"
+              onClick={() => setIsDepartmentModalOpen(true)}
+              title="Quản lý Phòng ban & Cơ cấu tổ chức"
+              className="bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-primary h-8 md:h-[34px] px-2.5 md:px-3.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs shrink-0 cursor-pointer transition-colors"
+            >
+              <span className="material-symbols-outlined text-[16px] text-slate-500">corporate_fare</span>
+              <span>Phòng ban</span>
+              <span className="px-1.5 py-0.2 rounded-full bg-slate-100 text-slate-600 text-[10px] font-bold border border-slate-200">
+                {departments.filter(d => d.status === 'ACTIVE').length}
+              </span>
+            </button>
+            
+            {/* Menu Gộp Nhập / Xuất file */}
+            <ImportExportDropdown
+              onExportExcel={handleExportExcel}
+              onExportCsv={handleExportExcel}
+              onExportPdf={() => window.print()}
+              onExportWord={handleExportExcel}
+            />
 
             
 
@@ -921,37 +894,45 @@ export const PersonnelPage: React.FC = () => {
             tone: 'success',
           },
           {
-            id: 'locked',
-            label: 'Đã khóa / Nghỉ',
-            value: engineers.filter((e) => e.isLocked).length,
-            tone: 'danger',
+            id: 'departments',
+            label: 'Phòng ban',
+            value: departments.filter(d => d.status === 'ACTIVE').length,
+            tone: 'primary',
           },
           {
             id: 'filtered',
             label: 'Hiển thị hiện tại',
             value: people.length,
-            tone: 'primary',
+            tone: 'info',
           },
         ]}
-        chartTitle="Trạng thái nhân sự"
-        hasChartData={engineers.length > 0}
+        chartTitle="Cơ cấu nhân sự theo phòng ban"
+        hasChartData={departments.length > 0 && engineers.length > 0}
         chartContent={
           <div className="h-44 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
-                data={[
-                  { name: 'Đang hoạt động', count: engineers.filter((e) => !e.isLocked).length, fill: '#059669' },
-                  { name: 'Đã khóa / Nghỉ', count: engineers.filter((e) => e.isLocked).length, fill: '#e11d48' },
-                ]}
+                data={departments
+                  .filter(d => d.status === 'ACTIVE')
+                  .map(dept => {
+                    const count = engineers.filter(e =>
+                      e.departmentId === dept.id ||
+                      e.departmentCode?.toUpperCase() === dept.code.toUpperCase() ||
+                      (e.departmentName && e.departmentName.toLowerCase() === dept.name.toLowerCase()) ||
+                      ((e as any).department && (e as any).department.toLowerCase() === dept.name.toLowerCase())
+                    ).length;
+                    return {
+                      name: dept.name.replace('Phòng ', 'P. ').replace('Ban ', 'B. '),
+                      count
+                    };
+                  })
+                }
                 margin={{ top: 8, right: 16, left: 0, bottom: 4 }}
               >
                 <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#475569' }} axisLine={false} tickLine={false} />
-                <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} width={32} />
+                <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} width={28} />
                 <Tooltip cursor={{ fill: '#f1f5f9' }} contentStyle={{ fontSize: '12px', borderRadius: '6px' }} />
-                <Bar dataKey="count" name="Số nhân sự" radius={[4, 4, 0, 0]} barSize={44}>
-                  <Cell fill="#059669" />
-                  <Cell fill="#e11d48" />
-                </Bar>
+                <Bar dataKey="count" name="Số nhân sự" radius={[3, 3, 0, 0]} barSize={36} fill="#1e40af" />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -959,6 +940,55 @@ export const PersonnelPage: React.FC = () => {
       />
 
       <div className="flex-1 w-full max-w-full overflow-hidden flex flex-col">
+        {/* THANH BỘ LỌC PHÒNG BAN & TRẠNG THÁI */}
+        <div className="bg-white border-b border-slate-200 px-3 py-2 flex flex-wrap items-center justify-between gap-2 text-xs">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-1.5 font-bold text-slate-500">
+              <span className="material-symbols-outlined text-[16px]">filter_list</span>
+              <span>Lọc phòng ban:</span>
+            </div>
+
+            <div className="w-64">
+              <CustomSelect
+                value={selectedDepartmentFilter}
+                onChange={(e) => setSelectedDepartmentFilter(e.target.value)}
+                searchable={true}
+                className="w-full text-xs font-bold text-slate-700"
+              >
+                <option value="all">-- Tất cả phòng ban ({engineers.length}) --</option>
+                {departments.map((dept) => {
+                  const count = people.filter(p =>
+                    p.departmentId === dept.id ||
+                    p.departmentCode?.toUpperCase() === dept.code.toUpperCase() ||
+                    (p.departmentName && p.departmentName.toLowerCase() === dept.name.toLowerCase()) ||
+                    ((p as any).department && (p as any).department.toLowerCase() === dept.name.toLowerCase())
+                  ).length;
+                  return (
+                    <option key={dept.id} value={dept.id}>
+                      {dept.name} ({count}) {dept.status === 'INACTIVE' ? '- Ngừng dùng' : ''}
+                    </option>
+                  );
+                })}
+              </CustomSelect>
+            </div>
+
+            {selectedDepartmentFilter !== 'all' && (
+              <button
+                type="button"
+                onClick={() => setSelectedDepartmentFilter('all')}
+                className="px-2 py-1 text-xs text-rose-600 hover:bg-rose-50 rounded font-bold transition-colors flex items-center gap-0.5 cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-sm">close</span>
+                <span>Bỏ lọc</span>
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-1">
+            <span className="text-slate-400 text-[11px] font-medium mr-1">Hiển thị: <strong>{people.length}</strong> / {engineers.length} nhân sự</span>
+          </div>
+        </div>
+
       <section className="flex-1 grid grid-cols-1 gap-0 overflow-hidden">
         <div className="bg-white border-b border-r border-slate-200 shadow-xs overflow-hidden flex flex-col">
           <PullToRefresh onRefresh={async () => { await Promise.all([fetchEngineers(), fetchProjects()]); }} className="flex-1 overflow-x-auto overflow-y-auto custom-scrollbar relative p-3">
@@ -1042,6 +1072,13 @@ export const PersonnelPage: React.FC = () => {
                                 className="px-2 py-1 rounded text-[10px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200"
                               >
                                 Sửa
+                              </button>
+                              <button
+                                onClick={() => setTransferringPerson(person)}
+                                title="Điều chuyển phòng ban"
+                                className="px-2 py-1 rounded text-[10px] font-bold bg-blue-50 hover:bg-blue-100 text-primary border border-blue-200"
+                              >
+                                Chuyển phòng
                               </button>
                             </>
                           )}
@@ -1132,21 +1169,65 @@ export const PersonnelPage: React.FC = () => {
 
             {/* 4. BẢNG CHI TIẾT (TABLE_DETAILED) - Đầy đủ thông tin, dự án, KPI, trạng thái */}
             {viewMode === 'table_detailed' && (
-              <table className="w-full text-[11px] sm:text-xs text-left border-collapse">
-                <thead className="sticky top-0 z-20 bg-slate-50 text-slate-700 font-semibold text-[10px] sm:text-[11px] shadow-[0_1px_2px_rgba(0,0,0,0.05)] border-b border-slate-200">
-                  <tr>
-                    <th className="text-left p-2 sm:p-3 bg-slate-50 whitespace-nowrap">Họ tên</th>
-                    <th className="text-left p-2 sm:p-3 bg-slate-50 whitespace-nowrap">Mã NV</th>
-                    <th className="text-left p-2 sm:p-3 bg-slate-50 whitespace-nowrap">Tài khoản</th>
-                    <th className="text-left p-2 sm:p-3 bg-slate-50 whitespace-nowrap">Tài khoản Auth</th>
-                    <th className="text-left p-2 sm:p-3 bg-slate-50 whitespace-nowrap">Vai trò / Chức danh</th>
-                    <th className="text-left p-2 sm:p-3 bg-slate-50 whitespace-nowrap">Dự án</th>
-                    <th className="text-center p-2 sm:p-3 bg-slate-50 whitespace-nowrap">KPI & Công việc</th>
-                    <th className="text-left p-2 sm:p-3 bg-slate-50 whitespace-nowrap">SĐT</th>
-                    <th className="text-left p-2 sm:p-3 bg-slate-50 whitespace-nowrap">Trạng thái</th>
-                    {(hasPermission(user, 'MANAGE_USERS') || hasPermission(user, 'EDIT_USERS')) && <th className="text-left p-2 sm:p-3 bg-slate-50 whitespace-nowrap">Chức năng</th>}
-                  </tr>
-                </thead>
+              <div className="overflow-x-auto custom-scrollbar">
+                <table className="w-full text-[11px] sm:text-xs text-left border-collapse table-fixed min-w-[1050px]">
+                  <colgroup>
+                    <col style={{ width: colWidths.col_name }} />
+                    <col style={{ width: colWidths.col_code }} />
+                    <col style={{ width: colWidths.col_username }} />
+                    <col style={{ width: colWidths.col_auth }} />
+                    <col style={{ width: colWidths.col_role }} />
+                    <col style={{ width: colWidths.col_projects }} />
+                    <col style={{ width: colWidths.col_kpi }} />
+                    <col style={{ width: colWidths.col_phone }} />
+                    <col style={{ width: colWidths.col_status }} />
+                    {(hasPermission(user, 'MANAGE_USERS') || hasPermission(user, 'EDIT_USERS')) && (
+                      <col style={{ width: colWidths.col_actions }} />
+                    )}
+                  </colgroup>
+                  <thead className="sticky top-0 z-20 bg-slate-50 text-slate-700 font-semibold text-[10px] sm:text-[11px] shadow-[0_1px_2px_rgba(0,0,0,0.05)] border-b border-slate-200 select-none">
+                    <tr>
+                      <th className="text-left p-2 sm:p-3 bg-slate-50 relative group/th">
+                        <span>Họ tên</span>
+                        <ColumnResizeHandle colKey="col_name" onResizeStart={startColResize} />
+                      </th>
+                      <th className="text-left p-2 sm:p-3 bg-slate-50 relative group/th">
+                        <span>Mã NV</span>
+                        <ColumnResizeHandle colKey="col_code" onResizeStart={startColResize} />
+                      </th>
+                      <th className="text-left p-2 sm:p-3 bg-slate-50 relative group/th">
+                        <span>Tài khoản</span>
+                        <ColumnResizeHandle colKey="col_username" onResizeStart={startColResize} />
+                      </th>
+                      <th className="text-left p-2 sm:p-3 bg-slate-50 relative group/th">
+                        <span>Tài khoản Auth</span>
+                        <ColumnResizeHandle colKey="col_auth" onResizeStart={startColResize} />
+                      </th>
+                      <th className="text-left p-2 sm:p-3 bg-slate-50 relative group/th">
+                        <span>Vai trò / Chức danh</span>
+                        <ColumnResizeHandle colKey="col_role" onResizeStart={startColResize} />
+                      </th>
+                      <th className="text-left p-2 sm:p-3 bg-slate-50 relative group/th">
+                        <span>Dự án</span>
+                        <ColumnResizeHandle colKey="col_projects" onResizeStart={startColResize} />
+                      </th>
+                      <th className="text-center p-2 sm:p-3 bg-slate-50 relative group/th">
+                        <span>KPI & Công việc</span>
+                        <ColumnResizeHandle colKey="col_kpi" onResizeStart={startColResize} />
+                      </th>
+                      <th className="text-left p-2 sm:p-3 bg-slate-50 relative group/th">
+                        <span>SĐT</span>
+                        <ColumnResizeHandle colKey="col_phone" onResizeStart={startColResize} />
+                      </th>
+                      <th className="text-left p-2 sm:p-3 bg-slate-50 relative group/th">
+                        <span>Trạng thái</span>
+                        <ColumnResizeHandle colKey="col_status" onResizeStart={startColResize} />
+                      </th>
+                      {(hasPermission(user, 'MANAGE_USERS') || hasPermission(user, 'EDIT_USERS')) && (
+                        <th className="text-left p-2 sm:p-3 bg-slate-50 whitespace-nowrap">Chức năng</th>
+                      )}
+                    </tr>
+                  </thead>
                 <tbody className="divide-y divide-slate-100">
                   {people.map((person) => {
                     const kpi = computePersonKpi(person, tasks);
@@ -1327,6 +1408,16 @@ export const PersonnelPage: React.FC = () => {
                             <button
                               onClick={(event) => {
                                 event.stopPropagation();
+                                setTransferringPerson(person);
+                              }}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-blue-200 bg-blue-50 text-[11px] font-bold text-primary hover:bg-blue-100 active:scale-95 transition-all"
+                              title="Điều chuyển phòng ban"
+                            >
+                              <span className="material-symbols-outlined text-[14px]">move_down</span>Chuyển phòng
+                            </button>
+                            <button
+                              onClick={(event) => {
+                                event.stopPropagation();
                                 toggleLock(person);
                               }}
                               className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-[11px] font-bold active:scale-95 transition-all ${person.locked ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100' : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100'}`}
@@ -1351,6 +1442,7 @@ export const PersonnelPage: React.FC = () => {
                 })}
                 </tbody>
               </table>
+              </div>
             )}
 
             {/* 5. KANBAN - Theo phòng ban / vai trò */}
@@ -1463,10 +1555,28 @@ export const PersonnelPage: React.FC = () => {
             </div>
           </div>
           
-            <div className="mt-3 mb-1 text-[11px] font-extrabold uppercase tracking-wide text-slate-400">Công việc</div>
-            <div className="space-y-1 mb-3">
-              <label className="text-[13px] font-bold text-slate-700">Vai trò / Chức danh</label>
-              <input value={role} onChange={(event) => setRole(event.target.value)} placeholder="Nhập chức danh (VD: Quản trị viên, Trưởng phòng...)" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:outline-none" />
+            <div className="mt-3 mb-1 text-[11px] font-extrabold uppercase tracking-wide text-slate-400">Công việc & Phòng ban</div>
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              <div className="space-y-1">
+                <label className="text-[13px] font-bold text-slate-700">Phòng ban trực thuộc <span className="text-red-500">*</span></label>
+                <CustomSelect
+                  value={departmentId}
+                  onChange={(e) => setDepartmentId(e.target.value)}
+                  searchable={true}
+                  className="w-full text-sm font-semibold"
+                >
+                  <option value="">-- Chọn phòng ban --</option>
+                  {departments.filter(d => d.status === 'ACTIVE' || d.id === departmentId).map((dept) => (
+                    <option key={dept.id} value={dept.id}>
+                      {dept.name} ({dept.code}) {dept.status === 'INACTIVE' ? '- Ngừng dùng' : ''}
+                    </option>
+                  ))}
+                </CustomSelect>
+              </div>
+              <div className="space-y-1">
+                <label className="text-[13px] font-bold text-slate-700">Vai trò / Chức danh</label>
+                <input value={role} onChange={(event) => setRole(event.target.value)} placeholder="Nhập chức danh (VD: Kỹ sư, Chuyên viên...)" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:outline-none" />
+              </div>
             </div>
 
             <div className="mt-2 mb-1 text-[11px] font-extrabold uppercase tracking-wide text-slate-400">Tài khoản truy cập</div>
@@ -2227,6 +2337,35 @@ export const PersonnelPage: React.FC = () => {
           setQuickTaskProject((person.assignedProjects && person.assignedProjects[0]?.code) || 'COMPANY');
           setIsQuickAssignModalOpen(true);
         }}
+      />
+
+      {/* Modal Quản lý Phòng ban */}
+      <DepartmentManagementModal
+        isOpen={isDepartmentModalOpen}
+        onClose={() => setIsDepartmentModalOpen(false)}
+        engineers={engineers}
+        onSelectDepartmentFilter={(deptId) => {
+          setSelectedDepartmentFilter(deptId);
+        }}
+      />
+
+      {/* Modal Điều chuyển phòng ban cho nhân sự */}
+      <DepartmentTransferModal
+        isOpen={Boolean(transferringPerson)}
+        onClose={() => setTransferringPerson(null)}
+        engineer={transferringPerson}
+        onSuccess={async () => {
+          await fetchEngineers();
+          await fetchDepartments();
+          triggerToast('Điều chuyển phòng ban thành công!', 'success');
+        }}
+      />
+
+      {/* Modal Lịch sử điều chuyển phòng ban */}
+      <DepartmentHistoryModal
+        isOpen={Boolean(historyPerson)}
+        onClose={() => setHistoryPerson(null)}
+        engineer={historyPerson}
       />
 
       <Toast show={toastState.show} message={toastState.message} type={toastState.type} />

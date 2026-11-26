@@ -3,6 +3,8 @@ import { ProjectExpense } from '../../types';
 import { CustomSelect } from '@/components/common/CustomSelect';
 import { AuditInfoCell } from '../../components/common/AuditInfoCell';
 import { cleanNotes } from '../../utils/cleanNotesUtils';
+import { useTableColumnResize } from '../../services/useTableColumnResize';
+import { ColumnResizeHandle } from '../../components/common/ColumnResizeHandle';
 
 interface ExpenseTabProps {
   data: ProjectExpense[];
@@ -22,6 +24,26 @@ export const ExpenseTab: React.FC<ExpenseTabProps> = ({
   const dateOptions = useMemo(() => ['all', ...Array.from(new Set(data.map(p => p.date).filter(Boolean)))], [data]);
   const contentOptions = useMemo(() => ['all', ...Array.from(new Set(data.map(p => p.content).filter(Boolean)))], [data]);
   const unitOptions = useMemo(() => ['all', ...Array.from(new Set(data.map(p => p.unit).filter(Boolean)))], [data]);
+
+  const defaultColWidths = useMemo(() => ({
+    col_date: 85,
+    col_content: 160,
+    col_unit: 65,
+    col_qty: 65,
+    col_price: 90,
+    col_vat: 85,
+    col_total: 95,
+    col_income: 90,
+    col_balance: 90,
+    col_invoice: 70,
+    col_updated: 120,
+    col_actions: 60,
+  }), []);
+
+  const { widths: colWidths, startResize } = useTableColumnResize({
+    tableId: 'table_expenses',
+    defaultWidths: defaultColWidths,
+  });
 
   const filteredData = useMemo(() => {
     return data.filter((exp) => {
@@ -104,22 +126,36 @@ export const ExpenseTab: React.FC<ExpenseTabProps> = ({
       </div>
 
       <div className="w-full max-w-full overflow-x-auto custom-scrollbar flex-1">
-        <table className="w-max text-left border-collapse">
+        <table className="w-max text-left border-collapse table-fixed min-w-[1150px]">
+          <colgroup>
+            <col style={{ width: colWidths.col_date }} />
+            <col style={{ width: colWidths.col_content }} />
+            <col style={{ width: colWidths.col_unit }} />
+            <col style={{ width: colWidths.col_qty }} />
+            <col style={{ width: colWidths.col_price }} />
+            <col style={{ width: colWidths.col_vat }} />
+            <col style={{ width: colWidths.col_total }} />
+            <col style={{ width: colWidths.col_income }} />
+            <col style={{ width: colWidths.col_balance }} />
+            <col style={{ width: colWidths.col_invoice }} />
+            <col style={{ width: colWidths.col_updated }} />
+            <col style={{ width: colWidths.col_actions }} />
+          </colgroup>
           <thead className="sticky top-0 z-20 border-b border-slate-200 bg-slate-50 text-[10px] font-extrabold uppercase tracking-wider text-slate-600">
             <tr>
               
-              <th className="w-[85px] px-1.5 py-1.5 text-center">Ngày chi</th>
-              <th className="sticky left-0 z-20 w-[160px] bg-slate-50 border-r border-slate-200/70 px-1.5 py-1 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">Nội dung / Diễn giải</th>
-              <th className="w-[65px] px-1 py-1.5 text-center">ĐVT</th>
-              <th className="w-[65px] px-1.5 py-1.5 text-right">Số lượng</th>
-              <th className="w-[90px] px-1.5 py-1.5 text-right">Đơn giá (đ)</th>
-              <th className="w-[85px] px-1.5 py-1.5 text-right">Thuế VAT (đ)</th>
-              <th className="w-[95px] px-1.5 py-1.5 text-right">Thành tiền (đ)</th>
-              <th className="w-[90px] px-1.5 py-1.5 text-right">Thực thu (đ)</th>
-              <th className="w-[90px] px-1.5 py-1.5 text-right">Tồn quỹ (đ)</th>
-              <th className="w-[70px] px-1.5 py-1.5 text-center">Hóa đơn</th>
-              <th className="w-[120px] px-1.5 py-1.5 text-center">Người cập nhật</th>
-              <th className="w-[60px] px-1.5 py-1.5 text-center">Thao tác</th>
+              <th className="relative w-[85px] px-1.5 py-1.5 text-center">Ngày chi<ColumnResizeHandle onMouseDown={(e) => startResize('col_date', e)} /></th>
+              <th className="relative sticky left-0 z-20 w-[160px] bg-slate-50 border-r border-slate-200/70 px-1.5 py-1 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">Nội dung / Diễn giải<ColumnResizeHandle onMouseDown={(e) => startResize('col_content', e)} /></th>
+              <th className="relative w-[65px] px-1 py-1.5 text-center">ĐVT<ColumnResizeHandle onMouseDown={(e) => startResize('col_unit', e)} /></th>
+              <th className="relative w-[65px] px-1.5 py-1.5 text-right">Số lượng<ColumnResizeHandle onMouseDown={(e) => startResize('col_qty', e)} /></th>
+              <th className="relative w-[90px] px-1.5 py-1.5 text-right">Đơn giá (đ)<ColumnResizeHandle onMouseDown={(e) => startResize('col_price', e)} /></th>
+              <th className="relative w-[85px] px-1.5 py-1.5 text-right">Thuế VAT (đ)<ColumnResizeHandle onMouseDown={(e) => startResize('col_vat', e)} /></th>
+              <th className="relative w-[95px] px-1.5 py-1.5 text-right">Thành tiền (đ)<ColumnResizeHandle onMouseDown={(e) => startResize('col_total', e)} /></th>
+              <th className="relative w-[90px] px-1.5 py-1.5 text-right">Thực thu (đ)<ColumnResizeHandle onMouseDown={(e) => startResize('col_income', e)} /></th>
+              <th className="relative w-[90px] px-1.5 py-1.5 text-right">Tồn quỹ (đ)<ColumnResizeHandle onMouseDown={(e) => startResize('col_balance', e)} /></th>
+              <th className="relative w-[70px] px-1.5 py-1.5 text-center">Hóa đơn<ColumnResizeHandle onMouseDown={(e) => startResize('col_invoice', e)} /></th>
+              <th className="relative w-[120px] px-1.5 py-1.5 text-center">Người cập nhật<ColumnResizeHandle onMouseDown={(e) => startResize('col_updated', e)} /></th>
+              <th className="relative w-[60px] px-1.5 py-1.5 text-center">Thao tác<ColumnResizeHandle onMouseDown={(e) => startResize('col_actions', e)} /></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 bg-white text-xs text-slate-700">

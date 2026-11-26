@@ -11,10 +11,13 @@ import { Toast } from '../components/common/Toast';
 import { DocumentTrack } from '../types';
 import { ConfirmModal } from '../components/common/ConfirmModal';
 import { CustomSelect } from '@/components/common/CustomSelect';
+import { ImportExportDropdown } from '../components/common/ImportExportDropdown';
 import { FileUpload } from '../components/common/FileUpload';
 import { AuditInfoCell } from '../components/common/AuditInfoCell';
 import { PullToRefresh } from '../components/common/PullToRefresh';
 import { useUIStore } from '../services/uiStore';
+import { useTableColumnResize } from '../services/useTableColumnResize';
+import { ColumnResizeHandle } from '../components/common/ColumnResizeHandle';
 import { ViewModeToolbar, resolveViewMode, AppViewMode } from '../components/common/ViewModeToolbar';
 import { StatusKanbanBoard } from '../components/common/StatusKanbanBoard';
 
@@ -215,6 +218,33 @@ export const DocumentTrackingPage: React.FC = () => {
   }, [projectId, projects]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Quản lý độ rộng cột có thể kéo thả
+  const defaultDocColWidths = useMemo(() => ({
+    col_created_date: 115,
+    col_side: 75,
+    col_project: 180,
+    col_contract_no: 150,
+    col_contract_name: 250,
+    col_company: 250,
+    col_receiver: 130,
+    col_send_date: 95,
+    col_receive_date: 95,
+    col_deadline: 105,
+    col_value: 115,
+    col_prepay: 90,
+    col_payment: 110,
+    col_files: 45,
+    col_status: 90,
+    col_creator: 145,
+    col_updater: 130,
+    col_actions: 45,
+  }), []);
+
+  const { widths: colWidths, startResize, resetWidths } = useTableColumnResize({
+    tableId: 'table_documents',
+    defaultWidths: defaultDocColWidths,
+  });
   const [isDiagramModalOpen, setIsDiagramModalOpen] = useState(false);
   const [diagramUploadUrl, setDiagramUploadUrl] = useState<string[]>([]);
 
@@ -540,65 +570,15 @@ export const DocumentTrackingPage: React.FC = () => {
             </div>
 
             {/* Desktop Export File Dropdown */}
-            <div className="relative hidden md:block">
-            <button 
-              onClick={() => setShowExportMenu(!showExportMenu)} 
-              className="flex items-center gap-1.5 border border-emerald-200 bg-emerald-50 h-[34px] px-3.5 rounded-lg text-xs font-bold text-emerald-700 hover:bg-emerald-100 active:scale-95 transition-all shadow-xs cursor-pointer relative z-50"
-            >
-              <span className="material-symbols-outlined text-[14px]">file_download</span>
-              <span>Xuất file</span>
-              <span className="material-symbols-outlined text-xs">expand_more</span>
-            </button>
-              {showExportMenu && (
-                <>
-                  <div 
-                    className="fixed inset-0 z-[9998]" 
-                    onClick={() => setShowExportMenu(false)}
-                  />
-                  <div className="absolute right-0 top-full mt-1 w-44 bg-white rounded-xl shadow-2xl border border-slate-200 py-1.5 z-[9999] animate-in fade-in zoom-in duration-100">
-                    <button
-                      onClick={() => {
-                        setShowExportMenu(false);
-                        handleExportExcel();
-                      }}
-                      className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
-                    >
-                      <span className="material-symbols-outlined text-base text-green-600">grid_on</span>
-                      Excel (.xlsx)
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowExportMenu(false);
-                        handleExportExcel();
-                      }}
-                      className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
-                    >
-                      <span className="material-symbols-outlined text-base text-teal-600">csv</span>
-                      CSV (.csv)
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowExportMenu(false);
-                        window.print();
-                      }}
-                      className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
-                    >
-                      <span className="material-symbols-outlined text-base text-red-600">picture_as_pdf</span>
-                      PDF (.pdf)
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowExportMenu(false);
-                        handleExportExcel();
-                      }}
-                      className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
-                    >
-                      <span className="material-symbols-outlined text-base text-blue-600">description</span>
-                      Word (.docx)
-                    </button>
-                  </div>
-                </>
-              )}
+            <div className="hidden md:block">
+              <ImportExportDropdown
+                onImportClick={() => fileInputRef.current?.click()}
+                importLabel="Nhập từ file"
+                onExportExcel={handleExportExcel}
+                onExportCsv={handleExportExcel}
+                onExportPdf={() => window.print()}
+                onExportWord={handleExportExcel}
+              />
             </div>
 
             <button 
@@ -626,76 +606,18 @@ export const DocumentTrackingPage: React.FC = () => {
               <span className="material-symbols-outlined text-base">add</span>
             </button>
 
-            {/* Mobile Compact Green Light Export Dropdown */}
-            <div className="relative md:hidden shrink-0">
-              <button
-                onClick={() => setShowMobileExportMenu(!showMobileExportMenu)}
-                className="flex items-center justify-center h-8 px-2 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors shadow-xs gap-0.5"
-                title="Xuất file"
-              >
-                <span className="material-symbols-outlined text-base">file_download</span>
-                <span className="material-symbols-outlined text-xs">expand_more</span>
-              </button>
-              {showMobileExportMenu && (
-                <div 
-                  className="fixed inset-0 z-40" 
-                  onClick={() => setShowMobileExportMenu(false)}
-                />
-              )}
-              {showMobileExportMenu && (
-                <div className="absolute right-0 top-full mt-1 w-44 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-50 animate-in fade-in zoom-in duration-100">
-                  <button
-                    onClick={() => {
-                      setShowMobileExportMenu(false);
-                      handleExportExcel();
-                    }}
-                    className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2"
-                  >
-                    <span className="material-symbols-outlined text-base text-green-600">grid_on</span>
-                    Excel (.xlsx)
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowMobileExportMenu(false);
-                      handleExportExcel();
-                    }}
-                    className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2"
-                  >
-                    <span className="material-symbols-outlined text-base text-teal-600">csv</span>
-                    CSV (.csv)
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowMobileExportMenu(false);
-                      window.print();
-                    }}
-                    className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2"
-                  >
-                    <span className="material-symbols-outlined text-base text-red-600">picture_as_pdf</span>
-                    PDF (.pdf)
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowMobileExportMenu(false);
-                      handleExportExcel();
-                    }}
-                    className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2"
-                  >
-                    <span className="material-symbols-outlined text-base text-blue-600">description</span>
-                    Word (.docx)
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowMobileExportMenu(false);
-                      fileInputRef.current?.click();
-                    }}
-                    className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 border-t border-slate-100 mt-1 pt-2"
-                  >
-                    <span className="material-symbols-outlined text-base text-indigo-600">upload_file</span>
-                    Nhập file Excel
-                  </button>
-                </div>
-              )}
+            {/* Mobile Import/Export Dropdown */}
+            <div className="md:hidden shrink-0">
+              <ImportExportDropdown
+                onImportClick={() => fileInputRef.current?.click()}
+                importLabel="Nhập từ file"
+                onExportExcel={handleExportExcel}
+                onExportCsv={handleExportExcel}
+                onExportPdf={() => window.print()}
+                onExportWord={handleExportExcel}
+                buttonLabel=""
+                buttonClassName="!h-8 !px-2"
+              />
             </div>
           </div>
         </section>
@@ -711,67 +633,15 @@ export const DocumentTrackingPage: React.FC = () => {
             className="hidden" 
           />
 
-          {/* Desktop Export File Dropdown */}
-          <div className="relative hidden md:block">
-            <button 
-              onClick={() => setShowExportMenu(!showExportMenu)} 
-              className="flex items-center gap-1.5 border border-emerald-200 bg-emerald-50 h-[34px] px-3.5 rounded-lg text-xs font-bold text-emerald-700 hover:bg-emerald-100 active:scale-95 transition-all shadow-xs cursor-pointer relative z-50"
-            >
-              <span className="material-symbols-outlined text-[14px]">file_download</span>
-              <span>Xuất file</span>
-              <span className="material-symbols-outlined text-xs">expand_more</span>
-            </button>
-            {showExportMenu && (
-              <>
-                <div 
-                  className="fixed inset-0 z-[9998]" 
-                  onClick={() => setShowExportMenu(false)}
-                />
-                <div className="absolute right-0 top-full mt-1 w-44 bg-white rounded-xl shadow-2xl border border-slate-200 py-1.5 z-[9999] animate-in fade-in zoom-in duration-100">
-                  <button
-                    onClick={() => {
-                      setShowExportMenu(false);
-                      handleExportExcel();
-                    }}
-                    className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
-                  >
-                    <span className="material-symbols-outlined text-base text-green-600">grid_on</span>
-                    Excel (.xlsx)
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowExportMenu(false);
-                      handleExportExcel();
-                    }}
-                    className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
-                  >
-                    <span className="material-symbols-outlined text-base text-teal-600">csv</span>
-                    CSV (.csv)
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowExportMenu(false);
-                      window.print();
-                    }}
-                    className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
-                  >
-                    <span className="material-symbols-outlined text-base text-red-600">picture_as_pdf</span>
-                    PDF (.pdf)
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowExportMenu(false);
-                      handleExportExcel();
-                    }}
-                    className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
-                  >
-                    <span className="material-symbols-outlined text-base text-blue-600">description</span>
-                    Word (.docx)
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
+          {/* Menu Gộp Nhập / Xuất file */}
+          <ImportExportDropdown
+            onImportClick={() => fileInputRef.current?.click()}
+            importLabel="Nhập từ file"
+            onExportExcel={handleExportExcel}
+            onExportCsv={handleExportExcel}
+            onExportPdf={() => window.print()}
+            onExportWord={handleExportExcel}
+          />
 
           {(hasPermission(user, 'CREATE_DOCUMENTS') || hasPermission(user, 'MANAGE_DOCUMENTS')) && (
             <button 
@@ -823,76 +693,15 @@ export const DocumentTrackingPage: React.FC = () => {
               )}
 
               {/* Export Dropdown */}
-              <div className="relative shrink-0">
-                <button
-                  onClick={() => setShowMobileExportMenu(!showMobileExportMenu)}
-                  className="flex items-center justify-center h-8 px-2 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors shadow-xs gap-0.5 cursor-pointer"
-                  title="Xuất file"
-                >
-                  <span className="material-symbols-outlined text-base">file_download</span>
-                  <span className="material-symbols-outlined text-xs">expand_more</span>
-                </button>
-                {showMobileExportMenu && (
-                  <div 
-                    className="fixed inset-0 z-40" 
-                    onClick={() => setShowMobileExportMenu(false)}
-                  />
-                )}
-                {showMobileExportMenu && (
-                  <div className="absolute right-0 top-full mt-1 w-44 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-50 animate-in fade-in zoom-in duration-100">
-                    <button
-                      onClick={() => {
-                        setShowMobileExportMenu(false);
-                        handleExportExcel();
-                      }}
-                      className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
-                    >
-                      <span className="material-symbols-outlined text-base text-green-600">grid_on</span>
-                      Excel (.xlsx)
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowMobileExportMenu(false);
-                        handleExportExcel();
-                      }}
-                      className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
-                    >
-                      <span className="material-symbols-outlined text-base text-teal-600">csv</span>
-                      CSV (.csv)
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowMobileExportMenu(false);
-                        window.print();
-                      }}
-                      className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
-                    >
-                      <span className="material-symbols-outlined text-base text-red-600">picture_as_pdf</span>
-                      PDF (.pdf)
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowMobileExportMenu(false);
-                        handleExportExcel();
-                      }}
-                      className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
-                    >
-                      <span className="material-symbols-outlined text-base text-blue-600">description</span>
-                      Word (.docx)
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowMobileExportMenu(false);
-                        fileInputRef.current?.click();
-                      }}
-                      className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 border-t border-slate-100 mt-1 pt-2 cursor-pointer"
-                    >
-                      <span className="material-symbols-outlined text-base text-indigo-600">upload_file</span>
-                      Nhập file Excel
-                    </button>
-                  </div>
-                )}
-              </div>
+              <ImportExportDropdown
+                onImportClick={() => fileInputRef.current?.click()}
+                importLabel="Nhập từ file"
+                onExportExcel={handleExportExcel}
+                onExportCsv={handleExportExcel}
+                onExportPdf={() => window.print()}
+                onExportWord={handleExportExcel}
+                buttonClassName="!h-8 !px-2"
+              />
             </div>
           )}
 
@@ -1028,46 +837,46 @@ export const DocumentTrackingPage: React.FC = () => {
           >
             <table className="w-full text-left border-collapse text-[11px] table-fixed min-w-[1950px]">
               <colgroup>
-                <col style={{ width: 115 }} />
-                <col style={{ width: 75 }} />
-                {!projectId && <col style={{ width: 180 }} />}
-                <col style={{ width: 150 }} />
-                <col style={{ width: 250 }} />
-                <col style={{ width: 250 }} />
-                <col style={{ width: 130 }} />
-                <col style={{ width: 95 }} />
-                <col style={{ width: 95 }} />
-                <col style={{ width: 105 }} />
-                <col style={{ width: 115 }} />
-                <col style={{ width: 90 }} />
-                <col style={{ width: 110 }} />
-                <col style={{ width: 45 }} />
-                <col style={{ width: 90 }} />
-                <col style={{ width: 145 }} />
-                <col style={{ width: 130 }} />
-                <col style={{ width: 45 }} />
+                <col style={{ width: colWidths.col_created_date }} />
+                <col style={{ width: colWidths.col_side }} />
+                {!projectId && <col style={{ width: colWidths.col_project }} />}
+                <col style={{ width: colWidths.col_contract_no }} />
+                <col style={{ width: colWidths.col_contract_name }} />
+                <col style={{ width: colWidths.col_company }} />
+                <col style={{ width: colWidths.col_receiver }} />
+                <col style={{ width: colWidths.col_send_date }} />
+                <col style={{ width: colWidths.col_receive_date }} />
+                <col style={{ width: colWidths.col_deadline }} />
+                <col style={{ width: colWidths.col_value }} />
+                <col style={{ width: colWidths.col_prepay }} />
+                <col style={{ width: colWidths.col_payment }} />
+                <col style={{ width: colWidths.col_files }} />
+                <col style={{ width: colWidths.col_status }} />
+                <col style={{ width: colWidths.col_creator }} />
+                <col style={{ width: colWidths.col_updater }} />
+                <col style={{ width: colWidths.col_actions }} />
               </colgroup>
               
               <thead className="bg-slate-50 border-b border-slate-200 text-[11px] font-extrabold text-slate-600 uppercase tracking-tight sticky top-0 z-10 leading-tight shadow-xs">
                 <tr>
-                  <th className="px-1 py-1.5 text-center whitespace-nowrap bg-slate-50">Ngày lập hồ sơ</th>
-                  <th className="px-1 py-1.5 text-center whitespace-nowrap bg-slate-50">Bên</th>
-                  {!projectId && <th className="px-1.5 py-1.5 whitespace-nowrap bg-slate-50">Dự án</th>}
-                  <th className="px-1.5 py-1.5 whitespace-nowrap bg-slate-50">Số HĐ</th>
-                  <th className="px-1.5 py-1.5 whitespace-nowrap bg-slate-50">Tên hợp đồng</th>
-                  <th className="px-1.5 py-1.5 whitespace-nowrap bg-slate-50">Công ty / Đối tác</th>
-                  <th className="px-1.5 py-1.5 whitespace-nowrap bg-slate-50">Người nhận</th>
-                  <th className="px-1 py-1.5 text-center whitespace-nowrap bg-slate-50">Ngày gửi</th>
-                  <th className="px-1 py-1.5 text-center whitespace-nowrap bg-slate-50">Ngày nhận</th>
-                  <th className="px-1 py-1.5 text-center whitespace-nowrap bg-slate-50">Hạn nộp</th>
-                  <th className="px-1.5 py-1.5 text-right whitespace-nowrap bg-slate-50">Giá trị HĐ (đ)</th>
-                  <th className="px-1 py-1.5 text-center whitespace-nowrap bg-slate-50">Tạm ứng</th>
-                  <th className="px-1 py-1.5 text-center whitespace-nowrap bg-slate-50">Thanh toán</th>
-                  <th className="px-1 py-1.5 text-center whitespace-nowrap bg-slate-50">File</th>
-                  <th className="px-1 py-1.5 text-center whitespace-nowrap bg-slate-50">Hồ sơ</th>
-                  <th className="px-1.5 py-1.5 text-center whitespace-nowrap bg-slate-50">Người lập hồ sơ</th>
-                  <th className="px-1.5 py-1.5 text-center whitespace-nowrap bg-slate-50">Người cập nhật</th>
-                  <th className="px-1 py-1.5 text-center whitespace-nowrap bg-slate-50">TT</th>
+                  <th className="relative px-1 py-1.5 text-center whitespace-nowrap bg-slate-50">Ngày lập hồ sơ<ColumnResizeHandle onMouseDown={(e) => startResize('col_created_date', e)} /></th>
+                  <th className="relative px-1 py-1.5 text-center whitespace-nowrap bg-slate-50">Bên<ColumnResizeHandle onMouseDown={(e) => startResize('col_side', e)} /></th>
+                  {!projectId && <th className="relative px-1.5 py-1.5 whitespace-nowrap bg-slate-50">Dự án<ColumnResizeHandle onMouseDown={(e) => startResize('col_project', e)} /></th>}
+                  <th className="relative px-1.5 py-1.5 whitespace-nowrap bg-slate-50">Số HĐ<ColumnResizeHandle onMouseDown={(e) => startResize('col_contract_no', e)} /></th>
+                  <th className="relative px-1.5 py-1.5 whitespace-nowrap bg-slate-50">Tên hợp đồng<ColumnResizeHandle onMouseDown={(e) => startResize('col_contract_name', e)} /></th>
+                  <th className="relative px-1.5 py-1.5 whitespace-nowrap bg-slate-50">Công ty / Đối tác<ColumnResizeHandle onMouseDown={(e) => startResize('col_company', e)} /></th>
+                  <th className="relative px-1.5 py-1.5 whitespace-nowrap bg-slate-50">Người nhận<ColumnResizeHandle onMouseDown={(e) => startResize('col_receiver', e)} /></th>
+                  <th className="relative px-1 py-1.5 text-center whitespace-nowrap bg-slate-50">Ngày gửi<ColumnResizeHandle onMouseDown={(e) => startResize('col_send_date', e)} /></th>
+                  <th className="relative px-1 py-1.5 text-center whitespace-nowrap bg-slate-50">Ngày nhận<ColumnResizeHandle onMouseDown={(e) => startResize('col_receive_date', e)} /></th>
+                  <th className="relative px-1 py-1.5 text-center whitespace-nowrap bg-slate-50">Hạn nộp<ColumnResizeHandle onMouseDown={(e) => startResize('col_deadline', e)} /></th>
+                  <th className="relative px-1.5 py-1.5 text-right whitespace-nowrap bg-slate-50">Giá trị HĐ (đ)<ColumnResizeHandle onMouseDown={(e) => startResize('col_value', e)} /></th>
+                  <th className="relative px-1 py-1.5 text-center whitespace-nowrap bg-slate-50">Tạm ứng<ColumnResizeHandle onMouseDown={(e) => startResize('col_prepay', e)} /></th>
+                  <th className="relative px-1 py-1.5 text-center whitespace-nowrap bg-slate-50">Thanh toán<ColumnResizeHandle onMouseDown={(e) => startResize('col_payment', e)} /></th>
+                  <th className="relative px-1 py-1.5 text-center whitespace-nowrap bg-slate-50">File<ColumnResizeHandle onMouseDown={(e) => startResize('col_files', e)} /></th>
+                  <th className="relative px-1 py-1.5 text-center whitespace-nowrap bg-slate-50">Hồ sơ<ColumnResizeHandle onMouseDown={(e) => startResize('col_status', e)} /></th>
+                  <th className="relative px-1.5 py-1.5 text-center whitespace-nowrap bg-slate-50">Người lập hồ sơ<ColumnResizeHandle onMouseDown={(e) => startResize('col_creator', e)} /></th>
+                  <th className="relative px-1.5 py-1.5 text-center whitespace-nowrap bg-slate-50">Người cập nhật<ColumnResizeHandle onMouseDown={(e) => startResize('col_updater', e)} /></th>
+                  <th className="relative px-1 py-1.5 text-center whitespace-nowrap bg-slate-50">TT<ColumnResizeHandle onMouseDown={(e) => startResize('col_actions', e)} /></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-[11px] text-slate-700 leading-tight">

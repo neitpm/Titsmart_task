@@ -33,18 +33,17 @@ export const PersonnelOverviewModal: React.FC<PersonnelOverviewModalProps> = ({
   const [taskFilter, setTaskFilter] = useState<'all' | 'in_progress' | 'completed' | 'overdue'>('all');
   const [materialFilter, setMaterialFilter] = useState<'all' | 'tools' | 'materials'>('all');
 
-  if (!person) return null;
-
-  const personId = String(person.id || '').trim().toLowerCase();
-  const personUsername = String(person.username || '').trim().toLowerCase();
-  const personCode = String(person.code || '').trim().toLowerCase();
-  const personName = String(person.name || '').trim().toLowerCase();
+  const personId = String(person?.id || '').trim().toLowerCase();
+  const personUsername = String(person?.username || '').trim().toLowerCase();
+  const personCode = String(person?.code || '').trim().toLowerCase();
+  const personName = String(person?.name || '').trim().toLowerCase();
 
   // 1. DỰ ÁN CỦA NHÂN SỰ
-  const assignedProjects = (person.assignedProjects || []) as Array<{ code: string; name: string }>;
+  const assignedProjects = (person?.assignedProjects || []) as Array<{ code: string; name: string }>;
 
   // 2. TIẾN ĐỘ & CÔNG VIỆC CỦA NHÂN SỰ
   const personTasks = useMemo(() => {
+    if (!person) return [];
     return tasks.filter(t => {
       if (t.isSectionHeader) return false;
       const assignedId = String(t.assignedEngineerId || '').trim().toLowerCase();
@@ -58,7 +57,7 @@ export const PersonnelOverviewModal: React.FC<PersonnelOverviewModalProps> = ({
 
       return false;
     });
-  }, [tasks, personId, personUsername, personCode, personName]);
+  }, [tasks, person, personId, personUsername, personCode, personName]);
 
   const todayStr = new Date().toISOString().split('T')[0];
   const completedTasks = personTasks.filter(t => t.isDone || t.status === 'Hoàn thành' || (t.progress !== undefined && t.progress >= 1));
@@ -79,6 +78,7 @@ export const PersonnelOverviewModal: React.FC<PersonnelOverviewModalProps> = ({
 
   // 3. QUỸ & CHI PHÍ CỦA NHÂN SỰ
   const personExpenses = useMemo(() => {
+    if (!person) return [];
     return expenses.filter(exp => {
       const spName = String(exp.spenderName || '').trim().toLowerCase();
       const crName = String(exp.createdByName || '').trim().toLowerCase();
@@ -86,7 +86,7 @@ export const PersonnelOverviewModal: React.FC<PersonnelOverviewModalProps> = ({
       if (personName && (crName === personName || crName.includes(personName))) return true;
       return false;
     });
-  }, [expenses, personName]);
+  }, [expenses, person, personName]);
 
   const totalFundReceived = personExpenses.reduce((sum, e) => sum + (Number(e.incomeAmount) || 0), 0);
   const totalFundSpent = personExpenses.reduce((sum, e) => sum + (Number(e.totalAmount) || 0), 0);
@@ -94,6 +94,7 @@ export const PersonnelOverviewModal: React.FC<PersonnelOverviewModalProps> = ({
 
   // Đơn cấp quỹ liên quan đến nhân sự
   const personFundRequests = useMemo(() => {
+    if (!person) return [];
     return fundRequests.filter(fr => {
       const crName = String(fr.creatorName || '').trim().toLowerCase();
       const crId = String(fr.creatorId || '').trim().toLowerCase();
@@ -101,10 +102,11 @@ export const PersonnelOverviewModal: React.FC<PersonnelOverviewModalProps> = ({
       if (personName && (crName === personName || crName.includes(personName) || personName.includes(crName))) return true;
       return false;
     });
-  }, [fundRequests, personId, personName]);
+  }, [fundRequests, person, personId, personName]);
 
   // 4. VẬT TƯ & ĐỒ NGHỀ ĐANG SỬ DỤNG
   const personMaterialsAndTools = useMemo(() => {
+    if (!person) return [];
     return inventoryTransactions.filter(tx => {
       if (tx.type !== 'EXPORT') return false;
       const recName = String(tx.receiverName || '').trim().toLowerCase();
@@ -113,7 +115,7 @@ export const PersonnelOverviewModal: React.FC<PersonnelOverviewModalProps> = ({
       if (personName && notes.includes(personName)) return true;
       return false;
     });
-  }, [inventoryTransactions, personName]);
+  }, [inventoryTransactions, person, personName]);
 
   const isEquipmentOrTool = (tx: InventoryTransaction) => {
     const text = `${tx.category || ''} ${tx.materialName || ''} ${tx.specs || ''} ${tx.notes || ''}`.toLowerCase();
@@ -141,45 +143,50 @@ export const PersonnelOverviewModal: React.FC<PersonnelOverviewModalProps> = ({
     return true;
   });
 
+  if (!person) return null;
+
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
       title=""
       size="xl"
+      requireConfirmOnClose={false}
     >
-      <div className="flex flex-col max-h-[85vh] overflow-hidden -m-1">
-        {/* Profile Header Banner */}
-        <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-blue-950 text-white p-4 sm:p-5 rounded-t-xl relative">
+      <div className="flex flex-col max-h-[85vh] overflow-hidden -m-1 bg-white">
+        {/* Profile Header: Nền sáng chuẩn TITSMART ERP, viền mảnh, không gradient đen/tối */}
+        <div className="bg-white border-b border-slate-200 p-4 sm:p-5 relative">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-3.5">
-              <div className="h-14 w-14 sm:h-16 sm:w-16 rounded-full border-2 border-white/20 bg-white/10 overflow-hidden flex items-center justify-center shrink-0 shadow-md">
+              <div className="h-14 w-14 sm:h-16 sm:w-16 rounded-lg border border-slate-200 bg-slate-100 overflow-hidden flex items-center justify-center shrink-0">
                 {person.avatar ? (
                   <img src={person.avatar} alt={person.name} className="h-full w-full object-cover" />
                 ) : (
-                  <span className="material-symbols-outlined text-3xl sm:text-4xl text-slate-300">person</span>
+                  <span className="material-symbols-outlined text-3xl sm:text-4xl text-slate-400">person</span>
                 )}
               </div>
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h2 className="text-lg sm:text-xl font-extrabold text-white tracking-tight">{person.name}</h2>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-white/15 text-blue-200 border border-white/20">
+                  <h2 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">{person.name}</h2>
+                  <span className="px-2 py-0.5 rounded font-mono font-bold text-xs bg-slate-100 text-slate-700 border border-slate-200">
                     {person.code}
                   </span>
-                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                    person.locked ? 'bg-red-500/20 text-red-200 border border-red-500/30' : 'bg-emerald-500/20 text-emerald-200 border border-emerald-500/30'
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                    person.locked ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'
                   }`}>
                     {person.locked ? 'Bị khóa' : 'Đang hoạt động'}
                   </span>
                 </div>
-                <div className="text-xs text-blue-200/90 font-medium mt-0.5 flex items-center gap-2 flex-wrap">
+                <div className="text-xs text-slate-600 font-medium mt-1 flex items-center gap-2 flex-wrap">
+                  <span className="text-primary font-bold">{person.departmentName || (person as any).department || 'Chưa phân phòng'}</span>
+                  <span>•</span>
                   <span>{person.role || 'Nhân viên'}</span>
                   <span>•</span>
                   <span>{formatPhoneNumber(person.phone)}</span>
                   {person.email && (
                     <>
                       <span>•</span>
-                      <span className="text-slate-300">{person.email}</span>
+                      <span className="text-slate-500">{person.email}</span>
                     </>
                   )}
                 </div>
@@ -195,7 +202,7 @@ export const PersonnelOverviewModal: React.FC<PersonnelOverviewModalProps> = ({
                     onClose();
                     onOpenQuickAssign(person);
                   }}
-                  className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold flex items-center gap-1 shadow-sm transition-all active:scale-95 cursor-pointer"
+                  className="px-3 py-1.5 rounded-lg bg-primary hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1 shadow-xs transition-colors cursor-pointer"
                 >
                   <span className="material-symbols-outlined text-[15px]">add_task</span>
                   <span>Giao việc nhanh</span>
@@ -208,9 +215,9 @@ export const PersonnelOverviewModal: React.FC<PersonnelOverviewModalProps> = ({
                     onClose();
                     onOpenEditModal(person);
                   }}
-                  className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-bold flex items-center gap-1 border border-white/20 transition-all active:scale-95 cursor-pointer"
+                  className="px-3 py-1.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer"
                 >
-                  <span className="material-symbols-outlined text-[15px]">edit</span>
+                  <span className="material-symbols-outlined text-[15px] text-slate-500">edit</span>
                   <span>Chỉnh sửa hồ sơ</span>
                 </button>
               )}
@@ -218,9 +225,9 @@ export const PersonnelOverviewModal: React.FC<PersonnelOverviewModalProps> = ({
           </div>
 
           {/* Navigation Tabs */}
-          <div className="flex items-center gap-1 mt-4 pt-3 border-t border-white/10 overflow-x-auto custom-scrollbar">
+          <div className="flex items-center gap-1 mt-4 pt-3 border-t border-slate-100 overflow-x-auto custom-scrollbar">
             {[
-              { id: 'overview', label: 'Tổng quan Dashboard', icon: 'dashboard' },
+              { id: 'overview', label: 'Tổng quan', icon: 'dashboard' },
               { id: 'projects', label: `Dự án (${assignedProjects.length})`, icon: 'folder' },
               { id: 'tasks', label: `Tiến độ công việc (${personTasks.length})`, icon: 'task_alt' },
               { id: 'funds', label: 'Quỹ & Chi phí', icon: 'payments' },
@@ -229,10 +236,10 @@ export const PersonnelOverviewModal: React.FC<PersonnelOverviewModalProps> = ({
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition-all cursor-pointer ${
+                className={`px-3 py-1.5 rounded-md text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition-colors cursor-pointer border ${
                   activeTab === tab.id
-                    ? 'bg-white text-slate-900 shadow-sm'
-                    : 'text-slate-300 hover:text-white hover:bg-white/10'
+                    ? 'bg-primary text-white border-primary shadow-xs'
+                    : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
                 }`}
               >
                 <span className="material-symbols-outlined text-[15px]">{tab.icon}</span>
@@ -245,127 +252,103 @@ export const PersonnelOverviewModal: React.FC<PersonnelOverviewModalProps> = ({
         {/* Modal Body Content */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-5 custom-scrollbar bg-slate-50 space-y-4">
           
-          {/* TAB 1: TỔNG QUAN DASHBOARD */}
+          {/* TAB 1: TỔNG QUAN HỒ SƠ */}
           {activeTab === 'overview' && (
             <div className="space-y-4">
-              {/* Top 4 KPI Metrics */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                {/* 1. Dự án */}
-                <div 
-                  onClick={() => setActiveTab('projects')}
-                  className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs hover:shadow-sm hover:border-blue-400 transition-all cursor-pointer group"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Dự án tham gia</span>
-                    <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-                      <span className="material-symbols-outlined text-lg">folder</span>
+              {/* Segmented KPI Bar - Chuẩn bảng điều khiển phẳng, gọn, không dùng khối card nổi lớn */}
+              <div className="bg-white rounded-lg border border-slate-200 p-2.5 shadow-2xs">
+                <div className="grid grid-cols-2 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-slate-200">
+                  {/* 1. Dự án */}
+                  <div 
+                    onClick={() => setActiveTab('projects')}
+                    className="p-2.5 hover:bg-slate-50 transition-colors cursor-pointer group rounded"
+                  >
+                    <div className="text-[11px] font-semibold text-slate-500 flex items-center justify-between">
+                      <span>Dự án tham gia</span>
+                      <span className="material-symbols-outlined text-[16px] text-slate-400 group-hover:text-primary">arrow_forward</span>
+                    </div>
+                    <div className="mt-1 flex items-baseline gap-1.5">
+                      <span className="text-xl font-extrabold text-slate-900 tabular-nums">{assignedProjects.length}</span>
+                      <span className="text-[11px] text-slate-500">dự án</span>
                     </div>
                   </div>
-                  <div className="mt-2 flex items-baseline gap-1.5">
-                    <span className="text-2xl font-black text-slate-900">{assignedProjects.length}</span>
-                    <span className="text-xs font-semibold text-slate-500">dự án</span>
-                  </div>
-                  <div className="mt-1 text-[11px] text-blue-600 font-medium truncate flex items-center gap-1">
-                    <span>Xem chi tiết danh sách</span>
-                    <span className="material-symbols-outlined text-[13px]">arrow_forward</span>
-                  </div>
-                </div>
 
-                {/* 2. Tiến độ & Công việc */}
-                <div 
-                  onClick={() => setActiveTab('tasks')}
-                  className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs hover:shadow-sm hover:border-emerald-400 transition-all cursor-pointer group"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Tiến độ nhiệm vụ</span>
-                    <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-                      <span className="material-symbols-outlined text-lg">task_alt</span>
+                  {/* 2. Tiến độ nhiệm vụ */}
+                  <div 
+                    onClick={() => setActiveTab('tasks')}
+                    className="p-2.5 hover:bg-slate-50 transition-colors cursor-pointer group rounded"
+                  >
+                    <div className="text-[11px] font-semibold text-slate-500 flex items-center justify-between">
+                      <span>Tiến độ nhiệm vụ</span>
+                      <span className="material-symbols-outlined text-[16px] text-slate-400 group-hover:text-primary">arrow_forward</span>
+                    </div>
+                    <div className="mt-1 flex items-baseline gap-1.5">
+                      <span className="text-xl font-extrabold text-slate-900 tabular-nums">{taskCompletionRate}%</span>
+                      <span className="text-[11px] text-slate-500 font-medium">({completedTasks.length}/{personTasks.length} việc)</span>
                     </div>
                   </div>
-                  <div className="mt-2 flex items-baseline gap-2">
-                    <span className="text-2xl font-black text-slate-900">{taskCompletionRate}%</span>
-                    <span className="text-xs font-bold text-emerald-600">({completedTasks.length}/{personTasks.length} việc)</span>
-                  </div>
-                  <div className="mt-1 flex items-center gap-2 text-[10.5px]">
-                    <span className="text-blue-600 font-semibold">{inProgressTasks.length} đang làm</span>
-                    {overdueTasks.length > 0 && (
-                      <span className="text-rose-600 font-bold bg-rose-50 px-1 rounded">!{overdueTasks.length} trễ hạn</span>
-                    )}
-                  </div>
-                </div>
 
-                {/* 3. Quỹ & Chi phí */}
-                <div 
-                  onClick={() => setActiveTab('funds')}
-                  className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs hover:shadow-sm hover:border-amber-400 transition-all cursor-pointer group"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Số dư quỹ nắm giữ</span>
-                    <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-                      <span className="material-symbols-outlined text-lg">payments</span>
+                  {/* 3. Quỹ tiền mặt */}
+                  <div 
+                    onClick={() => setActiveTab('funds')}
+                    className="p-2.5 hover:bg-slate-50 transition-colors cursor-pointer group rounded"
+                  >
+                    <div className="text-[11px] font-semibold text-slate-500 flex items-center justify-between">
+                      <span>Số dư quỹ tạm ứng</span>
+                      <span className="material-symbols-outlined text-[16px] text-slate-400 group-hover:text-primary">arrow_forward</span>
+                    </div>
+                    <div className="mt-1 flex items-baseline gap-1.5">
+                      <span className={`text-xl font-extrabold tabular-nums ${currentFundBalance < 0 ? 'text-rose-600' : 'text-slate-900'}`}>
+                        {currentFundBalance.toLocaleString('vi-VN')} đ
+                      </span>
                     </div>
                   </div>
-                  <div className="mt-2">
-                    <span className={`text-xl font-black ${currentFundBalance < 0 ? 'text-rose-600' : 'text-slate-900'}`}>
-                      {currentFundBalance.toLocaleString('vi-VN')} đ
-                    </span>
-                  </div>
-                  <div className="mt-1 text-[10.5px] text-slate-500 truncate">
-                    Đã cấp: <b className="text-slate-700">{totalFundReceived.toLocaleString('vi-VN')} đ</b>
-                  </div>
-                </div>
 
-                {/* 4. Vật tư & Đồ nghề */}
-                <div 
-                  onClick={() => setActiveTab('materials')}
-                  className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs hover:shadow-sm hover:border-indigo-400 transition-all cursor-pointer group"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Vật tư & Đồ nghề</span>
-                    <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-                      <span className="material-symbols-outlined text-lg">handyman</span>
+                  {/* 4. Vật tư & Đồ nghề */}
+                  <div 
+                    onClick={() => setActiveTab('materials')}
+                    className="p-2.5 hover:bg-slate-50 transition-colors cursor-pointer group rounded"
+                  >
+                    <div className="text-[11px] font-semibold text-slate-500 flex items-center justify-between">
+                      <span>Vật tư & Thiết bị</span>
+                      <span className="material-symbols-outlined text-[16px] text-slate-400 group-hover:text-primary">arrow_forward</span>
                     </div>
-                  </div>
-                  <div className="mt-2 flex items-baseline gap-1.5">
-                    <span className="text-2xl font-black text-slate-900">{personMaterialsAndTools.length}</span>
-                    <span className="text-xs font-semibold text-slate-500">lần xuất nhận</span>
-                  </div>
-                  <div className="mt-1 text-[10.5px] text-slate-600 flex items-center gap-2">
-                    <span className="font-bold text-amber-700">{toolCount} đồ nghề</span>
-                    <span>•</span>
-                    <span className="font-medium text-slate-500">{materialCount} vật tư</span>
+                    <div className="mt-1 flex items-baseline gap-1.5">
+                      <span className="text-xl font-extrabold text-slate-900 tabular-nums">{personMaterialsAndTools.length}</span>
+                      <span className="text-[11px] text-slate-500">mục ({toolCount} đồ nghề)</span>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* Progress Bar Overview */}
-              <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs space-y-2">
+              {/* Tiến độ trung bình */}
+              <div className="bg-white p-3.5 rounded-lg border border-slate-200 shadow-2xs space-y-2">
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-bold text-slate-700">Tổng tiến độ hoàn thành công việc được giao</span>
-                  <span className="font-extrabold text-primary">{avgTaskProgress}% (TB tiến độ)</span>
+                  <span className="font-extrabold text-primary tabular-nums">{avgTaskProgress}% (TB tiến độ)</span>
                 </div>
-                <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden flex">
+                <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden flex">
                   <div style={{ width: `${taskCompletionRate}%` }} className="bg-emerald-500 h-full" title={`Hoàn thành: ${taskCompletionRate}%`} />
                   <div style={{ width: `${personTasks.length > 0 ? (inProgressTasks.length / personTasks.length) * 100 : 0}%` }} className="bg-blue-500 h-full" title="Đang làm" />
                   <div style={{ width: `${personTasks.length > 0 ? (overdueTasks.length / personTasks.length) * 100 : 0}%` }} className="bg-rose-500 h-full" title="Quá hạn" />
                 </div>
-                <div className="flex items-center gap-4 text-[11px] pt-1">
-                  <span className="flex items-center gap-1.5 text-slate-600"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" /> Hoàn thành ({completedTasks.length})</span>
-                  <span className="flex items-center gap-1.5 text-slate-600"><span className="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block" /> Đang làm ({inProgressTasks.length})</span>
-                  <span className="flex items-center gap-1.5 text-slate-600"><span className="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block" /> Quá hạn ({overdueTasks.length})</span>
+                <div className="flex items-center gap-4 text-[11px] pt-0.5">
+                  <span className="flex items-center gap-1 text-slate-600"><span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" /> Hoàn thành ({completedTasks.length})</span>
+                  <span className="flex items-center gap-1 text-slate-600"><span className="w-2 h-2 rounded-full bg-blue-500 inline-block" /> Đang làm ({inProgressTasks.length})</span>
+                  <span className="flex items-center gap-1 text-slate-600"><span className="w-2 h-2 rounded-full bg-rose-500 inline-block" /> Quá hạn ({overdueTasks.length})</span>
                 </div>
               </div>
 
               {/* Quick Summary Grid (Projects & Recent Tasks) */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
                 {/* Dự án gần nhất */}
-                <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs flex flex-col">
-                  <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
-                    <h3 className="text-xs font-extrabold text-slate-800 uppercase tracking-wide flex items-center gap-1.5">
-                      <span className="material-symbols-outlined text-blue-600 text-base">folder</span>
-                      Dự án đang phụ trách ({assignedProjects.length})
+                <div className="bg-white p-3.5 rounded-lg border border-slate-200 shadow-2xs flex flex-col">
+                  <div className="flex items-center justify-between pb-2.5 border-b border-slate-100 mb-2.5">
+                    <h3 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                      <span className="material-symbols-outlined text-slate-500 text-base">folder</span>
+                      <span>Dự án đang phụ trách ({assignedProjects.length})</span>
                     </h3>
-                    <button onClick={() => setActiveTab('projects')} className="text-primary text-[11px] font-bold hover:underline">Xem tất cả</button>
+                    <button onClick={() => setActiveTab('projects')} className="text-primary text-[11px] font-bold hover:underline cursor-pointer">Xem tất cả</button>
                   </div>
                   {assignedProjects.length === 0 ? (
                     <div className="py-6 text-center text-slate-400 text-xs italic">Chưa được gán dự án nào</div>

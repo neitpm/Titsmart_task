@@ -6,6 +6,8 @@ import { useAuthStore, canManageItem } from '../services/authStore';
 import { FieldLog, Task } from '../types';
 import { compareTaskStt, formatSectionTitle } from '../utils/taskTreeUtils';
 import { AuditInfoCell, parseAuditTime } from './common/AuditInfoCell';
+import { useTableColumnResize } from '../services/useTableColumnResize';
+import { ColumnResizeHandle } from './common/ColumnResizeHandle';
 
 const CustomLightbox: React.FC<{ images: string[]; index: number; onClose: () => void; onPrev: () => void; onNext: () => void }> = ({
   images, index, onClose, onPrev, onNext,
@@ -386,6 +388,22 @@ export const FieldLogsTaskTable: React.FC<FieldLogsTaskTableProps> = ({ selected
     setLightboxIndex(index);
   };
 
+  const defaultColWidths = useMemo(() => ({
+    col_stt: 50,
+    col_task: 200,
+    col_project: 140,
+    col_date: 110,
+    col_assignee: 130,
+    col_note: 200,
+    col_images: 100,
+    col_actions: 70,
+  }), []);
+
+  const { widths: colWidths, startResize } = useTableColumnResize({
+    tableId: 'table_field_logs',
+    defaultWidths: defaultColWidths,
+  });
+
   return (
     <div 
       className="flex-1 overflow-auto bg-white pb-[60px] md:pb-0 custom-scrollbar"
@@ -394,25 +412,25 @@ export const FieldLogsTaskTable: React.FC<FieldLogsTaskTableProps> = ({ selected
         setIsScrolledHorizontally(scrollLeft > 10);
       }}
     >
-      <table className="min-w-[680px] w-full text-left text-xs text-slate-600 border-collapse table-fixed" style={{ "--stt-width": `${maxSttWidth}px` } as React.CSSProperties}>
+      <table className="min-w-[1000px] w-full text-left text-xs text-slate-600 border-collapse table-fixed" style={{ "--stt-width": `${maxSttWidth}px` } as React.CSSProperties}>
         <colgroup>
-          <col style={{ width: "var(--stt-width)" }} />
-          <col style={{ width: 180 }} />
-          <col style={{ width: 95 }} />
-          <col style={{ width: 65 }} />
-          <col style={{ width: 160 }} />
-          <col style={{ width: 110 }} />
-          <col style={{ width: 45 }} />
+          <col style={{ width: colWidths.col_stt }} />
+          <col style={{ width: colWidths.col_task }} />
+          <col style={{ width: colWidths.col_date }} />
+          <col style={{ width: colWidths.col_images }} />
+          <col style={{ width: colWidths.col_note }} />
+          <col style={{ width: colWidths.col_assignee }} />
+          <col style={{ width: colWidths.col_actions }} />
         </colgroup>
         <thead className="bg-slate-50 text-[10px] md:text-xs uppercase text-slate-500 font-bold sticky top-0 z-20 shadow-sm border-b border-slate-200">
           <tr>
-            <th style={{ width: "var(--stt-width)", minWidth: "var(--stt-width)", maxWidth: "var(--stt-width)" }} className="py-2 px-0 bg-slate-50 text-center border-b border-r border-slate-200 whitespace-nowrap tracking-tighter">STT</th>
-            <th className="sticky left-0 z-30 py-2 px-2 min-w-[150px] bg-slate-50 border-b border-r border-slate-200 whitespace-normal font-bold shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">NỘI DUNG CÔNG VIỆC</th>
-            <th className="py-2 px-1.5 border-b border-r border-slate-200 min-w-[85px] text-center whitespace-nowrap">THỜI GIAN</th>
-            <th className="py-2 px-1 border-b border-r border-slate-200 min-w-[55px] text-center whitespace-nowrap">ẢNH</th>
-            <th className="py-2 px-2 border-b border-r border-slate-200 min-w-[120px] whitespace-nowrap">GHI CHÚ</th>
-            <th className="py-2 px-1.5 border-b border-r border-slate-200 min-w-[90px] text-center whitespace-nowrap">NGƯỜI CẬP NHẬT</th>
-            <th className="py-2 px-1 border-b min-w-[40px] text-center whitespace-nowrap">TT</th>
+            <th style={{ width: "var(--stt-width)", minWidth: "var(--stt-width)", maxWidth: "var(--stt-width)" }} className="relative py-2 px-0 bg-slate-50 text-center border-b border-r border-slate-200 whitespace-nowrap tracking-tighter">STT<ColumnResizeHandle onMouseDown={(e) => startResize('col_stt', e)} /></th>
+            <th className="relative sticky left-0 z-30 py-2 px-2 min-w-[150px] bg-slate-50 border-b border-r border-slate-200 whitespace-normal font-bold shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">NỘI DUNG CÔNG VIỆC<ColumnResizeHandle onMouseDown={(e) => startResize('col_task', e)} /></th>
+            <th className="relative py-2 px-1.5 border-b border-r border-slate-200 min-w-[85px] text-center whitespace-nowrap">THỜI GIAN<ColumnResizeHandle onMouseDown={(e) => startResize('col_date', e)} /></th>
+            <th className="relative py-2 px-1 border-b border-r border-slate-200 min-w-[55px] text-center whitespace-nowrap">ẢNH<ColumnResizeHandle onMouseDown={(e) => startResize('col_images', e)} /></th>
+            <th className="relative py-2 px-2 border-b border-r border-slate-200 min-w-[120px] whitespace-nowrap">GHI CHÚ<ColumnResizeHandle onMouseDown={(e) => startResize('col_note', e)} /></th>
+            <th className="relative py-2 px-1.5 border-b border-r border-slate-200 min-w-[90px] text-center whitespace-nowrap">NGƯỜI CẬP NHẬT<ColumnResizeHandle onMouseDown={(e) => startResize('col_assignee', e)} /></th>
+            <th className="relative py-2 px-1 border-b min-w-[40px] text-center whitespace-nowrap">TT<ColumnResizeHandle onMouseDown={(e) => startResize('col_actions', e)} /></th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-200">

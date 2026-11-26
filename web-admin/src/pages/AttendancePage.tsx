@@ -10,6 +10,7 @@ import { ConfirmModal } from '../components/common/ConfirmModal';
 import { CustomSelect } from '../components/common/CustomSelect';
 import { Toast } from '../components/common/Toast';
 import { TabOverview } from '../components/common/TabOverview';
+import { ImportExportDropdown } from '../components/common/ImportExportDropdown';
 import * as XLSX from 'xlsx';
 import { exportToStyledExcel } from '../utils/excelExportUtils';
 import { exportMonthlyAttendanceTitsmart } from '../utils/exportMonthlyAttendance';
@@ -41,6 +42,8 @@ import { PullToRefresh } from '../components/common/PullToRefresh';
 import { useUIStore } from '../services/uiStore';
 import { ViewModeToolbar, resolveViewMode, AppViewMode } from '../components/common/ViewModeToolbar';
 import { StatusKanbanBoard } from '../components/common/StatusKanbanBoard';
+import { useTableColumnResize } from '../services/useTableColumnResize';
+import { ColumnResizeHandle } from '../components/common/ColumnResizeHandle';
 
 interface AttendanceLog {
   id: string;
@@ -266,6 +269,41 @@ export const AttendancePage: React.FC = () => {
   const [reviewAdjNote, setReviewAdjNote] = useState('');
   const [deleteAdjId, setDeleteAdjId] = useState<string | null>(null);
 
+  // Column widths for Attendance Logs Table
+  const defaultAttendanceColWidths = React.useMemo(() => ({
+    col_user: 160,
+    col_shift: 150,
+    col_time: 140,
+    col_gps: 180,
+    col_project: 150,
+    col_notes: 150,
+    col_image: 90,
+    col_status: 60,
+  }), []);
+
+  const { widths: colWidths, startResize: startColResize } = useTableColumnResize({
+    tableId: 'table_attendance_logs',
+    defaultWidths: defaultAttendanceColWidths,
+  });
+
+  const defaultLeaveColWidths = React.useMemo(() => ({
+    col_emp: 150,
+    col_type: 120,
+    col_date_range: 160,
+    col_days: 80,
+    col_reason: 220,
+    col_follower: 130,
+    col_status: 120,
+    col_mgr: 130,
+    col_director: 130,
+    col_actions: 90,
+  }), []);
+
+  const { widths: leaveColWidths, startResize: startLeaveResize } = useTableColumnResize({
+    tableId: 'table_leave_requests',
+    defaultWidths: defaultLeaveColWidths,
+  });
+
   const showToast = (message: string, type: 'success' | 'warning' | 'info' | 'error' = 'info') => {
     setToast({ show: true, message, type });
     setTimeout(() => setToast(prev => ({ ...prev, show: false })), 3500);
@@ -276,6 +314,8 @@ export const AttendancePage: React.FC = () => {
   const [reviewAction, setReviewAction] = useState<'APPROVE' | 'REJECT'>('APPROVE');
   const [reviewNote, setReviewNote] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const [showAttachMenu, setShowAttachMenu] = useState(false);
 
   // Người có cấp bậc cao nhất trong công ty (Cấp 1 - Ban Giám Đốc)
   const highestLeader = React.useMemo(() => {
@@ -680,9 +720,28 @@ export const AttendancePage: React.FC = () => {
       setLoading(true);
     }
     try {
+      // 1. Đọc cache localStorage nếu có để phản hồi tức thì
+      if (cachedLogs.length === 0) {
+        const local = localStorage.getItem('titsmart_attendance_logs');
+        if (local) {
+          try {
+            const parsed = JSON.parse(local);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              cachedLogs = parsed;
+              setLogs(parsed);
+            }
+          } catch {}
+        }
+      }
+
       const data = await api.attendance.getAll();
-      cachedLogs = data;
-      setLogs(data);
+      if (Array.isArray(data)) {
+        cachedLogs = data;
+        setLogs(data);
+        try {
+          localStorage.setItem('titsmart_attendance_logs', JSON.stringify(data.slice(0, 100)));
+        } catch {}
+      }
     } catch (e) {
       console.error('Failed to fetch attendance logs', e);
     } finally {
@@ -695,9 +754,27 @@ export const AttendancePage: React.FC = () => {
       setLeavesLoading(true);
     }
     try {
+      if (cachedLeaves.length === 0) {
+        const local = localStorage.getItem('titsmart_leave_requests');
+        if (local) {
+          try {
+            const parsed = JSON.parse(local);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              cachedLeaves = parsed;
+              setLeaves(parsed);
+            }
+          } catch {}
+        }
+      }
+
       const data = await api.leaves.getAll();
-      cachedLeaves = data;
-      setLeaves(data);
+      if (Array.isArray(data)) {
+        cachedLeaves = data;
+        setLeaves(data);
+        try {
+          localStorage.setItem('titsmart_leave_requests', JSON.stringify(data.slice(0, 100)));
+        } catch {}
+      }
       hasFetchedAttendanceData = true;
     } catch (e) {
       console.error('Failed to fetch leave requests', e);
@@ -1407,25 +1484,23 @@ export const AttendancePage: React.FC = () => {
       isWithinGeoRadius = actualDistanceMeters <= allowedRadius;
     }
 
-    // 1. Kiểm tra GPS nếu ở chế độ bắt buộc (strict)
-    if (attendanceConfig.gpsRequirement === 'strict') {
-      if (isGpsScanning) {
-        showToast('Đang quét tọa độ GPS, vui lòng đợi trong giây lát...', 'warning');
-        return;
-      }
-      if (!gpsData) {
-        showToast('Không thể xác định vị trí GPS của bạn để chấm công!', 'error');
-        return;
-      }
-      if (hasProjectCoords && !isWithinGeoRadius) {
-        showToast(`Bạn đang ở ngoài bán kính dự án (${formatDistance(actualDistanceMeters || 0)} / cho phép ≤ ${allowedRadius}m)!`, 'error');
-        return;
-      }
+    // 1. Bắt buộc phải có vị trí GPS (cả desktop và mobile)
+    if (isGpsScanning) {
+      showToast('Đang quét tọa độ GPS, vui lòng đợi trong giây lát...', 'warning');
+      return;
+    }
+    if (!gpsData) {
+      showToast('Vui lòng bật định vị GPS trên thiết bị / trình duyệt để thực hiện chấm công!', 'error');
+      return;
+    }
+    if (attendanceConfig.gpsRequirement === 'strict' && hasProjectCoords && !isWithinGeoRadius) {
+      showToast(`Bạn đang ở ngoài bán kính dự án (${formatDistance(actualDistanceMeters || 0)} / cho phép ≤ ${allowedRadius}m)!`, 'error');
+      return;
     }
 
-    // 2. Kiểm tra bắt buộc chụp ảnh nếu được bật
-    if (attendanceConfig.requirePhoto && !checkInImage) {
-      showToast('Chính sách công ty bắt buộc chụp ảnh khuôn mặt khi chấm công!', 'warning');
+    // 2. Bắt buộc phải có ảnh hiện trường / khuôn mặt
+    if (!checkInImage) {
+      showToast('Vui lòng chụp ảnh hoặc tải ảnh hiện trường để chấm công!', 'warning');
       return;
     }
 
@@ -1691,53 +1766,13 @@ export const AttendancePage: React.FC = () => {
 
                 {/* Export file for Attendance */}
                 {filteredLogs.length > 0 && (
-                  <div className="relative shrink-0">
-                    <button
-                      onClick={() => setShowExportMenu(!showExportMenu)}
-                      className="flex items-center justify-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-bold text-xs rounded-lg border border-emerald-200 transition-colors shadow-xs cursor-pointer h-8"
-                      title="Xuất file"
-                    >
-                      <span className="material-symbols-outlined text-[15px]">file_download</span>
-                      <span>Xuất file</span>
-                      <span className="material-symbols-outlined text-xs">expand_more</span>
-                    </button>
-                    {showExportMenu && (
-                      <div className="fixed inset-0 z-40" onClick={() => setShowExportMenu(false)} />
-                    )}
-                    {showExportMenu && (
-                      <div className="absolute right-0 top-full mt-1 w-64 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-50 animate-in fade-in zoom-in duration-100">
-                        <button
-                          onClick={() => { setShowExportMenu(false); handleExportMonthlyTitsmart(); }}
-                          className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
-                          title="Xuất bảng chấm công Excel theo mẫu TITSMART"
-                        >
-                          <span className="material-symbols-outlined text-base text-emerald-600">grid_on</span>
-                          Excel (.xlsx)
-                        </button>
-                        <button
-                          onClick={() => { setShowExportMenu(false); handleExportExcel('csv'); }}
-                          className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 border-t border-slate-100 cursor-pointer"
-                        >
-                          <span className="material-symbols-outlined text-base text-teal-600">csv</span>
-                          CSV (.csv)
-                        </button>
-                        <button
-                          onClick={() => { setShowExportMenu(false); window.print(); }}
-                          className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 border-t border-slate-100 cursor-pointer"
-                        >
-                          <span className="material-symbols-outlined text-base text-red-600">picture_as_pdf</span>
-                          PDF (.pdf)
-                        </button>
-                        <button
-                          onClick={() => { setShowExportMenu(false); handleExportExcel('docx'); }}
-                          className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 border-t border-slate-100 cursor-pointer"
-                        >
-                          <span className="material-symbols-outlined text-base text-blue-600">description</span>
-                          Word (.docx)
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                  <ImportExportDropdown
+                    onExportExcel={handleExportMonthlyTitsmart}
+                    onExportCsv={() => handleExportExcel('csv')}
+                    onExportPdf={() => window.print()}
+                    onExportWord={() => handleExportExcel('docx')}
+                    buttonClassName="!h-8"
+                  />
                 )}
 
                 {canViewAll && (
@@ -1817,52 +1852,13 @@ export const AttendancePage: React.FC = () => {
               </div>
 
               {leaves.length > 0 && (
-                <div className="relative shrink-0">
-                  <button
-                    onClick={() => setShowLeaveExportMenu(!showLeaveExportMenu)}
-                    className="flex items-center justify-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-bold text-xs rounded-lg border border-emerald-200 transition-colors shadow-xs cursor-pointer h-8"
-                    title="Xuất file"
-                  >
-                    <span className="material-symbols-outlined text-[15px]">file_download</span>
-                    <span>Xuất file</span>
-                    <span className="material-symbols-outlined text-xs">expand_more</span>
-                  </button>
-                  {showLeaveExportMenu && (
-                    <div className="fixed inset-0 z-40" onClick={() => setShowLeaveExportMenu(false)} />
-                  )}
-                  {showLeaveExportMenu && (
-                    <div className="absolute right-0 top-full mt-1 w-44 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-50 animate-in fade-in zoom-in duration-100">
-                      <button
-                        onClick={() => { setShowLeaveExportMenu(false); handleExportLeavesExcel('xlsx'); }}
-                        className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
-                      >
-                        <span className="material-symbols-outlined text-base text-green-600">grid_on</span>
-                        Excel (.xlsx)
-                      </button>
-                      <button
-                        onClick={() => { setShowLeaveExportMenu(false); handleExportLeavesExcel('csv'); }}
-                        className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 border-t border-slate-100 cursor-pointer"
-                      >
-                        <span className="material-symbols-outlined text-base text-teal-600">csv</span>
-                        CSV (.csv)
-                      </button>
-                      <button
-                        onClick={() => { setShowLeaveExportMenu(false); window.print(); }}
-                        className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 border-t border-slate-100 cursor-pointer"
-                      >
-                        <span className="material-symbols-outlined text-base text-red-600">picture_as_pdf</span>
-                        PDF (.pdf)
-                      </button>
-                      <button
-                        onClick={() => { setShowLeaveExportMenu(false); handleExportLeavesExcel('docx'); }}
-                        className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 border-t border-slate-100 cursor-pointer"
-                      >
-                        <span className="material-symbols-outlined text-base text-blue-600">description</span>
-                        Word (.docx)
-                      </button>
-                    </div>
-                  )}
-                </div>
+                <ImportExportDropdown
+                  onExportExcel={() => handleExportLeavesExcel('xlsx')}
+                  onExportCsv={() => handleExportLeavesExcel('csv')}
+                  onExportPdf={() => window.print()}
+                  onExportWord={() => handleExportLeavesExcel('docx')}
+                  buttonClassName="!h-8"
+                />
               )}
               <button
                 onClick={() => { setShowLeaveModal(true); setModalError(null); }}
@@ -1927,52 +1923,13 @@ export const AttendancePage: React.FC = () => {
               </div>
 
               {displayedAdjustments.length > 0 && (
-                <div className="relative shrink-0">
-                  <button
-                    onClick={() => setShowAdjExportMenu(!showAdjExportMenu)}
-                    className="flex items-center justify-center gap-1 px-2 py-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-bold text-xs rounded-lg border border-emerald-200 transition-colors shadow-xs cursor-pointer h-8"
-                    title="Xuất file"
-                  >
-                    <span className="material-symbols-outlined text-[15px]">file_download</span>
-                    <span className="hidden xl:inline">Xuất file</span>
-                    <span className="material-symbols-outlined text-xs">expand_more</span>
-                  </button>
-                  {showAdjExportMenu && (
-                    <div className="fixed inset-0 z-40" onClick={() => setShowAdjExportMenu(false)} />
-                  )}
-                  {showAdjExportMenu && (
-                    <div className="absolute right-0 top-full mt-1 w-44 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-50 animate-in fade-in zoom-in duration-100">
-                      <button
-                        onClick={() => { setShowAdjExportMenu(false); handleExportAdjustmentsExcel('xlsx'); }}
-                        className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
-                      >
-                        <span className="material-symbols-outlined text-base text-green-600">grid_on</span>
-                        Excel (.xlsx)
-                      </button>
-                      <button
-                        onClick={() => { setShowAdjExportMenu(false); handleExportAdjustmentsExcel('csv'); }}
-                        className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 border-t border-slate-100 cursor-pointer"
-                      >
-                        <span className="material-symbols-outlined text-base text-teal-600">csv</span>
-                        CSV (.csv)
-                      </button>
-                      <button
-                        onClick={() => { setShowAdjExportMenu(false); window.print(); }}
-                        className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 border-t border-slate-100 cursor-pointer"
-                      >
-                        <span className="material-symbols-outlined text-base text-red-600">picture_as_pdf</span>
-                        PDF (.pdf)
-                      </button>
-                      <button
-                        onClick={() => { setShowAdjExportMenu(false); handleExportAdjustmentsExcel('docx'); }}
-                        className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 border-t border-slate-100 cursor-pointer"
-                      >
-                        <span className="material-symbols-outlined text-base text-blue-600">description</span>
-                        Word (.docx)
-                      </button>
-                    </div>
-                  )}
-                </div>
+                <ImportExportDropdown
+                  onExportExcel={() => handleExportAdjustmentsExcel('xlsx')}
+                  onExportCsv={() => handleExportAdjustmentsExcel('csv')}
+                  onExportPdf={() => window.print()}
+                  onExportWord={() => handleExportAdjustmentsExcel('docx')}
+                  buttonClassName="!h-8"
+                />
               )}
 
               <button
@@ -1992,10 +1949,11 @@ export const AttendancePage: React.FC = () => {
       {mainTab === 'overview' ? (
         <div className="flex-1 overflow-y-auto bg-slate-50">
           <TabOverview
+            loading={loading}
             kpis={[
               {
                 id: 'attendance',
-                label: 'Chấm công',
+                label: 'Tổng lượt chấm công',
                 value: logs.length,
                 subValue: 'lượt ghi nhận',
                 onClick: () => setMainTab('attendance'),
@@ -2018,7 +1976,8 @@ export const AttendancePage: React.FC = () => {
               {
                 id: 'adjustment',
                 label: 'Chấm công bù',
-                value: 'Quản lý',
+                value: adjustments.filter((a) => a.status === 'PENDING' || a.status === 'PENDING_STEP1').length,
+                subValue: 'yêu cầu chờ duyệt',
                 onClick: () => setMainTab('adjustment'),
                 tone: 'info',
               },
@@ -2211,17 +2170,48 @@ export const AttendancePage: React.FC = () => {
               ) : filteredLogs.length === 0 ? (
                 <div className="p-8 text-center text-slate-400 text-sm">Chưa có bản ghi chấm công nào.</div>
               ) : (
-                <table className="w-full text-left border-collapse text-xs">
+                <table className="w-full text-left border-collapse text-xs table-fixed min-w-[900px]">
+                  <colgroup>
+                    <col style={{ width: colWidths.col_user }} />
+                    <col style={{ width: colWidths.col_shift }} />
+                    <col style={{ width: colWidths.col_time }} />
+                    <col style={{ width: colWidths.col_gps }} />
+                    <col style={{ width: colWidths.col_project }} />
+                    <col style={{ width: colWidths.col_notes }} />
+                    <col style={{ width: colWidths.col_image }} />
+                    {isAdmin && <col style={{ width: colWidths.col_status }} />}
+                  </colgroup>
                   <thead>
-                    <tr className="border-b border-slate-200 bg-slate-100/70 text-slate-600 font-bold uppercase sticky top-0 z-10 text-[10px] sm:text-xs">
-                      <th className="px-2 py-2 sm:p-3 leading-tight break-words">Nhân viên</th>
-                      <th className="px-2 py-2 sm:p-3 leading-tight break-words">Hình thức / Ca</th>
-                      <th className="px-2 py-2 sm:p-3 leading-tight break-words">Thời gian</th>
-                      <th className="px-2 py-2 sm:p-3 leading-tight break-words">Vị trí GPS</th>
-                      <th className="px-2 py-2 sm:p-3 leading-tight break-words">Dự án</th>
-                      <th className="px-2 py-2 sm:p-3 leading-tight break-words">Ghi chú</th>
-                      <th className="px-2 py-2 sm:p-3 text-center leading-tight break-words">Hình ảnh</th>
-                      {isAdmin && <th className="px-2 py-2 sm:p-3 text-center w-10 sm:w-12 leading-tight">TT</th>}
+                    <tr className="border-b border-slate-200 bg-slate-100/70 text-slate-600 font-bold uppercase sticky top-0 z-10 text-[10px] sm:text-xs select-none">
+                      <th className="px-2 py-2 sm:p-3 leading-tight break-words relative group/th">
+                        <span>Nhân viên</span>
+                        <ColumnResizeHandle colKey="col_user" onResizeStart={startColResize} />
+                      </th>
+                      <th className="px-2 py-2 sm:p-3 leading-tight break-words relative group/th">
+                        <span>Hình thức / Ca</span>
+                        <ColumnResizeHandle colKey="col_shift" onResizeStart={startColResize} />
+                      </th>
+                      <th className="px-2 py-2 sm:p-3 leading-tight break-words relative group/th">
+                        <span>Thời gian</span>
+                        <ColumnResizeHandle colKey="col_time" onResizeStart={startColResize} />
+                      </th>
+                      <th className="px-2 py-2 sm:p-3 leading-tight break-words relative group/th">
+                        <span>Vị trí GPS</span>
+                        <ColumnResizeHandle colKey="col_gps" onResizeStart={startColResize} />
+                      </th>
+                      <th className="px-2 py-2 sm:p-3 leading-tight break-words relative group/th">
+                        <span>Dự án</span>
+                        <ColumnResizeHandle colKey="col_project" onResizeStart={startColResize} />
+                      </th>
+                      <th className="px-2 py-2 sm:p-3 leading-tight break-words relative group/th">
+                        <span>Ghi chú</span>
+                        <ColumnResizeHandle colKey="col_notes" onResizeStart={startColResize} />
+                      </th>
+                      <th className="px-2 py-2 sm:p-3 text-center leading-tight break-words relative group/th">
+                        <span>Hình ảnh</span>
+                        <ColumnResizeHandle colKey="col_image" onResizeStart={startColResize} />
+                      </th>
+                      {isAdmin && <th className="px-2 py-2 sm:p-3 text-center leading-tight">TT</th>}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -2360,50 +2350,14 @@ export const AttendancePage: React.FC = () => {
 
             <div className="flex items-center gap-1.5 shrink-0">
               {leaves.length > 0 && (
-                <div className="relative shrink-0">
-                  <button
-                    onClick={() => setShowLeaveExportMenu(!showLeaveExportMenu)}
-                    className="w-8 h-8 flex items-center justify-center bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-bold rounded-lg border border-emerald-200 transition-colors shadow-xs cursor-pointer"
-                    title="Xuất file"
-                  >
-                    <span className="material-symbols-outlined text-[17px]">file_download</span>
-                  </button>
-                  {showLeaveExportMenu && (
-                    <div className="fixed inset-0 z-40" onClick={() => setShowLeaveExportMenu(false)} />
-                  )}
-                  {showLeaveExportMenu && (
-                    <div className="absolute right-0 top-full mt-1 w-44 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-50 animate-in fade-in zoom-in duration-100">
-                      <button
-                        onClick={() => { setShowLeaveExportMenu(false); handleExportLeavesExcel('xlsx'); }}
-                        className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
-                      >
-                        <span className="material-symbols-outlined text-base text-green-600">grid_on</span>
-                        Excel (.xlsx)
-                      </button>
-                      <button
-                        onClick={() => { setShowLeaveExportMenu(false); handleExportLeavesExcel('csv'); }}
-                        className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 border-t border-slate-100 cursor-pointer"
-                      >
-                        <span className="material-symbols-outlined text-base text-teal-600">csv</span>
-                        CSV (.csv)
-                      </button>
-                      <button
-                        onClick={() => { setShowLeaveExportMenu(false); window.print(); }}
-                        className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 border-t border-slate-100 cursor-pointer"
-                      >
-                        <span className="material-symbols-outlined text-base text-red-600">picture_as_pdf</span>
-                        PDF (.pdf)
-                      </button>
-                      <button
-                        onClick={() => { setShowLeaveExportMenu(false); handleExportLeavesExcel('docx'); }}
-                        className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 border-t border-slate-100 cursor-pointer"
-                      >
-                        <span className="material-symbols-outlined text-base text-blue-600">description</span>
-                        Word (.docx)
-                      </button>
-                    </div>
-                  )}
-                </div>
+                <ImportExportDropdown
+                  onExportExcel={() => handleExportLeavesExcel('xlsx')}
+                  onExportCsv={() => handleExportLeavesExcel('csv')}
+                  onExportPdf={() => window.print()}
+                  onExportWord={() => handleExportLeavesExcel('docx')}
+                  buttonLabel=""
+                  buttonClassName="!h-8 !px-2"
+                />
               )}
 
               {/* Add Leave Button (Mobile only: icon-only) */}
@@ -2659,19 +2613,31 @@ export const AttendancePage: React.FC = () => {
 
                 {/* Desktop View: Table */}
                 <div className="hidden md:block overflow-x-auto">
-                  <table className="w-full text-left border-collapse text-xs">
+                  <table className="w-full text-left border-collapse text-xs table-fixed min-w-[1310px]">
+                    <colgroup>
+                      <col style={{ width: leaveColWidths.col_emp }} />
+                      <col style={{ width: leaveColWidths.col_type }} />
+                      <col style={{ width: leaveColWidths.col_date_range }} />
+                      <col style={{ width: leaveColWidths.col_days }} />
+                      <col style={{ width: leaveColWidths.col_reason }} />
+                      <col style={{ width: leaveColWidths.col_follower }} />
+                      <col style={{ width: leaveColWidths.col_status }} />
+                      <col style={{ width: leaveColWidths.col_mgr }} />
+                      <col style={{ width: leaveColWidths.col_director }} />
+                      <col style={{ width: leaveColWidths.col_actions }} />
+                    </colgroup>
                     <thead>
                       <tr className="border-b border-slate-200 bg-slate-100/70 text-slate-600 font-bold uppercase sticky top-0 z-10">
-                        <th className="p-3">Nhân viên</th>
-                        <th className="p-3">Loại nghỉ</th>
-                        <th className="p-3">Thời gian nghỉ</th>
-                        <th className="p-3 text-center">Số ngày</th>
-                        <th className="p-3 min-w-[200px] max-w-[320px]">Lý do</th>
-                        <th className="p-3">Người theo dõi</th>
-                        <th className="p-3 text-center">Trạng thái</th>
-                        <th className="p-3">Quản lý duyệt</th>
-                        <th className="p-3">Lãnh đạo duyệt</th>
-                        <th className="p-3 text-center w-24">Thao tác</th>
+                        <th className="p-3 relative">Nhân viên<ColumnResizeHandle onMouseDown={(e) => startLeaveResize('col_emp', e)} /></th>
+                        <th className="p-3 relative">Loại nghỉ<ColumnResizeHandle onMouseDown={(e) => startLeaveResize('col_type', e)} /></th>
+                        <th className="p-3 relative">Thời gian nghỉ<ColumnResizeHandle onMouseDown={(e) => startLeaveResize('col_date_range', e)} /></th>
+                        <th className="p-3 text-center relative">Số ngày<ColumnResizeHandle onMouseDown={(e) => startLeaveResize('col_days', e)} /></th>
+                        <th className="p-3 relative">Lý do<ColumnResizeHandle onMouseDown={(e) => startLeaveResize('col_reason', e)} /></th>
+                        <th className="p-3 relative">Người theo dõi<ColumnResizeHandle onMouseDown={(e) => startLeaveResize('col_follower', e)} /></th>
+                        <th className="p-3 text-center relative">Trạng thái<ColumnResizeHandle onMouseDown={(e) => startLeaveResize('col_status', e)} /></th>
+                        <th className="p-3 relative">Quản lý duyệt<ColumnResizeHandle onMouseDown={(e) => startLeaveResize('col_mgr', e)} /></th>
+                        <th className="p-3 relative">Lãnh đạo duyệt<ColumnResizeHandle onMouseDown={(e) => startLeaveResize('col_director', e)} /></th>
+                        <th className="p-3 text-center w-24 relative">Thao tác<ColumnResizeHandle onMouseDown={(e) => startLeaveResize('col_actions', e)} /></th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -3830,26 +3796,80 @@ export const AttendancePage: React.FC = () => {
           )}
 
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">
-              Ảnh hiện trường / hình ảnh {attendanceConfig.requirePhoto ? '(*)' : '(tùy chọn)'}
+            <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              Ảnh hiện trường <span className="text-rose-600 font-bold">*</span>
             </label>
-            <div className="flex items-center gap-3">
+            <div className="flex items-start gap-3 flex-wrap">
               {checkInImage ? (
-                <div className="relative w-16 h-16 rounded-lg overflow-hidden border border-slate-200">
+                <div className="relative w-24 h-24 rounded-xl overflow-hidden border border-slate-200 shadow-xs group">
                   <img src={checkInImage} alt="preview" className="w-full h-full object-cover" />
-                  <button onClick={() => setCheckInImage(null)} className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-red-500 text-white text-[8px] flex items-center justify-center">
-                    <span className="material-symbols-outlined text-[10px]">close</span>
+                  <button
+                    type="button"
+                    onClick={() => setCheckInImage(null)}
+                    className="absolute top-1 right-1 w-5 h-5 rounded-full bg-rose-500 hover:bg-rose-600 text-white flex items-center justify-center cursor-pointer shadow transition"
+                    title="Xóa ảnh"
+                  >
+                    <span className="material-symbols-outlined text-[13px]">close</span>
                   </button>
                 </div>
               ) : (
-                <button onClick={() => fileInputRef.current?.click()}
-                  className="flex items-center gap-1.5 px-3 py-2 border-2 border-dashed border-slate-300 rounded-lg text-slate-400 hover:text-primary hover:border-primary transition text-xs cursor-pointer">
-                  <span className="material-symbols-outlined text-base">add_a_photo</span>
-                  Chọn ảnh {attendanceConfig.requirePhoto ? 'bắt buộc' : ''}
-                </button>
+                <div className="relative w-24 h-24">
+                  <button
+                    type="button"
+                    onClick={() => setShowAttachMenu(!showAttachMenu)}
+                    className={`h-full w-full flex flex-col items-center justify-center rounded-xl border-2 border-dashed transition cursor-pointer ${
+                      showAttachMenu
+                        ? 'border-primary bg-blue-50 text-primary'
+                        : 'border-slate-300 text-slate-500 hover:border-primary hover:bg-slate-50 hover:text-primary'
+                    }`}
+                  >
+                    <span className="material-symbols-outlined mb-1 text-2xl">add_a_photo</span>
+                    <span className="text-[11px] font-bold">Thêm ảnh</span>
+                  </button>
+
+                  {/* Popover Menu: Chụp ảnh mới / Chọn từ thư viện */}
+                  {showAttachMenu && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setShowAttachMenu(false)} />
+                      <div className="absolute left-0 top-full mt-1.5 z-50 bg-white rounded-xl shadow-2xl border border-slate-200 p-1.5 flex flex-col gap-1 min-w-[190px] animate-in fade-in zoom-in-95 duration-150">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowAttachMenu(false);
+                            cameraInputRef.current?.click();
+                          }}
+                          className="flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-emerald-50 hover:text-emerald-900 rounded-lg transition-colors text-left cursor-pointer"
+                        >
+                          <span className="material-symbols-outlined text-emerald-600 text-lg">photo_camera</span>
+                          <span>Chụp ảnh mới</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowAttachMenu(false);
+                            fileInputRef.current?.click();
+                          }}
+                          className="flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-blue-50 hover:text-blue-900 rounded-lg transition-colors text-left cursor-pointer"
+                        >
+                          <span className="material-symbols-outlined text-blue-600 text-lg">image</span>
+                          <span>Chọn từ thư viện / File</span>
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
               )}
+              {/* Input chọn ảnh từ máy */}
               <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileSelect} />
+              {/* Input mở trực tiếp máy ảnh trên mobile / camera */}
+              <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFileSelect} />
             </div>
+            {!checkInImage && (
+              <p className="text-[11px] text-amber-600 mt-1.5 flex items-center gap-1">
+                <span className="material-symbols-outlined text-[14px]">info</span>
+                <span>Yêu cầu có ảnh chụp hiện trường để xác nhận công.</span>
+              </p>
+            )}
           </div>
 
           <div>
@@ -3872,8 +3892,10 @@ export const AttendancePage: React.FC = () => {
             onClick={handleCheckIn} 
             disabled={
               isSubmitting || 
-              (attendanceConfig.gpsRequirement === 'strict' && workLocationType === 'office' && (!gpsData || !gpsData.isWithinRadius)) ||
-              (attendanceConfig.requirePhoto && !checkInImage)
+              !gpsData ||
+              !checkInImage ||
+              !selectedProject ||
+              isGpsScanning
             }
             className="flex items-center gap-2 px-5 py-2 bg-primary hover:bg-blue-800 text-white font-bold rounded-lg disabled:opacity-50 transition-colors text-sm cursor-pointer shadow-sm"
           >

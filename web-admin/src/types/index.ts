@@ -377,12 +377,48 @@ export interface Engineer {
   identityNumber?: string;
   emergencyContactName?: string;
   email: string;
+  departmentId?: string;
+  departmentCode?: string;
+  departmentName?: string;
   managedProjects?: { code: string; name: string }[];
   memberProjects?: { code: string; name: string }[];
   projectCodes?: string[];
   permissions?: Permission[];
   updatedBy?: string;
   updatedAt?: string;
+  createdAt?: string;
+}
+
+// ==================== PHÒNG BAN & LỊCH SỬ LUÂN CHUYỂN ====================
+export type DepartmentStatus = 'ACTIVE' | 'INACTIVE';
+
+export interface Department {
+  id: string;
+  code: string;
+  name: string;
+  description?: string;
+  managerId?: string;
+  managerName?: string;
+  status: DepartmentStatus;
+  sortOrder?: number;
+  memberCount?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface DepartmentTransferHistory {
+  id: string;
+  engineerId: string;
+  engineerName: string;
+  fromDepartmentId?: string;
+  fromDepartmentName?: string;
+  toDepartmentId: string;
+  toDepartmentName: string;
+  transferredById?: string;
+  transferredByName?: string;
+  transferDate: string;
+  reason: string;
+  notes?: string;
   createdAt?: string;
 }
 
@@ -1149,3 +1185,53 @@ export const getTaskEffectiveProgress = (task: any): number => {
   }
   return calculateAutoProgressRatio(task.purchaseStatus, task.constrStatus);
 };
+
+export type PurchaseRequestStatus = 
+  | 'PENDING_CHECK'              // Chờ người kiểm tra xác nhận
+  | 'CHECKED_WAITING_APPROVAL'   // Đã kiểm tra - Chờ Lãnh đạo duyệt
+  | 'APPROVED'                   // Lãnh đạo đã duyệt - Chuyển bộ phận mua hàng
+  | 'ORDERED'                    // Đã tiến hành đặt hàng
+  | 'REJECTED';                  // Bị từ chối
+
+export interface PurchaseRequestItem {
+  id: string;                    // materialPlanId
+  stt?: string;
+  name: string;                  // Tên vật tư
+  unit?: string;                 // ĐVT
+  quantity?: number;             // Số lượng đề nghị mua
+  note?: string;                 // Ghi chú
+  currentStatus?: string;
+}
+
+export interface PurchaseRequestAuditLog {
+  action: string;
+  actorId?: string;
+  actorName: string;
+  actorRole?: string;
+  timestamp: string;
+  note?: string;
+}
+
+export interface PurchaseRequest {
+  id: string;
+  code: string;
+  projectCode: string;
+  projectName?: string;
+  creatorId?: string;
+  creatorName: string;
+  creatorTitle?: string;
+  checkerId?: string;
+  checkerName?: string;
+  checkerTitle?: string;
+  reviewerId?: string;
+  reviewerName?: string;
+  reviewerTitle?: string;
+  neededDate?: string;
+  priority?: 'normal' | 'urgent';
+  reason?: string;
+  note?: string;
+  status: PurchaseRequestStatus;
+  items: PurchaseRequestItem[];
+  createdAt: string;
+  history?: PurchaseRequestAuditLog[];
+}

@@ -7,6 +7,9 @@ import { Modal } from '../../components/common/Modal';
 import { uploadAttachment } from '../../utils/fileUploadHelper';
 import { Toast } from '../../components/common/Toast';
 import { isSystemAdmin, isDirector } from '../../services/authStore';
+import { useTableColumnResize } from '../../services/useTableColumnResize';
+import { ColumnResizeHandle } from '../../components/common/ColumnResizeHandle';
+import { StandardFilterToolbar } from '../../components/common/StandardFilterToolbar';
 
 // ─── Hạn mức thanh toán mặc định (cấu hình, không hard-code trong logic nghiệp vụ) ───
 const DEFAULT_THRESHOLD = 5_000_000; // 5 triệu VNĐ
@@ -192,6 +195,23 @@ export const PaymentRequestTab: React.FC<PaymentRequestTabProps> = ({
 
   // Tabs: "all" | "mine" | "need_action"
   const [activeTab, setActiveTab] = useState<'all' | 'mine' | 'need_action'>('all');
+
+  const defaultColWidths = useMemo(() => ({
+    col_code: 112,
+    col_due_date: 96,
+    col_project: 144,
+    col_recipient: 176,
+    col_content: 220,
+    col_amount: 128,
+    col_status: 144,
+    col_requester: 112,
+    col_action: 96,
+  }), []);
+
+  const { widths: colWidths, startResize: startColResize, resetWidths: resetColWidths } = useTableColumnResize({
+    tableId: 'table_payment_requests',
+    defaultWidths: defaultColWidths,
+  });
 
   // Modals
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(autoOpenCreateModal);
@@ -624,74 +644,145 @@ export const PaymentRequestTab: React.FC<PaymentRequestTabProps> = ({
       />
 
       {/* ── 2. TOOLBAR ── */}
-      <div className="border-y border-slate-200 bg-white px-4 py-2 flex flex-wrap items-center justify-between gap-2 text-xs">
-        {/* Sub-tabs */}
-        <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg">
+      <StandardFilterToolbar
+        totalCount={filteredRequests.length}
+        totalCountLabel="yêu cầu"
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        searchPlaceholder="Tìm mã, NCC, nội dung..."
+        onResetColumnWidths={resetColWidths}
+        selectFilters={[
+          {
+            id: 'project',
+            label: 'Dự án',
+            value: filterProject,
+            onChange: (val) => {
+              setFilterProject(val);
+              if (onSelectProjectCode && val !== 'all') onSelectProjectCode(val);
+            },
+            options: [
+              { value: 'all', label: 'Tất cả dự án' },
+              { value: 'COMPANY', label: 'Chi phí công ty' },
+              ...projects.map(p => ({ value: p.code, label: p.name || p.code })),
+            ],
+            minWidth: 'min-w-[100px]',
+            maxWidth: 'max-w-[150px]',
+          },
+          {
+            id: 'type',
+            label: 'Loại',
+            value: filterType,
+            onChange: setFilterType,
+            options: [
+              { value: 'all', label: 'Tất cả loại' },
+              ...Object.entries(PAYMENT_TYPE_LABELS).map(([k, v]) => ({ value: k, label: v })),
+            ],
+            minWidth: 'min-w-[80px]',
+            maxWidth: 'max-w-[120px]',
+          },
+          {
+            id: 'status',
+            label: 'Trạng thái',
+            value: filterStatus,
+            onChange: setFilterStatus,
+            options: [
+              { value: 'all', label: 'Tất cả trạng thái' },
+              { value: 'OVERDUE', label: '⚠️ Quá hạn' },
+              ...Object.entries(STATUS_LABELS).map(([k, v]) => ({ value: k, label: v.label })),
+            ],
+            minWidth: 'min-w-[90px]',
+            maxWidth: 'max-w-[140px]',
+          },
+        ]}
+        dateRange={{
+          label: 'Hạn TT',
+          fromDate: filterDateFrom,
+          toDate: filterDateTo,
+          onFromChange: setFilterDateFrom,
+          onToChange: setFilterDateTo,
+        }}
+        onResetFilters={() => {
+          setSearchQuery('');
+          setFilterProject('all');
+          setFilterStatus('all');
+          setFilterType('all');
+          setFilterDateFrom('');
+          setFilterDateTo('');
+        }}
+        actionButtons={
+          <button
+            type="button"
+            onClick={() => setIsCreateModalOpen(true)}
+            className="flex items-center gap-1.5 bg-primary hover:bg-primary/90 text-white font-bold px-3 py-1.5 rounded-md text-xs transition-colors shadow-2xs cursor-pointer h-8 shrink-0"
+          >
+            <span className="material-symbols-outlined text-[16px]">add</span>
+            <span>Tạo yêu cầu</span>
+          </button>
+        }
+      >
+        {/* Sub-tabs phân loại yêu cầu */}
+        <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg shrink-0">
           {(['all', 'mine', 'need_action'] as const).map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-3 py-1 rounded-md font-semibold text-xs transition-all ${activeTab === tab ? 'bg-white shadow-sm text-primary' : 'text-slate-500 hover:text-slate-700'}`}
+              className={`px-2.5 py-1 rounded-md font-semibold text-xs transition-all ${activeTab === tab ? 'bg-white shadow-2xs text-primary font-bold' : 'text-slate-500 hover:text-slate-700'}`}
             >
               {tab === 'all' ? 'Tất cả' : tab === 'mine' ? 'Của tôi' : `Cần xử lý${needActionCount > 0 ? ` (${needActionCount})` : ''}`}
             </button>
           ))}
         </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Project */}
-          <CustomSelect value={filterProject} onChange={e => { setFilterProject(e.target.value); if (onSelectProjectCode && e.target.value !== 'all') onSelectProjectCode(e.target.value); }} className="border border-slate-200 rounded px-2 py-1 bg-white text-xs">
-            <option value="all">Tất cả dự án</option>
-            <option value="COMPANY">Chi phí công ty</option>
-            {projects.map(p => <option key={p.id} value={p.code}>{p.name || p.code}</option>)}
-          </CustomSelect>
-
-          {/* Type */}
-          <CustomSelect value={filterType} onChange={e => setFilterType(e.target.value)} className="border border-slate-200 rounded px-2 py-1 bg-white text-xs">
-            <option value="all">Tất cả loại</option>
-            {Object.entries(PAYMENT_TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-          </CustomSelect>
-
-          {/* Status */}
-          <CustomSelect value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="border border-slate-200 rounded px-2 py-1 bg-white text-xs">
-            <option value="all">Tất cả trạng thái</option>
-            <option value="OVERDUE">⚠️ Quá hạn</option>
-            {Object.entries(STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-          </CustomSelect>
-
-          {/* Date range */}
-          <input type="date" value={filterDateFrom} onChange={e => setFilterDateFrom(e.target.value)} className="border border-slate-200 rounded px-1.5 py-1 text-xs" />
-          <span className="text-slate-400">-</span>
-          <input type="date" value={filterDateTo} onChange={e => setFilterDateTo(e.target.value)} className="border border-slate-200 rounded px-1.5 py-1 text-xs" />
-        </div>
-
-        {/* Search & Create */}
-        <div className="flex items-center gap-2 ml-auto">
-          <div className="relative">
-            <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">search</span>
-            <input type="text" placeholder="Tìm mã, NCC, nội dung..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-8 pr-3 py-1 border border-slate-200 rounded-md text-xs w-48 focus:outline-none focus:ring-1 focus:ring-primary" />
-          </div>
-          <button type="button" onClick={() => setIsCreateModalOpen(true)} className="flex items-center gap-1.5 bg-primary hover:bg-primary/90 text-white font-bold px-3 py-1.5 rounded-md text-xs transition-colors shadow-2xs cursor-pointer">
-            <span className="material-symbols-outlined text-[16px]">add</span>
-            <span>Tạo yêu cầu</span>
-          </button>
-        </div>
-      </div>
+      </StandardFilterToolbar>
 
       {/* ── 3. LIST TABLE ── */}
-      <div className="flex-1 overflow-auto bg-white">
-        <table className="w-full text-left border-collapse text-xs">
+      <div className="flex-1 overflow-auto bg-white custom-scrollbar">
+        <table className="w-full text-left border-collapse text-xs table-fixed">
+          <colgroup>
+            <col style={{ width: colWidths.col_code }} />
+            <col style={{ width: colWidths.col_due_date }} />
+            <col style={{ width: colWidths.col_project }} />
+            <col style={{ width: colWidths.col_recipient }} />
+            <col style={{ width: colWidths.col_content }} />
+            <col style={{ width: colWidths.col_amount }} />
+            <col style={{ width: colWidths.col_status }} />
+            <col style={{ width: colWidths.col_requester }} />
+            <col style={{ width: colWidths.col_action }} />
+          </colgroup>
           <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200 sticky top-0 z-10 select-none">
             <tr>
-              <th className="py-2.5 px-3 w-28">Mã YC</th>
-              <th className="py-2.5 px-3 w-24">Hạn TT</th>
-              <th className="py-2.5 px-3 w-36">Dự án</th>
-              <th className="py-2.5 px-3 w-44">Người nhận / NCC</th>
-              <th className="py-2.5 px-3 min-w-[180px]">Nội dung</th>
-              <th className="py-2.5 px-3 w-32 text-right">Tổng tiền</th>
-              <th className="py-2.5 px-3 w-36 text-center">Trạng thái</th>
-              <th className="py-2.5 px-3 w-28">Người đề nghị</th>
-              <th className="py-2.5 px-3 w-24 text-center">Thao tác</th>
+              <th className="py-2.5 px-3 relative group/th">
+                <span>Mã YC</span>
+                <ColumnResizeHandle colKey="col_code" onResizeStart={startColResize} />
+              </th>
+              <th className="py-2.5 px-3 relative group/th">
+                <span>Hạn TT</span>
+                <ColumnResizeHandle colKey="col_due_date" onResizeStart={startColResize} />
+              </th>
+              <th className="py-2.5 px-3 relative group/th">
+                <span>Dự án</span>
+                <ColumnResizeHandle colKey="col_project" onResizeStart={startColResize} />
+              </th>
+              <th className="py-2.5 px-3 relative group/th">
+                <span>Người nhận / NCC</span>
+                <ColumnResizeHandle colKey="col_recipient" onResizeStart={startColResize} />
+              </th>
+              <th className="py-2.5 px-3 relative group/th">
+                <span>Nội dung</span>
+                <ColumnResizeHandle colKey="col_content" onResizeStart={startColResize} />
+              </th>
+              <th className="py-2.5 px-3 text-right relative group/th">
+                <span>Tổng tiền</span>
+                <ColumnResizeHandle colKey="col_amount" onResizeStart={startColResize} />
+              </th>
+              <th className="py-2.5 px-3 text-center relative group/th">
+                <span>Trạng thái</span>
+                <ColumnResizeHandle colKey="col_status" onResizeStart={startColResize} />
+              </th>
+              <th className="py-2.5 px-3 relative group/th">
+                <span>Người đề nghị</span>
+                <ColumnResizeHandle colKey="col_requester" onResizeStart={startColResize} />
+              </th>
+              <th className="py-2.5 px-3 text-center">Thao tác</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">

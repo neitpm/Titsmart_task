@@ -10,6 +10,15 @@ import { AuditInfoCell } from '../../components/common/AuditInfoCell';
 import { stripDiscussionThread } from '../../utils/taskDiscussion';
 import { Toast } from '../../components/common/Toast';
 import { useUIStore } from '../../services/uiStore';
+import { ImportExportDropdown } from '../../components/common/ImportExportDropdown';
+import { PurchaseRequestModal } from '../../components/purchasing/PurchaseRequestModal';
+import { PurchaseRequestListModal } from '../../components/purchasing/PurchaseRequestListModal';
+import { api } from '../../services/apiSupabase';
+import { useAuthStore } from '../../services/authStore';
+import { PurchaseRequest } from '../../types';
+import { useTableColumnResize } from '../../services/useTableColumnResize';
+import { ColumnResizeHandle } from '../../components/common/ColumnResizeHandle';
+import { StandardFilterToolbar } from '../../components/common/StandardFilterToolbar';
 
 interface MaterialAndPurchasingTabProps {
   activeSubTab?: 'TECH' | 'ORDER' | 'DOCS' | 'FINANCE';
@@ -30,6 +39,7 @@ interface MaterialAndPurchasingTabProps {
   selectedProject: string;
   onAddMaterial: (plan: any) => void;
   onExportExcel?: () => void;
+  onImportClick?: () => void;
 }
 
 const TEXT = {
@@ -345,12 +355,40 @@ export const MaterialAndPurchasingTab: React.FC<MaterialAndPurchasingTabProps> =
   statusFilter,
   setStatusFilter,
   userRole,
+  selectedProject,
   activeSubTab,
-  onExportExcel
+  onExportExcel,
+  onImportClick
 }) => {
   const subTab = activeSubTab || 'TECH';
+  const user = useAuthStore(state => state.user);
+  const engineers = useRealtimeStore(state => state.engineers || []);
   const materials = useRealtimeStore(state => state.materials);
   const tasks = useRealtimeStore(state => state.tasks);
+  const addNotification = useRealtimeStore(state => state.addNotification);
+  const logActivity = useRealtimeStore(state => state.logActivity);
+
+  // Quản lý Yêu cầu mua hàng (Purchase Requests)
+  const [purchaseRequests, setPurchaseRequests] = useState<PurchaseRequest[]>([]);
+  const [isPurchaseRequestModalOpen, setIsPurchaseRequestModalOpen] = useState(false);
+  const [isPurchaseRequestListModalOpen, setIsPurchaseRequestListModalOpen] = useState(false);
+  const [loadingPurchaseRequests, setLoadingPurchaseRequests] = useState(false);
+
+  const fetchPurchaseRequests = async () => {
+    try {
+      setLoadingPurchaseRequests(true);
+      const list = await api.purchaseRequests.getAll();
+      setPurchaseRequests(list);
+    } catch (err) {
+      console.error('Lỗi khi nạp danh sách yêu cầu mua hàng:', err);
+    } finally {
+      setLoadingPurchaseRequests(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPurchaseRequests();
+  }, [selectedProject]);
   const [filterParent, setFilterParent] = useState('all');
   const [filterUnit, setFilterUnit] = useState('all');
   const [filterProgress, setFilterProgress] = useState('all');
@@ -496,6 +534,7 @@ export const MaterialAndPurchasingTab: React.FC<MaterialAndPurchasingTabProps> =
   };
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isPurchasingMode, setIsPurchasingMode] = useState<boolean>(false);
 
   const toggleSelectRow = (id: string) => {
     setSelectedIds(prev => {
@@ -504,6 +543,46 @@ export const MaterialAndPurchasingTab: React.FC<MaterialAndPurchasingTabProps> =
       return next;
     });
   };
+
+  // Quản lý độ rộng cột có thể kéo thả dùng chung
+  const defaultColWidths = useMemo(() => ({
+    col_content: subTab === 'FINANCE' ? 240 : 230,
+    col_unit: 65,
+    col_contract_qty: 50,
+    col_model: 85,
+    col_origin: 80,
+    col_tech_status: 135,
+    col_tech_brand: 55,
+    col_tech_order_status: 135,
+    col_tech_order_qty: 85,
+    col_tech_expected_date: 140,
+    col_tech_updated_by: 135,
+    col_docs_content: 250,
+    col_docs_status: 140,
+    col_docs_updated_by: 135,
+    col_fin_currency: 65,
+    col_fin_exchange_rate: 90,
+    col_fin_vat_pct: 50,
+    col_fin_pretax: 100,
+    col_fin_vat: 65,
+    col_fin_aftertax: 110,
+    col_fin_status: 140,
+    col_fin_payment_date: 120,
+    col_fin_supplier: 95,
+    col_fin_contract_num: 110,
+    col_fin_contract_val: 120,
+    col_fin_deposit: 105,
+    col_fin_deposit_date: 125,
+    col_fin_debt: 90,
+    col_fin_settle_date: 120,
+    col_fin_invoice_status: 110,
+    col_fin_updated_by: 130,
+  }), [subTab]);
+
+  const { widths: colWidths, startResize: startColResize, resetWidths: resetColWidths } = useTableColumnResize({
+    tableId: `table_materials_${subTab}`,
+    defaultWidths: defaultColWidths,
+  });
 
   const { filteredData, resolveParentId, getSectionIndexForItem } = useMemo(() => {
     let filtered = [...data];
@@ -783,6 +862,214 @@ export const MaterialAndPurchasingTab: React.FC<MaterialAndPurchasingTabProps> =
       setSelectedIds(new Set());
     } else {
       setSelectedIds(new Set(selectableItems.map(p => p.id)));
+    }
+  };
+
+  const handlePurchaseRequest = async () => {
+    // Nếu chưa ở chế độ chọn mua hàng, click nút sẽ bật chế độ chọn vật tư
+    if (!isPurchasingMode) {
+      setIsPurchasingMode(true);
+      showToast('Đã bật chế độ chọn vật tư. Vui lòng tích chọn các mục cần mua hàng rồi nhấn xác nhận!', 'info');
+      return;
+    }
+
+    // Nếu đã ở chế độ chọn mua hàng nhưng chưa tích chọn mục nào
+    if (selectedIds.size === 0) {
+      showToast('Vui lòng tích chọn ít nhất 1 mục vật tư để gửi yêu cầu mua hàng!', 'warning');
+      return;
+    }
+
+    // Mở popup tạo yêu cầu mua hàng đa cấp với các mục đã chọn
+    setIsPurchaseRequestModalOpen(true);
+  };
+
+  const handleCreatePurchaseRequestSubmit = async (formData: any) => {
+    try {
+      const created = await api.purchaseRequests.create({
+        projectCode: selectedProject || 'COMPANY',
+        projectName: selectedProject || 'Dự án',
+        creatorId: user?.id,
+        creatorName: user?.name || user?.username || 'Nhân sự',
+        creatorTitle: (user as any)?.title || user?.role || 'Kỹ thuật',
+        checkerId: formData.checkerId,
+        checkerName: formData.checkerName,
+        checkerTitle: formData.checkerTitle,
+        reviewerId: formData.reviewerId,
+        reviewerName: formData.reviewerName,
+        reviewerTitle: formData.reviewerTitle,
+        neededDate: formData.neededDate,
+        priority: formData.priority,
+        reason: formData.reason,
+        note: formData.note,
+        status: 'PENDING_CHECK',
+        items: formData.items
+      });
+
+      // Ghi nhật ký & thông báo
+      const targetItems = selectableItems.filter(p => selectedIds.has(p.id));
+      const itemNames = targetItems.map(p => `${p.stt} - ${p.jobContent}`).slice(0, 3).join(', ');
+      const moreCount = targetItems.length > 3 ? ` và ${targetItems.length - 3} mục khác` : '';
+      if (logActivity) {
+        logActivity(
+          `Lập Yêu cầu mua hàng [${created.code}] (${targetItems.length} mục): ${itemNames}${moreCount} - Chờ ${formData.checkerName || 'Chỉ huy trưởng'} kiểm tra`,
+          selectedProject || 'Dự án'
+        );
+      }
+
+      if (addNotification) {
+        await addNotification({
+          title: `Yêu cầu mua hàng mới: ${selectedProject || 'Dự án'}`,
+          message: `${user?.name || user?.username} đã lập yêu cầu mua hàng ${created.code} (${targetItems.length} mục vật tư). Cần bạn kiểm tra phê duyệt.`,
+          type: 'material_update'
+        });
+      }
+
+      setPurchaseRequests(prev => [created, ...prev]);
+      setSelectedIds(new Set());
+      setIsPurchasingMode(false);
+      showToast(`Đã gửi yêu cầu mua hàng ${created.code} thành công! Đang chờ kiểm tra và phê duyệt.`, 'success');
+    } catch (err: any) {
+      console.error('Lỗi khi lập yêu cầu mua hàng:', err);
+      showToast(err.message || 'Lỗi khi gửi yêu cầu mua hàng!', 'error');
+    }
+  };
+
+  const handleApprovePurchaseByChecker = async (req: PurchaseRequest, note?: string) => {
+    try {
+      const nowIso = new Date().toISOString();
+      const updated = await api.purchaseRequests.update(req.id, {
+        status: 'CHECKED_WAITING_APPROVAL'
+      }, {
+        action: 'Xác nhận kiểm tra kỹ thuật',
+        actorId: user?.id,
+        actorName: user?.name || user?.username || 'Người kiểm tra',
+        actorRole: (user as any)?.title || user?.role || 'Kỹ thuật',
+        timestamp: nowIso,
+        note: note || 'Kỹ thuật đạt chuẩn, đề xuất Lãnh đạo phê duyệt mua hàng'
+      });
+
+      if (logActivity) {
+        logActivity(
+          `Kiểm tra đạt chuẩn Yêu cầu mua hàng [${req.code}] - Chờ ${req.reviewerName || 'Lãnh đạo'} duyệt`,
+          req.projectCode || selectedProject || 'Dự án'
+        );
+      }
+
+      if (addNotification) {
+        await addNotification({
+          title: `Yêu cầu mua hàng đã kiểm tra: ${req.projectCode || selectedProject}`,
+          message: `${user?.name || user?.username} đã xác nhận kiểm tra đơn ${req.code}. Chờ Lãnh đạo duyệt mua.`,
+          type: 'material_update'
+        });
+      }
+
+      setPurchaseRequests(prev => prev.map(r => r.id === req.id ? updated : r));
+      showToast(`Đã xác nhận kiểm tra đơn ${req.code} thành công! Đã chuyển tiếp Lãnh đạo phê duyệt.`, 'success');
+    } catch (err: any) {
+      showToast('Lỗi khi duyệt kiểm tra: ' + err.message, 'error');
+    }
+  };
+
+  const handleApprovePurchaseByReviewer = async (req: PurchaseRequest, note?: string) => {
+    try {
+      const nowIso = new Date().toISOString();
+      const updated = await api.purchaseRequests.update(req.id, {
+        status: 'APPROVED'
+      }, {
+        action: 'Lãnh đạo phê duyệt mua hàng',
+        actorId: user?.id,
+        actorName: user?.name || user?.username || 'Lãnh đạo',
+        actorRole: (user as any)?.title || user?.role || 'Lãnh đạo',
+        timestamp: nowIso,
+        note: note || 'Đã đồng ý phê duyệt mua hàng theo đề xuất'
+      });
+
+      // Tự động cập nhật trạng thái các vật tư liên quan thành "Đang đặt hàng" khi Lãnh đạo phê duyệt
+      if (req.items && req.items.length > 0) {
+        for (const item of req.items) {
+          if (item.id) {
+            await onUpdateMaterial(item.id, { orderedStatus: 'Đang đặt hàng' });
+          }
+        }
+      }
+
+      if (logActivity) {
+        logActivity(
+          `Lãnh đạo duyệt Yêu cầu mua hàng [${req.code}] (${req.items?.length || 0} mục) - Chuyển bộ phận Đặt hàng`,
+          req.projectCode || selectedProject || 'Dự án'
+        );
+      }
+
+      if (addNotification) {
+        await addNotification({
+          title: `Đã duyệt Yêu cầu mua hàng: ${req.code}`,
+          message: `Lãnh đạo đã phê duyệt mua hàng cho đơn ${req.code} (${req.items?.length || 0} mục vật tư).`,
+          type: 'material_update'
+        });
+      }
+
+      setPurchaseRequests(prev => prev.map(r => r.id === req.id ? updated : r));
+      showToast(`Đã phê duyệt mua hàng đơn ${req.code}! Trạng thái vật tư đã chuyển sang "Đang đặt hàng".`, 'success');
+    } catch (err: any) {
+      showToast('Lỗi khi phê duyệt mua hàng: ' + err.message, 'error');
+    }
+  };
+
+  const handleRejectPurchase = async (req: PurchaseRequest, note?: string) => {
+    try {
+      const nowIso = new Date().toISOString();
+      const updated = await api.purchaseRequests.update(req.id, {
+        status: 'REJECTED'
+      }, {
+        action: 'Từ chối yêu cầu mua hàng',
+        actorId: user?.id,
+        actorName: user?.name || user?.username || 'Người duyệt',
+        actorRole: (user as any)?.title || user?.role || 'Lãnh đạo',
+        timestamp: nowIso,
+        note: note || 'Từ chối yêu cầu mua hàng'
+      });
+
+      if (logActivity) {
+        logActivity(
+          `Từ chối Yêu cầu mua hàng [${req.code}]: ${note || 'Không duyệt'}`,
+          req.projectCode || selectedProject || 'Dự án'
+        );
+      }
+
+      setPurchaseRequests(prev => prev.map(r => r.id === req.id ? updated : r));
+      showToast(`Đã từ chối đơn yêu cầu mua hàng ${req.code}!`, 'warning');
+    } catch (err: any) {
+      showToast('Lỗi khi từ chối yêu cầu: ' + err.message, 'error');
+    }
+  };
+
+  const handleMarkPurchaseOrdered = async (req: PurchaseRequest) => {
+    try {
+      const nowIso = new Date().toISOString();
+      const updated = await api.purchaseRequests.update(req.id, {
+        status: 'ORDERED'
+      }, {
+        action: 'Đã đặt hàng với nhà cung cấp',
+        actorId: user?.id,
+        actorName: user?.name || user?.username || 'Bộ phận mua hàng',
+        actorRole: (user as any)?.title || user?.role || 'Mua hàng',
+        timestamp: nowIso,
+        note: 'Đã hoàn tất đặt hàng với nhà cung cấp'
+      });
+
+      // Cập nhật trạng thái vật tư thành "Đã đặt hàng"
+      if (req.items && req.items.length > 0) {
+        for (const item of req.items) {
+          if (item.id) {
+            await onUpdateMaterial(item.id, { orderedStatus: 'Đã đặt hàng' });
+          }
+        }
+      }
+
+      setPurchaseRequests(prev => prev.map(r => r.id === req.id ? updated : r));
+      showToast(`Đã cập nhật đơn ${req.code} sang trạng thái "Đã đặt hàng"!`, 'success');
+    } catch (err: any) {
+      showToast('Lỗi khi cập nhật đặt hàng: ' + err.message, 'error');
     }
   };
 
@@ -1148,10 +1435,11 @@ export const MaterialAndPurchasingTab: React.FC<MaterialAndPurchasingTabProps> =
       const cleanVal = match ? match[0] : rawVal.split(/[\s\-]/)[0];
       if (cleanVal.length > maxLen) maxLen = cleanVal.length;
     });
-    // Kích thước chuẩn khít vừa vặn số, không bị ... và không bị quá rộng
-    const calculated = Math.round(maxLen * 5.2 + 5);
-    return Math.max(26, Math.min(45, calculated));
-  }, [groupedData]);
+    // Khi bật chế độ chọn mua hàng (có checkbox), cần thêm khoảng 22px để hiển thị cả checkbox và số STT không bị che
+    const extraForCheckbox = (subTab === 'TECH' && isPurchasingMode) ? 24 : 0;
+    const calculated = Math.round(maxLen * 6.8 + 12 + extraForCheckbox);
+    return Math.max((subTab === 'TECH' && isPurchasingMode) ? 58 : 34, Math.min(85, calculated));
+  }, [groupedData, isPurchasingMode, subTab]);
 
   const totals = useMemo(() => {
     let sell = 0;
@@ -1288,217 +1576,199 @@ export const MaterialAndPurchasingTab: React.FC<MaterialAndPurchasingTabProps> =
         
         
 
-        <div className="flex items-center gap-3 px-4 py-2 bg-white border-b border-slate-200 text-xs text-slate-600 flex-nowrap overflow-visible relative">
-          <div className="hidden md:flex items-center gap-1.5 font-bold text-slate-500 whitespace-nowrap">
-            <span className="material-symbols-outlined text-[16px]">filter_list</span>
-          </div>
-          
-          <div className="hidden md:flex items-center gap-1.5 flex-nowrap">
-            <div className="flex items-center gap-1.5">
-              <span className="text-slate-500 font-medium whitespace-nowrap">Đầu mục:</span>
-              <CustomSelect
-                value={filterParent}
-                onChange={e => setFilterParent(e.target.value)}
-                className="min-w-[70px] max-w-[100px] border border-slate-200 rounded px-1.5 py-0.5 bg-white text-xs"
-              >
-                {parentOptions.map(opt => {
-                  let label = opt.label;
-                  if (label && label.length > 30) label = label.slice(0, 30) + '...';
-                  return <option key={opt.id} value={opt.id}>{opt.id === 'all' ? 'Tất cả' : label}</option>;
-                })}
-              </CustomSelect>
-            </div>
-            
-            <div className="flex items-center gap-1.5">
-              <span className="text-slate-500 font-medium whitespace-nowrap">ĐVT:</span>
-              <CustomSelect
-                value={filterUnit}
-                onChange={e => setFilterUnit(e.target.value)}
-                className="min-w-[50px] max-w-[90px] border border-slate-200 rounded px-1.5 py-0.5 bg-white text-xs"
-              >
-                {unitOptions.map(opt => (
-                  <option key={opt} value={opt}>{opt === 'all' ? 'Tất cả' : opt}</option>
-                ))}
-              </CustomSelect>
-            </div>
+        <StandardFilterToolbar
+          totalCount={selectableItems.length}
+          totalCountLabel="vật tư"
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          onResetColumnWidths={resetColWidths}
+          selectFilters={[
+            {
+              id: 'parent',
+              label: 'Đầu mục',
+              value: filterParent,
+              onChange: setFilterParent,
+              options: parentOptions.map(opt => ({ value: opt.id, label: opt.label })),
+              minWidth: 'min-w-[70px]',
+              maxWidth: 'max-w-[120px]',
+            },
+            {
+              id: 'unit',
+              label: 'ĐVT',
+              value: filterUnit,
+              onChange: setFilterUnit,
+              options: unitOptions.map(u => ({ value: u, label: u === 'all' ? 'Tất cả' : u })),
+              minWidth: 'min-w-[50px]',
+              maxWidth: 'max-w-[85px]',
+            },
+            ...((subTab === 'TECH' || subTab === 'FINANCE') ? [{
+              id: 'order',
+              label: 'Đặt hàng',
+              value: filterOrder,
+              onChange: setFilterOrder,
+              options: orderOptions.map(o => ({ value: o, label: o === 'all' ? 'Tất cả' : o })),
+              minWidth: 'min-w-[70px]',
+              maxWidth: 'max-w-[110px]',
+            }] : []),
+            ...(subTab === 'TECH' ? [{
+              id: 'progress',
+              label: 'Tình trạng',
+              value: filterProgress,
+              onChange: setFilterProgress,
+              options: progressOptions.map(p => ({ value: p, label: p === 'all' ? 'Tất cả' : p })),
+              minWidth: 'min-w-[70px]',
+              maxWidth: 'max-w-[110px]',
+            }] : []),
+            ...(subTab === 'FINANCE' ? [{
+              id: 'contractStatus',
+              label: 'Tình trạng HĐ',
+              value: filterContractStatus,
+              onChange: setFilterContractStatus,
+              options: contractStatusOptions.map(c => ({ value: c, label: c === 'all' ? 'Tất cả' : c })),
+              minWidth: 'min-w-[70px]',
+              maxWidth: 'max-w-[110px]',
+            }, {
+              id: 'invoiceStatus',
+              label: 'Hóa đơn VAT',
+              value: filterInvoiceStatus,
+              onChange: setFilterInvoiceStatus,
+              options: invoiceStatusOptions.map(i => ({ value: i, label: i === 'all' ? 'Tất cả' : i })),
+              minWidth: 'min-w-[70px]',
+              maxWidth: 'max-w-[110px]',
+            }] : []),
+            ...(subTab === 'DOCS' ? [{
+              id: 'docs',
+              label: 'Chứng từ',
+              value: filterDocs,
+              onChange: setFilterDocs,
+              options: docsOptions.map(d => ({ value: d.id, label: d.label })),
+              minWidth: 'min-w-[70px]',
+              maxWidth: 'max-w-[120px]',
+            }] : []),
+          ]}
+          dateRange={
+            subTab === 'TECH'
+              ? {
+                  label: 'Ngày có hàng',
+                  fromDate: filterExpectedDateFrom,
+                  toDate: filterExpectedDateTo,
+                  onFromChange: setFilterExpectedDateFrom,
+                  onToChange: setFilterExpectedDateTo,
+                }
+              : subTab === 'FINANCE'
+              ? {
+                  label: 'Ngày thanh toán',
+                  fromDate: filterPaymentDateFrom,
+                  toDate: filterPaymentDateTo,
+                  onFromChange: setFilterPaymentDateFrom,
+                  onToChange: setFilterPaymentDateTo,
+                }
+              : undefined
+          }
+          onResetFilters={() => {
+            setSearchQuery('');
+            setFilterParent('all');
+            setFilterUnit('all');
+            setFilterOrder('all');
+            setFilterProgress('all');
+            setFilterExpectedDateFrom('');
+            setFilterExpectedDateTo('');
+            setFilterContractStatus('all');
+            setFilterPaymentDateFrom('');
+            setFilterPaymentDateTo('');
+            setFilterInvoiceStatus('all');
+            setFilterDocs('all');
+          }}
+          actionButtons={
+            <>
+              {/* Nút Yêu cầu mua hàng (khi ở tab Đặt hàng - TECH) */}
+              {subTab === 'TECH' && (
+                <div className="flex items-center gap-1 shrink-0">
+                  <button
+                    type="button"
+                    onClick={handlePurchaseRequest}
+                    className={`flex items-center justify-center gap-1.5 rounded text-[11px] font-bold transition-all shadow-xs whitespace-nowrap h-8 px-2.5 shrink-0 cursor-pointer ${
+                      isPurchasingMode
+                        ? (selectedIds.size > 0
+                            ? 'bg-amber-500 hover:bg-amber-600 active:scale-95 text-white ring-2 ring-amber-300'
+                            : 'bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300')
+                        : 'bg-white hover:bg-amber-50 text-slate-700 border border-slate-300'
+                    }`}
+                    title={
+                      !isPurchasingMode
+                        ? "Bật chế độ chọn vật tư để yêu cầu mua hàng"
+                        : (selectedIds.size > 0
+                            ? `Gửi yêu cầu mua hàng cho ${selectedIds.size} mục đã chọn`
+                            : "Tích chọn các mục bên dưới rồi nhấn nút này để gửi yêu cầu")
+                    }
+                  >
+                    <span className="material-symbols-outlined text-[16px] text-amber-600">
+                      {isPurchasingMode && selectedIds.size > 0 ? 'shopping_cart_checkout' : 'checklist'}
+                    </span>
+                    <span className="inline">
+                      {!isPurchasingMode
+                        ? 'Yêu cầu mua hàng'
+                        : (selectedIds.size > 0 ? `Xác nhận mua hàng (${selectedIds.size})` : 'Chọn mua hàng...')}
+                    </span>
+                  </button>
 
-            {(subTab === 'TECH' || subTab === 'FINANCE') && (
-              <div className="flex items-center gap-1.5">
-                <span className="text-slate-500 font-medium whitespace-nowrap">Đặt hàng:</span>
-                <CustomSelect
-                  value={filterOrder}
-                  onChange={e => setFilterOrder(e.target.value)}
-                  className="min-w-[70px] max-w-[100px] border border-slate-200 rounded px-1.5 py-0.5 bg-white text-xs"
-                >
-                  {orderOptions.map(opt => (
-                    <option key={opt} value={opt}>{opt === 'all' ? 'Tất cả' : opt}</option>
-                  ))}
-                </CustomSelect>
-              </div>
-            )}
+                  {isPurchasingMode && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsPurchasingMode(false);
+                        setSelectedIds(new Set());
+                      }}
+                      className="h-8 px-2 rounded border border-slate-200 bg-white hover:bg-slate-100 text-slate-600 text-xs font-semibold cursor-pointer shadow-xs"
+                      title="Hủy chế độ chọn mua hàng"
+                    >
+                      Hủy
+                    </button>
+                  )}
 
-
-            
-            
-
-            
-
-            {subTab === 'TECH' && (
-              <div className="flex items-center gap-1.5">
-                <span className="text-slate-500 font-medium whitespace-nowrap">Tình trạng:</span>
-                <CustomSelect
-                  value={filterProgress}
-                  onChange={e => setFilterProgress(e.target.value)}
-                  className="min-w-[70px] max-w-[100px] border border-slate-200 rounded px-1.5 py-0.5 bg-white text-xs"
-                >
-                  {progressOptions.map(opt => {
-                    let label = opt;
-                    if (label && label.length > 20) label = label.slice(0, 20) + '...';
-                    return <option key={opt} value={opt}>{opt === 'all' ? 'Tất cả' : label}</option>;
-                  })}
-                </CustomSelect>
-              </div>
-            )}
-            
-            {subTab === 'TECH' && (
-              <div className="flex items-center gap-1.5">
-                <span className="text-slate-500 font-medium whitespace-nowrap">Ngày có hàng:</span>
-                  <div className="flex items-center gap-1.5 border border-slate-200 rounded px-1 py-0.5 bg-white shadow-sm">
-                    <span className="text-slate-400 font-medium whitespace-nowrap text-[11px] ml-1">Từ</span>
-                    <input type="date" value={filterExpectedDateFrom} onChange={e => setFilterExpectedDateFrom(e.target.value)} className="bg-transparent border-none outline-none text-xs w-[95px] text-slate-700 cursor-pointer" />
-                    <span className="text-slate-300">|</span>
-                    <span className="text-slate-400 font-medium whitespace-nowrap text-[11px]">Đến</span>
-                    <input type="date" value={filterExpectedDateTo} onChange={e => setFilterExpectedDateTo(e.target.value)} className="bg-transparent border-none outline-none text-xs w-[95px] text-slate-700 cursor-pointer" />
-                  </div>
-              </div>
-            )}
-
-            {subTab === 'FINANCE' && (
-              <div className="flex items-center gap-1.5">
-                <span className="text-slate-500 font-medium whitespace-nowrap">Tình trạng HĐ:</span>
-                <CustomSelect
-                  value={filterContractStatus}
-                  onChange={e => setFilterContractStatus(e.target.value)}
-                  className="min-w-[70px] max-w-[100px] border border-slate-200 rounded px-1.5 py-0.5 bg-white text-xs"
-                >
-                  {contractStatusOptions.map(opt => {
-                    let label = opt;
-                    if (label && label.length > 20) label = label.slice(0, 20) + '...';
-                    return <option key={opt} value={opt}>{opt === 'all' ? 'Tất cả' : label}</option>;
-                  })}
-                </CustomSelect>
-              </div>
-            )}
-
-            {subTab === 'FINANCE' && (
-              <div className="flex items-center gap-1.5">
-                <span className="text-slate-500 font-medium whitespace-nowrap">Ngày thanh toán:</span>
-                <div className="flex items-center gap-1.5 border border-slate-200 rounded px-1 py-0.5 bg-white shadow-sm">
-                  <span className="text-slate-400 font-medium whitespace-nowrap text-[11px] ml-1">Từ</span>
-                  <input type="date" value={filterPaymentDateFrom} onChange={e => setFilterPaymentDateFrom(e.target.value)} className="bg-transparent border-none outline-none text-xs w-[95px] text-slate-700 cursor-pointer" />
-                  <span className="text-slate-300">|</span>
-                  <span className="text-slate-400 font-medium whitespace-nowrap text-[11px]">Đến</span>
-                  <input type="date" value={filterPaymentDateTo} onChange={e => setFilterPaymentDateTo(e.target.value)} className="bg-transparent border-none outline-none text-xs w-[95px] text-slate-700 cursor-pointer" />
+                  {/* Nút Xem danh sách Yêu cầu mua hàng (kèm badge chờ duyệt) */}
+                  <button
+                    type="button"
+                    onClick={() => setIsPurchaseRequestListModalOpen(true)}
+                    className="flex items-center gap-1.5 h-8 px-2 rounded-lg border border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100 text-xs font-bold transition-all shadow-xs shrink-0 cursor-pointer"
+                    title="Xem danh sách đơn yêu cầu mua hàng"
+                  >
+                    <span className="material-symbols-outlined text-[15px] text-amber-600">receipt_long</span>
+                    <span className="hidden sm:inline">Duyệt mua hàng</span>
+                    {purchaseRequests.filter(r => r.status === 'PENDING_CHECK' || r.status === 'CHECKED_WAITING_APPROVAL').length > 0 && (
+                      <span className="w-4 h-4 rounded-full bg-amber-600 text-white text-[10px] flex items-center justify-center font-bold">
+                        {purchaseRequests.filter(r => r.status === 'PENDING_CHECK' || r.status === 'CHECKED_WAITING_APPROVAL').length}
+                      </span>
+                    )}
+                  </button>
                 </div>
-              </div>
-            )}
+              )}
 
-            {subTab === 'FINANCE' && (
-              <div className="flex items-center gap-1.5">
-                <span className="text-slate-500 font-medium whitespace-nowrap">Hóa đơn VAT:</span>
-                <CustomSelect
-                  value={filterInvoiceStatus}
-                  onChange={e => setFilterInvoiceStatus(e.target.value)}
-                  className="min-w-[70px] max-w-[100px] border border-slate-200 rounded px-1.5 py-0.5 bg-white text-xs"
-                >
-                  {invoiceStatusOptions.map(opt => {
-                    let label = opt;
-                    if (label && label.length > 20) label = label.slice(0, 20) + '...';
-                    return <option key={opt} value={opt}>{opt === 'all' ? 'Tất cả' : label}</option>;
-                  })}
-                </CustomSelect>
-              </div>
-            )}
-
-            {subTab === 'DOCS' && (
-              <div className="flex items-center gap-1.5">
-                <span className="text-slate-500 font-medium whitespace-nowrap">Chứng từ:</span>
-                <CustomSelect
-                  value={filterDocs}
-                  onChange={e => setFilterDocs(e.target.value)}
-                  className="min-w-[70px] max-w-[110px] border border-slate-200 rounded px-1.5 py-0.5 bg-white text-xs"
-                >
-                  {docsOptions.map(opt => (
-                    <option key={opt.id} value={opt.id}>{opt.label}</option>
-                  ))}
-                </CustomSelect>
-              </div>
-            )}
-          </div>
-
-          <div className="flex items-center gap-1.5 ml-auto w-full md:w-auto shrink-0 flex-nowrap overflow-x-auto custom-scrollbar">
-            <div className="relative flex-1 md:w-36 lg:w-44 h-8 flex items-center shrink-0">
-              <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-[16px]">
-                search
-              </span>
-              <input
-                type="text"
-                placeholder="Tìm kiếm..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full h-8 pl-8 pr-3 bg-slate-100 border-none rounded text-xs focus:ring-1 focus:ring-primary focus:bg-white transition-all outline-none"
-              />
-            </div>
-
-            {onAddSection && subTab !== 'FINANCE' && (
-              <button
-                onClick={onAddSection}
-                className="flex items-center justify-center gap-1.5 bg-primary text-white rounded text-[11px] font-bold hover:opacity-90 active:scale-95 shadow-xs whitespace-nowrap h-8 px-2.5 shrink-0"
-                title="Thêm đầu mục"
-              >
-                <span className="material-symbols-outlined text-sm">add</span>
-                <span className="inline">Thêm đầu mục</span>
-              </button>
-            )}
-
-            {onExportExcel && (
-              <div className="relative flex-shrink-0" ref={exportMenuRef}>
+              {onAddSection && subTab !== 'FINANCE' && (
                 <button
-                  onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
-                  title="Xuất file"
-                  className="flex items-center justify-center gap-1 border border-emerald-200 bg-emerald-50 text-emerald-800 rounded-lg text-[11px] font-bold hover:bg-emerald-100 active:scale-95 shadow-xs whitespace-nowrap h-8 px-2.5 shrink-0"
+                  onClick={onAddSection}
+                  className="flex items-center justify-center gap-1.5 bg-primary text-white rounded text-[11px] font-bold hover:opacity-90 active:scale-95 shadow-xs whitespace-nowrap h-8 px-2.5 shrink-0"
+                  title="Thêm đầu mục"
                 >
-                  <span className="material-symbols-outlined text-sm text-emerald-700">download</span>
-                  <span className="inline">Xuất file</span>
-                  <span className="material-symbols-outlined text-xs text-emerald-700 inline">expand_more</span>
+                  <span className="material-symbols-outlined text-sm">add</span>
+                  <span className="inline">Thêm đầu mục</span>
                 </button>
-
-                {isExportMenuOpen && (
-                  <div className="absolute right-0 mt-1 w-44 bg-white border border-slate-200 rounded-xl shadow-xl z-50 p-1 space-y-0.5">
-                    {[
-                      { format: 'xlsx', label: 'Excel (.xlsx)', icon: 'grid_on' },
-                      { format: 'csv', label: 'CSV (.csv)', icon: 'csv' },
-                      { format: 'pdf', label: 'PDF (.pdf)', icon: 'picture_as_pdf' },
-                      { format: 'docx', label: 'Word (.docx)', icon: 'description' },
-                    ].map(({ format, label, icon }) => (
-                      <button
-                        key={format}
-                        onClick={() => {
-                          setIsExportMenuOpen(false);
-                          if (onExportExcel) onExportExcel();
-                        }}
-                        className="w-full text-left px-3 py-2 rounded-lg text-xs font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-2"
-                      >
-                        <span className="material-symbols-outlined text-sm text-emerald-600">{icon}</span>
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
+              )}
+            </>
+          }
+          importExportComponent={
+            (onExportExcel || onImportClick) ? (
+              <ImportExportDropdown
+                onImportClick={onImportClick}
+                onExportExcel={onExportExcel}
+                onExportCsv={onExportExcel}
+                onExportPdf={() => window.print()}
+                onExportWord={onExportExcel}
+                buttonClassName="!h-8 !text-[11px]"
+              />
+            ) : undefined
+          }
+        />
       </div>
 
       <div 
@@ -1522,60 +1792,90 @@ export const MaterialAndPurchasingTab: React.FC<MaterialAndPurchasingTabProps> =
         <table className={`w-full table-fixed border-collapse text-left text-xs ${subTab === 'FINANCE' ? 'min-w-[2150px]' : subTab === 'DOCS' ? 'min-w-[950px]' : 'min-w-[1050px] md:min-w-[1150px]'}`} style={{ "--stt-width": `${maxSttWidth}px` } as React.CSSProperties}>
           <colgroup>
             <col style={{ width: "var(--stt-width)" }} />
-            <col style={{ width: subTab === 'FINANCE' ? 240 : 230 }} />
-            <col style={{ width: 65 }} />
-            <col style={{ width: 50 }} />
-            <col style={{ width: 85 }} />
-            <col style={{ width: 80 }} />
+            <col style={{ width: colWidths.col_content }} />
+            <col style={{ width: colWidths.col_unit }} />
+            <col style={{ width: colWidths.col_contract_qty }} />
+            <col style={{ width: colWidths.col_model }} />
+            <col style={{ width: colWidths.col_origin }} />
             {subTab === 'TECH' && (
               <>
-                <col style={{ width: 135 }} />
-                <col style={{ width: 55 }} />
-                <col style={{ width: 135 }} />
-                <col style={{ width: 85 }} />
-                <col style={{ width: 140 }} />
-                <col style={{ width: 135 }} />
+                <col style={{ width: colWidths.col_tech_status }} />
+                <col style={{ width: colWidths.col_tech_brand }} />
+                <col style={{ width: colWidths.col_tech_order_status }} />
+                <col style={{ width: colWidths.col_tech_order_qty }} />
+                <col style={{ width: colWidths.col_tech_expected_date }} />
+                <col style={{ width: colWidths.col_tech_updated_by }} />
               </>
             )}
             {subTab === 'DOCS' && (
               <>
-                <col style={{ width: 250 }} />
-                <col style={{ width: 140 }} />
-                <col style={{ width: 135 }} />
+                <col style={{ width: colWidths.col_docs_content }} />
+                <col style={{ width: colWidths.col_docs_status }} />
+                <col style={{ width: colWidths.col_docs_updated_by }} />
               </>
             )}
             {subTab === 'FINANCE' && (
               <>
-                <col style={{ width: 65 }} />
-                <col style={{ width: 90 }} />
-                <col style={{ width: 50 }} />
-                <col style={{ width: 100 }} />
-                <col style={{ width: 65 }} />
-                <col style={{ width: 110 }} />
-                <col style={{ width: 140 }} />
-                <col style={{ width: 120 }} />
-                <col style={{ width: 95 }} />
-                <col style={{ width: 110 }} />
-                <col style={{ width: 120 }} />
-                <col style={{ width: 105 }} />
-                <col style={{ width: 125 }} />
-                <col style={{ width: 90 }} />
-                <col style={{ width: 120 }} />
-                <col style={{ width: 110 }} />
-                <col style={{ width: 130 }} />
+                <col style={{ width: colWidths.col_fin_currency }} />
+                <col style={{ width: colWidths.col_fin_exchange_rate }} />
+                <col style={{ width: colWidths.col_fin_vat_pct }} />
+                <col style={{ width: colWidths.col_fin_pretax }} />
+                <col style={{ width: colWidths.col_fin_vat }} />
+                <col style={{ width: colWidths.col_fin_aftertax }} />
+                <col style={{ width: colWidths.col_fin_status }} />
+                <col style={{ width: colWidths.col_fin_payment_date }} />
+                <col style={{ width: colWidths.col_fin_supplier }} />
+                <col style={{ width: colWidths.col_fin_contract_num }} />
+                <col style={{ width: colWidths.col_fin_contract_val }} />
+                <col style={{ width: colWidths.col_fin_deposit }} />
+                <col style={{ width: colWidths.col_fin_deposit_date }} />
+                <col style={{ width: colWidths.col_fin_debt }} />
+                <col style={{ width: colWidths.col_fin_settle_date }} />
+                <col style={{ width: colWidths.col_fin_invoice_status }} />
+                <col style={{ width: colWidths.col_fin_updated_by }} />
               </>
             )}
           </colgroup>
           <thead className="sticky top-0 z-30 border-b border-slate-300 bg-slate-50 text-[10px] font-extrabold uppercase tracking-tight text-slate-600">
             <tr className="bg-slate-50">
-              <th style={{ width: "var(--stt-width)", minWidth: "var(--stt-width)", maxWidth: "var(--stt-width)", borderRight: '1px solid #94a3b8', borderBottom: '1px solid #94a3b8' }} className="py-2 px-0 text-center font-extrabold whitespace-nowrap bg-slate-50 tracking-tighter">STT</th>
-              <th style={{ borderRight: '1px solid #94a3b8', borderBottom: '1px solid #94a3b8', minWidth: 180, width: subTab === 'FINANCE' ? 240 : undefined }} className="sticky left-0 z-30 bg-slate-50 bg-clip-padding px-2 py-2 font-extrabold text-left min-w-[180px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">NỘI DUNG</th>
+              <th style={{ width: "var(--stt-width)", minWidth: "var(--stt-width)", maxWidth: "var(--stt-width)", borderRight: '1px solid #94a3b8', borderBottom: '1px solid #94a3b8' }} className="py-2 px-1 text-center font-extrabold whitespace-nowrap bg-slate-50 tracking-tighter">
+                {subTab === 'TECH' && isPurchasingMode ? (
+                  <div className="flex items-center justify-center gap-1">
+                    <input
+                      type="checkbox"
+                      checked={isAllSelected}
+                      onChange={toggleSelectAll}
+                      className="w-3.5 h-3.5 rounded border-slate-300 text-primary cursor-pointer"
+                      title={isAllSelected ? "Bỏ chọn tất cả" : "Chọn tất cả vật tư"}
+                    />
+                    <span>STT</span>
+                  </div>
+                ) : (
+                  <span>STT</span>
+                )}
+              </th>
+              <th style={{ borderRight: '1px solid #94a3b8', borderBottom: '1px solid #94a3b8', minWidth: 180, width: colWidths.col_content }} className="sticky left-0 z-30 bg-slate-50 bg-clip-padding px-2 py-2 font-extrabold text-left min-w-[180px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] relative group/th">
+                <span>NỘI DUNG</span>
+                <ColumnResizeHandle colKey="col_content" onResizeStart={startColResize} />
+              </th>
               {(subTab === 'TECH' || subTab === 'DOCS' || subTab === 'FINANCE') && (
                 <>
-                  <th style={{ minWidth: 55, width: 65, borderRight: '1px solid #94a3b8', borderBottom: '1px solid #94a3b8' }} className="bg-slate-50 bg-clip-padding px-1 py-1.5 text-center leading-tight">ĐVT</th>
-                  <th style={{ minWidth: 45, width: 50, borderRight: '1px solid #94a3b8', borderBottom: '1px solid #94a3b8' }} className="bg-slate-50 bg-clip-padding px-1 py-1.5 text-center leading-tight">KL HĐ</th>
-                  <th style={{ width: 85, borderRight: '1px solid #94a3b8', borderBottom: '1px solid #94a3b8' }} className="bg-slate-50 bg-clip-padding px-1 py-1.5 text-center leading-tight">MÃ HIỆU</th>
-                  <th style={{ width: 80, borderRight: '1px solid #94a3b8', borderBottom: '1px solid #94a3b8' }} className="bg-slate-50 bg-clip-padding px-1 py-1.5 text-center leading-tight">XUẤT XỨ</th>
+                  <th style={{ minWidth: 55, width: colWidths.col_unit, borderRight: '1px solid #94a3b8', borderBottom: '1px solid #94a3b8' }} className="bg-slate-50 bg-clip-padding px-1 py-1.5 text-center leading-tight relative group/th">
+                    <span>ĐVT</span>
+                    <ColumnResizeHandle colKey="col_unit" onResizeStart={startColResize} />
+                  </th>
+                  <th style={{ minWidth: 45, width: colWidths.col_contract_qty, borderRight: '1px solid #94a3b8', borderBottom: '1px solid #94a3b8' }} className="bg-slate-50 bg-clip-padding px-1 py-1.5 text-center leading-tight relative group/th">
+                    <span>KL HĐ</span>
+                    <ColumnResizeHandle colKey="col_contract_qty" onResizeStart={startColResize} />
+                  </th>
+                  <th style={{ width: colWidths.col_model, borderRight: '1px solid #94a3b8', borderBottom: '1px solid #94a3b8' }} className="bg-slate-50 bg-clip-padding px-1 py-1.5 text-center leading-tight relative group/th">
+                    <span>MÃ HIỆU</span>
+                    <ColumnResizeHandle colKey="col_model" onResizeStart={startColResize} />
+                  </th>
+                  <th style={{ width: colWidths.col_origin, borderRight: '1px solid #94a3b8', borderBottom: '1px solid #94a3b8' }} className="bg-slate-50 bg-clip-padding px-1 py-1.5 text-center leading-tight relative group/th">
+                    <span>XUẤT XỨ</span>
+                    <ColumnResizeHandle colKey="col_origin" onResizeStart={startColResize} />
+                  </th>
                 </>
               )}
               
@@ -1698,10 +1998,37 @@ export const MaterialAndPurchasingTab: React.FC<MaterialAndPurchasingTabProps> =
                     const isCollapsed = collapsedSections.has(plan._sectionKey || '');
                     return (
                       <tr key={plan.id} className="group bg-[#eff6ff] border-t-2 border-b border-blue-200 font-bold text-primary">
-                        <td style={{ width: "var(--stt-width)", minWidth: "var(--stt-width)", maxWidth: "var(--stt-width)" }} className="bg-[#eff6ff] border-r border-blue-200 py-1 sm:py-2 px-0 text-center font-mono font-extrabold text-[10.5px] sm:text-[11px] text-primary whitespace-nowrap tracking-tighter" title={String(plan.stt)}>
-                          {plan.stt}
+                        <td style={{ width: "var(--stt-width)", minWidth: "var(--stt-width)", maxWidth: "var(--stt-width)" }} className="bg-[#eff6ff] border-r border-blue-200 py-1 sm:py-2 px-1 text-center font-mono font-extrabold text-[10.5px] sm:text-[11px] text-primary whitespace-nowrap tracking-tighter" title={String(plan.stt)}>
+                          {subTab === 'TECH' && isPurchasingMode ? (
+                            <div className="flex items-center justify-center gap-1">
+                              <input
+                                type="checkbox"
+                                checked={(() => {
+                                  const sectionChildren = selectableItems.filter((p: ProjectMaterialPlan) => p.parentId === plan.id || (p.stt && plan.stt && p.stt.startsWith(plan.stt + '.')));
+                                  return sectionChildren.length > 0 && sectionChildren.every((p: ProjectMaterialPlan) => selectedIds.has(p.id));
+                                })()}
+                                onChange={(e) => {
+                                  e.stopPropagation();
+                                  const sectionChildren = selectableItems.filter((p: ProjectMaterialPlan) => p.parentId === plan.id || (p.stt && plan.stt && p.stt.startsWith(plan.stt + '.')));
+                                  const allChildrenSelected = sectionChildren.length > 0 && sectionChildren.every((p: ProjectMaterialPlan) => selectedIds.has(p.id));
+                                  setSelectedIds(prev => {
+                                    const next = new Set(prev);
+                                    sectionChildren.forEach((child: ProjectMaterialPlan) => {
+                                      if (allChildrenSelected) { next.delete(child.id); } else { next.add(child.id); }
+                                    });
+                                    return next;
+                                  });
+                                }}
+                                className="w-3.5 h-3.5 rounded border-slate-300 text-primary cursor-pointer flex-shrink-0"
+                                title="Tích chọn / Bỏ chọn tất cả vật tư thuộc mục này"
+                              />
+                              <span>{plan.stt}</span>
+                            </div>
+                          ) : (
+                            <span>{plan.stt}</span>
+                          )}
                         </td>
-                        <td className="sticky left-0 z-10 bg-[#eff6ff] border-r border-blue-200 py-1 sm:py-1.5 px-1.5 sm:px-2 uppercase tracking-tight font-extrabold text-[11px] sm:text-xs text-primary whitespace-normal min-w-[150px] sm:min-w-[180px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]" title={plan.jobContent || plan.name || plan.content}>
+                        <td className="sticky left-0 z-10 bg-[#eff6ff] border-r border-blue-200 py-1 sm:py-1.5 px-1.5 sm:px-2 uppercase tracking-tight font-extrabold text-[11px] sm:text-xs text-primary whitespace-normal min-w-[150px] sm:min-w-[180px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] relative" title={plan.jobContent || plan.name || plan.content}>
                           <div className="flex items-center gap-1 min-w-0 w-full overflow-hidden">
                             <button
                               onClick={(e) => { e.stopPropagation(); toggleSection(plan._sectionKey || ''); }}
@@ -1714,7 +2041,7 @@ export const MaterialAndPurchasingTab: React.FC<MaterialAndPurchasingTabProps> =
                             <span className="flex-1 min-w-0 cursor-pointer hover:underline truncate md:whitespace-normal md:overflow-visible break-words leading-tight text-[11px] sm:text-xs" onClick={(e) => { e.stopPropagation(); onEditMaterial?.(plan); }} title={plan.jobContent || plan.name || plan.content}>
                               {formatSectionTitle(plan.stt, plan.jobContent || plan.name || plan.content)}
                             </span>
-                            <div className="hidden group-hover:flex items-center gap-0.5">
+                            <div className="absolute right-1 top-1/2 -translate-y-1/2 hidden group-hover:flex items-center gap-0.5 bg-[#eff6ff]/95 backdrop-blur-xs pl-1.5 py-0.5 shadow-[-6px_0_10px_-2px_#eff6ff] z-20">
                               {onAddSubtask && subTab !== 'FINANCE' && (
                                 <button onClick={(e) => { e.stopPropagation(); onAddSubtask(plan, suggestedStt); }} className="p-0.5 rounded text-blue-400 hover:text-blue-700 hover:bg-blue-100 transition-colors inline-flex items-center" title="Thêm hạng mục mới">
                                   <span className="material-symbols-outlined text-[13px]">add_circle</span>
@@ -1765,7 +2092,7 @@ export const MaterialAndPurchasingTab: React.FC<MaterialAndPurchasingTabProps> =
                       }
                     }} className={rowClass}>
                       {/* STT */}
-                      <td style={{ width: "var(--stt-width)", minWidth: "var(--stt-width)", maxWidth: "var(--stt-width)" }} className={`py-0.5 sm:py-1 px-0 ${stickyBg} group-hover:bg-slate-100 border-r border-slate-200 text-center font-mono whitespace-nowrap tracking-tighter ${sttStyle}`}>
+                      <td style={{ width: "var(--stt-width)", minWidth: "var(--stt-width)", maxWidth: "var(--stt-width)" }} className={`py-0.5 sm:py-1 px-1 ${stickyBg} group-hover:bg-slate-100 border-r border-slate-200 text-center font-mono whitespace-nowrap tracking-tighter ${sttStyle}`}>
                         {editingCell?.id === plan.id && editingCell?.field === 'stt' && !editingCell.isPurchasing ? (
                           <input
                             type="text"
@@ -1777,12 +2104,23 @@ export const MaterialAndPurchasingTab: React.FC<MaterialAndPurchasingTabProps> =
                             className="w-full text-center bg-white text-slate-900 font-bold focus:outline-primary text-xs px-1 py-1 h-[26px] box-border outline-none shadow-sm border-none rounded"
                           />
                         ) : (
-                          <span onClick={() => startEditing(plan.id, 'stt', plan.stt)} className="cursor-pointer hover:bg-slate-200/50 px-0.5 py-0 rounded block w-full whitespace-nowrap tracking-tighter text-center" title={String(depth > 0 ? plan.computedStt : plan.stt)}>{depth > 0 ? plan.computedStt : plan.stt}</span>
+                          <div className="flex items-center justify-center gap-1">
+                            {subTab === 'TECH' && isPurchasingMode && (
+                              <input
+                                type="checkbox"
+                                checked={selectedIds.has(plan.id)}
+                                onChange={(e) => { e.stopPropagation(); toggleSelectRow(plan.id); }}
+                                className="w-3.5 h-3.5 rounded border-slate-300 text-primary cursor-pointer flex-shrink-0"
+                                title="Tích chọn để yêu cầu mua hàng"
+                              />
+                            )}
+                            <span onClick={() => startEditing(plan.id, 'stt', plan.stt)} className="cursor-pointer hover:bg-slate-200/50 px-0.5 py-0 rounded flex-1 whitespace-nowrap tracking-tighter text-center" title={String(depth > 0 ? plan.computedStt : plan.stt)}>{depth > 0 ? plan.computedStt : plan.stt}</span>
+                          </div>
                         )}
                       </td>
                           
                           {/* NỘI DUNG */}
-                          <td className={`sticky left-0 z-10 ${stickyBg} group-hover:bg-slate-100 border-r border-slate-200 py-0.5 sm:py-1 px-1 sm:px-2 align-middle text-left overflow-hidden min-w-[150px] sm:min-w-[180px] ${fontStyle} shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]`}>
+                          <td className={`sticky left-0 z-10 ${stickyBg} group-hover:bg-slate-100 border-r border-slate-200 py-0.5 sm:py-1 px-1 sm:px-2 align-middle text-left overflow-hidden min-w-[150px] sm:min-w-[180px] ${fontStyle} shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] relative`}>
                             {editingCell?.id === plan.id && editingCell?.field === 'jobContent' && !editingCell.isPurchasing ? (
                               <input
                                 type="text"
@@ -1804,7 +2142,7 @@ export const MaterialAndPurchasingTab: React.FC<MaterialAndPurchasingTabProps> =
                                   {plan.jobContent || plan.name || plan.content}
                                 </span>
                                 
-                                <div className="hidden group-hover:flex items-center gap-0.5 ml-1 shrink-0">
+                                <div className="absolute right-1 top-1/2 -translate-y-1/2 hidden group-hover:flex items-center gap-0.5 bg-white/95 group-hover:bg-slate-100/95 backdrop-blur-xs pl-1.5 py-0.5 shadow-[-6px_0_10px_-2px_rgba(241,245,249,0.9)] z-20">
                                 {onAddSubtask && subTab !== 'FINANCE' && (
                                   <button onClick={(e) => { e.stopPropagation(); onAddSubtask(plan, suggestedStt); }} className="p-0.5 rounded text-slate-400 hover:text-blue-600 hover:bg-slate-200 transition-colors inline-flex items-center flex-shrink-0" title="thêm hạng mục mới">
                                     <span className="material-symbols-outlined text-[13px]">add_circle</span>
@@ -2433,6 +2771,36 @@ export const MaterialAndPurchasingTab: React.FC<MaterialAndPurchasingTabProps> =
         type={toast.type}
         onClose={() => setToast(prev => ({ ...prev, show: false }))}
       />
+
+      {/* Modal Lập Yêu cầu mua hàng đa cấp */}
+      {isPurchaseRequestModalOpen && (
+        <PurchaseRequestModal
+          isOpen={isPurchaseRequestModalOpen}
+          onClose={() => setIsPurchaseRequestModalOpen(false)}
+          selectedItems={selectableItems.filter(p => selectedIds.has(p.id))}
+          projectCode={selectedProject || 'COMPANY'}
+          projectName={selectedProject || 'Dự án'}
+          engineers={engineers}
+          currentUser={user}
+          onSubmit={handleCreatePurchaseRequestSubmit}
+        />
+      )}
+
+      {/* Modal Danh sách duyệt Yêu cầu mua hàng đa cấp */}
+      {isPurchaseRequestListModalOpen && (
+        <PurchaseRequestListModal
+          isOpen={isPurchaseRequestListModalOpen}
+          onClose={() => setIsPurchaseRequestListModalOpen(false)}
+          requests={purchaseRequests}
+          currentUser={user}
+          loading={loadingPurchaseRequests}
+          onRefresh={fetchPurchaseRequests}
+          onApproveByChecker={handleApprovePurchaseByChecker}
+          onApproveByReviewer={handleApprovePurchaseByReviewer}
+          onReject={handleRejectPurchase}
+          onMarkOrdered={handleMarkPurchaseOrdered}
+        />
+      )}
     </div>
   );
 };

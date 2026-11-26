@@ -29,7 +29,7 @@ export const Modal: React.FC<ModalProps> = ({
   size = 'md',
   icon = 'add_task',
   defaultMaximized = false,
-  requireConfirmOnClose = true,
+  requireConfirmOnClose,
   isDirty,
   zIndexClass = "z-[100]",
 }) => {
@@ -37,37 +37,75 @@ export const Modal: React.FC<ModalProps> = ({
   const [showExitConfirm, setShowExitConfirm] = useState<boolean>(false);
   const contentRef = useRef<HTMLDivElement>(null);
   const initialSnapshotRef = useRef<string | null>(null);
+  const userInteractedRef = useRef<boolean>(false);
 
-  // Helper hàm chụp trạng thái hiện tại của tất cả inputs/textareas/selects trong modal
+  // Helper hàm chụp trạng thái hiện tại của tất cả inputs/textareas/selects trong modal (bỏ qua input search nội bộ)
   const captureFormSnapshot = useCallback((): string => {
     if (!contentRef.current) return '';
     const elements = contentRef.current.querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(
-      'input:not([type="hidden"]):not([type="button"]):not([type="submit"]):not([type="reset"]), textarea, select'
+      'input:not([type="hidden"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not([data-ignore-dirty="true"]), textarea:not([data-ignore-dirty="true"]), select:not([data-ignore-dirty="true"])'
     );
     const parts: string[] = [];
     elements.forEach((el, index) => {
+      // Bỏ qua các input tìm kiếm hoặc filter tạm thời
+      const placeholder = (el.getAttribute('placeholder') || '').toLowerCase();
+      if (placeholder.includes('tìm kiếm') || placeholder.includes('nhập để tìm')) return;
+
       const type = el.getAttribute('type') || el.tagName.toLowerCase();
+      const name = el.getAttribute('name') || String(index);
       if (type === 'checkbox' || type === 'radio') {
-        parts.push(`${index}:${(el as HTMLInputElement).checked}`);
+        parts.push(`${name}:${(el as HTMLInputElement).checked}`);
       } else {
-        parts.push(`${index}:${el.value}`);
+        parts.push(`${name}:${el.value}`);
       }
     });
     return parts.join('|||');
   }, []);
 
+  // Lắng nghe sự kiện người dùng thực sự nhập liệu (input, change) vào form
+  useEffect(() => {
+    if (!isOpen) return;
+
+    userInteractedRef.current = false;
+    const handleInput = (e: Event) => {
+      const target = e.target as HTMLElement;
+      if (!target) return;
+      const placeholder = (target.getAttribute('placeholder') || '').toLowerCase();
+      if (placeholder.includes('tìm kiếm') || placeholder.includes('nhập để tìm')) return;
+      if (target.getAttribute('data-ignore-dirty') === 'true') return;
+
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) {
+        userInteractedRef.current = true;
+      }
+    };
+
+    const container = contentRef.current;
+    if (container) {
+      container.addEventListener('input', handleInput);
+      container.addEventListener('change', handleInput);
+    }
+    return () => {
+      if (container) {
+        container.removeEventListener('input', handleInput);
+        container.removeEventListener('change', handleInput);
+      }
+    };
+  }, [isOpen]);
+
   // Chụp snapshot ban đầu sau khi modal mở và các input đã render xong
   useEffect(() => {
     if (isOpen) {
       setShowExitConfirm(false);
+      userInteractedRef.current = false;
       initialSnapshotRef.current = null;
       // Chờ form fill giá trị ban đầu vào input
       const timer = setTimeout(() => {
         initialSnapshotRef.current = captureFormSnapshot();
-      }, 150);
+      }, 200);
       return () => clearTimeout(timer);
     } else {
       initialSnapshotRef.current = null;
+      userInteractedRef.current = false;
       setShowExitConfirm(false);
     }
   }, [isOpen, captureFormSnapshot]);
@@ -76,11 +114,19 @@ export const Modal: React.FC<ModalProps> = ({
 
   // Kiểm tra người dùng có thực sự thay đổi dữ liệu hay không
   const checkHasUserChanges = (): boolean => {
-    // Nếu cha có truyền cờ isDirty rõ ràng
+    // Nếu component cha có truyền cờ isDirty rõ ràng
     if (typeof isDirty === 'boolean') {
       return isDirty;
     }
-    // Nếu chụp được snapshot ban đầu, so sánh với snapshot hiện tại
+    // Nếu người dùng đã gõ hoặc thay đổi giá trị
+    if (userInteractedRef.current) {
+      const currentSnapshot = captureFormSnapshot();
+      if (initialSnapshotRef.current !== null) {
+        return currentSnapshot !== initialSnapshotRef.current;
+      }
+      return true;
+    }
+    // So sánh snapshot nếu có
     if (initialSnapshotRef.current !== null) {
       const currentSnapshot = captureFormSnapshot();
       return currentSnapshot !== initialSnapshotRef.current;
@@ -89,12 +135,26 @@ export const Modal: React.FC<ModalProps> = ({
   };
 
   const handleCloseClick = () => {
-    if (!requireConfirmOnClose) {
+    // Tự động xác định: Nếu requireConfirmOnClose được truyền false thì đóng ngay.
+    // Nếu requireConfirmOnClose là undefined, tự động kiểm tra xem modal có chứa form/input không
+    if (requireConfirmOnClose === false) {
       onClose();
       return;
     }
 
-    // Chỉ hỏi khi có thay đổi dữ liệu thực tế
+    // Nếu modal chỉ là modal xem (không có form/input nhập liệu nào) thì đóng luôn không cần hỏi
+    const hasEditableInputs = Boolean(
+      contentRef.current?.querySelector(
+        'form, input:not([type="hidden"]):not([type="button"]):not([type="submit"]):not([type="reset"]), textarea'
+      )
+    );
+
+    if (!hasEditableInputs) {
+      onClose();
+      return;
+    }
+
+    // Nếu có form và người dùng có thay đổi dữ liệu thực tế -> Hỏi xác nhận
     const hasChanges = checkHasUserChanges();
     if (hasChanges) {
       setShowExitConfirm(true);
@@ -147,8 +207,8 @@ export const Modal: React.FC<ModalProps> = ({
 
       {/* Exit confirmation dialog overlay when clicking X */}
       {showExitConfirm && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fadeIn">
-          <div className="bg-white rounded-2xl p-5 shadow-2xl max-w-sm w-full border border-slate-200 text-center animate-zoomIn space-y-4">
+        <div data-app-exit="true" className="fixed inset-0 z-[10000000] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fadeIn">
+          <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl p-5 shadow-2xl max-w-sm w-full border border-slate-200 text-center animate-zoomIn space-y-4">
             <div className="w-12 h-12 rounded-full bg-blue-50 text-primary border border-blue-100 flex items-center justify-center mx-auto">
               <span className="material-symbols-outlined text-2xl">help_outline</span>
             </div>

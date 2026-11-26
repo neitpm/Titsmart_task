@@ -28,6 +28,8 @@ import { PullToRefresh } from '../components/common/PullToRefresh';
 import { CustomSelect } from '../components/common/CustomSelect';
 import { useUIStore } from '../services/uiStore';
 import { geocodeAddress, getCurrentDeviceLocation } from '../utils/geocodingUtils';
+import { useTableColumnResize } from '../services/useTableColumnResize';
+import { ColumnResizeHandle } from '../components/common/ColumnResizeHandle';
 
 const todayStamp = () => new Date().toISOString().split('T')[0];
 
@@ -407,6 +409,26 @@ export const ProjectManagementPage: React.FC = () => {
       };
     });
   }, [projects, tasks, materialPlans, purchasingPlans, expenses, laborPayrolls, engineers, notifications, currentUser]);
+
+  const defaultProjectColWidths = useMemo(() => ({
+    col_stt: 55,
+    col_code: 110,
+    col_priority: 110,
+    col_title: 250,
+    col_type: 140,
+    col_pm: 150,
+    col_members: 140,
+    col_tasks: 110,
+    col_progress: 130,
+    col_cost: 130,
+    col_status: 120,
+    col_actions: 110,
+  }), []);
+
+  const { widths: colWidths, startResize: startColResize } = useTableColumnResize({
+    tableId: 'table_projects_detailed',
+    defaultWidths: defaultProjectColWidths,
+  });
 
 
   const isProjectInDateRange = (project: any, fromDate: string, toDate: string) => {
@@ -1410,7 +1432,7 @@ export const ProjectManagementPage: React.FC = () => {
             setProjectVisibleLimit(prev => (prev < enhancedProjects.length ? Math.min(enhancedProjects.length, prev + 24) : prev));
           }
         }}
-        className={`flex-1 ${viewMode === 'table' || viewMode === 'table_detailed' ? 'p-0' : 'p-2 sm:p-3 pb-6 md:p-4 md:pb-6'}`}
+        className={`flex-1 ${viewMode === 'table' || viewMode === 'table_detailed' ? 'p-0' : viewMode === 'kanban' ? 'p-1 sm:p-2 md:p-3' : 'p-2 sm:p-3 pb-6 md:p-4 md:pb-6'}`}
       >
         {(isFetchingProjects && projects.length === 0 && tasks.length === 0) ? (
           <div className="text-center py-16 m-2 bg-white border border-dashed border-slate-300 rounded-xl flex flex-col items-center justify-center">
@@ -1424,7 +1446,7 @@ export const ProjectManagementPage: React.FC = () => {
             <h3 className="mt-3 font-bold text-slate-700">{searchQuery ? TEXT.noProjectFound : TEXT.noProject}</h3>
           </div>
         ) : (
-          <div className={`flex flex-col ${viewMode === 'table' || viewMode === 'table_detailed' ? 'gap-0' : 'gap-4'}`}>
+          <div className={`flex flex-col ${viewMode === 'table' || viewMode === 'table_detailed' || viewMode === 'kanban' ? 'gap-0' : 'gap-4'}`}>
             {/* Chế độ xem 1: Lưới Thẻ (Grid Cards) */}
             {viewMode === 'grid' && (
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3 sm:gap-4">
@@ -2027,21 +2049,68 @@ export const ProjectManagementPage: React.FC = () => {
             {viewMode === 'table_detailed' && (
               <div className="bg-white border-b border-slate-200 overflow-hidden shadow-xs">
                 <div className="overflow-x-auto custom-scrollbar">
-                  <table className="w-full text-left border-collapse text-xs min-w-[1200px]">
-                    <thead className="bg-slate-50 text-slate-600 font-bold text-[11px] uppercase border-b border-slate-200 sticky top-0 z-10">
+                  <table className="w-full text-left border-collapse text-xs min-w-[1200px] table-fixed">
+                    <colgroup>
+                      <col style={{ width: colWidths.col_stt }} />
+                      <col style={{ width: colWidths.col_code }} />
+                      <col style={{ width: colWidths.col_priority }} />
+                      <col style={{ width: colWidths.col_title }} />
+                      <col style={{ width: colWidths.col_type }} />
+                      <col style={{ width: colWidths.col_pm }} />
+                      <col style={{ width: colWidths.col_members }} />
+                      <col style={{ width: colWidths.col_tasks }} />
+                      <col style={{ width: colWidths.col_progress }} />
+                      <col style={{ width: colWidths.col_cost }} />
+                      <col style={{ width: colWidths.col_status }} />
+                      <col style={{ width: colWidths.col_actions }} />
+                    </colgroup>
+                    <thead className="bg-slate-50 text-slate-600 font-bold text-[11px] uppercase border-b border-slate-200 sticky top-0 z-10 select-none">
                       <tr>
-                        <th className="py-2.5 px-3 w-12 text-center border-r border-slate-200">STT</th>
-                        <th className="py-2.5 px-3 w-28 border-r border-slate-200">Mã DA</th>
-                        <th className="py-2.5 px-3 w-28 text-center border-r border-slate-200">Ưu tiên</th>
-                        <th className="py-2.5 px-4 min-w-[220px] border-r border-slate-200">Tên dự án & Địa điểm</th>
-                        <th className="py-2.5 px-3 w-36 border-r border-slate-200">Phân loại / CĐT</th>
-                        <th className="py-2.5 px-3 w-40 border-r border-slate-200">Quản lý / PM</th>
-                        <th className="py-2.5 px-3 w-36 border-r border-slate-200">Nhân sự</th>
-                        <th className="py-2.5 px-3 w-28 text-center border-r border-slate-200">Công việc</th>
-                        <th className="py-2.5 px-3 w-32 text-center border-r border-slate-200">Tiến độ</th>
-                        <th className="py-2.5 px-3 w-32 text-right border-r border-slate-200">Tổng chi phí</th>
-                        <th className="py-2.5 px-3 w-28 text-center border-r border-slate-200">Trạng thái</th>
-                        <th className="py-2.5 px-3 w-28 text-center">Thao tác</th>
+                        <th className="py-2.5 px-3 text-center border-r border-slate-200 relative group/th">
+                          <span>STT</span>
+                          <ColumnResizeHandle colKey="col_stt" onResizeStart={startColResize} />
+                        </th>
+                        <th className="py-2.5 px-3 border-r border-slate-200 relative group/th">
+                          <span>Mã DA</span>
+                          <ColumnResizeHandle colKey="col_code" onResizeStart={startColResize} />
+                        </th>
+                        <th className="py-2.5 px-3 text-center border-r border-slate-200 relative group/th">
+                          <span>Ưu tiên</span>
+                          <ColumnResizeHandle colKey="col_priority" onResizeStart={startColResize} />
+                        </th>
+                        <th className="py-2.5 px-4 border-r border-slate-200 relative group/th">
+                          <span>Tên dự án & Địa điểm</span>
+                          <ColumnResizeHandle colKey="col_title" onResizeStart={startColResize} />
+                        </th>
+                        <th className="py-2.5 px-3 border-r border-slate-200 relative group/th">
+                          <span>Phân loại / CĐT</span>
+                          <ColumnResizeHandle colKey="col_type" onResizeStart={startColResize} />
+                        </th>
+                        <th className="py-2.5 px-3 border-r border-slate-200 relative group/th">
+                          <span>Quản lý / PM</span>
+                          <ColumnResizeHandle colKey="col_pm" onResizeStart={startColResize} />
+                        </th>
+                        <th className="py-2.5 px-3 border-r border-slate-200 relative group/th">
+                          <span>Nhân sự</span>
+                          <ColumnResizeHandle colKey="col_members" onResizeStart={startColResize} />
+                        </th>
+                        <th className="py-2.5 px-3 text-center border-r border-slate-200 relative group/th">
+                          <span>Công việc</span>
+                          <ColumnResizeHandle colKey="col_tasks" onResizeStart={startColResize} />
+                        </th>
+                        <th className="py-2.5 px-3 text-center border-r border-slate-200 relative group/th">
+                          <span>Tiến độ</span>
+                          <ColumnResizeHandle colKey="col_progress" onResizeStart={startColResize} />
+                        </th>
+                        <th className="py-2.5 px-3 text-right border-r border-slate-200 relative group/th">
+                          <span>Tổng chi phí</span>
+                          <ColumnResizeHandle colKey="col_cost" onResizeStart={startColResize} />
+                        </th>
+                        <th className="py-2.5 px-3 text-center border-r border-slate-200 relative group/th">
+                          <span>Trạng thái</span>
+                          <ColumnResizeHandle colKey="col_status" onResizeStart={startColResize} />
+                        </th>
+                        <th className="py-2.5 px-3 text-center">Thao tác</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200 font-medium">
@@ -2246,12 +2315,12 @@ export const ProjectManagementPage: React.FC = () => {
               ];
 
               return (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pb-4 items-start">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 p-1 sm:p-2 pb-4 items-start">
                   {kanbanCols.map((col) => {
                     const colProjects = enhancedProjects.filter(p => p.status === col.key);
 
                     return (
-                      <div key={col.key} className="flex flex-col bg-slate-100/70 border border-slate-200 rounded-xl p-3 min-h-[400px]">
+                      <div key={col.key} className="flex flex-col bg-slate-100/70 border border-slate-200 rounded-xl p-2.5 sm:p-3 min-h-[400px]">
                         {/* Header cột */}
                         <div className="flex items-center justify-between pb-2.5 mb-2.5 border-b border-slate-200">
                           <div className="flex items-center gap-2">

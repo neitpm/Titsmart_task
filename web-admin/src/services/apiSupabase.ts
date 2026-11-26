@@ -1398,18 +1398,25 @@ export const api = {
 
       const { data: result, error } = await supabase.from('engineers').insert(payload).select().single();
       if (error) {
-        // Tự động gỡ bỏ các cột mở rộng (company_id, project_codes, v.v.) nếu DB Cloud chưa cập nhật schema
-        delete payload.company_id;
-        delete payload.updated_by;
-        delete payload.updated_at;
-        delete payload.is_locked;
-        const { data: retryResult, error: retryError } = await supabase.from('engineers').insert(payload).select().single();
+        // Tự động gỡ bỏ các cột mở rộng nếu DB Cloud chưa chạy migration mới (department_id, department_code, company_id, v.v.)
+        const copy1 = { ...payload };
+        delete copy1.department_id;
+        delete copy1.department_code;
+        delete copy1.department_name;
+        delete copy1.company_id;
+        delete copy1.updated_by;
+        delete copy1.updated_at;
+        delete copy1.is_locked;
+        const { data: retryResult, error: retryError } = await supabase.from('engineers').insert(copy1).select().single();
         if (retryError) {
-          delete payload.password;
-          delete payload.is_active;
-          delete payload.project_codes;
-          const { data: finalResult, error: finalError } = await supabase.from('engineers').insert(payload).select().single();
-          if (finalError) throw finalError;
+          delete copy1.password;
+          delete copy1.is_active;
+          delete copy1.project_codes;
+          const { data: finalResult, error: finalError } = await supabase.from('engineers').insert(copy1).select().single();
+          if (finalError) {
+            console.error('[Engineers] Insert final error:', finalError);
+            throw finalError;
+          }
           return toCamelCase(finalResult);
         }
         return toCamelCase(retryResult);
@@ -1458,6 +1465,9 @@ export const api = {
           const retryPayload = { ...sanitized };
           delete retryPayload.is_locked;
           delete retryPayload.is_active;
+          delete retryPayload.department_id;
+          delete retryPayload.department_code;
+          delete retryPayload.department_name;
           const { data: retryResult, error: retryError } = await supabase.from('engineers').update(retryPayload).eq('id', id).select();
           if (!retryError && Array.isArray(retryResult) && retryResult.length > 0) {
             const row = toCamelCase(retryResult[0]);
@@ -4000,6 +4010,177 @@ export const api = {
 
       if (updateErr) {
         console.error('[updatePaymentRequest Error]:', updateErr);
+        throw updateErr;
+      }
+
+      return mergedPayload;
+    },
+    delete: async (id: string) => {
+      const { error } = await supabase.from('activity_logs').delete().eq('id', id);
+      if (error) throw error;
+      return { success: true };
+    }
+  },
+
+  purchaseRequests: {
+    getAll: async (options?: { page?: number; pageSize?: number }) => {
+      try {
+        const page = options?.page || 1;
+        const pageSize = options?.pageSize;
+
+        let query = supabase
+          .from('activity_logs')
+          .select('*', { count: 'exact' })
+          .eq('icon', 'PURCHASE_REQUEST')
+          .order('timestamp', { ascending: false });
+
+        if (pageSize && pageSize > 0) {
+          const from = (page - 1) * pageSize;
+          const to = from + pageSize - 1;
+          query = query.range(from, to);
+        }
+
+        let { data, error, count } = await query;
+        if (error) {
+          let retryQuery = supabase
+            .from('activity_logs')
+            .select('*', { count: 'exact' })
+            .eq('icon', 'PURCHASE_REQUEST')
+            .order('timestamp', { ascending: false });
+
+          if (pageSize && pageSize > 0) {
+            const from = (page - 1) * pageSize;
+            const to = from + pageSize - 1;
+            retryQuery = retryQuery.range(from, to);
+          }
+          const res = await retryQuery;
+          data = res.data;
+          error = res.error;
+          count = res.count;
+        }
+
+        if (error) return [];
+
+        const list: any = (data || []).map(row => {
+          try {
+            const payload = typeof row.action === 'string' ? JSON.parse(row.action) : row.action;
+            return { id: row.id, ...payload };
+          } catch { return null; }
+        }).filter(Boolean);
+
+        list.totalCount = count ?? list.length;
+        list.page = page;
+        list.pageSize = pageSize;
+        return list;
+      } catch (err) {
+        return [];
+      }
+    },
+    getById: async (id: string) => {
+      try {
+        const { data, error } = await supabase
+          .from('activity_logs')
+          .select('*')
+          .eq('id', id)
+          .single();
+
+        if (error || !data) return null;
+        const payload = typeof data.action === 'string' ? JSON.parse(data.action) : data.action;
+        return { id: data.id, ...payload };
+      } catch (err) {
+        return null;
+      }
+    },
+    create: async (input: Partial<import('../types').PurchaseRequest>) => {
+      const nowIso = new Date().toISOString();
+      const code = input.code || `YCMH-${Date.now().toString().slice(-6)}`;
+      const payload: import('../types').PurchaseRequest = {
+        id: '',
+        code,
+        projectCode: input.projectCode || 'COMPANY',
+        projectName: input.projectName || input.projectCode || 'Công trình',
+        creatorId: input.creatorId || '',
+        creatorName: input.creatorName || '',
+        creatorTitle: input.creatorTitle || '',
+        checkerId: input.checkerId || '',
+        checkerName: input.checkerName || '',
+        checkerTitle: input.checkerTitle || '',
+        reviewerId: input.reviewerId || '',
+        reviewerName: input.reviewerName || '',
+        reviewerTitle: input.reviewerTitle || '',
+        neededDate: input.neededDate || nowIso.split('T')[0],
+        priority: input.priority || 'normal',
+        reason: input.reason || '',
+        note: input.note || '',
+        status: input.status || 'PENDING_CHECK',
+        items: input.items || [],
+        createdAt: nowIso,
+        history: [
+          {
+            action: 'Lập yêu cầu mua hàng',
+            actorId: input.creatorId || '',
+            actorName: input.creatorName || 'Người đề xuất',
+            actorRole: input.creatorTitle || 'Người đề xuất',
+            timestamp: nowIso,
+            note: input.reason || input.note || 'Tạo yêu cầu mua hàng'
+          }
+        ]
+      };
+
+      const { data, error } = await supabase
+        .from('activity_logs')
+        .insert({
+          user: payload.creatorName,
+          project: payload.projectCode,
+          icon: 'PURCHASE_REQUEST',
+          action: JSON.stringify(payload),
+          timestamp: nowIso,
+          badge_bg: 'bg-amber-50',
+          icon_color: 'text-amber-600'
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('[createPurchaseRequest Error]:', error);
+        throw error;
+      }
+
+      payload.id = data.id;
+      return payload;
+    },
+    update: async (id: string, updates: Partial<import('../types').PurchaseRequest>, auditEntry?: import('../types').PurchaseRequestAuditLog) => {
+      const { data: existing, error: getErr } = await supabase
+        .from('activity_logs')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (getErr || !existing) throw new Error('Không tìm thấy yêu cầu mua hàng');
+
+      const currentPayload = typeof existing.action === 'string' ? JSON.parse(existing.action) : existing.action;
+      const history = Array.isArray(currentPayload.history) ? [...currentPayload.history] : [];
+      if (auditEntry) {
+        history.push(auditEntry);
+      }
+
+      const mergedPayload: import('../types').PurchaseRequest = {
+        ...currentPayload,
+        ...updates,
+        id,
+        history
+      };
+
+      const { error: updateErr } = await supabase
+        .from('activity_logs')
+        .update({
+          action: JSON.stringify(mergedPayload),
+          timestamp: new Date().toISOString()
+        })
+        .eq('id', id);
+
+      if (updateErr) {
+        console.error('[updatePurchaseRequest Error]:', updateErr);
         throw updateErr;
       }
 

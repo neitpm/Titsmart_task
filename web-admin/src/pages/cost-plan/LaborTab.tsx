@@ -2,6 +2,8 @@ import React, { useMemo, useState } from 'react';
 import { LaborPayroll } from '../../types';
 import { CustomSelect } from '@/components/common/CustomSelect';
 import { AuditInfoCell } from '../../components/common/AuditInfoCell';
+import { useTableColumnResize } from '@/services/useTableColumnResize';
+import { ColumnResizeHandle } from '@/components/common/ColumnResizeHandle';
 
 interface LaborTabProps {
   data: LaborPayroll[];
@@ -21,6 +23,26 @@ export const LaborTab: React.FC<LaborTabProps> = ({
     setColumnFilters(prev => ({ ...prev, [key]: value }));
   };
   const clearColumnFilters = () => setColumnFilters({});
+
+  const defaultColWidths = useMemo(() => ({
+    col_date: 85,
+    col_name: 160,
+    col_content: 160,
+    col_unit: 65,
+    col_qty: 65,
+    col_price: 85,
+    col_total: 95,
+    col_bank: 180,
+    col_cccd: 95,
+    col_status: 85,
+    col_updated: 120,
+    col_actions: 60,
+  }), []);
+
+  const { widths: colWidths, startResize } = useTableColumnResize({
+    tableId: 'table_labor',
+    defaultWidths: defaultColWidths,
+  });
 
   const filteredData = useMemo(() => {
     return data.filter((lab) => {
@@ -72,22 +94,36 @@ export const LaborTab: React.FC<LaborTabProps> = ({
       </div>
 
       <div className="w-full max-w-full overflow-x-auto custom-scrollbar flex-1">
-        <table className="w-max text-left border-collapse">
+        <table className="w-max text-left border-collapse table-fixed min-w-[1200px]">
+          <colgroup>
+            <col style={{ width: colWidths.col_date }} />
+            <col style={{ width: colWidths.col_name }} />
+            <col style={{ width: colWidths.col_content }} />
+            <col style={{ width: colWidths.col_unit }} />
+            <col style={{ width: colWidths.col_qty }} />
+            <col style={{ width: colWidths.col_price }} />
+            <col style={{ width: colWidths.col_total }} />
+            <col style={{ width: colWidths.col_bank }} />
+            <col style={{ width: colWidths.col_cccd }} />
+            <col style={{ width: colWidths.col_status }} />
+            <col style={{ width: colWidths.col_updated }} />
+            <col style={{ width: colWidths.col_actions }} />
+          </colgroup>
           <thead className="sticky top-0 z-20 border-b border-slate-200 bg-slate-50 text-[10px] font-extrabold uppercase tracking-wider text-slate-600">
             <tr>
               
-              <th className="w-[85px] px-1.5 py-1.5 text-center">Ngày làm</th>
-              <th className="sticky left-0 z-20 w-[160px] bg-slate-50 border-r border-slate-200/70 px-1.5 py-1 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">Họ tên</th>
-              <th className="w-[160px] px-1.5 py-1">Nội dung / Diễn giải</th>
-              <th className="w-[65px] px-1 py-1.5 text-center">ĐVT</th>
-              <th className="w-[65px] px-1.5 py-1.5 text-right">Số lượng</th>
-              <th className="w-[85px] px-1.5 py-1.5 text-right">Đơn giá (đ)</th>
-              <th className="w-[95px] px-1.5 py-1.5 text-right">Thành tiền (đ)</th>
-              <th className="w-[180px] px-1.5 py-1.5">Tài khoản & Người nhận</th>
-              <th className="w-[95px] px-1.5 py-1.5 text-center">CCCD</th>
-              <th className="w-[85px] px-1.5 py-1.5 text-center">Tình trạng</th>
-              <th className="w-[120px] px-1.5 py-1.5 text-center">Người cập nhật</th>
-              <th className="w-[60px] px-1.5 py-1.5 text-center">Thao tác</th>
+              <th className="relative w-[85px] px-1.5 py-1.5 text-center">Ngày làm<ColumnResizeHandle onMouseDown={(e) => startResize('col_date', e)} /></th>
+              <th className="relative sticky left-0 z-20 w-[160px] bg-slate-50 border-r border-slate-200/70 px-1.5 py-1 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">Họ tên<ColumnResizeHandle onMouseDown={(e) => startResize('col_name', e)} /></th>
+              <th className="relative w-[160px] px-1.5 py-1">Nội dung / Diễn giải<ColumnResizeHandle onMouseDown={(e) => startResize('col_content', e)} /></th>
+              <th className="relative w-[65px] px-1 py-1.5 text-center">ĐVT<ColumnResizeHandle onMouseDown={(e) => startResize('col_unit', e)} /></th>
+              <th className="relative w-[65px] px-1.5 py-1.5 text-right">Số lượng<ColumnResizeHandle onMouseDown={(e) => startResize('col_qty', e)} /></th>
+              <th className="relative w-[85px] px-1.5 py-1.5 text-right">Đơn giá (đ)<ColumnResizeHandle onMouseDown={(e) => startResize('col_price', e)} /></th>
+              <th className="relative w-[95px] px-1.5 py-1.5 text-right">Thành tiền (đ)<ColumnResizeHandle onMouseDown={(e) => startResize('col_total', e)} /></th>
+              <th className="relative w-[180px] px-1.5 py-1.5">Tài khoản & Người nhận<ColumnResizeHandle onMouseDown={(e) => startResize('col_bank', e)} /></th>
+              <th className="relative w-[95px] px-1.5 py-1.5 text-center">CCCD<ColumnResizeHandle onMouseDown={(e) => startResize('col_cccd', e)} /></th>
+              <th className="relative w-[85px] px-1.5 py-1.5 text-center">Tình trạng<ColumnResizeHandle onMouseDown={(e) => startResize('col_status', e)} /></th>
+              <th className="relative w-[120px] px-1.5 py-1.5 text-center">Người cập nhật<ColumnResizeHandle onMouseDown={(e) => startResize('col_updated', e)} /></th>
+              <th className="relative w-[60px] px-1.5 py-1.5 text-center">Thao tác<ColumnResizeHandle onMouseDown={(e) => startResize('col_actions', e)} /></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 bg-white text-xs text-slate-700">

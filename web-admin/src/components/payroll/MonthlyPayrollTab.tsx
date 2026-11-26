@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuthStore } from '../../services/authStore';
 import { useRealtimeStore } from '../../services/realtimeStore';
+import { useTableColumnResize } from '../../services/useTableColumnResize';
+import { ColumnResizeHandle } from '../common/ColumnResizeHandle';
 import { api } from '../../services/apiSupabase';
 import { MonthlyPayrollItem, Engineer, LeaveRequest, AttendanceAdjustmentRequest } from '../../types';
 import { 
@@ -50,6 +52,27 @@ export const MonthlyPayrollTab: React.FC<MonthlyPayrollTabProps> = ({
   const [signingItem, setSigningItem] = useState<MonthlyPayrollItem | null>(null);
   const [disputingItem, setDisputingItem] = useState<MonthlyPayrollItem | null>(null);
   const [viewingSlipItem, setViewingSlipItem] = useState<MonthlyPayrollItem | null>(null);
+
+  // Quản lý kéo thay đổi độ rộng cột bảng lương
+  const defaultPayrollColWidths = useMemo(() => ({
+    col_stt: 45,
+    col_code: 85,
+    col_name: 180,
+    col_title: 120,
+    col_actual_days: 105,
+    col_field_days: 95,
+    col_gross: 120,
+    col_deduction: 110,
+    col_net: 130,
+    col_sign_status: 110,
+    col_signature: 85,
+    col_actions: 95,
+  }), []);
+
+  const { widths: colWidths, startResize, resetWidths } = useTableColumnResize({
+    tableId: 'table_payroll_monthly',
+    defaultWidths: defaultPayrollColWidths,
+  });
 
   // Admin filter & search
   const [adminSearch, setAdminSearch] = useState<string>('');
@@ -708,21 +731,35 @@ export const MonthlyPayrollTab: React.FC<MonthlyPayrollTabProps> = ({
           {/* BẢNG TỔNG HỢP TOÀN BỘ NHÂN SỰ */}
           <div className="bg-white overflow-x-auto">
             <div className="overflow-x-auto">
-              <table className="w-full text-xs text-left">
+              <table className="w-full text-xs text-left table-fixed min-w-[1180px]">
+                <colgroup>
+                  <col style={{ width: colWidths.col_stt }} />
+                  <col style={{ width: colWidths.col_code }} />
+                  <col style={{ width: colWidths.col_name }} />
+                  <col style={{ width: colWidths.col_title }} />
+                  <col style={{ width: colWidths.col_actual_days }} />
+                  <col style={{ width: colWidths.col_field_days }} />
+                  <col style={{ width: colWidths.col_gross }} />
+                  <col style={{ width: colWidths.col_deduction }} />
+                  <col style={{ width: colWidths.col_net }} />
+                  <col style={{ width: colWidths.col_sign_status }} />
+                  <col style={{ width: colWidths.col_signature }} />
+                  <col style={{ width: colWidths.col_actions }} />
+                </colgroup>
                 <thead className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200 text-[11px]">
                   <tr>
-                    <th className="p-3 text-center w-12">STT</th>
-                    <th className="p-3">Mã NV</th>
-                    <th className="p-3">Họ và tên</th>
-                    <th className="p-3">Chức danh</th>
-                    <th className="p-3 text-center">Công thực tế</th>
-                    <th className="p-3 text-center">Công trường</th>
-                    <th className="p-3 text-right">Tổng thu nhập</th>
-                    <th className="p-3 text-right">Khấu trừ</th>
-                    <th className="p-3 text-right font-extrabold text-blue-900">Thực lĩnh</th>
-                    <th className="p-3 text-center">Tình trạng ký</th>
-                    <th className="p-3 text-center">Chữ ký</th>
-                    <th className="p-3 text-center w-24">Thao tác</th>
+                    <th className="p-3 text-center w-12 relative">STT<ColumnResizeHandle onMouseDown={(e) => startResize('col_stt', e)} /></th>
+                    <th className="p-3 relative">Mã NV<ColumnResizeHandle onMouseDown={(e) => startResize('col_code', e)} /></th>
+                    <th className="p-3 relative">Họ và tên<ColumnResizeHandle onMouseDown={(e) => startResize('col_name', e)} /></th>
+                    <th className="p-3 relative">Chức danh<ColumnResizeHandle onMouseDown={(e) => startResize('col_title', e)} /></th>
+                    <th className="p-3 text-center relative">Công thực tế<ColumnResizeHandle onMouseDown={(e) => startResize('col_actual_days', e)} /></th>
+                    <th className="p-3 text-center relative">Công trường<ColumnResizeHandle onMouseDown={(e) => startResize('col_field_days', e)} /></th>
+                    <th className="p-3 text-right relative">Tổng thu nhập<ColumnResizeHandle onMouseDown={(e) => startResize('col_gross', e)} /></th>
+                    <th className="p-3 text-right relative">Khấu trừ<ColumnResizeHandle onMouseDown={(e) => startResize('col_deduction', e)} /></th>
+                    <th className="p-3 text-right font-extrabold text-blue-900 relative">Thực lĩnh<ColumnResizeHandle onMouseDown={(e) => startResize('col_net', e)} /></th>
+                    <th className="p-3 text-center relative">Tình trạng ký<ColumnResizeHandle onMouseDown={(e) => startResize('col_sign_status', e)} /></th>
+                    <th className="p-3 text-center relative">Chữ ký<ColumnResizeHandle onMouseDown={(e) => startResize('col_signature', e)} /></th>
+                    <th className="p-3 text-center w-24 relative">Thao tác<ColumnResizeHandle onMouseDown={(e) => startResize('col_actions', e)} /></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">

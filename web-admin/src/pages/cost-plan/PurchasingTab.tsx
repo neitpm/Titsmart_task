@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { ProjectPurchasing, getStatusColorStyle, PURCHASE_STATUS_OPTIONS } from '../../types';
 import { CustomSelect } from '@/components/common/CustomSelect';
 import { AuditInfoCell } from '../../components/common/AuditInfoCell';
+import { useTableColumnResize } from '../../services/useTableColumnResize';
+import { ColumnResizeHandle } from '../../components/common/ColumnResizeHandle';
 
 import { compareTaskStt } from '../../utils/taskTreeUtils';
 import { stripDiscussionThread } from '../../utils/taskDiscussion';
@@ -385,6 +387,31 @@ export const PurchasingTab: React.FC<PurchasingTabProps> = ({
 
   const colSpanCount = subTab === 'PRICING' ? 11 : 8;
 
+  const defaultColWidths = useMemo(() => ({
+    col_stt: 50,
+    col_content: 200,
+    col_unit: 65,
+    col_contract_qty: 85,
+    col_order_qty: 85,
+    col_price: 90,
+    col_vat_rate: 65,
+    col_vat: 90,
+    col_total: 100,
+    col_prepay_pct: 70,
+    col_payment: 100,
+    col_order_status: 120,
+    col_contract_status: 120,
+    col_payment_date: 120,
+    col_invoice: 90,
+    col_note: 120,
+    col_actions: 60,
+  }), []);
+
+  const { widths: colWidths, startResize } = useTableColumnResize({
+    tableId: 'table_purchasing',
+    defaultWidths: defaultColWidths,
+  });
+
   const maxSttWidth = React.useMemo(() => {
     let maxLen = 3;
     data.forEach(t => {
@@ -482,35 +509,54 @@ export const PurchasingTab: React.FC<PurchasingTabProps> = ({
       </div>
 
       <div className="w-full max-w-full overflow-x-auto custom-scrollbar flex-1 min-h-0">
-        <table className="w-full table-fixed border-collapse text-left text-xs" style={{ "--stt-width": `${maxSttWidth}px` } as React.CSSProperties}>
+        <table className="w-full table-fixed min-w-[1400px] border-collapse text-left text-xs" style={{ "--stt-width": `${maxSttWidth}px` } as React.CSSProperties}>
+          <colgroup>
+            <col style={{ width: colWidths.col_stt }} />
+            <col style={{ width: colWidths.col_content }} />
+            <col style={{ width: colWidths.col_unit }} />
+            <col style={{ width: colWidths.col_contract_qty }} />
+            <col style={{ width: colWidths.col_order_qty }} />
+            <col style={{ width: colWidths.col_price }} />
+            <col style={{ width: colWidths.col_vat_rate }} />
+            <col style={{ width: colWidths.col_vat }} />
+            <col style={{ width: colWidths.col_total }} />
+            <col style={{ width: colWidths.col_prepay_pct }} />
+            <col style={{ width: colWidths.col_payment }} />
+            <col style={{ width: colWidths.col_order_status }} />
+            <col style={{ width: colWidths.col_contract_status }} />
+            <col style={{ width: colWidths.col_payment_date }} />
+            <col style={{ width: colWidths.col_invoice }} />
+            <col style={{ width: colWidths.col_note }} />
+            <col style={{ width: colWidths.col_actions }} />
+          </colgroup>
           <thead className="sticky top-0 z-20 border-b border-slate-300 bg-slate-50 text-[10px] font-extrabold uppercase tracking-tight text-slate-600">
             {subTab === 'PRICING' ? (
               <tr className="bg-slate-50">
-                <th style={{ width: "var(--stt-width)", minWidth: "var(--stt-width)", maxWidth: "var(--stt-width)", borderRight: '1px solid #94a3b8', borderBottom: '1px solid #94a3b8' }} className="sticky left-0 z-20 bg-slate-50 bg-clip-padding px-0.5 py-1 text-center font-extrabold whitespace-nowrap">STT</th>
-                <th style={{ minWidth: 280, borderRight: '1px solid #94a3b8', borderBottom: '1px solid #94a3b8'  , left: "var(--stt-width)" }} className="sticky z-20 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] bg-slate-50 bg-clip-padding px-1.5 py-1 font-extrabold text-left " >{TEXT.content}</th>
-                <th style={{ width: 38, borderRight: '1px solid #94a3b8', borderBottom: '1px solid #94a3b8' }} className="bg-slate-50 bg-clip-padding px-1 py-1.5 text-center">{TEXT.unit}</th>
-                <th style={{ width: 50, borderRight: '1px solid #94a3b8', borderBottom: '1px solid #94a3b8' }} className="bg-slate-50 bg-clip-padding px-1.5 py-1.5 text-center leading-tight">{TEXT.contractVolume}</th>
-                <th style={{ width: 50, borderRight: '1px solid #94a3b8', borderBottom: '1px solid #94a3b8' }} className="bg-slate-50 bg-clip-padding px-1.5 py-1.5 text-center leading-tight">{TEXT.orderVolume}</th>
-                <th style={{ width: 75, borderRight: '1px solid #94a3b8', borderBottom: '1px solid #94a3b8' }} className="bg-slate-50 bg-clip-padding px-1.5 py-1.5 text-center leading-tight">{TEXT.unitPrice}</th>
-                <th style={{ width: 42, borderRight: '1px solid #94a3b8', borderBottom: '1px solid #94a3b8' }} className="bg-slate-50 bg-clip-padding px-1 py-1.5 text-center leading-tight">{TEXT.vatRate}</th>
-                <th style={{ width: 80, borderRight: '1px solid #94a3b8', borderBottom: '1px solid #94a3b8' }} className="bg-slate-50 bg-clip-padding px-1 py-1.5 text-center leading-tight">{TEXT.total}</th>
-                <th style={{ width: 125, borderRight: '1px solid #94a3b8', borderBottom: '1px solid #94a3b8' }} className="bg-slate-50 bg-clip-padding px-1 py-1.5 text-center leading-tight">{TEXT.orderStatus}</th>
-                <th style={{ width: 125, borderRight: '1px solid #94a3b8', borderBottom: '1px solid #94a3b8' }} className="bg-slate-50 bg-clip-padding px-1 py-1.5 text-center leading-tight">{TEXT.contractStatus}</th>
-                <th style={{ width: 119, borderRight: '1px solid #94a3b8', borderBottom: '1px solid #94a3b8' }} className="bg-slate-50 bg-clip-padding px-1.5 py-1.5 text-center leading-tight">{TEXT.note}</th>
-                <th style={{ width: 130, borderBottom: '1px solid #94a3b8' }} className="sticky right-0 z-20 bg-slate-50 bg-clip-padding px-1.5 py-1.5 text-center leading-tight">NGƯỜI CẬP NHẬT</th>
+                <th style={{ width: "var(--stt-width)", minWidth: "var(--stt-width)", maxWidth: "var(--stt-width)", borderRight: '1px solid #94a3b8', borderBottom: '1px solid #94a3b8' }} className="relative sticky left-0 z-20 bg-slate-50 bg-clip-padding px-0.5 py-1 text-center font-extrabold whitespace-nowrap">STT<ColumnResizeHandle onMouseDown={(e) => startResize('col_stt', e)} /></th>
+                <th style={{ minWidth: 280, borderRight: '1px solid #94a3b8', borderBottom: '1px solid #94a3b8'  , left: "var(--stt-width)" }} className="relative sticky z-20 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] bg-slate-50 bg-clip-padding px-1.5 py-1 font-extrabold text-left " >{TEXT.content}<ColumnResizeHandle onMouseDown={(e) => startResize('col_content', e)} /></th>
+                <th style={{ width: 38, borderRight: '1px solid #94a3b8', borderBottom: '1px solid #94a3b8' }} className="relative bg-slate-50 bg-clip-padding px-1 py-1.5 text-center">{TEXT.unit}<ColumnResizeHandle onMouseDown={(e) => startResize('col_unit', e)} /></th>
+                <th style={{ width: 50, borderRight: '1px solid #94a3b8', borderBottom: '1px solid #94a3b8' }} className="relative bg-slate-50 bg-clip-padding px-1.5 py-1.5 text-center leading-tight">{TEXT.contractVolume}<ColumnResizeHandle onMouseDown={(e) => startResize('col_contract_qty', e)} /></th>
+                <th style={{ width: 50, borderRight: '1px solid #94a3b8', borderBottom: '1px solid #94a3b8' }} className="relative bg-slate-50 bg-clip-padding px-1.5 py-1.5 text-center leading-tight">{TEXT.orderVolume}<ColumnResizeHandle onMouseDown={(e) => startResize('col_order_qty', e)} /></th>
+                <th style={{ width: 75, borderRight: '1px solid #94a3b8', borderBottom: '1px solid #94a3b8' }} className="relative bg-slate-50 bg-clip-padding px-1.5 py-1.5 text-center leading-tight">{TEXT.unitPrice}<ColumnResizeHandle onMouseDown={(e) => startResize('col_price', e)} /></th>
+                <th style={{ width: 42, borderRight: '1px solid #94a3b8', borderBottom: '1px solid #94a3b8' }} className="relative bg-slate-50 bg-clip-padding px-1 py-1.5 text-center leading-tight">{TEXT.vatRate}<ColumnResizeHandle onMouseDown={(e) => startResize('col_vat_rate', e)} /></th>
+                <th style={{ width: 80, borderRight: '1px solid #94a3b8', borderBottom: '1px solid #94a3b8' }} className="relative bg-slate-50 bg-clip-padding px-1 py-1.5 text-center leading-tight">{TEXT.total}<ColumnResizeHandle onMouseDown={(e) => startResize('col_total', e)} /></th>
+                <th style={{ width: 125, borderRight: '1px solid #94a3b8', borderBottom: '1px solid #94a3b8' }} className="relative bg-slate-50 bg-clip-padding px-1 py-1.5 text-center leading-tight">{TEXT.orderStatus}<ColumnResizeHandle onMouseDown={(e) => startResize('col_order_status', e)} /></th>
+                <th style={{ width: 125, borderRight: '1px solid #94a3b8', borderBottom: '1px solid #94a3b8' }} className="relative bg-slate-50 bg-clip-padding px-1 py-1.5 text-center leading-tight">{TEXT.contractStatus}<ColumnResizeHandle onMouseDown={(e) => startResize('col_contract_status', e)} /></th>
+                <th style={{ width: 119, borderRight: '1px solid #94a3b8', borderBottom: '1px solid #94a3b8' }} className="relative bg-slate-50 bg-clip-padding px-1.5 py-1.5 text-center leading-tight">{TEXT.note}<ColumnResizeHandle onMouseDown={(e) => startResize('col_note', e)} /></th>
+                <th style={{ width: 130, borderBottom: '1px solid #94a3b8' }} className="relative sticky right-0 z-20 bg-slate-50 bg-clip-padding px-1.5 py-1.5 text-center leading-tight">NGƯỜI CẬP NHẬT<ColumnResizeHandle onMouseDown={(e) => startResize('col_actions', e)} /></th>
               </tr>
             ) : (
               <tr className="bg-slate-50">
-                <th style={{ width: "var(--stt-width)", minWidth: "var(--stt-width)", maxWidth: "var(--stt-width)", borderRight: '1px solid #94a3b8', borderBottom: '1px solid #94a3b8' }} className="sticky left-0 z-20 bg-slate-50 bg-clip-padding px-0.5 py-1 text-center font-extrabold whitespace-nowrap">STT</th>
-                <th style={{ minWidth: 280, borderRight: '1px solid #94a3b8', borderBottom: '1px solid #94a3b8'  , left: "var(--stt-width)" }} className="sticky z-20 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] bg-slate-50 bg-clip-padding px-1.5 py-1 font-extrabold text-left " >{TEXT.content}</th>
-                <th style={{ width: 38, borderRight: '1px solid #94a3b8', borderBottom: '1px solid #94a3b8' }} className="bg-slate-50 bg-clip-padding px-1 py-1.5 text-center">{TEXT.unit}</th>
-                <th style={{ width: 80, borderRight: '1px solid #94a3b8', borderBottom: '1px solid #94a3b8' }} className="bg-slate-50 bg-clip-padding px-1.5 py-1.5 text-center leading-tight">{TEXT.total}</th>
-                <th style={{ width: 50, borderRight: '1px solid #94a3b8', borderBottom: '1px solid #94a3b8' }} className="bg-slate-50 bg-clip-padding px-1 py-1.5 text-center leading-tight">{TEXT.prepayPercent}</th>
-                <th style={{ width: 80, borderRight: '1px solid #94a3b8', borderBottom: '1px solid #94a3b8' }} className="bg-slate-50 bg-clip-padding px-1.5 py-1.5 text-center leading-tight">{TEXT.payment}</th>
-                <th style={{ width: 70, borderRight: '1px solid #94a3b8', borderBottom: '1px solid #94a3b8' }} className="bg-slate-50 bg-clip-padding px-1.5 py-1.5 text-center leading-tight">{TEXT.paymentDate}</th>
-                <th style={{ width: 120, borderRight: '1px solid #94a3b8', borderBottom: '1px solid #94a3b8' }} className="bg-slate-50 bg-clip-padding px-1.5 py-1.5 text-center leading-tight">{TEXT.invoice}</th>
-                <th style={{ width: 119, borderRight: '1px solid #94a3b8', borderBottom: '1px solid #94a3b8' }} className="bg-slate-50 bg-clip-padding px-1.5 py-1.5 text-center leading-tight">{TEXT.note}</th>
-                <th style={{ width: 130, borderBottom: '1px solid #94a3b8' }} className="sticky right-0 z-20 bg-slate-50 bg-clip-padding px-1.5 py-1.5 text-center leading-tight">NGƯỜI CẬP NHẬT / THỜI GIAN</th>
+                <th style={{ width: "var(--stt-width)", minWidth: "var(--stt-width)", maxWidth: "var(--stt-width)", borderRight: '1px solid #94a3b8', borderBottom: '1px solid #94a3b8' }} className="relative sticky left-0 z-20 bg-slate-50 bg-clip-padding px-0.5 py-1 text-center font-extrabold whitespace-nowrap">STT<ColumnResizeHandle onMouseDown={(e) => startResize('col_stt', e)} /></th>
+                <th style={{ minWidth: 280, borderRight: '1px solid #94a3b8', borderBottom: '1px solid #94a3b8'  , left: "var(--stt-width)" }} className="relative sticky z-20 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] bg-slate-50 bg-clip-padding px-1.5 py-1 font-extrabold text-left " >{TEXT.content}<ColumnResizeHandle onMouseDown={(e) => startResize('col_content', e)} /></th>
+                <th style={{ width: 38, borderRight: '1px solid #94a3b8', borderBottom: '1px solid #94a3b8' }} className="relative bg-slate-50 bg-clip-padding px-1 py-1.5 text-center">{TEXT.unit}<ColumnResizeHandle onMouseDown={(e) => startResize('col_unit', e)} /></th>
+                <th style={{ width: 80, borderRight: '1px solid #94a3b8', borderBottom: '1px solid #94a3b8' }} className="relative bg-slate-50 bg-clip-padding px-1.5 py-1.5 text-center leading-tight">{TEXT.total}<ColumnResizeHandle onMouseDown={(e) => startResize('col_total', e)} /></th>
+                <th style={{ width: 50, borderRight: '1px solid #94a3b8', borderBottom: '1px solid #94a3b8' }} className="relative bg-slate-50 bg-clip-padding px-1 py-1.5 text-center leading-tight">{TEXT.prepayPercent}<ColumnResizeHandle onMouseDown={(e) => startResize('col_prepay_pct', e)} /></th>
+                <th style={{ width: 80, borderRight: '1px solid #94a3b8', borderBottom: '1px solid #94a3b8' }} className="relative bg-slate-50 bg-clip-padding px-1.5 py-1.5 text-center leading-tight">{TEXT.payment}<ColumnResizeHandle onMouseDown={(e) => startResize('col_payment', e)} /></th>
+                <th style={{ width: 70, borderRight: '1px solid #94a3b8', borderBottom: '1px solid #94a3b8' }} className="relative bg-slate-50 bg-clip-padding px-1.5 py-1.5 text-center leading-tight">{TEXT.paymentDate}<ColumnResizeHandle onMouseDown={(e) => startResize('col_payment_date', e)} /></th>
+                <th style={{ width: 120, borderRight: '1px solid #94a3b8', borderBottom: '1px solid #94a3b8' }} className="relative bg-slate-50 bg-clip-padding px-1.5 py-1.5 text-center leading-tight">{TEXT.invoice}<ColumnResizeHandle onMouseDown={(e) => startResize('col_invoice', e)} /></th>
+                <th style={{ width: 119, borderRight: '1px solid #94a3b8', borderBottom: '1px solid #94a3b8' }} className="relative bg-slate-50 bg-clip-padding px-1.5 py-1.5 text-center leading-tight">{TEXT.note}<ColumnResizeHandle onMouseDown={(e) => startResize('col_note', e)} /></th>
+                <th style={{ width: 130, borderBottom: '1px solid #94a3b8' }} className="relative sticky right-0 z-20 bg-slate-50 bg-clip-padding px-1.5 py-1.5 text-center leading-tight">NGƯỜI CẬP NHẬT / THỜI GIAN<ColumnResizeHandle onMouseDown={(e) => startResize('col_actions', e)} /></th>
               </tr>
             )}
           </thead>

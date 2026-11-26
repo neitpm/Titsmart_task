@@ -84,7 +84,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
           bottom: window.innerHeight - rect.top + 2,
           left: rect.left,
           width: Math.max(rect.width, 140),
-          zIndex: 9999,
+          zIndex: 999999,
         });
       } else {
         setDropdownStyle({
@@ -92,7 +92,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
           top: rect.bottom + 2,
           left: rect.left,
           width: Math.max(rect.width, 140),
-          zIndex: 9999,
+          zIndex: 999999,
         });
       }
     }
@@ -193,6 +193,8 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
     <div
       ref={dropdownRef}
       style={dropdownStyle}
+      onClick={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
       className="bg-white rounded-lg shadow-[0_10px_30px_rgba(0,0,0,0.12)] border border-slate-100 py-1 max-h-60 overflow-auto custom-scrollbar text-left"
     >
       

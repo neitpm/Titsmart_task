@@ -11,6 +11,7 @@ import { OcrUploadPanel } from '../components/common/OcrUploadPanel';
 import { WebOcrExtractedData } from '../services/webOcrService';
 import { Task, isTaskActuallyDone, isTaskSectionHeaderItem, getStatusColorStyle , calculateAutoProgressRatio, calculateAutoProgressPercent, normalizeStatusText, purchaseProgressScore, constructionProgressScore, TECH_SPEC_STATUS_OPTIONS, PURCHASE_STATUS_OPTIONS, CONSTRUCTION_STATUS_OPTIONS, ISSUE_STATUS_OPTIONS, getIssueStatusColorStyle } from '../types';
 import { CustomSelect } from '@/components/common/CustomSelect';
+import { ImportExportDropdown } from '../components/common/ImportExportDropdown';
 import { compareTaskStt, formatSectionTitle } from '../utils/taskTreeUtils';
 import { AuditInfoCell } from '../components/common/AuditInfoCell';
 import { TaskDiscussionModal } from '../components/tasks/TaskDiscussionModal';
@@ -21,6 +22,8 @@ import { PullToRefresh } from '../components/common/PullToRefresh';
 import { isUserTaskAssignee, isUserTaskAssigner, isUserTaskFollower, isTaskReadyForAssignment, getTaskDiscussionSenderRole, canUserApproveTask, isHighestLevelPerson } from '../utils/taskPermission';
 import { getTaskTimeBounds } from '../utils/taskPeriodFilter';
 import { useUIStore } from '../services/uiStore';
+import { useTableColumnResize } from '../services/useTableColumnResize';
+import { ColumnResizeHandle } from '../components/common/ColumnResizeHandle';
 
 // Convert integer to Roman numeral
 const toRoman = (num: number): string => {
@@ -684,6 +687,28 @@ const hasSyncedRef = useRef(false);
   const [assignFilter, setAssignFilter] = useState<'all'|'mine'|'delegated'>('all');
 
   // Collapsed sections state: Set of sectionName strings that are collapsed
+  // Quản lý kéo thay đổi độ rộng cột bảng công việc
+  const defaultTaskColWidths = React.useMemo(() => ({
+    col_stt: 50,
+    col_content: 320,
+    col_qty: 45,
+    col_unit: 60,
+    col_percent: 52,
+    col_order_status: 125,
+    col_progress: 125,
+    col_assign: 165,
+    col_start_date: 130,
+    col_deadline: 120,
+    col_finish_date: 110,
+    col_note: 90,
+    col_updated_by: 135,
+  }), []);
+
+  const { widths: colWidths, startResize: startTaskColResize, resetWidths: resetTaskColWidths } = useTableColumnResize({
+    tableId: 'table_tasks_list',
+    defaultWidths: defaultTaskColWidths,
+  });
+
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
   const tablePaginationMode = useUIStore(s => s.tablePaginationMode);
   const tablePageSize = useUIStore(s => s.tablePageSize);
@@ -2748,43 +2773,15 @@ const hasSyncedRef = useRef(false);
             >
               <span className="material-symbols-outlined text-base">add</span>
             </button>
-            <div className="relative shrink-0">
-              <button
-                onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
-                title="Xuất file"
-                className="flex items-center justify-center h-8 w-8 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors shadow-xs shrink-0"
-              >
-                <span className="material-symbols-outlined text-base">file_download</span>
-              </button>
-              {isExportMenuOpen && (
-                <div 
-                  className="fixed inset-0 z-40" 
-                  onClick={() => setIsExportMenuOpen(false)}
-                />
-              )}
-              {isExportMenuOpen && (
-                <div className="absolute right-0 top-full mt-1.5 w-44 bg-white border border-slate-200 rounded-xl shadow-xl z-50 p-1.5 space-y-0.5 animate-in fade-in zoom-in duration-100">
-                  {([
-                    ['xlsx', 'Excel (.xlsx)', 'grid_on', 'text-green-600'],
-                    ['csv', 'CSV (.csv)', 'csv', 'text-teal-600'],
-                    ['pdf', 'PDF (.pdf)', 'picture_as_pdf', 'text-red-600'],
-                    ['docx', 'Word (.docx)', 'description', 'text-blue-600'],
-                  ] as Array<[ExportFileFormat, string, string, string]>).map(([format, label, icon, iconColor]) => (
-                    <button
-                      key={format}
-                      onClick={() => {
-                        setIsExportMenuOpen(false);
-                        handleExportFile(format);
-                      }}
-                      className="w-full text-left px-3 py-2 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2"
-                    >
-                      <span className={`material-symbols-outlined text-base ${iconColor}`}>{icon}</span>
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+            <ImportExportDropdown
+              onImportClick={() => fileInputRef.current?.click()}
+              importLabel="Nhập từ file"
+              onExportExcel={() => handleExportFile('xlsx')}
+              onExportCsv={() => handleExportFile('csv')}
+              onExportPdf={() => handleExportFile('pdf')}
+              onExportWord={() => handleExportFile('docx')}
+              buttonClassName="!h-8 !px-2"
+            />
           </div>
         </div>
 
@@ -2952,37 +2949,15 @@ const hasSyncedRef = useRef(false);
               <span className="material-symbols-outlined text-base">add</span>
               <span>Thêm đầu mục</span>
             </button>
-            <div className="relative flex-shrink-0">
-              <button
-                onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
-                title="Xuất file"
-                className="flex items-center justify-center gap-1 border border-emerald-200 bg-emerald-50 text-emerald-800 px-2.5 py-1 rounded-lg text-[11px] font-bold hover:bg-emerald-100 transition-all shadow-xs whitespace-nowrap h-7"
-              >
-                <span className="material-symbols-outlined text-base text-emerald-700">download</span>
-                <span>Xuất file</span>
-                <span className="material-symbols-outlined text-sm">expand_more</span>
-              </button>
-
-              {isExportMenuOpen && (
-                <div className="absolute right-0 mt-1 w-44 bg-white border border-slate-200 rounded-xl shadow-xl z-50 p-1 space-y-0.5">
-                  {([
-                    ['xlsx', 'Excel (.xlsx)', 'table_view'],
-                    ['csv', 'CSV (.csv)', 'csv'],
-                    ['pdf', 'PDF (.pdf)', 'picture_as_pdf'],
-                    ['docx', 'Word (.docx)', 'description'],
-                  ] as Array<[ExportFileFormat, string, string]>).map(([format, label, icon]) => (
-                    <button
-                      key={format}
-                      onClick={() => handleExportFile(format)}
-                      className="w-full text-left px-4 py-2 rounded-lg text-[13px] font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-2"
-                    >
-                      <span className="material-symbols-outlined text-sm text-emerald-600">{icon}</span>
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+            <ImportExportDropdown
+              onImportClick={() => fileInputRef.current?.click()}
+              importLabel="Nhập từ file"
+              onExportExcel={() => handleExportFile('xlsx')}
+              onExportCsv={() => handleExportFile('csv')}
+              onExportPdf={() => handleExportFile('pdf')}
+              onExportWord={() => handleExportFile('docx')}
+              buttonClassName="!h-7 !px-2.5"
+            />
           </div>
         </div>
       </div>
@@ -3009,43 +2984,43 @@ const hasSyncedRef = useRef(false);
         >
           <table className="min-w-[1350px] w-full text-left border-collapse text-[11px] table-fixed" style={{ "--stt-width": `${maxSttWidth}px` } as React.CSSProperties}>
             <colgroup>
-              <col style={{ width: "var(--stt-width)" }} />
-              <col style={{ width: 320, minWidth: 260 }} />
-              <col style={{ width: 45 }} />
-              <col style={{ width: 60 }} />
-              <col style={{ width: 52 }} />
-              <col style={{ width: 125 }} />
-              <col style={{ width: 125 }} />
+              <col style={{ width: colWidths.col_stt }} />
+              <col style={{ width: colWidths.col_content }} />
+              <col style={{ width: colWidths.col_qty }} />
+              <col style={{ width: colWidths.col_unit }} />
+              <col style={{ width: colWidths.col_percent }} />
+              <col style={{ width: colWidths.col_order_status }} />
+              <col style={{ width: colWidths.col_progress }} />
                {(hasPermission(authStore.user, 'ASSIGN_TASKS') || tasks.some(task => isUserTaskAssignee(authStore.user, task, engineers))) && (
                 <>
-                  <col style={{ width: 165 }} />
-                  <col style={{ width: 130 }} />
-                  <col style={{ width: 120 }} />
-                  <col style={{ width: 110 }} />
+                  <col style={{ width: colWidths.col_assign }} />
+                  <col style={{ width: colWidths.col_start_date }} />
+                  <col style={{ width: colWidths.col_deadline }} />
+                  <col style={{ width: colWidths.col_finish_date }} />
                 </>
               )}
-              <col style={{ width: 90 }} />
-              <col style={{ width: 135 }} />
+              <col style={{ width: colWidths.col_note }} />
+              <col style={{ width: colWidths.col_updated_by }} />
             </colgroup>
             <thead className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200 text-[10px] font-bold text-slate-500 uppercase">
               <tr>
-                <th style={{ width: "var(--stt-width)", minWidth: "var(--stt-width)", maxWidth: "var(--stt-width)" }} className="py-2 px-0 bg-slate-50 text-center border-b border-r border-slate-200 whitespace-nowrap tracking-tighter">STT</th>
-                <th className="sticky left-0 z-30 py-2 px-2 min-w-[260px] bg-slate-50 border-b border-r border-slate-200 whitespace-normal shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">NỘI DUNG</th>
-                <th className="py-2 px-0.5 w-[45px] text-center border-b border-r border-slate-200 whitespace-nowrap">KL</th>
-                <th className="py-2 px-0.5 w-[60px] min-w-[60px] text-center border-b border-r border-slate-200 whitespace-nowrap">ĐVT</th>
-                <th className="py-2 px-1 w-[52px] min-w-[52px] text-center border-b border-r border-slate-200 whitespace-nowrap">%</th>
-                <th className="py-2 px-2 w-[125px] min-w-[125px] text-center border-b border-r border-slate-200 whitespace-nowrap">TT ĐẶT HÀNG</th>
-                <th className="py-2 px-2 w-[125px] min-w-[125px] text-center border-b border-r border-slate-200 whitespace-nowrap">TĐ THI CÔNG</th>
+                <th style={{ width: "var(--stt-width)", minWidth: "var(--stt-width)", maxWidth: "var(--stt-width)" }} className="relative py-2 px-0 bg-slate-50 text-center border-b border-r border-slate-200 whitespace-nowrap tracking-tighter">STT<ColumnResizeHandle onMouseDown={(e) => startTaskColResize('col_stt', e)} /></th>
+                <th className="relative sticky left-0 z-30 py-2 px-2 min-w-[260px] bg-slate-50 border-b border-r border-slate-200 whitespace-normal shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">NỘI DUNG<ColumnResizeHandle onMouseDown={(e) => startTaskColResize('col_content', e)} /></th>
+                <th className="relative py-2 px-0.5 w-[45px] text-center border-b border-r border-slate-200 whitespace-nowrap">KL<ColumnResizeHandle onMouseDown={(e) => startTaskColResize('col_qty', e)} /></th>
+                <th className="relative py-2 px-0.5 w-[60px] min-w-[60px] text-center border-b border-r border-slate-200 whitespace-nowrap">ĐVT<ColumnResizeHandle onMouseDown={(e) => startTaskColResize('col_unit', e)} /></th>
+                <th className="relative py-2 px-1 w-[52px] min-w-[52px] text-center border-b border-r border-slate-200 whitespace-nowrap">%<ColumnResizeHandle onMouseDown={(e) => startTaskColResize('col_percent', e)} /></th>
+                <th className="relative py-2 px-2 w-[125px] min-w-[125px] text-center border-b border-r border-slate-200 whitespace-nowrap">TT ĐẶT HÀNG<ColumnResizeHandle onMouseDown={(e) => startTaskColResize('col_order_status', e)} /></th>
+                <th className="relative py-2 px-2 w-[125px] min-w-[125px] text-center border-b border-r border-slate-200 whitespace-nowrap">TĐ THI CÔNG<ColumnResizeHandle onMouseDown={(e) => startTaskColResize('col_progress', e)} /></th>
                  {(hasPermission(authStore.user, 'ASSIGN_TASKS') || tasks.some(task => isUserTaskAssignee(authStore.user, task, engineers))) && (
                     <>
-                      <th className="py-2 px-2 w-[165px] min-w-[165px] text-center border-b border-r border-slate-200 whitespace-nowrap">GIAO VIỆC</th>
-                      <th className="py-2 px-2 w-[130px] min-w-[130px] text-center border-b border-r border-slate-200 whitespace-nowrap">BẮT ĐẦU NHẬN VIỆC</th>
-                      <th className="py-2 px-2 w-[120px] min-w-[120px] text-center border-b border-r border-slate-200 whitespace-nowrap">HẠN HOÀN THÀNH</th>
-                      <th className="py-2 px-2 w-[110px] min-w-[110px] text-center border-b border-r border-slate-200 whitespace-nowrap">HOÀN THÀNH</th>
+                      <th className="relative py-2 px-2 w-[165px] min-w-[165px] text-center border-b border-r border-slate-200 whitespace-nowrap">GIAO VIỆC<ColumnResizeHandle onMouseDown={(e) => startTaskColResize('col_assign', e)} /></th>
+                      <th className="relative py-2 px-2 w-[130px] min-w-[130px] text-center border-b border-r border-slate-200 whitespace-nowrap">BẮT ĐẦU NHẬN VIỆC<ColumnResizeHandle onMouseDown={(e) => startTaskColResize('col_start_date', e)} /></th>
+                      <th className="relative py-2 px-2 w-[120px] min-w-[120px] text-center border-b border-r border-slate-200 whitespace-nowrap">HẠN HOÀN THÀNH<ColumnResizeHandle onMouseDown={(e) => startTaskColResize('col_deadline', e)} /></th>
+                      <th className="relative py-2 px-2 w-[110px] min-w-[110px] text-center border-b border-r border-slate-200 whitespace-nowrap">HOÀN THÀNH<ColumnResizeHandle onMouseDown={(e) => startTaskColResize('col_finish_date', e)} /></th>
                     </>
                   )}
-                <th className="bg-slate-50 py-2 px-1 w-[90px] min-w-[85px] border-b border-r border-slate-200 whitespace-nowrap text-center">GHI CHÚ</th>
-                <th className="py-2 px-1 w-[135px] border-b border-slate-200 whitespace-nowrap text-center">NGƯỜI CẬP NHẬT</th>
+                <th className="relative bg-slate-50 py-2 px-1 w-[90px] min-w-[85px] border-b border-r border-slate-200 whitespace-nowrap text-center">GHI CHÚ<ColumnResizeHandle onMouseDown={(e) => startTaskColResize('col_note', e)} /></th>
+                <th className="relative py-2 px-1 w-[135px] border-b border-slate-200 whitespace-nowrap text-center">NGƯỜI CẬP NHẬT<ColumnResizeHandle onMouseDown={(e) => startTaskColResize('col_updated_by', e)} /></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 font-medium text-slate-700">
@@ -3067,7 +3042,7 @@ const hasSyncedRef = useRef(false);
                     return (
                       <tr key={t.id} className="group bg-[#eff6ff] border-t-2 border-b border-blue-200 font-bold text-primary">
                         <td onClick={() => handleOpenEditModal(t)} style={{ width: "var(--stt-width)", minWidth: "var(--stt-width)", maxWidth: "var(--stt-width)" }} className="py-2 px-0 bg-[#eff6ff] border-r border-blue-200 text-center font-mono font-extrabold text-[11px] text-primary cursor-pointer hover:underline whitespace-nowrap tracking-tighter" title={String((t as any).computedStt || t.stt)}>{(t as any).computedStt || t.stt}</td>
-                        <td className="sticky left-0 z-10 py-2 px-2 bg-[#eff6ff] uppercase tracking-tight font-extrabold text-xs text-primary border-r border-blue-200 min-w-[260px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                        <td className="sticky left-0 z-10 py-2 px-2 bg-[#eff6ff] uppercase tracking-tight font-extrabold text-xs text-primary border-r border-blue-200 min-w-[260px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] relative">
                           <div className="flex items-center gap-1.5 min-w-0 w-full">
                             <button
                               onClick={(e) => { e.stopPropagation(); toggleSection(t._sectionKey || ''); }}
@@ -3080,7 +3055,7 @@ const hasSyncedRef = useRef(false);
                             <span onClick={() => handleOpenEditModal(t)} className="cursor-pointer hover:underline flex-1 min-w-[160px] whitespace-normal break-words leading-tight" title={t.name}>
                               {formatSectionTitle(t.stt, t.name)}
                             </span>
-                            <div className="hidden group-hover:flex items-center gap-1 flex-shrink-0">
+                            <div className="absolute right-1.5 top-1/2 -translate-y-1/2 hidden group-hover:flex items-center gap-1 bg-[#eff6ff]/95 backdrop-blur-xs pl-2 py-0.5 shadow-[-6px_0_10px_-2px_#eff6ff] z-20">
                               {hasPermission(authStore.user, 'ASSIGN_TASKS') && (
                                 <button
                                   onClick={(e) => {
@@ -3094,7 +3069,7 @@ const hasSyncedRef = useRef(false);
                                     setAssignNote('');
                                     setAssigningUserIds([]);
                                   }}
-                                  className="px-1.5 py-0.5 rounded bg-primary text-white hover:bg-primary/90 text-[10px] font-bold transition-all inline-flex items-center gap-0.5 shadow-xs cursor-pointer"
+                                  className="px-1.5 py-0.5 rounded bg-primary text-white hover:bg-primary/90 text-[10px] font-bold transition-all inline-flex items-center gap-0.5 shadow-xs cursor-pointer whitespace-nowrap"
                                   title="Giao toàn bộ công việc trong đầu mục này"
                                 >
                                   <span className="material-symbols-outlined text-[12px]">assignment_ind</span>
@@ -3185,7 +3160,7 @@ const hasSyncedRef = useRef(false);
                           <span onClick={() => startEditing(t.id, 'stt', (t as any).computedStt || t.stt)} className="cursor-pointer hover:bg-slate-200/50 block w-full px-0 whitespace-nowrap tracking-tighter text-center" title={String((t as any).computedStt || t.stt || idx + 1)}>{(t as any).computedStt || t.stt || idx + 1}</span>
                         )}
                       </td>
-                      <td className={`sticky left-0 z-10 py-1.5 px-2 ${stickyBg} group-hover:bg-slate-100 border-r border-slate-200 whitespace-normal break-words ${fontStyle} shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]`} title={t.name}>
+                      <td className={`sticky left-0 z-10 py-1.5 px-2 ${stickyBg} group-hover:bg-slate-100 border-r border-slate-200 whitespace-normal break-words ${fontStyle} shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] relative`} title={t.name}>
                         {editingCell?.id === t.id && editingCell?.field === 'name' ? (
                           <input type="text" value={tempValue} onChange={(e) => setTempValue(e.target.value)} onBlur={() => saveEditing(t)} onKeyDown={(e) => { if (e.key === 'Enter') saveEditing(t); if (e.key === 'Escape') setEditingCell(null); }} autoFocus className="w-full border rounded px-1 py-0.5 bg-white text-slate-900 focus:outline-primary text-[12px] font-medium" />
                         ) : (
@@ -3193,7 +3168,7 @@ const hasSyncedRef = useRef(false);
                             <div className="flex items-center gap-1 min-w-0 w-full">
                               {depth > 1 && <span className="material-symbols-outlined text-[12px] text-slate-400 flex-shrink-0">subdirectory_arrow_right</span>}
                               <span onClick={() => startEditing(t.id, 'name', t.name)} className="flex-1 min-w-0 cursor-pointer hover:underline hover:text-blue-600 block break-words leading-snug">{t.name}</span>
-                              <div className="hidden group-hover:flex items-center gap-0.5 flex-shrink-0">
+                              <div className="absolute right-1.5 top-1/2 -translate-y-1/2 hidden group-hover:flex items-center gap-0.5 bg-white/95 group-hover:bg-slate-100/95 backdrop-blur-xs pl-2 py-0.5 shadow-[-6px_0_10px_-2px_rgba(241,245,249,0.9)] z-20">
                                 <button onClick={(e) => { e.stopPropagation(); handleAddSubtask(t); }} className="p-0.5 rounded text-slate-400 hover:text-blue-600 hover:bg-slate-200 transition-all inline-flex items-center" title="Thêm mục con"><span className="material-symbols-outlined text-[13px]">add_circle</span></button>
                                 <button onClick={(e) => { e.stopPropagation(); confirmDeleteTask(t); }} className="p-0.5 rounded text-slate-400 hover:text-red-600 hover:bg-red-100 transition-all inline-flex items-center" title="Xoá"><span className="material-symbols-outlined text-[13px]">delete</span></button>
                               </div>

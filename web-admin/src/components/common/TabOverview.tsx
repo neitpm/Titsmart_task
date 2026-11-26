@@ -36,7 +36,7 @@ export interface TabOverviewProps {
 
 const TONE_CLASSES: Record<NonNullable<TabOverviewKpi['tone']>, { value: string; activeBorder: string }> = {
   default: { value: 'text-slate-900', activeBorder: 'border-slate-800 bg-slate-50/80' },
-  primary: { value: 'text-primary', activeBorder: 'border-primary bg-blue-50/40' },
+  primary: { value: 'text-blue-900', activeBorder: 'border-blue-900 bg-blue-50/40' },
   danger: { value: 'text-rose-600', activeBorder: 'border-rose-500 bg-rose-50/40' },
   warning: { value: 'text-amber-600', activeBorder: 'border-amber-500 bg-amber-50/40' },
   success: { value: 'text-emerald-600', activeBorder: 'border-emerald-500 bg-emerald-50/40' },
@@ -76,10 +76,10 @@ export const TabOverview: React.FC<TabOverviewProps> = ({
 
   return (
     <div className={`border-b border-slate-200 bg-white ${className}`}>
-      {/* KPI Grid - tối đa 5 cột, sát lề, không gradient, bo nhẹ rounded-md */}
-      <div className="px-2 py-1.5 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1.5">
-        {kpis.slice(0, 5).map((kpi) => {
-          const tone = TONE_CLASSES[kpi.tone || 'default'];
+      {/* KPI Bar - Thiết kế phẳng, các ô chỉ số gắn kết tinh gọn, viền mảnh, không card trôi nổi */}
+      <div className="px-3 py-1.5 flex items-center gap-2 overflow-x-auto custom-scrollbar">
+        {(kpis || []).filter(Boolean).slice(0, 5).map((kpi) => {
+          const tone = TONE_CLASSES[kpi.tone || 'default'] || TONE_CLASSES.default;
           const clickable = Boolean(kpi.onClick);
           return (
             <button
@@ -87,18 +87,18 @@ export const TabOverview: React.FC<TabOverviewProps> = ({
               type="button"
               disabled={!clickable}
               onClick={kpi.onClick}
-              className={`text-left px-2.5 py-1.5 rounded-md border transition-colors ${
+              className={`text-left px-3 py-1 rounded border transition-all shrink-0 ${
                 kpi.active
                   ? tone.activeBorder
-                  : 'border-slate-200 bg-white hover:bg-slate-50/80'
+                  : 'border-slate-200 bg-slate-50/60 hover:bg-slate-100/70 hover:border-slate-300'
               } ${clickable ? 'cursor-pointer' : 'cursor-default'}`}
             >
-              <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 truncate">
+              <div className="text-[11px] font-semibold text-slate-500 truncate">
                 {kpi.label}
               </div>
-              <div className="mt-0.5 flex items-baseline justify-between gap-2">
-                <span className={`text-lg font-extrabold tabular-nums ${loading ? 'opacity-50' : ''} ${tone.value}`}>
-                  {kpi.value}
+              <div className="flex items-baseline gap-2">
+                <span className={`text-base font-bold tabular-nums ${loading ? 'opacity-50' : ''} ${tone.value}`}>
+                  {kpi.value ?? 0}
                 </span>
                 {kpi.subValue && (
                   <span className="text-[11px] font-medium text-slate-400 truncate">

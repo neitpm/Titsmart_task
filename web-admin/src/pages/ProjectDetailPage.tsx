@@ -31,8 +31,8 @@ export const ProjectDetailPage: React.FC = () => {
     if (location.pathname.includes('/inventory')) {
       const sp = new URLSearchParams(location.search);
       const tab = sp.get('tab');
-      if (tab === 'import') return 'Nhật ký nhập kho';
-      if (tab === 'export') return 'Nhật ký xuất kho';
+      if (tab === 'import') return 'Nhập kho';
+      if (tab === 'export') return 'Xuất kho';
       return 'Tồn kho tổng hợp';
     }
     return '';
@@ -135,7 +135,7 @@ export const ProjectDetailPage: React.FC = () => {
   return (
     <div className="flex-col h-full bg-slate-50 flex overflow-hidden">
       {/* Top Project Bar */}
-      <div className="bg-white border-b border-slate-200 px-3 md:px-6 pr-3 md:pr-20 py-2 md:py-0 min-h-[3rem] flex items-center justify-between gap-2 shrink-0 relative z-30 no-drag-region electron-no-drag" style={{ WebkitAppRegion: 'no-drag' } as any}>
+      <div className="bg-white border-b border-slate-200 px-3 md:px-6 pr-3 md:pr-14 py-2 md:py-0 min-h-[3rem] flex items-center justify-between gap-2 shrink-0 relative z-40 no-drag-region electron-no-drag" style={{ WebkitAppRegion: 'no-drag' } as any}>
         <div className="flex items-center gap-2 min-w-0 flex-1">
           <Link
             to="/projects"

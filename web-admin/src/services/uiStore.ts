@@ -26,6 +26,11 @@ interface UIStoreState {
   isApplyingBranding: boolean;
   tablePaginationMode: 'infinite' | 'pagination';
   tablePageSize: number;
+  enableTableColumnResize: boolean;
+  tableColumnWidths: Record<string, Record<string, number>>;
+  setEnableTableColumnResize: (val: boolean) => void;
+  setTableColumnWidths: (tableId: string, widths: Record<string, number>) => void;
+  resetTableColumnWidths: (tableId?: string) => void;
   setAppViewMode: (val: UIStoreState['appViewMode']) => void;
   setTablePaginationMode: (val: 'infinite' | 'pagination') => void;
   setTablePageSize: (val: number) => void;
@@ -79,6 +84,23 @@ export const useUIStore = create<UIStoreState>()(
       tablePaginationMode: 'infinite',
       tablePageSize: 25,
       appViewMode: 'grid',
+      enableTableColumnResize: false,
+      tableColumnWidths: {},
+      setEnableTableColumnResize: (val) => set({ enableTableColumnResize: val }),
+      setTableColumnWidths: (tableId, widths) =>
+        set((state) => ({
+          tableColumnWidths: {
+            ...state.tableColumnWidths,
+            [tableId]: widths,
+          },
+        })),
+      resetTableColumnWidths: (tableId) =>
+        set((state) => {
+          if (!tableId) return { tableColumnWidths: {} };
+          const next = { ...state.tableColumnWidths };
+          delete next[tableId];
+          return { tableColumnWidths: next };
+        }),
       setTablePaginationMode: (val) => set({ tablePaginationMode: val }),
       setTablePageSize: (val) => set({ tablePageSize: val }),
       setAppViewMode: (val) => set({ appViewMode: val }),
@@ -169,6 +191,8 @@ export const useUIStore = create<UIStoreState>()(
         tablePaginationMode: state.tablePaginationMode,
         tablePageSize: state.tablePageSize,
         appViewMode: state.appViewMode,
+        enableTableColumnResize: state.enableTableColumnResize,
+        tableColumnWidths: state.tableColumnWidths,
       }),
     }
   )
