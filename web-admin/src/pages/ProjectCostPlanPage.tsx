@@ -23,6 +23,7 @@ import { PullToRefresh } from '../components/common/PullToRefresh';
 import { FileViewerItem } from '../components/common/FileViewerItem';
 import { parseInvoiceUrls, serializeInvoiceUrls } from '../utils/fileUploadHelper';
 import { isHighestLevelPerson, isTechnicalAdminUser, getHighestRankLeader } from '../utils/taskPermission';
+import { numberToVietnameseWords } from '../utils/currencyToWords';
 
 
 const romanToNumber = (value?: string) => {
@@ -5626,6 +5627,25 @@ export const ProjectCostPlanPage: React.FC = () => {
                   đ
                 </span>
               </div>
+              {(() => {
+                const num = Number(String(fundRequestForm.amount || '').replace(/\D/g, ''));
+                if (!num || num <= 0) return null;
+                const words = numberToVietnameseWords(num);
+                const isVeryHigh = num >= 1_000_000_000; // >= 1 tỷ VNĐ
+                return (
+                  <div className="mt-1">
+                    <div className="text-[11px] font-semibold text-slate-600 italic">
+                      Bằng chữ: <span className="text-primary font-bold">{words}</span>
+                    </div>
+                    {isVeryHigh && (
+                      <div className="mt-0.5 text-[10px] font-bold text-rose-600 bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded flex items-center gap-1">
+                        <span className="material-symbols-outlined text-[12px]">warning</span>
+                        <span>CẢNH BÁO: Số tiền trên 1 TỶ ĐỒNG. Vui lòng kiểm tra lại để tránh nhầm lẫn!</span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
             <div>
               <label className="block text-xs font-bold mb-1">Ngày cần tiền *</label>
@@ -6000,6 +6020,7 @@ export const ProjectCostPlanPage: React.FC = () => {
                     const isApprovedWaitingAcc = status === 'APPROVED_WAITING_ACCOUNTING';
                     const isAccountingProcessing = status === 'ACCOUNTING_PROCESSING';
                     const isTransferredWaiting = status === 'TRANSFERRED_WAITING_CONFIRMATION';
+                    const isDiscrepancy = status === 'DISCREPANCY_PENDING_REVIEW';
                     const isCompleted = status === 'COMPLETED' || status === 'APPROVED';
                     const isRejected = status === 'REJECTED';
 
@@ -6116,6 +6137,11 @@ export const ProjectCostPlanPage: React.FC = () => {
                           {isTransferredWaiting && (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200">
                               Đã chuyển - Chờ xác nhận
+                            </span>
+                          )}
+                          {isDiscrepancy && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-300 animate-pulse">
+                              ⚠ Cần đối soát (Lệch tiền)
                             </span>
                           )}
                           {isCompleted && (
@@ -6300,33 +6326,27 @@ export const ProjectCostPlanPage: React.FC = () => {
                               </>
                             )}
 
-                            {/* BƯỚC 3: KẾ TOÁN XỬ LÝ */}
-                            {(isApprovedWaitingAcc || isAccountingProcessing) && canDoTransfer && (
+                            {/* BƯỚC 3: KẾ TOÁN XỬ LÝ (HOẶC XỬ LÝ LẠI KHI CẦN ĐỐI SOÁT) */}
+                            {(isApprovedWaitingAcc || isAccountingProcessing || isDiscrepancy) && canDoTransfer && (
                               <>
-                                {isApprovedWaitingAcc && (
+                                {(isApprovedWaitingAcc || isDiscrepancy) && (
                                   <button
                                     type="button"
                                     onClick={async () => {
                                       const nowIso = new Date().toISOString();
                                       const auditEntry = {
-                                        action: 'KẾ TOÁN TIẾP NHẬN XỬ LÝ',
+                                        action: isDiscrepancy ? 'KẾ TOÁN TIẾP NHẬN ĐỐI SOÁT' : 'KẾ TOÁN TIẾP NHẬN XỬ LÝ',
                                         actorId: user?.id || '',
                                         actorName: reviewerName,
                                         actorRole: 'Kế toán',
                                         timestamp: nowIso,
-                                        note: 'Kế toán đã tiếp nhận hồ sơ và đang làm thủ tục chuyển khoản ngân hàng.'
+                                        note: isDiscrepancy 
+                                          ? 'Kế toán đã tiếp nhận hồ sơ đối soát chênh lệch và đang kiểm tra đối chiếu lại với ngân hàng.'
+                                          : 'Kế toán đã tiếp nhận hồ sơ và đang làm thủ tục chuyển khoản ngân hàng.'
                                       };
 
                                       if (req.id && !req.id.startsWith('notif-') && !req.id.startsWith('fund-')) {
                                         try {
-                                          // 1. Kiểm tra trạng thái thực tế từ server trước khi gọi RPC
-                                          const latest = await api.fundRequests.getById(req.id);
-                                          if (latest && latest.status !== 'APPROVED_WAITING_ACCOUNTING' && latest.status !== 'APPROVED') {
-                                            await fetchFundRequests(1, false);
-                                            triggerToast(`Yêu cầu chưa được Lãnh đạo duyệt trên Database (Trạng thái thực tế: ${latest.status || 'Chờ kiểm tra'}). Đang làm mới danh sách...`, 'warning');
-                                            return;
-                                          }
-
                                           await api.fundRequests.review(req.id, {
                                             status: 'ACCOUNTING_PROCESSING',
                                             accountantId: user?.id,
@@ -6359,36 +6379,12 @@ export const ProjectCostPlanPage: React.FC = () => {
                                         history: [...(r.history || []), auditEntry]
                                       } : r));
 
-                                      if (addNotification) {
-                                        const nowTimeStr = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) + ' ' + new Date().toLocaleDateString('vi-VN');
-                                        const pCodeParam = req.projectCode || selectedProject || '';
-                                        const linkBase = pCodeParam
-                                          ? `/projects/${encodeURIComponent(pCodeParam)}/cost-plan?tab=EXPENSE&openFundRequests=true&fundId=${encodeURIComponent(req.id)}`
-                                          : `/cost-plan?tab=EXPENSE&openFundRequests=true&fundId=${encodeURIComponent(req.id)}`;
-
-                                        const targetAccRecipients = [
-                                          { id: req.creatorId, name: req.creatorName },
-                                          { id: req.reviewerId, name: req.reviewerName }
-                                        ].filter(r => r.id || r.name);
-                                        for (const rec of targetAccRecipients) {
-                                          await addNotification({
-                                            title: `Kế toán tiếp nhận xử lý cấp quỹ: ${pName}`,
-                                            message: `Kế toán: ${reviewerName} đã tiếp nhận hồ sơ lúc ${nowTimeStr}. Yêu cầu cấp quỹ của ${req.creatorName} số tiền ${numericAmount.toLocaleString('vi-VN')} đ. Trạng thái: Kế toán đang xử lý thủ tục chuyển khoản.`,
-                                            type: `fund_request_processing:::${rec.id || ''}:::${rec.name || ''}`,
-                                            icon: 'account_balance',
-                                            link: linkBase,
-                                            senderId: user?.id,
-                                            senderName: reviewerName
-                                          }).catch(() => {});
-                                        }
-                                      }
-
-                                      triggerToast('Đã tiếp nhận xử lý chuyển khoản!', 'info');
+                                      triggerToast(isDiscrepancy ? 'Đã tiếp nhận hồ sơ đối soát!' : 'Đã tiếp nhận xử lý chuyển khoản!', 'info');
                                     }}
                                     className="px-1.5 py-1 rounded bg-amber-600 hover:bg-amber-700 text-white font-bold text-[10px] active:scale-95 transition-all"
                                     title="Kế toán xác nhận tiếp nhận hồ sơ"
                                   >
-                                    Tiếp nhận
+                                    {isDiscrepancy ? 'Đối soát' : 'Tiếp nhận'}
                                   </button>
                                 )}
                                 <button
@@ -6397,23 +6393,23 @@ export const ProjectCostPlanPage: React.FC = () => {
                                     setFundRequestTransferModal({
                                       isOpen: true,
                                       req,
-                                      actualAmount: req.amount ? Number(req.amount).toLocaleString('vi-VN') : '',
+                                      actualAmount: req.actualReceivedAmount ? Number(req.actualReceivedAmount).toLocaleString('vi-VN') : req.amount ? Number(req.amount).toLocaleString('vi-VN') : '',
                                       transferDate: new Date().toISOString().split('T')[0],
-                                      txCode: '',
+                                      txCode: req.transactionCode || '',
                                       docUrl: req.transferDocUrl || '',
-                                      note: ''
+                                      note: isDiscrepancy ? 'Chuyển bổ sung / điều chỉnh chênh lệch' : ''
                                     });
                                   }}
                                   className="px-2 py-1 rounded bg-purple-600 hover:bg-purple-700 text-white font-bold text-[10px] shadow-xs active:scale-95 transition-all"
                                   title="Kế toán chuyển khoản và bắt buộc tải lên chứng từ UNC"
                                 >
-                                  Đã chuyển & Tải UNC
+                                  {isDiscrepancy ? 'Chuyển bù & UNC' : 'Đã chuyển & Tải UNC'}
                                 </button>
                               </>
                             )}
 
                             {/* BƯỚC 4: NGƯỜI TẠO XÁC NHẬN NHẬN TIỀN */}
-                            {isTransferredWaiting && canDoConfirm && (
+                            {(isTransferredWaiting || isDiscrepancy) && canDoConfirm && (
                               <button
                                 type="button"
                                 onClick={() => {
@@ -6521,6 +6517,7 @@ export const ProjectCostPlanPage: React.FC = () => {
                 const isApprovedWaitingAcc = status === 'APPROVED_WAITING_ACCOUNTING';
                 const isAccountingProcessing = status === 'ACCOUNTING_PROCESSING';
                 const isTransferredWaiting = status === 'TRANSFERRED_WAITING_CONFIRMATION';
+                const isDiscrepancy = status === 'DISCREPANCY_PENDING_REVIEW';
                 const isCompleted = status === 'COMPLETED' || status === 'APPROVED';
                 const isRejected = status === 'REJECTED';
 
@@ -6615,6 +6612,11 @@ export const ProjectCostPlanPage: React.FC = () => {
                           {isTransferredWaiting && (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200">
                               Đã chuyển - Chờ xác nhận
+                            </span>
+                          )}
+                          {isDiscrepancy && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-300 animate-pulse">
+                              ⚠ Cần đối soát (Lệch tiền)
                             </span>
                           )}
                           {isCompleted && (
@@ -7486,14 +7488,14 @@ export const ProjectCostPlanPage: React.FC = () => {
 
               triggerToast(`Đã xác nhận nhận đủ tiền và nạp ${targetAmount.toLocaleString('vi-VN')} đ vào quỹ dự án!`, 'success');
             } else {
-              // Nhận thiếu hoặc chưa nhận được tiền -> Ghi nhận phản hồi và gửi thông báo cho Kế toán & Lãnh đạo đối soát
+              // Nhận thiếu hoặc chưa nhận được tiền -> Chuyển sang trạng thái chính thức: DISCREPANCY_PENDING_REVIEW (Đang đối soát)
               const recAmount = Number(String(fundRequestConfirmModal.actualReceivedAmount || '').replace(/\D/g, '')) || 0;
               const statusDesc = fundRequestConfirmModal.receiptStatus === 'PARTIAL'
                 ? `Nhận thiếu (Thực nhận: ${recAmount.toLocaleString('vi-VN')} đ / Đề nghị: ${targetAmount.toLocaleString('vi-VN')} đ)`
                 : `Chưa nhận được tiền`;
 
               const auditEntry = {
-                action: `PHẢN HỒI NHẬN TIỀN: ${statusDesc.toUpperCase()}`,
+                action: `CẢNH BÁO ĐỐI SOÁT: ${statusDesc.toUpperCase()}`,
                 actorId: user?.id || '',
                 actorName: reviewerName,
                 actorRole: 'Người nhận / Người tạo',
@@ -7506,19 +7508,27 @@ export const ProjectCostPlanPage: React.FC = () => {
               if (req.id && !req.id.startsWith('notif-') && !req.id.startsWith('fund-')) {
                 try {
                   await api.fundRequests.review(req.id, {
+                    status: 'DISCREPANCY_PENDING_REVIEW',
+                    actualReceivedAmount: recAmount,
                     auditEntry
                   });
                 } catch (err: any) {
-                  console.error('Lỗi khi ghi nhận phản hồi:', err);
+                  console.error('Lỗi khi ghi nhận đối soát:', err);
+                  triggerToast(err?.message || 'Lỗi khi cập nhật trạng thái đối soát', 'warning');
+                  return;
                 }
               }
 
               cachedFundRequests = cachedFundRequests.map(r => r.id === req.id ? {
                 ...r,
+                status: 'DISCREPANCY_PENDING_REVIEW',
+                actualReceivedAmount: recAmount,
                 history: [...(r.history || []), auditEntry]
               } : r);
               setFundRequests(prev => prev.map(r => r.id === req.id ? {
                 ...r,
+                status: 'DISCREPANCY_PENDING_REVIEW',
+                actualReceivedAmount: recAmount,
                 history: [...(r.history || []), auditEntry]
               } : r));
 
@@ -7640,6 +7650,16 @@ export const ProjectCostPlanPage: React.FC = () => {
                   đ
                 </span>
               </div>
+              {(() => {
+                const num = Number(String(fundRequestConfirmModal.actualReceivedAmount || '').replace(/\D/g, ''));
+                if (!num || num <= 0) return null;
+                const words = numberToVietnameseWords(num);
+                return (
+                  <div className="mt-1 text-[11px] font-semibold text-slate-600 italic">
+                    Bằng chữ: <span className="text-emerald-700 font-bold">{words}</span>
+                  </div>
+                );
+              })()}
             </div>
           )}
 
@@ -7870,6 +7890,16 @@ export const ProjectCostPlanPage: React.FC = () => {
                   đ
                 </span>
               </div>
+              {(() => {
+                const num = Number(String(fundRequestConfirmModal.actualReceivedAmount || '').replace(/\D/g, ''));
+                if (!num || num <= 0) return null;
+                const words = numberToVietnameseWords(num);
+                return (
+                  <div className="mt-1 text-[11px] font-semibold text-slate-600 italic">
+                    Bằng chữ: <span className="text-emerald-700 font-bold">{words}</span>
+                  </div>
+                );
+              })()}
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-800 mb-1">
