@@ -45,6 +45,7 @@ DECLARE
   v_audit_entry jsonb;
   v_history jsonb;
   v_is_accountant boolean;
+  v_is_chief_accountant boolean;
   v_has_approve_perm boolean;
   v_has_check_perm boolean;
   v_has_transfer_perm boolean;
@@ -115,6 +116,12 @@ BEGIN
   v_is_accountant := lower(COALESCE(v_user_role, '')) LIKE '%kế toán%' 
     OR v_has_transfer_perm 
     OR (v_has_transfer_perm AND NOT v_has_approve_perm AND NOT v_is_admin);
+
+  -- Nhận diện Kế toán trưởng: Toàn quyền phòng kế toán (xử lý thay mọi đơn được chỉ định)
+  v_is_chief_accountant := lower(COALESCE(v_user_role, '')) LIKE '%kế toán trưởng%'
+    OR lower(COALESCE(v_user_role, '')) LIKE '%trưởng phòng kế toán%'
+    OR lower(COALESCE(v_user_role, '')) LIKE '%phó phòng kế toán%'
+    OR v_is_admin;
 
   -- 3. Khóa và đọc bản ghi yêu cầu cấp quỹ (FOR UPDATE đảm bảo an toàn đồng thời - chống thao tác kép)
   SELECT id, action INTO v_row
@@ -247,10 +254,23 @@ BEGIN
   END IF;
 
   -- BƯỚC 3: KẾ TOÁN XỬ LÝ (Tiếp nhận / Chuyển khoản)
-  -- Cho phép Kế toán trưởng / nhân sự có vai trò Kế toán hoặc quyền transfer xử lý
+  -- Phân cấp: Kế toán trưởng hoặc Lãnh đạo có toàn quyền xử lý tất cả đơn.
+  -- Kế toán viên thông thường chỉ được xử lý đơn chỉ định đích danh cho mình hoặc đơn chuyển cho Kế toán chung.
   IF p_target_status IN ('ACCOUNTING_PROCESSING', 'TRANSFERRED_WAITING_CONFIRMATION') THEN
     IF NOT v_is_accountant AND NOT v_has_transfer_perm AND NOT v_is_admin THEN
       RAISE EXCEPTION 'Phân quyền: Bạn cần có quyền chuyển tiền hoặc vai trò Kế toán để thực hiện thao tác này.';
+    END IF;
+
+    -- Kiểm tra phân cấp kế toán: nếu đã chỉ định kế toán cụ thể mà không phải Kế toán trưởng
+    IF NOT v_is_chief_accountant THEN
+      IF v_assigned_accountant_id IS NOT NULL 
+         AND trim(v_assigned_accountant_id) <> '' 
+         AND v_assigned_accountant_id <> v_user_id 
+         AND v_assigned_accountant_id <> v_auth_uid::text 
+         AND lower(COALESCE(v_action->>'accountantName', '')) NOT LIKE '%kế toán chung%'
+         AND lower(COALESCE(v_action->>'accountantName', '')) NOT LIKE '%bộ phận kế toán%' THEN
+        RAISE EXCEPTION 'Phân quyền: Đơn này đã được chỉ định đích danh cho kế toán khác (%) xử lý.', COALESCE(v_action->>'accountantName', 'khác');
+      END IF;
     END IF;
 
     IF p_target_status = 'TRANSFERRED_WAITING_CONFIRMATION' THEN

@@ -6064,7 +6064,25 @@ export const ProjectCostPlanPage: React.FC = () => {
                     const canDoCheck = isHighLeader || (!isCreator && !isPureAccountant && (isChecker || canCheckPerm));
                     const canDoApprove = isHighLeader || (!isCreator && !isPureAccountant && (!isChecker || allowDualRole) && (isReviewer || canApprovePerm));
                     const isAccountantRoleOrPerm = userRoleStr.includes('kế toán') || userTitleStr.includes('kế toán') || canTransferPerm;
-                    const canDoTransfer = isHighLeader || isAccountant || isAccountantRoleOrPerm;
+
+                    // Phân cấp Kế toán: Kế toán trưởng có toàn quyền xử lý tất cả đơn, còn Kế toán viên chỉ xử lý đơn chỉ định cho mình hoặc đơn kế toán chung
+                    const isChiefAccountant = isHighLeader || (
+                      userRoleStr.includes('kế toán trưởng') ||
+                      userTitleStr.includes('kế toán trưởng') ||
+                      userRoleStr.includes('trưởng phòng kế toán') ||
+                      userTitleStr.includes('trưởng phòng kế toán') ||
+                      userRoleStr.includes('phó phòng kế toán') ||
+                      userTitleStr.includes('phó phòng kế toán')
+                    );
+
+                    // Đơn chưa chỉ định đích danh (để trống hoặc ghi Kế toán chung)
+                    const isGeneralAccountantRequest = !req.accountantId || 
+                      !req.accountantName || 
+                      normalizeStr(req.accountantName).includes('kế toán chung') || 
+                      normalizeStr(req.accountantName).includes('bộ phận kế toán');
+
+                    // Kế toán viên chỉ được thao tác nếu: là Kế toán trưởng, hoặc đơn là Kế toán chung, hoặc chính đích danh mình được chỉ định
+                    const canDoTransfer = isHighLeader || isChiefAccountant || (isAccountantRoleOrPerm && (isAccountant || isGeneralAccountantRequest));
                     const canDoConfirm = isHighLeader || isCreator;
 
                     const curProjObj = projects.find(p => p.code === (req.projectCode || selectedProject));
@@ -6561,7 +6579,25 @@ export const ProjectCostPlanPage: React.FC = () => {
                 const canDoCheck = isHighLeader || (!isCreator && !isPureAccountant && (isChecker || canCheckPerm));
                 const canDoApprove = isHighLeader || (!isCreator && !isPureAccountant && (!isChecker || allowDualRole) && (isReviewer || canApprovePerm));
                 const isAccountantRoleOrPerm = userRoleStr.includes('kế toán') || userTitleStr.includes('kế toán') || canTransferPerm;
-                const canDoTransfer = isHighLeader || isAccountant || isAccountantRoleOrPerm;
+
+                // Phân cấp Kế toán: Kế toán trưởng có toàn quyền xử lý tất cả đơn, còn Kế toán viên chỉ xử lý đơn chỉ định cho mình hoặc đơn kế toán chung
+                const isChiefAccountant = isHighLeader || (
+                  userRoleStr.includes('kế toán trưởng') ||
+                  userTitleStr.includes('kế toán trưởng') ||
+                  userRoleStr.includes('trưởng phòng kế toán') ||
+                  userTitleStr.includes('trưởng phòng kế toán') ||
+                  userRoleStr.includes('phó phòng kế toán') ||
+                  userTitleStr.includes('phó phòng kế toán')
+                );
+
+                // Đơn chưa chỉ định đích danh (để trống hoặc ghi Kế toán chung)
+                const isGeneralAccountantRequest = !req.accountantId || 
+                  !req.accountantName || 
+                  normalizeStr(req.accountantName).includes('kế toán chung') || 
+                  normalizeStr(req.accountantName).includes('bộ phận kế toán');
+
+                // Kế toán viên chỉ được thao tác nếu: là Kế toán trưởng, hoặc đơn là Kế toán chung, hoặc chính đích danh mình được chỉ định
+                const canDoTransfer = isHighLeader || isChiefAccountant || (isAccountantRoleOrPerm && (isAccountant || isGeneralAccountantRequest));
                 const canDoConfirm = isHighLeader || isCreator;
 
                 const curProjObj = projects.find(p => p.code === (req.projectCode || selectedProject));
