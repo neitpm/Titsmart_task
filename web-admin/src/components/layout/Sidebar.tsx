@@ -174,7 +174,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
           }
         },
         {
-          label: 'Yêu cầu chi',
+          label: 'Yêu cầu thanh toán',
           path: `/projects/${currentProject.id}/cost-plan?tab=PAYMENT_REQUEST`,
           icon: 'request_quote',
           isActive: (pathname: string, search: string) => {
@@ -185,7 +185,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
         },
         ...(user?.role !== 'engineer' ? [
           {
-            label: 'Thanh toán',
+            label: 'Theo dõi thanh toán',
             path: `/projects/${currentProject.id}/cost-plan?tab=FINANCE`,
             icon: 'payments',
             isActive: (pathname: string, search: string) => {
