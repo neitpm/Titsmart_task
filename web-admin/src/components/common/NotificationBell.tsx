@@ -536,6 +536,30 @@ export const isNotificationForUser = (notification: any, user: any, engineers: a
   return false;
 };
 
+// Helper phân loại Thông báo (người dùng/nghiệp vụ) vs Cảnh báo (hệ thống/quá hạn/nhắc hạn)
+export const isAlertNotification = (n: any): boolean => {
+  if (!n) return false;
+  const typeStr = String(n.type || '').toLowerCase();
+  const titleLower = String(n.title || '').toLowerCase();
+  const icon = String(n.icon || '').toLowerCase();
+
+  return (
+    typeStr.startsWith('document_due') ||
+    typeStr.startsWith('task_deadline') ||
+    typeStr.startsWith('task_due') ||
+    typeStr.startsWith('due_') ||
+    typeStr.startsWith('overdue_') ||
+    typeStr === 'issue_alert' ||
+    icon === 'warning' ||
+    icon === 'report_problem' ||
+    titleLower.includes('quá hạn') ||
+    titleLower.includes('cảnh báo') ||
+    titleLower.includes('nhắc hạn') ||
+    titleLower.includes('sắp hết hạn') ||
+    titleLower.includes('chậm tiến độ')
+  );
+};
+
 export const NotificationBell: React.FC<NotificationBellProps> = ({ isSidebar = false, isExpanded = false }) => {
   const navigate = useNavigate();
   const notifications = useRealtimeStore(s => s.notifications);
@@ -552,6 +576,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ isSidebar = 
   
   const [showPopover, setShowPopover] = useState(false);
   const [showCenterModal, setShowCenterModal] = useState(false);
+  const [categoryTab, setCategoryTab] = useState<'notifications' | 'alerts'>('notifications');
   const [activeTab, setActiveTab] = useState<'unread' | 'all'>('unread');
   const popoverRef = useRef<HTMLDivElement>(null);
 
@@ -719,7 +744,9 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ isSidebar = 
 
   const handleMarkAllAsRead = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    const ids = displayNotifications.map((n: any) => n.id);
+    // Đánh dấu đã đọc cho danh mục hiện tại (hoặc tất cả nếu muốn)
+    const targetList = categoryNotifications.length > 0 ? categoryNotifications : displayNotifications;
+    const ids = targetList.map((n: any) => n.id);
     addReadIds(ids);
     const store = useRealtimeStore.getState();
     ids.forEach(id => {
@@ -729,8 +756,9 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ isSidebar = 
 
   const handleClearRead = (e: React.MouseEvent) => {
     e.stopPropagation();
-    // CHỈ ẩn các thông báo ĐÃ ĐỌC cho riêng tài khoản hiện tại (không xóa trên DB để người khác vẫn nhận được)
-    const readIds = displayNotifications.filter(n => n.read).map(n => n.id);
+    // CHỈ ẩn các thông báo ĐÃ ĐỌC thuộc danh mục đang xem cho riêng tài khoản hiện tại
+    const targetList = categoryNotifications.length > 0 ? categoryNotifications : displayNotifications;
+    const readIds = targetList.filter(n => n.read).map(n => n.id);
     if (readIds.length === 0) return;
 
     setDismissedNotifIds(prev => {
@@ -1179,9 +1207,14 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ isSidebar = 
     });
   }, [notifications, user, engineers, tasks, dismissedNotifIds, availableUpdateVersion, readNotifIds]);
 
-  // Priority notifications: Overdue 1-2 days or Due soon
+  // Priority notifications for popup: Ưu tiên thông báo người dùng trực tiếp, hạn chế bung popup hàng loạt cảnh báo quá hạn gây gián đoạn
   const centerModalNotifications = useMemo(() => {
-    return displayNotifications.filter(n => !n.read);
+    const unread = displayNotifications.filter(n => !n.read);
+    const directUnread = unread.filter(n => !isAlertNotification(n));
+    // Nếu có thông báo người dùng trực tiếp thì chỉ hiện thông báo trực tiếp
+    if (directUnread.length > 0) return directUnread.slice(0, 10);
+    // Nếu toàn là cảnh báo hệ thống, giới hạn tối đa 5 cảnh báo quan trọng nhất
+    return unread.slice(0, 5);
   }, [displayNotifications]);
 
 
@@ -1211,7 +1244,28 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ isSidebar = 
 
   const unreadNotifications = useMemo(() => displayNotifications.filter(item => !item.read), [displayNotifications]);
   const unreadCount = unreadNotifications.length;
-  const activeNotifications = activeTab === 'unread' ? unreadNotifications : displayNotifications;
+
+  // Phân chia theo Danh mục: Thông báo (trực tiếp/nghiệp vụ) vs Cảnh báo (quá hạn/nhắc hạn)
+  const categoryNotifications = useMemo(() => {
+    return displayNotifications.filter(n => {
+      const isAlert = isAlertNotification(n);
+      return categoryTab === 'alerts' ? isAlert : !isAlert;
+    });
+  }, [displayNotifications, categoryTab]);
+
+  const unreadDirectCount = useMemo(() => {
+    return displayNotifications.filter(n => !n.read && !isAlertNotification(n)).length;
+  }, [displayNotifications]);
+
+  const unreadAlertCount = useMemo(() => {
+    return displayNotifications.filter(n => !n.read && isAlertNotification(n)).length;
+  }, [displayNotifications]);
+
+  const activeCategoryUnreadList = useMemo(() => {
+    return categoryNotifications.filter(n => !n.read);
+  }, [categoryNotifications]);
+
+  const activeNotifications = activeTab === 'unread' ? activeCategoryUnreadList : categoryNotifications;
 
   const floatingPopoverStyle = useMemo<React.CSSProperties>(() => {
     if (!position) {
@@ -1526,28 +1580,67 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ isSidebar = 
                   )}
                 </div>
               </div>
-              <div className="flex rounded-lg bg-slate-200/70 p-0.5 text-xs font-semibold">
+              {/* Hàng 1: Phân tách rõ ràng THÔNG BÁO (Người dùng) và CẢNH BÁO (Hệ thống/Hạn chót) */}
+              <div className="grid grid-cols-2 gap-1.5 p-1 bg-slate-200/80 rounded-xl mb-2 text-xs font-bold">
+                <button
+                  type="button"
+                  onClick={() => setCategoryTab('notifications')}
+                  className={`py-1.5 px-2 rounded-lg text-center flex items-center justify-center gap-1.5 transition-all ${
+                    categoryTab === 'notifications'
+                      ? 'bg-white text-primary shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[16px]">notifications</span>
+                  <span>Thông báo</span>
+                  {unreadDirectCount > 0 && (
+                    <span className="px-1.5 py-0.2 bg-blue-600 text-white rounded-full text-[10px] font-bold">
+                      {unreadDirectCount}
+                    </span>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCategoryTab('alerts')}
+                  className={`py-1.5 px-2 rounded-lg text-center flex items-center justify-center gap-1.5 transition-all ${
+                    categoryTab === 'alerts'
+                      ? 'bg-amber-500 text-white shadow-xs font-bold'
+                      : 'text-amber-800 hover:text-amber-950'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[16px]">warning</span>
+                  <span>Cảnh báo</span>
+                  {unreadAlertCount > 0 && (
+                    <span className="px-1.5 py-0.2 bg-red-600 text-white rounded-full text-[10px] font-bold">
+                      {unreadAlertCount}
+                    </span>
+                  )}
+                </button>
+              </div>
+
+              {/* Hàng 2: Bộ lọc Chưa đọc / Tất cả trong tab đang chọn */}
+              <div className="flex rounded-lg bg-slate-200/50 p-0.5 text-[11px] font-semibold">
                 <button
                   type="button"
                   onClick={() => setActiveTab('unread')}
                   className={`flex-1 py-1 rounded-md text-center transition-all ${
                     activeTab === 'unread'
-                      ? 'bg-white text-primary shadow-xs font-bold'
+                      ? 'bg-white text-primary shadow-2xs font-bold'
                       : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
-                  Chưa đọc ({unreadNotifications.length})
+                  Chưa đọc ({activeCategoryUnreadList.length})
                 </button>
                 <button
                   type="button"
                   onClick={() => setActiveTab('all')}
                   className={`flex-1 py-1 rounded-md text-center transition-all ${
                     activeTab === 'all'
-                      ? 'bg-white text-primary shadow-xs font-bold'
+                      ? 'bg-white text-primary shadow-2xs font-bold'
                       : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
-                  Tất cả ({displayNotifications.length})
+                  Tất cả ({categoryNotifications.length})
                 </button>
               </div>
             </div>
@@ -1556,10 +1649,13 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ isSidebar = 
               {activeNotifications.length === 0 ? (
                 <div className="p-8 text-center flex flex-col items-center justify-center gap-2">
                   <span className="material-symbols-outlined text-slate-300 text-3xl">
-                    {activeTab === 'unread' ? 'task_alt' : 'notifications_off'}
+                    {activeTab === 'unread' ? 'task_alt' : (categoryTab === 'alerts' ? 'verified' : 'notifications_off')}
                   </span>
                   <span className="text-slate-500 text-xs font-medium">
-                    {activeTab === 'unread' ? 'Tất cả thông báo đã được đọc' : 'Không có thông báo nào'}
+                    {activeTab === 'unread' 
+                      ? (categoryTab === 'alerts' ? 'Không có cảnh báo mới nào' : 'Tất cả thông báo đã được đọc')
+                      : (categoryTab === 'alerts' ? 'Không có cảnh báo quá hạn nào' : 'Không có thông báo nào')
+                    }
                   </span>
                 </div>
               ) : (
@@ -1718,28 +1814,67 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ isSidebar = 
                 )}
               </div>
             </div>
-            <div className="flex rounded-lg bg-slate-200/70 p-0.5 text-xs font-semibold">
+            {/* Hàng 1: Phân tách rõ ràng THÔNG BÁO (Người dùng) và CẢNH BÁO (Hệ thống/Hạn chót) */}
+            <div className="grid grid-cols-2 gap-1.5 p-1 bg-slate-200/80 rounded-xl mb-2 text-xs font-bold">
+              <button
+                type="button"
+                onClick={() => setCategoryTab('notifications')}
+                className={`py-1.5 px-2 rounded-lg text-center flex items-center justify-center gap-1.5 transition-all ${
+                  categoryTab === 'notifications'
+                    ? 'bg-white text-primary shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <span className="material-symbols-outlined text-[16px]">notifications</span>
+                <span>Thông báo</span>
+                {unreadDirectCount > 0 && (
+                  <span className="px-1.5 py-0.2 bg-blue-600 text-white rounded-full text-[10px] font-bold">
+                    {unreadDirectCount}
+                  </span>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => setCategoryTab('alerts')}
+                className={`py-1.5 px-2 rounded-lg text-center flex items-center justify-center gap-1.5 transition-all ${
+                  categoryTab === 'alerts'
+                    ? 'bg-amber-500 text-white shadow-xs font-bold'
+                    : 'text-amber-800 hover:text-amber-950'
+                }`}
+              >
+                <span className="material-symbols-outlined text-[16px]">warning</span>
+                <span>Cảnh báo</span>
+                {unreadAlertCount > 0 && (
+                  <span className="px-1.5 py-0.2 bg-red-600 text-white rounded-full text-[10px] font-bold">
+                    {unreadAlertCount}
+                  </span>
+                )}
+              </button>
+            </div>
+
+            {/* Hàng 2: Bộ lọc Chưa đọc / Tất cả trong tab đang chọn */}
+            <div className="flex rounded-lg bg-slate-200/50 p-0.5 text-[11px] font-semibold">
               <button
                 type="button"
                 onClick={() => setActiveTab('unread')}
                 className={`flex-1 py-1 rounded-md text-center transition-all ${
                   activeTab === 'unread'
-                    ? 'bg-white text-primary shadow-xs font-bold'
+                    ? 'bg-white text-primary shadow-2xs font-bold'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                Chưa đọc ({unreadNotifications.length})
+                Chưa đọc ({activeCategoryUnreadList.length})
               </button>
               <button
                 type="button"
                 onClick={() => setActiveTab('all')}
                 className={`flex-1 py-1 rounded-md text-center transition-all ${
                   activeTab === 'all'
-                    ? 'bg-white text-primary shadow-xs font-bold'
+                    ? 'bg-white text-primary shadow-2xs font-bold'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                Tất cả ({displayNotifications.length})
+                Tất cả ({categoryNotifications.length})
               </button>
             </div>
           </div>
@@ -1748,10 +1883,13 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ isSidebar = 
             {activeNotifications.length === 0 ? (
               <div className="p-8 text-center flex flex-col items-center justify-center gap-2">
                 <span className="material-symbols-outlined text-slate-300 text-3xl">
-                  {activeTab === 'unread' ? 'task_alt' : 'notifications_off'}
+                  {activeTab === 'unread' ? 'task_alt' : (categoryTab === 'alerts' ? 'verified' : 'notifications_off')}
                 </span>
                 <span className="text-slate-500 text-xs font-medium">
-                  {activeTab === 'unread' ? 'Tất cả thông báo đã được đọc' : 'Không có thông báo nào'}
+                  {activeTab === 'unread' 
+                    ? (categoryTab === 'alerts' ? 'Không có cảnh báo mới nào' : 'Tất cả thông báo đã được đọc')
+                    : (categoryTab === 'alerts' ? 'Không có cảnh báo quá hạn nào' : 'Không có thông báo nào')
+                  }
                 </span>
               </div>
             ) : (
