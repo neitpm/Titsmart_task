@@ -1850,39 +1850,33 @@ export const ProjectCostPlanPage: React.FC = () => {
       let dynamicChecker = req.checkerName;
       let dynamicReviewer = req.reviewerName;
 
-      const relatedNotifs = (notifications || []).filter(n => {
-        if (!n) return false;
-        if (n.link && (n.link.includes(`fundId=${encodeURIComponent(req.id)}`) || n.link.includes(`fundId=${req.id}`))) return true;
-        if (n.type && n.type.includes(req.id)) return true;
-        return false;
-      });
+      // TUYỆT ĐỐI KHÔNG ghi đè trạng thái nếu bản ghi đã có status chính thức từ DB (khác PENDING / rỗng)
+      if (!dynamicStatus || dynamicStatus === 'PENDING_CHECK' || dynamicStatus === 'WAITING_CHECK') {
+        const relatedNotifs = (notifications || []).filter(n => {
+          if (!n) return false;
+          if (n.link && (n.link.includes(`fundId=${encodeURIComponent(req.id)}`) || n.link.includes(`fundId=${req.id}`))) return true;
+          if (n.type && n.type.includes(req.id)) return true;
+          return false;
+        });
 
-      for (const n of relatedNotifs) {
-        const t = String(n.title || '').toLowerCase();
-        const m = String(n.message || '').toLowerCase();
-        if (t.includes('đã kiểm tra') || m.includes('đã kiểm tra')) {
-          if (dynamicStatus === 'PENDING_CHECK' || dynamicStatus === 'WAITING_CHECK' || !dynamicStatus) {
+        for (const n of relatedNotifs) {
+          const t = String(n.title || '').toLowerCase();
+          const m = String(n.message || '').toLowerCase();
+          if (t.includes('đã chuyển') || t.includes('chuyển tiền thành công') || m.includes('đã chuyển khoản')) {
+            dynamicStatus = 'TRANSFERRED_WAITING_CONFIRMATION';
+          } else if (t.includes('đã duyệt') || t.includes('đã được duyệt') || m.includes('đã duyệt cấp quỹ')) {
+            dynamicStatus = 'APPROVED_WAITING_ACCOUNTING';
+            if (n.senderName) dynamicReviewer = n.senderName;
+          } else if (t.includes('đã kiểm tra') || m.includes('đã kiểm tra')) {
             dynamicStatus = 'CHECKED_WAITING_APPROVAL';
             if (n.senderName) dynamicChecker = n.senderName;
+          } else if (t.includes('hoàn tất') || t.includes('nhận đủ tiền')) {
+            dynamicStatus = 'COMPLETED';
+          } else if (t.includes('từ chối') || m.includes('từ chối')) {
+            dynamicStatus = 'REJECTED';
+          } else if (t.includes('bổ sung') || m.includes('bổ sung')) {
+            dynamicStatus = 'NEED_MORE_INFO';
           }
-        }
-        if (t.includes('đã duyệt') || t.includes('đã được duyệt') || m.includes('đã duyệt')) {
-          if (dynamicStatus === 'PENDING_CHECK' || dynamicStatus === 'WAITING_CHECK' || dynamicStatus === 'CHECKED_WAITING_APPROVAL') {
-            dynamicStatus = 'APPROVED_WAITING_TRANSFER';
-            if (n.senderName) dynamicReviewer = n.senderName;
-          }
-        }
-        if (t.includes('chuyển khoản') || m.includes('chuyển khoản')) {
-          dynamicStatus = 'TRANSFERRED_WAITING_CONFIRMATION';
-        }
-        if (t.includes('hoàn tất') || t.includes('nhận tiền') || m.includes('nhận tiền')) {
-          dynamicStatus = 'COMPLETED';
-        }
-        if (t.includes('từ chối') || m.includes('từ chối')) {
-          dynamicStatus = 'REJECTED';
-        }
-        if (t.includes('bổ sung') || m.includes('bổ sung')) {
-          dynamicStatus = 'NEED_MORE_INFO';
         }
       }
 
