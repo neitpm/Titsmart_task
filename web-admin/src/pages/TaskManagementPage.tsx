@@ -2855,6 +2855,20 @@ const hasSyncedRef = useRef(false);
 
             <div className="flex items-center gap-1.5">
               <span className="text-slate-500 font-medium whitespace-nowrap text-[11px]">ĐVT:</span>
+              <CustomSelect
+                value={filterUnit}
+                onChange={(e) => setFilterUnit(e.target.value)}
+                className="h-7 min-w-[70px] max-w-[100px] rounded border border-slate-200 bg-white px-1.5 text-[11px] font-medium text-slate-700 shadow-xs outline-none transition-colors hover:border-blue-200 hover:bg-slate-50 focus:border-primary"
+              >
+                <option value="all">Tất cả</option>
+                {columnUnits.map((value) => (
+                  <option key={value} value={value}>{value}</option>
+                ))}
+              </CustomSelect>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <span className="text-slate-500 font-medium whitespace-nowrap text-[11px]">Thời gian:</span>
               <div className="flex items-center gap-1 bg-white border border-slate-200 rounded px-1.5 h-7 shadow-xs text-[11px] shrink-0">
                 <span className="text-slate-400 font-medium whitespace-nowrap">Từ</span>
                 <input
@@ -2885,17 +2899,6 @@ const hasSyncedRef = useRef(false);
                   </button>
                 )}
               </div>
-
-              <CustomSelect
-                value={filterUnit}
-                onChange={(e) => setFilterUnit(e.target.value)}
-                className="h-7 min-w-[70px] max-w-[100px] rounded border border-slate-200 bg-white px-1.5 text-[11px] font-medium text-slate-700 shadow-xs outline-none transition-colors hover:border-blue-200 hover:bg-slate-50 focus:border-primary"
-              >
-                <option value="all">Tất cả</option>
-                {columnUnits.map((value) => (
-                  <option key={value} value={value}>{value}</option>
-                ))}
-              </CustomSelect>
             </div>
 
             <div className="flex items-center gap-1.5">
@@ -3007,7 +3010,7 @@ const hasSyncedRef = useRef(false);
           <table className="min-w-[1350px] w-full text-left border-collapse text-[11px] table-fixed" style={{ "--stt-width": `${maxSttWidth}px` } as React.CSSProperties}>
             <colgroup>
               <col style={{ width: "var(--stt-width)" }} />
-              <col />
+              <col style={{ width: 320, minWidth: 260 }} />
               <col style={{ width: 45 }} />
               <col style={{ width: 60 }} />
               <col style={{ width: 52 }} />
@@ -3064,8 +3067,8 @@ const hasSyncedRef = useRef(false);
                     return (
                       <tr key={t.id} className="group bg-[#eff6ff] border-t-2 border-b border-blue-200 font-bold text-primary">
                         <td onClick={() => handleOpenEditModal(t)} style={{ width: "var(--stt-width)", minWidth: "var(--stt-width)", maxWidth: "var(--stt-width)" }} className="py-2 px-0 bg-[#eff6ff] border-r border-blue-200 text-center font-mono font-extrabold text-[11px] text-primary cursor-pointer hover:underline whitespace-nowrap tracking-tighter" title={String((t as any).computedStt || t.stt)}>{(t as any).computedStt || t.stt}</td>
-                        <td className="sticky left-0 z-10 py-2 px-2 bg-[#eff6ff] uppercase tracking-tight font-extrabold text-xs text-primary border-r border-blue-200 min-w-[180px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
-                          <div className="flex items-center gap-1 min-w-0 w-full overflow-hidden">
+                        <td className="sticky left-0 z-10 py-2 px-2 bg-[#eff6ff] uppercase tracking-tight font-extrabold text-xs text-primary border-r border-blue-200 min-w-[260px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                          <div className="flex items-center gap-1.5 min-w-0 w-full">
                             <button
                               onClick={(e) => { e.stopPropagation(); toggleSection(t._sectionKey || ''); }}
                               className="flex-shrink-0 w-4 h-4 flex items-center justify-center rounded hover:bg-blue-200 transition-colors"
@@ -3074,7 +3077,7 @@ const hasSyncedRef = useRef(false);
                               <span className={`material-symbols-outlined text-[15px] text-primary transition-transform duration-200 ${isCollapsed ? '-rotate-90' : ''}`}>expand_more</span>
                             </button>
                             <span className="material-symbols-outlined text-[15px] flex-shrink-0">{isCollapsed ? 'folder' : 'folder_open'}</span>
-                            <span onClick={() => handleOpenEditModal(t)} className="cursor-pointer hover:underline flex-1 min-w-0 truncate md:whitespace-normal md:overflow-visible break-words leading-tight" title={t.name}>
+                            <span onClick={() => handleOpenEditModal(t)} className="cursor-pointer hover:underline flex-1 min-w-[160px] whitespace-normal break-words leading-tight" title={t.name}>
                               {formatSectionTitle(t.stt, t.name)}
                             </span>
                             <div className="hidden group-hover:flex items-center gap-1 flex-shrink-0">

@@ -22,6 +22,7 @@ import { TabOverview } from '../components/common/TabOverview';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from 'recharts';
 import { ViewModeToolbar, resolveViewMode, AppViewMode } from '../components/common/ViewModeToolbar';
 import { StatusKanbanBoard } from '../components/common/StatusKanbanBoard';
+import { PersonnelOverviewModal } from '../components/personnel/PersonnelOverviewModal';
 
 const filters = [
   { key: 'all', label: 'Tất cả' },
@@ -55,7 +56,7 @@ export const formatPhoneNumber = (phoneStr?: string): string => {
   return clean;
 };
 
-const formatDate = (iso?: string): string => {
+export const formatDate = (iso?: string): string => {
   if (!iso) return '-';
   try {
     const d = new Date(iso);
@@ -138,6 +139,10 @@ export const PersonnelPage: React.FC = () => {
   const engineers = useRealtimeStore(state => state.engineers);
   const projects = useRealtimeStore(state => state.projects);
   const tasks = useRealtimeStore(state => state.tasks);
+  const expenses = useRealtimeStore(state => state.expenses);
+  const inventoryTransactions = useRealtimeStore(state => state.inventoryTransactions);
+  const fetchAccounting = useRealtimeStore(state => state.fetchAccounting);
+  const fetchMaterials = useRealtimeStore(state => state.fetchMaterials);
   const createEngineer = useRealtimeStore(state => state.createEngineer);
   const updateEngineer = useRealtimeStore(state => state.updateEngineer);
   const syncEngineerAuth = useRealtimeStore(state => state.syncEngineerAuth);
@@ -203,6 +208,17 @@ export const PersonnelPage: React.FC = () => {
   const [viewingProjectsPerson, setViewingProjectsPerson] = useState<any | null>(null);
   const [projectModalSearch, setProjectModalSearch] = useState('');
   
+  // Overview Modal state
+  const [viewingOverviewPerson, setViewingOverviewPerson] = useState<any | null>(null);
+  const [fundRequests, setFundRequests] = useState<any[]>(() => {
+    try {
+      const saved = localStorage.getItem('titsmart_fund_requests');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
   // KPI Modal state
   const [viewingKpiPerson, setViewingKpiPerson] = useState<any | null>(null);
   const [kpiFilterTab, setKpiFilterTab] = useState<'all' | 'in_progress' | 'pending' | 'completed' | 'overdue'>('all');
@@ -229,6 +245,20 @@ export const PersonnelPage: React.FC = () => {
     fetchProjects(); 
     fetchEngineers();
     fetchTasks();
+    fetchAccounting();
+    fetchMaterials(undefined);
+
+    const loadLocalFundRequests = () => {
+      try {
+        const saved = localStorage.getItem('titsmart_fund_requests');
+        if (saved) setFundRequests(JSON.parse(saved));
+      } catch {}
+    };
+    loadLocalFundRequests();
+    window.addEventListener('titsmart_fund_requests_updated', loadLocalFundRequests);
+    return () => {
+      window.removeEventListener('titsmart_fund_requests_updated', loadLocalFundRequests);
+    };
   }, []);
 
   const [toastState, setToastState] = useState({ show: false, message: '', type: 'success' as 'success' | 'info' | 'warning' });
@@ -941,10 +971,10 @@ export const PersonnelPage: React.FC = () => {
                   return (
                     <div
                       key={person.id}
-                      onClick={() => canEditPerson && openEditModal(person)}
-                      className={`p-4 rounded-xl border bg-white shadow-2xs hover:shadow-md transition-all flex flex-col justify-between ${
-                        canEditPerson ? 'cursor-pointer hover:border-primary/50' : ''
-                      } ${person.locked ? 'border-red-200 bg-red-50/20' : 'border-slate-200'}`}
+                      onClick={() => setViewingOverviewPerson(person)}
+                      className={`p-4 rounded-xl border bg-white shadow-2xs hover:shadow-md transition-all flex flex-col justify-between cursor-pointer hover:border-primary/50 group ${
+                        person.locked ? 'border-red-200 bg-red-50/20' : 'border-slate-200'
+                      }`}
                     >
                       <div>
                         <div className="flex items-start justify-between gap-2 mb-3">
@@ -957,7 +987,7 @@ export const PersonnelPage: React.FC = () => {
                               )}
                             </div>
                             <div className="min-w-0">
-                              <h3 className="text-xs sm:text-sm font-bold text-slate-900 truncate" title={person.name}>
+                              <h3 className="text-xs sm:text-sm font-bold text-slate-900 truncate group-hover:text-primary transition-colors" title={person.name}>
                                 {person.name}
                               </h3>
                               <div className="text-[11px] font-medium text-slate-500 truncate">{person.role}</div>
@@ -987,24 +1017,36 @@ export const PersonnelPage: React.FC = () => {
                         </div>
                       </div>
 
-                      {canEditPerson && (
-                        <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2 mt-2" onClick={(e) => e.stopPropagation()}>
-                          <button
-                            onClick={() => toggleLock(person)}
-                            className={`px-2 py-1 rounded text-[10px] font-bold border transition-all ${
-                              person.locked ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-50 text-slate-700 border-slate-200'
-                            }`}
-                          >
-                            {person.locked ? 'Mở khóa' : 'Khóa'}
-                          </button>
-                          <button
-                            onClick={() => openEditModal(person)}
-                            className="px-2 py-1 rounded text-[10px] font-bold bg-blue-50 text-primary border border-blue-200"
-                          >
-                            Sửa
-                          </button>
+                      <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-1.5 mt-2" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          onClick={() => setViewingOverviewPerson(person)}
+                          className="px-2.5 py-1 rounded-md text-[10.5px] font-bold bg-primary/10 hover:bg-primary text-primary hover:text-white transition-all flex items-center gap-1 shadow-2xs"
+                        >
+                          <span className="material-symbols-outlined text-[13px]">dashboard</span>
+                          <span>Tổng quan</span>
+                        </button>
+                        <div className="flex items-center gap-1.5">
+                          {canEditPerson && (
+                            <>
+                              <button
+                                onClick={() => toggleLock(person)}
+                                className={`px-2 py-1 rounded text-[10px] font-bold border transition-all ${
+                                  person.locked ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-50 text-slate-700 border-slate-200'
+                                }`}
+                              >
+                                {person.locked ? 'Mở khóa' : 'Khóa'}
+                              </button>
+                              <button
+                                onClick={() => openEditModal(person)}
+                                className="px-2 py-1 rounded text-[10px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200"
+                              >
+                                Sửa
+                              </button>
+                            </>
+                          )}
                         </div>
-                      )}
+                      </div>
                     </div>
                   );
                 })}
@@ -1019,10 +1061,10 @@ export const PersonnelPage: React.FC = () => {
                   return (
                     <div
                       key={person.id}
-                      onClick={() => canEditPerson && openEditModal(person)}
-                      className={`p-2.5 rounded-lg border bg-white shadow-2xs hover:shadow-xs transition-all flex items-center gap-2.5 ${
-                        canEditPerson ? 'cursor-pointer hover:border-primary/50' : ''
-                      } ${person.locked ? 'border-red-200 bg-red-50/10' : 'border-slate-200'}`}
+                      onClick={() => setViewingOverviewPerson(person)}
+                      className={`p-2.5 rounded-lg border bg-white shadow-2xs hover:shadow-xs transition-all flex items-center gap-2.5 cursor-pointer hover:border-primary/50 group ${
+                        person.locked ? 'border-red-200 bg-red-50/10' : 'border-slate-200'
+                      }`}
                     >
                       <div className="h-9 w-9 shrink-0 overflow-hidden rounded-full border border-slate-200 bg-slate-100 flex items-center justify-center">
                         {(person as any).avatar ? (
@@ -1062,8 +1104,8 @@ export const PersonnelPage: React.FC = () => {
                     return (
                       <tr
                         key={person.id}
-                        className={canEditPerson ? "cursor-pointer hover:bg-slate-50" : "hover:bg-slate-50"}
-                        onClick={() => canEditPerson && openEditModal(person)}
+                        className="cursor-pointer hover:bg-slate-50 transition-colors"
+                        onClick={() => setViewingOverviewPerson(person)}
                       >
                         <td className="p-2 sm:p-2.5 font-semibold text-slate-900">
                           <div className="flex items-center gap-2">
@@ -1112,8 +1154,8 @@ export const PersonnelPage: React.FC = () => {
                     return (
                       <tr
                         key={person.id}
-                        className={canEditPerson ? "cursor-pointer hover:bg-slate-50" : "hover:bg-slate-50"}
-                        onClick={() => canEditPerson && openEditModal(person)}
+                        className="cursor-pointer hover:bg-slate-50 transition-colors"
+                        onClick={() => setViewingOverviewPerson(person)}
                       >
                         <td className="p-2 sm:p-3 text-xs sm:text-sm font-semibold text-slate-900 tracking-tight min-w-[160px] whitespace-nowrap">
                           <div className="flex items-center gap-2">
@@ -1268,14 +1310,26 @@ export const PersonnelPage: React.FC = () => {
                         <td className="p-2 sm:p-3 text-slate-600 whitespace-nowrap text-[10px] sm:text-xs">{formatPhoneNumber(person.phone)}</td>
                       <td className="p-2 sm:p-3 whitespace-nowrap"><span className={`text-[10px] sm:text-[11px] font-bold ${person.locked ? 'text-red-700' : 'text-emerald-700'}`}>{person.locked ? 'Bị khóa' : 'Đang hoạt động'}</span></td>
                       {(hasPermission(user, 'MANAGE_USERS') || hasPermission(user, 'EDIT_USERS')) && (
-                        <td className="p-2 sm:p-3 min-w-[140px] whitespace-nowrap">
-                          <div className="flex items-center gap-2.5">
+                        <td className="p-2 sm:p-3 min-w-[200px] whitespace-nowrap">
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setViewingOverviewPerson(person);
+                              }}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-primary/30 bg-primary/10 text-primary hover:bg-primary hover:text-white text-[11px] font-bold active:scale-95 transition-all shadow-2xs cursor-pointer"
+                              title="Xem trang tổng quan thông tin nhân sự"
+                            >
+                              <span className="material-symbols-outlined text-[14px]">dashboard</span>
+                              <span>Tổng quan</span>
+                            </button>
                             <button
                               onClick={(event) => {
                                 event.stopPropagation();
                                 toggleLock(person);
                               }}
-                              className={`inline-flex items-center gap-2 px-2.5 py-1.5 rounded-md border text-[11px] font-bold active:scale-95 transition-all ${person.locked ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100' : 'border-primary/30 bg-primary/5 text-primary hover:bg-primary/10'}`}
+                              className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-[11px] font-bold active:scale-95 transition-all ${person.locked ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100' : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100'}`}
                             >
                               <span className="material-symbols-outlined text-[14px]">{person.locked ? 'lock_open' : 'lock'}</span>
                               {person.locked ? 'Mở khóa' : 'Khóa'}
@@ -1285,7 +1339,7 @@ export const PersonnelPage: React.FC = () => {
                                 event.stopPropagation();
                                 setDeletingPerson({ id: person.id, name: person.name });
                               }}
-                              className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-md border border-red-200 bg-white text-[11px] font-bold text-red-600 hover:bg-red-50 hover:border-red-300 active:scale-95 transition-all"
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-red-200 bg-white text-[11px] font-bold text-red-600 hover:bg-red-50 hover:border-red-300 active:scale-95 transition-all"
                             >
                               <span className="material-symbols-outlined text-[14px]">delete</span>Xóa
                             </button>
@@ -1316,10 +1370,8 @@ export const PersonnelPage: React.FC = () => {
                     const canEditPerson = hasPermission(user, 'MANAGE_USERS') || hasPermission(user, 'EDIT_USERS');
                     return (
                       <div
-                        onClick={() => canEditPerson && openEditModal(person)}
-                        className={`p-3 rounded-lg border bg-white shadow-2xs hover:shadow-xs transition-all ${
-                          canEditPerson ? 'cursor-pointer hover:border-primary/50' : ''
-                        }`}
+                        onClick={() => setViewingOverviewPerson(person)}
+                        className="p-3 rounded-lg border bg-white shadow-2xs hover:shadow-xs transition-all cursor-pointer hover:border-primary/50 group"
                       >
                         <div className="flex items-center gap-2.5 mb-2">
                           <div className="h-8 w-8 shrink-0 overflow-hidden rounded-full border border-slate-200 bg-slate-100 flex items-center justify-center">
@@ -2154,6 +2206,28 @@ export const PersonnelPage: React.FC = () => {
           </div>
         </form>
       </Modal>
+
+      {/* Modal Tổng quan Nhân sự - Bao gồm Dự án, Tiến độ, Quỹ, Vật tư & Đồ nghề */}
+      <PersonnelOverviewModal
+        isOpen={Boolean(viewingOverviewPerson)}
+        onClose={() => setViewingOverviewPerson(null)}
+        person={viewingOverviewPerson}
+        projects={projects}
+        tasks={tasks}
+        expenses={expenses}
+        inventoryTransactions={inventoryTransactions}
+        fundRequests={fundRequests}
+        onOpenEditModal={(person) => {
+          setViewingOverviewPerson(null);
+          openEditModal(person);
+        }}
+        onOpenQuickAssign={(person) => {
+          setViewingOverviewPerson(null);
+          setAssigningToPerson(person);
+          setQuickTaskProject((person.assignedProjects && person.assignedProjects[0]?.code) || 'COMPANY');
+          setIsQuickAssignModalOpen(true);
+        }}
+      />
 
       <Toast show={toastState.show} message={toastState.message} type={toastState.type} />
     </div>
