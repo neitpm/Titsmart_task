@@ -3012,17 +3012,7 @@ export const ProjectCostPlanPage: React.FC = () => {
                   />
                 </div>
 
-                <button
-                  onClick={() => {
-                    if (fileInputRef.current) fileInputRef.current.click();
-                  }}
-                  className="flex items-center justify-center gap-1 border border-blue-200 bg-blue-50 text-primary px-2 sm:px-2.5 h-8 rounded-lg text-xs font-bold hover:bg-blue-100 active:scale-95 transition-all shadow-xs whitespace-nowrap cursor-pointer shrink-0"
-                  title="Nhập file (Excel, CSV, PDF, Word)"
-                >
-                  <span className="material-symbols-outlined text-[16px]">file_upload</span>
-                  <span className="hidden xl:inline">Nhập file</span>
-                </button>
-
+                {/* Menu Gộp Nhập / Xuất file */}
                 <div className="relative shrink-0 no-drag-region electron-no-drag" ref={expenseExportMenuRef}>
                   <button
                     type="button"
@@ -3030,15 +3020,36 @@ export const ProjectCostPlanPage: React.FC = () => {
                       e.stopPropagation();
                       setShowExpenseExportMenu(!showExpenseExportMenu);
                     }}
-                    className="flex items-center justify-center gap-1 border border-emerald-200 bg-emerald-50 text-emerald-700 px-2 sm:px-2.5 h-8 rounded-lg text-xs font-bold hover:bg-emerald-100 active:scale-95 transition-all shadow-xs whitespace-nowrap cursor-pointer shrink-0 no-drag-region electron-no-drag"
-                    title="Xuất file (Excel, CSV, PDF, Word)"
+                    className="flex items-center justify-center gap-1 border border-slate-200 bg-white text-slate-700 px-2 sm:px-2.5 h-8 rounded-lg text-xs font-bold hover:bg-slate-50 active:scale-95 transition-all shadow-xs whitespace-nowrap cursor-pointer shrink-0 no-drag-region electron-no-drag"
+                    title="Nhập / Xuất dữ liệu (Excel, CSV, PDF, Word)"
                   >
-                    <span className="material-symbols-outlined text-[16px]">file_download</span>
-                    <span className="hidden xl:inline">Xuất file</span>
-                    <span className="material-symbols-outlined text-xs hidden xl:inline">expand_more</span>
+                    <span className="material-symbols-outlined text-[16px] text-slate-600">swap_vert</span>
+                    <span className="inline">Nhập / Xuất file</span>
+                    <span className="material-symbols-outlined text-xs">expand_more</span>
                   </button>
                   {showExpenseExportMenu && (
-                    <div className="absolute right-0 top-full mt-1.5 w-48 bg-white rounded-xl shadow-2xl border border-slate-200 py-1.5 z-[99999] animate-in fade-in zoom-in duration-100 no-drag-region electron-no-drag">
+                    <div className="absolute right-0 top-full mt-1.5 w-52 bg-white rounded-xl shadow-2xl border border-slate-200 py-1.5 z-[99999] animate-in fade-in zoom-in duration-100 no-drag-region electron-no-drag">
+                      <div className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                        Nhập dữ liệu
+                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowExpenseExportMenu(false);
+                          if (fileInputRef.current) fileInputRef.current.click();
+                        }}
+                        className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-blue-50 hover:text-primary flex items-center gap-2 cursor-pointer transition-colors"
+                      >
+                        <span className="material-symbols-outlined text-base text-primary">file_upload</span>
+                        <span>Nhập từ file (Excel, CSV, Word, PDF)</span>
+                      </button>
+
+                      <div className="border-t border-slate-100 my-1"></div>
+
+                      <div className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                        Xuất dữ liệu
+                      </div>
                       <button
                         type="button"
                         onClick={(e) => {
@@ -3049,7 +3060,7 @@ export const ProjectCostPlanPage: React.FC = () => {
                         className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer transition-colors"
                       >
                         <span className="material-symbols-outlined text-base text-green-600">grid_on</span>
-                        Excel (.xlsx)
+                        <span>Xuất Excel (.xlsx)</span>
                       </button>
                       <button
                         type="button"
@@ -3061,7 +3072,7 @@ export const ProjectCostPlanPage: React.FC = () => {
                         className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer transition-colors"
                       >
                         <span className="material-symbols-outlined text-base text-teal-600">csv</span>
-                        CSV (.csv)
+                        <span>Xuất CSV (.csv)</span>
                       </button>
                       <button
                         type="button"
@@ -3073,7 +3084,7 @@ export const ProjectCostPlanPage: React.FC = () => {
                         className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer transition-colors"
                       >
                         <span className="material-symbols-outlined text-base text-red-600">picture_as_pdf</span>
-                        PDF (.pdf)
+                        <span>In / Xuất PDF (.pdf)</span>
                       </button>
                       <button
                         type="button"
@@ -3085,7 +3096,7 @@ export const ProjectCostPlanPage: React.FC = () => {
                         className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer transition-colors"
                       >
                         <span className="material-symbols-outlined text-base text-blue-600">description</span>
-                        Word (.docx)
+                        <span>Xuất Word (.docx)</span>
                       </button>
                     </div>
                   )}
