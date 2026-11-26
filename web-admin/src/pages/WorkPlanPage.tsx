@@ -968,12 +968,12 @@ export const WorkPlanPage: React.FC = () => {
           </div>
 
           {/* View Mode Switcher */}
-          <div className="inline-flex rounded-md bg-slate-100 p-0.5 border border-slate-200">
+          <div className="inline-flex rounded-md border border-slate-200 bg-white p-0.5">
             <button
               type="button"
               onClick={() => handleSetViewMode('month')}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded text-xs font-bold transition-all ${
-                viewMode === 'month' ? 'bg-white text-primary shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              className={`flex items-center gap-1 px-2.5 py-1 rounded text-xs font-bold transition-colors ${
+                viewMode === 'month' ? 'bg-slate-100 text-primary' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               <span className="material-symbols-outlined text-sm">calendar_view_month</span>
@@ -982,8 +982,8 @@ export const WorkPlanPage: React.FC = () => {
             <button
               type="button"
               onClick={() => handleSetViewMode('week')}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded text-xs font-bold transition-all ${
-                viewMode === 'week' ? 'bg-white text-primary shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              className={`flex items-center gap-1 px-2.5 py-1 rounded text-xs font-bold transition-colors ${
+                viewMode === 'week' ? 'bg-slate-100 text-primary' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               <span className="material-symbols-outlined text-sm">calendar_view_week</span>
@@ -992,8 +992,8 @@ export const WorkPlanPage: React.FC = () => {
             <button
               type="button"
               onClick={() => handleSetViewMode('agenda')}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded text-xs font-bold transition-all ${
-                viewMode === 'agenda' ? 'bg-white text-primary shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              className={`flex items-center gap-1 px-2.5 py-1 rounded text-xs font-bold transition-colors ${
+                viewMode === 'agenda' ? 'bg-slate-100 text-primary' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               <span className="material-symbols-outlined text-sm">view_agenda</span>
@@ -1016,43 +1016,41 @@ export const WorkPlanPage: React.FC = () => {
       {/* SCROLLABLE BODY: Chức năng cuộn mượt mà toàn bộ nội dung - bỏ margin/padding dư thừa */}
       <div className="flex-1 overflow-y-auto min-h-0 bg-slate-50 p-0 sm:p-1 space-y-1.5 custom-scrollbar">
 
-        {/* Proactive Alert Banner (Displays if Overdue or Due Soon) */}
+        {/* Proactive Alert Banner - Thiết kế gọn gàng chuẩn ERP */}
         {(stats.overdue > 0 || stats.dueSoon > 0 || stats.dueToday > 0) && (
-          <div className="bg-amber-50/80 border border-amber-200 rounded-lg p-2.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 shadow-2xs">
+          <div className="bg-white border-l-4 border-l-amber-500 border border-slate-200 rounded-md p-2.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 shadow-2xs">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-md bg-amber-600 text-white flex items-center justify-center shrink-0">
-                <span className="material-symbols-outlined text-lg">alarm</span>
-              </div>
+              <span className="material-symbols-outlined text-amber-600 text-xl shrink-0">alarm</span>
               <div>
-                <div className="text-xs sm:text-sm font-bold text-slate-800 flex items-center gap-2">
-                  <span>Cảnh báo thời hạn công việc:</span>
+                <div className="text-xs font-bold text-slate-800 flex items-center gap-2 flex-wrap">
+                  <span>Cảnh báo thời hạn:</span>
                   {stats.overdue > 0 && (
-                    <span className="px-2 py-0.5 rounded bg-rose-600 text-white text-[11px] font-bold">
+                    <span className="px-1.5 py-0.2 rounded bg-rose-50 text-rose-700 border border-rose-200 text-[10px] font-bold">
                       {stats.overdue} Quá hạn
                     </span>
                   )}
                   {stats.dueToday > 0 && (
-                    <span className="px-2 py-0.5 rounded bg-amber-600 text-white text-[11px] font-bold">
+                    <span className="px-1.5 py-0.2 rounded bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-bold">
                       {stats.dueToday} Đến hạn hôm nay
                     </span>
                   )}
                   {stats.dueSoon > 0 && (
-                    <span className="px-2 py-0.5 rounded bg-slate-700 text-white text-[11px] font-bold">
+                    <span className="px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 border border-slate-300 text-[10px] font-bold">
                       {stats.dueSoon} Sắp đến hạn (≤ {formatAlertConfigLabel(alertConfig)})
                     </span>
                   )}
                 </div>
-                <div className="text-[11px] text-slate-600 mt-0.5">
-                  Vui lòng kiểm tra tiến độ các công việc sắp đến hạn hoặc quá hạn để kịp thời hoàn thành đúng cam kết.
+                <div className="text-[11px] text-slate-500 mt-0.5">
+                  Vui lòng kiểm tra tiến độ các công việc quá hạn hoặc sắp đến hạn để kịp thời xử lý.
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-2 self-end sm:self-center">
+            <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
               {stats.overdue > 0 && (
                 <button
                   type="button"
                   onClick={() => setStatusFilter(statusFilter === 'overdue' ? 'all' : 'overdue')}
-                  className="px-3 py-1.5 rounded-md text-xs font-bold bg-rose-600 text-white hover:bg-rose-700 transition-colors shadow-2xs cursor-pointer"
+                  className="px-2.5 py-1 rounded text-xs font-bold border border-rose-300 bg-rose-50 text-rose-700 hover:bg-rose-100 transition-colors cursor-pointer"
                 >
                   Xem việc quá hạn ({stats.overdue})
                 </button>
@@ -1061,7 +1059,7 @@ export const WorkPlanPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setStatusFilter(statusFilter === 'due_soon' ? 'all' : 'due_soon')}
-                  className="px-3 py-1.5 rounded-md text-xs font-bold bg-amber-600 text-white hover:bg-amber-700 transition-colors shadow-2xs cursor-pointer"
+                  className="px-2.5 py-1 rounded text-xs font-bold border border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 transition-colors cursor-pointer"
                 >
                   Xem việc sắp đến hạn ({stats.dueSoon})
                 </button>
@@ -1070,96 +1068,96 @@ export const WorkPlanPage: React.FC = () => {
           </div>
         )}
 
-        {/* KPI Summary Stat Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
+        {/* KPI Summary Stat Cards - Thiết kế phẳng, tối giản chuẩn ERP doanh nghiệp */}
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 bg-white p-2.5 rounded-lg border border-slate-200">
           {/* Card: Quá hạn */}
           <button
             type="button"
             onClick={() => setStatusFilter(statusFilter === 'overdue' ? 'all' : 'overdue')}
-            className={`p-2 sm:p-2.5 rounded-lg border text-left transition-all cursor-pointer ${
+            className={`p-2.5 rounded-md border text-left transition-colors cursor-pointer ${
               statusFilter === 'overdue'
-                ? 'bg-rose-100/90 border-rose-400 ring-1 ring-rose-400'
-                : 'bg-white hover:bg-rose-50/50 border-rose-200'
+                ? 'bg-rose-50 border-rose-400'
+                : 'bg-slate-50/60 hover:bg-slate-100/80 border-slate-200'
             }`}
           >
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold text-rose-700 uppercase">Quá hạn</span>
-              <span className="material-symbols-outlined text-rose-600 text-lg">warning</span>
+              <span className="text-[11px] font-bold text-slate-600 uppercase tracking-tight">Quá hạn</span>
+              <span className="material-symbols-outlined text-rose-600 text-base">warning</span>
             </div>
-            <div className="text-xl sm:text-2xl font-black text-rose-700 mt-0.5">{stats.overdue}</div>
-            <div className="text-[10px] text-rose-600 font-medium mt-0.5">Cần xử lý gấp</div>
+            <div className="text-xl sm:text-2xl font-bold text-rose-600 mt-1">{stats.overdue}</div>
+            <div className="text-[10px] text-slate-500 mt-0.5">Cần xử lý gấp</div>
           </button>
 
           {/* Card: Hạn hôm nay */}
           <button
             type="button"
             onClick={() => setStatusFilter(statusFilter === 'due_today' ? 'all' : 'due_today')}
-            className={`p-2 sm:p-2.5 rounded-lg border text-left transition-all cursor-pointer ${
+            className={`p-2.5 rounded-md border text-left transition-colors cursor-pointer ${
               statusFilter === 'due_today'
-                ? 'bg-amber-100/90 border-amber-400 ring-1 ring-amber-400'
-                : 'bg-white hover:bg-amber-50/50 border-amber-200'
+                ? 'bg-amber-50 border-amber-400'
+                : 'bg-slate-50/60 hover:bg-slate-100/80 border-slate-200'
             }`}
           >
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold text-amber-700 uppercase">Hạn hôm nay</span>
-              <span className="material-symbols-outlined text-amber-600 text-lg">today</span>
+              <span className="text-[11px] font-bold text-slate-600 uppercase tracking-tight">Hạn hôm nay</span>
+              <span className="material-symbols-outlined text-amber-600 text-base">today</span>
             </div>
-            <div className="text-xl sm:text-2xl font-black text-amber-700 mt-0.5">{stats.dueToday}</div>
-            <div className="text-[10px] text-amber-600 font-medium mt-0.5">Hoàn thành trong ngày</div>
+            <div className="text-xl sm:text-2xl font-bold text-amber-600 mt-1">{stats.dueToday}</div>
+            <div className="text-[10px] text-slate-500 mt-0.5">Trong ngày</div>
           </button>
 
           {/* Card: Sắp đến hạn */}
           <button
             type="button"
             onClick={() => setStatusFilter(statusFilter === 'due_soon' ? 'all' : 'due_soon')}
-            className={`p-2 sm:p-2.5 rounded-lg border text-left transition-all cursor-pointer ${
+            className={`p-2.5 rounded-md border text-left transition-colors cursor-pointer ${
               statusFilter === 'due_soon'
-                ? 'bg-blue-100/90 border-blue-400 ring-1 ring-blue-400'
-                : 'bg-white hover:bg-blue-50/50 border-blue-200'
+                ? 'bg-sky-50 border-sky-400'
+                : 'bg-slate-50/60 hover:bg-slate-100/80 border-slate-200'
             }`}
           >
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold text-blue-700 uppercase">Sắp đến hạn</span>
-              <span className="material-symbols-outlined text-blue-600 text-lg">alarm</span>
+              <span className="text-[11px] font-bold text-slate-600 uppercase tracking-tight">Sắp đến hạn</span>
+              <span className="material-symbols-outlined text-primary text-base">alarm</span>
             </div>
-            <div className="text-xl sm:text-2xl font-black text-blue-700 mt-0.5">{stats.dueSoon}</div>
-            <div className="text-[10px] text-blue-600 font-medium mt-0.5">Trong vòng ≤ {formatAlertConfigLabel(alertConfig)}</div>
+            <div className="text-xl sm:text-2xl font-bold text-primary mt-1">{stats.dueSoon}</div>
+            <div className="text-[10px] text-slate-500 mt-0.5">Trong ≤ {formatAlertConfigLabel(alertConfig)}</div>
           </button>
 
           {/* Card: Kế hoạch tương lai */}
           <button
             type="button"
             onClick={() => setStatusFilter(statusFilter === 'in_progress' ? 'all' : 'in_progress')}
-            className={`p-2 sm:p-2.5 rounded-lg border text-left transition-all cursor-pointer ${
+            className={`p-2.5 rounded-md border text-left transition-colors cursor-pointer ${
               statusFilter === 'in_progress'
-                ? 'bg-indigo-100/90 border-indigo-400 ring-1 ring-indigo-400'
-                : 'bg-white hover:bg-indigo-50/50 border-indigo-200'
+                ? 'bg-blue-50 border-blue-400'
+                : 'bg-slate-50/60 hover:bg-slate-100/80 border-slate-200'
             }`}
           >
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold text-indigo-700 uppercase">Đang triển khai</span>
-              <span className="material-symbols-outlined text-indigo-600 text-lg">pending_actions</span>
+              <span className="text-[11px] font-bold text-slate-600 uppercase tracking-tight">Đang triển khai</span>
+              <span className="material-symbols-outlined text-slate-500 text-base">pending_actions</span>
             </div>
-            <div className="text-xl sm:text-2xl font-black text-indigo-700 mt-0.5">{stats.upcoming}</div>
-            <div className="text-[10px] text-indigo-600 font-medium mt-0.5">Kế hoạch những ngày tới</div>
+            <div className="text-xl sm:text-2xl font-bold text-slate-800 mt-1">{stats.upcoming}</div>
+            <div className="text-[10px] text-slate-500 mt-0.5">Kế hoạch tới</div>
           </button>
 
           {/* Card: Đã hoàn thành */}
           <button
             type="button"
             onClick={() => setStatusFilter(statusFilter === 'completed' ? 'all' : 'completed')}
-            className={`p-2 sm:p-2.5 rounded-lg border text-left transition-all cursor-pointer col-span-2 sm:col-span-1 ${
+            className={`p-2.5 rounded-md border text-left transition-colors cursor-pointer col-span-2 sm:col-span-1 ${
               statusFilter === 'completed'
-                ? 'bg-emerald-100/90 border-emerald-400 ring-1 ring-emerald-400'
-                : 'bg-white hover:bg-emerald-50/50 border-emerald-200'
+                ? 'bg-emerald-50 border-emerald-400'
+                : 'bg-slate-50/60 hover:bg-slate-100/80 border-slate-200'
             }`}
           >
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold text-emerald-700 uppercase">Đã hoàn thành</span>
-              <span className="material-symbols-outlined text-emerald-600 text-lg">task_alt</span>
+              <span className="text-[11px] font-bold text-slate-600 uppercase tracking-tight">Đã hoàn thành</span>
+              <span className="material-symbols-outlined text-emerald-600 text-base">task_alt</span>
             </div>
-            <div className="text-xl sm:text-2xl font-black text-emerald-700 mt-0.5">{stats.completed}</div>
-            <div className="text-[10px] text-emerald-600 font-medium mt-0.5">Tất cả việc đã xong</div>
+            <div className="text-xl sm:text-2xl font-bold text-emerald-600 mt-1">{stats.completed}</div>
+            <div className="text-[10px] text-slate-500 mt-0.5">Đã hoàn tất</div>
           </button>
         </div>
 
@@ -1497,29 +1495,19 @@ export const WorkPlanPage: React.FC = () => {
               agendaGroups.map((group) => (
                 <div
                   key={group.key}
-                  className={`bg-white rounded-lg border shadow-xs overflow-hidden ${
-                    group.key === 'overdue'
-                      ? 'border-rose-300 ring-1 ring-rose-300'
-                      : group.key === 'today'
-                      ? 'border-amber-300 ring-1 ring-amber-300'
-                      : 'border-slate-200'
-                  }`}
+                  className="bg-white rounded-md border border-slate-200 overflow-hidden"
                 >
                   {/* Group Header */}
                   <div
-                    className={`px-3 py-1.5 flex items-center justify-between border-b ${
-                      group.key === 'overdue'
-                        ? 'bg-rose-50 text-rose-800 border-rose-200'
-                        : group.key === 'today'
-                        ? 'bg-amber-50 text-amber-800 border-amber-200'
-                        : 'bg-slate-50 text-slate-800 border-slate-200'
-                    }`}
+                    className="px-3 py-2 flex items-center justify-between border-b border-slate-200 bg-slate-50 text-slate-800"
                   >
-                    <div className="flex items-center gap-1.5">
-                      <span className="material-symbols-outlined text-base">{group.icon}</span>
-                      <span className="text-xs font-black tracking-wide">{group.label}</span>
+                    <div className="flex items-center gap-2">
+                      <span className={`material-symbols-outlined text-base ${
+                        group.key === 'overdue' ? 'text-rose-600' : group.key === 'today' ? 'text-amber-600' : 'text-slate-500'
+                      }`}>{group.icon}</span>
+                      <span className="text-xs font-bold tracking-tight text-slate-800">{group.label}</span>
                     </div>
-                    <span className="text-[11px] font-bold px-1.5 py-0.2 rounded bg-white/80 shadow-2xs">
+                    <span className="text-[11px] font-bold px-1.5 py-0.2 rounded border border-slate-200 bg-white text-slate-600">
                       {group.items.length} việc
                     </span>
                   </div>
