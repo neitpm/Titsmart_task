@@ -48,6 +48,7 @@ DECLARE
   v_has_approve_perm boolean;
   v_has_check_perm boolean;
   v_has_transfer_perm boolean;
+  v_is_director boolean;
   v_is_admin boolean;
   
   -- Biến xác minh Kế toán
@@ -109,7 +110,8 @@ BEGIN
   v_has_approve_perm := (v_perms ? 'APPROVE_FUND_REQUEST');
   v_has_check_perm := (v_perms ? 'CHECK_FUND_REQUEST');
   v_has_transfer_perm := (v_perms ? 'PROCESS_FUND_TRANSFER');
-  v_is_admin := lower(COALESCE(v_user_role, '')) IN ('admin', 'quản trị viên', 'systemadmin');
+  v_is_director := lower(COALESCE(v_user_role, '')) IN ('director', 'giám đốc', 'tổng giám đốc', 'phó giám đốc');
+  v_is_admin := lower(COALESCE(v_user_role, '')) IN ('admin', 'quản trị viên', 'systemadmin') OR v_is_director;
   v_is_accountant := lower(COALESCE(v_user_role, '')) LIKE '%kế toán%' 
     OR v_has_transfer_perm 
     OR (v_has_transfer_perm AND NOT v_has_approve_perm AND NOT v_is_admin);

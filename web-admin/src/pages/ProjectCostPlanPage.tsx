@@ -6062,11 +6062,16 @@ export const ProjectCostPlanPage: React.FC = () => {
                     );
 
                     // Phân quyền hành động nghiệp vụ chặt chẽ:
-                    const canDoCheck = !isCreator && !isPureAccountant && (isChecker || canCheckPerm || isDirectorUser || isSystemAdminUser);
-                    const canDoApprove = !isCreator && !isPureAccountant && (!isChecker || allowDualRole || isDirectorUser || isSystemAdminUser) && (isReviewer || canApprovePerm || isDirectorUser || isSystemAdminUser);
+                    // ĐẶC BIỆT: Lãnh đạo cao nhất (Giám đốc / Admin hệ thống) luôn có quyền tối cao (override),
+                    // có thể thực hiện thay ở bất kỳ bước nào (Kiểm tra, Duyệt, Kế toán chuyển tiền/tải UNC, hoặc Xác nhận)
+                    // để dự án không bị đình trệ khi nhân sự/kế toán nghỉ hoặc vắng mặt.
+                    const isHighLeader = isDirectorUser || isSystemAdminUser;
+
+                    const canDoCheck = isHighLeader || (!isCreator && !isPureAccountant && (isChecker || canCheckPerm));
+                    const canDoApprove = isHighLeader || (!isCreator && !isPureAccountant && (!isChecker || allowDualRole) && (isReviewer || canApprovePerm));
                     const isAccountantRoleOrPerm = userRoleStr.includes('kế toán') || userTitleStr.includes('kế toán') || canTransferPerm;
-                    const canDoTransfer = isAccountant || isAccountantRoleOrPerm || isSystemAdminUser;
-                    const canDoConfirm = isCreator || isSystemAdminUser;
+                    const canDoTransfer = isHighLeader || isAccountant || isAccountantRoleOrPerm;
+                    const canDoConfirm = isHighLeader || isCreator;
 
                     const curProjObj = projects.find(p => p.code === (req.projectCode || selectedProject));
                     const pName = curProjObj?.name || req.projectName || req.projectCode || 'Dự án';
@@ -6557,11 +6562,13 @@ export const ProjectCostPlanPage: React.FC = () => {
                   (canTransferPerm && !canApprovePerm)
                 );
 
-                const canDoCheck = !isCreator && !isPureAccountant && (isChecker || canCheckPerm || isDirectorUser || isSystemAdminUser);
-                const canDoApprove = !isCreator && !isPureAccountant && (!isChecker || allowDualRole || isDirectorUser || isSystemAdminUser) && (isReviewer || canApprovePerm || isDirectorUser || isSystemAdminUser);
+                const isHighLeader = isDirectorUser || isSystemAdminUser;
+
+                const canDoCheck = isHighLeader || (!isCreator && !isPureAccountant && (isChecker || canCheckPerm));
+                const canDoApprove = isHighLeader || (!isCreator && !isPureAccountant && (!isChecker || allowDualRole) && (isReviewer || canApprovePerm));
                 const isAccountantRoleOrPerm = userRoleStr.includes('kế toán') || userTitleStr.includes('kế toán') || canTransferPerm;
-                const canDoTransfer = isAccountant || isAccountantRoleOrPerm || isSystemAdminUser;
-                const canDoConfirm = isCreator || isSystemAdminUser;
+                const canDoTransfer = isHighLeader || isAccountant || isAccountantRoleOrPerm;
+                const canDoConfirm = isHighLeader || isCreator;
 
                 const curProjObj = projects.find(p => p.code === (req.projectCode || selectedProject));
                 const pName = curProjObj?.name || req.projectName || req.projectCode || 'Dự án';
