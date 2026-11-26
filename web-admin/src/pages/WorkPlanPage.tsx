@@ -7,6 +7,7 @@ import { Modal } from '../components/common/Modal';
 import { Toast } from '../components/common/Toast';
 import { CustomSelect } from '../components/common/CustomSelect';
 import { getTaskTimeBounds } from '../utils/taskPeriodFilter';
+import { cleanNotes } from '../utils/cleanNotesUtils';
 
 type CalendarViewMode = 'month' | 'week' | 'agenda';
 
@@ -1585,9 +1586,9 @@ export const WorkPlanPage: React.FC = () => {
                                 {task.name}
                               </div>
 
-                              {task.notes && (
+                              {cleanNotes(task.notes) && (
                                 <p className="text-xs text-slate-500 mt-1 line-clamp-2 italic">
-                                  {task.notes}
+                                  {cleanNotes(task.notes)}
                                 </p>
                               )}
                             </div>
@@ -1901,11 +1902,11 @@ export const WorkPlanPage: React.FC = () => {
             </div>
 
             {/* Notes */}
-            {selectedTaskDetail.notes && (
+            {cleanNotes(selectedTaskDetail.notes) && (
               <div className="p-2.5 bg-white border border-slate-200 rounded-md">
                 <div className="text-xs font-bold text-slate-400 mb-1">Ghi chú / Nội dung</div>
                 <div className="text-xs text-slate-700 whitespace-pre-line">
-                  {selectedTaskDetail.notes}
+                  {cleanNotes(selectedTaskDetail.notes)}
                 </div>
               </div>
             )}
