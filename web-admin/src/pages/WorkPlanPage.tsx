@@ -1012,12 +1012,12 @@ export const WorkPlanPage: React.FC = () => {
         </div>
       </div>
 
-      {/* SCROLLABLE BODY: Chức năng cuộn mượt mà toàn bộ nội dung */}
-      <div className="flex-1 overflow-y-auto min-h-0 bg-slate-50 p-1 sm:p-2 md:p-2.5 space-y-3 custom-scrollbar">
+      {/* SCROLLABLE BODY: Chức năng cuộn mượt mà toàn bộ nội dung - bỏ margin/padding dư thừa */}
+      <div className="flex-1 overflow-y-auto min-h-0 bg-slate-50 p-0 sm:p-1 space-y-1.5 custom-scrollbar">
 
         {/* Proactive Alert Banner (Displays if Overdue or Due Soon) */}
         {(stats.overdue > 0 || stats.dueSoon > 0 || stats.dueToday > 0) && (
-          <div className="bg-amber-50/80 border border-amber-200 rounded-lg p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
+          <div className="bg-amber-50/80 border border-amber-200 rounded-lg p-2.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 shadow-2xs">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-md bg-amber-600 text-white flex items-center justify-center shrink-0">
                 <span className="material-symbols-outlined text-lg">alarm</span>
@@ -1070,12 +1070,12 @@ export const WorkPlanPage: React.FC = () => {
         )}
 
         {/* KPI Summary Stat Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
           {/* Card: Quá hạn */}
           <button
             type="button"
             onClick={() => setStatusFilter(statusFilter === 'overdue' ? 'all' : 'overdue')}
-            className={`p-3 rounded-lg border text-left transition-all cursor-pointer ${
+            className={`p-2 sm:p-2.5 rounded-lg border text-left transition-all cursor-pointer ${
               statusFilter === 'overdue'
                 ? 'bg-rose-100/90 border-rose-400 ring-1 ring-rose-400'
                 : 'bg-white hover:bg-rose-50/50 border-rose-200'
@@ -1085,7 +1085,7 @@ export const WorkPlanPage: React.FC = () => {
               <span className="text-[11px] font-bold text-rose-700 uppercase">Quá hạn</span>
               <span className="material-symbols-outlined text-rose-600 text-lg">warning</span>
             </div>
-            <div className="text-2xl font-black text-rose-700 mt-1">{stats.overdue}</div>
+            <div className="text-xl sm:text-2xl font-black text-rose-700 mt-0.5">{stats.overdue}</div>
             <div className="text-[10px] text-rose-600 font-medium mt-0.5">Cần xử lý gấp</div>
           </button>
 
@@ -1093,7 +1093,7 @@ export const WorkPlanPage: React.FC = () => {
           <button
             type="button"
             onClick={() => setStatusFilter(statusFilter === 'due_today' ? 'all' : 'due_today')}
-            className={`p-3 rounded-lg border text-left transition-all cursor-pointer ${
+            className={`p-2 sm:p-2.5 rounded-lg border text-left transition-all cursor-pointer ${
               statusFilter === 'due_today'
                 ? 'bg-amber-100/90 border-amber-400 ring-1 ring-amber-400'
                 : 'bg-white hover:bg-amber-50/50 border-amber-200'
@@ -1103,7 +1103,7 @@ export const WorkPlanPage: React.FC = () => {
               <span className="text-[11px] font-bold text-amber-700 uppercase">Hạn hôm nay</span>
               <span className="material-symbols-outlined text-amber-600 text-lg">today</span>
             </div>
-            <div className="text-2xl font-black text-amber-700 mt-1">{stats.dueToday}</div>
+            <div className="text-xl sm:text-2xl font-black text-amber-700 mt-0.5">{stats.dueToday}</div>
             <div className="text-[10px] text-amber-600 font-medium mt-0.5">Hoàn thành trong ngày</div>
           </button>
 
@@ -1111,7 +1111,7 @@ export const WorkPlanPage: React.FC = () => {
           <button
             type="button"
             onClick={() => setStatusFilter(statusFilter === 'due_soon' ? 'all' : 'due_soon')}
-            className={`p-3 rounded-lg border text-left transition-all cursor-pointer ${
+            className={`p-2 sm:p-2.5 rounded-lg border text-left transition-all cursor-pointer ${
               statusFilter === 'due_soon'
                 ? 'bg-blue-100/90 border-blue-400 ring-1 ring-blue-400'
                 : 'bg-white hover:bg-blue-50/50 border-blue-200'
@@ -1121,7 +1121,7 @@ export const WorkPlanPage: React.FC = () => {
               <span className="text-[11px] font-bold text-blue-700 uppercase">Sắp đến hạn</span>
               <span className="material-symbols-outlined text-blue-600 text-lg">alarm</span>
             </div>
-            <div className="text-2xl font-black text-blue-700 mt-1">{stats.dueSoon}</div>
+            <div className="text-xl sm:text-2xl font-black text-blue-700 mt-0.5">{stats.dueSoon}</div>
             <div className="text-[10px] text-blue-600 font-medium mt-0.5">Trong vòng ≤ {formatAlertConfigLabel(alertConfig)}</div>
           </button>
 
@@ -1129,7 +1129,7 @@ export const WorkPlanPage: React.FC = () => {
           <button
             type="button"
             onClick={() => setStatusFilter(statusFilter === 'in_progress' ? 'all' : 'in_progress')}
-            className={`p-3 rounded-lg border text-left transition-all cursor-pointer ${
+            className={`p-2 sm:p-2.5 rounded-lg border text-left transition-all cursor-pointer ${
               statusFilter === 'in_progress'
                 ? 'bg-indigo-100/90 border-indigo-400 ring-1 ring-indigo-400'
                 : 'bg-white hover:bg-indigo-50/50 border-indigo-200'
@@ -1139,7 +1139,7 @@ export const WorkPlanPage: React.FC = () => {
               <span className="text-[11px] font-bold text-indigo-700 uppercase">Đang triển khai</span>
               <span className="material-symbols-outlined text-indigo-600 text-lg">pending_actions</span>
             </div>
-            <div className="text-2xl font-black text-indigo-700 mt-1">{stats.upcoming}</div>
+            <div className="text-xl sm:text-2xl font-black text-indigo-700 mt-0.5">{stats.upcoming}</div>
             <div className="text-[10px] text-indigo-600 font-medium mt-0.5">Kế hoạch những ngày tới</div>
           </button>
 
@@ -1147,7 +1147,7 @@ export const WorkPlanPage: React.FC = () => {
           <button
             type="button"
             onClick={() => setStatusFilter(statusFilter === 'completed' ? 'all' : 'completed')}
-            className={`p-3 rounded-lg border text-left transition-all cursor-pointer col-span-2 sm:col-span-1 ${
+            className={`p-2 sm:p-2.5 rounded-lg border text-left transition-all cursor-pointer col-span-2 sm:col-span-1 ${
               statusFilter === 'completed'
                 ? 'bg-emerald-100/90 border-emerald-400 ring-1 ring-emerald-400'
                 : 'bg-white hover:bg-emerald-50/50 border-emerald-200'
@@ -1157,13 +1157,13 @@ export const WorkPlanPage: React.FC = () => {
               <span className="text-[11px] font-bold text-emerald-700 uppercase">Đã hoàn thành</span>
               <span className="material-symbols-outlined text-emerald-600 text-lg">task_alt</span>
             </div>
-            <div className="text-2xl font-black text-emerald-700 mt-1">{stats.completed}</div>
+            <div className="text-xl sm:text-2xl font-black text-emerald-700 mt-0.5">{stats.completed}</div>
             <div className="text-[10px] text-emerald-600 font-medium mt-0.5">Tất cả việc đã xong</div>
           </button>
         </div>
 
         {/* Filter Bar */}
-        <div className="bg-white rounded-lg p-2.5 border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-2.5">
+        <div className="bg-white rounded-lg p-2 border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-wrap items-center gap-2 flex-1 min-w-[280px]">
             {/* Search Input */}
             <div className="relative min-w-[200px] flex-1 max-w-xs">
@@ -1478,16 +1478,16 @@ export const WorkPlanPage: React.FC = () => {
 
         {/* View Mode 3: Lộ trình / Danh sách Kế hoạch (Agenda View) */}
         {viewMode === 'agenda' && (
-          <div className="space-y-3">
+          <div className="space-y-1.5">
             {agendaGroups.length === 0 ? (
-              <div className="bg-white rounded-lg p-12 text-center border border-slate-200 shadow-xs">
-                <span className="material-symbols-outlined text-5xl text-slate-300">event_busy</span>
+              <div className="bg-white rounded-lg p-8 text-center border border-slate-200 shadow-xs">
+                <span className="material-symbols-outlined text-4xl text-slate-300">event_busy</span>
                 <p className="text-sm font-bold text-slate-600 mt-2">Không tìm thấy công việc nào phù hợp</p>
                 <p className="text-xs text-slate-400 mt-1">Thử thay đổi bộ lọc hoặc thêm kế hoạch mới</p>
                 <button
                   type="button"
                   onClick={() => openAddModal()}
-                  className="mt-4 px-4 py-2 bg-primary text-white text-xs font-bold rounded-md shadow-xs"
+                  className="mt-3 px-3 py-1.5 bg-primary text-white text-xs font-bold rounded-md shadow-xs"
                 >
                   + Lên kế hoạch ngay
                 </button>
@@ -1506,7 +1506,7 @@ export const WorkPlanPage: React.FC = () => {
                 >
                   {/* Group Header */}
                   <div
-                    className={`px-4 py-2.5 flex items-center justify-between border-b ${
+                    className={`px-3 py-1.5 flex items-center justify-between border-b ${
                       group.key === 'overdue'
                         ? 'bg-rose-50 text-rose-800 border-rose-200'
                         : group.key === 'today'
@@ -1514,11 +1514,11 @@ export const WorkPlanPage: React.FC = () => {
                         : 'bg-slate-50 text-slate-800 border-slate-200'
                     }`}
                   >
-                    <div className="flex items-center gap-2">
-                      <span className="material-symbols-outlined text-lg">{group.icon}</span>
-                      <span className="text-xs sm:text-sm font-black tracking-wide">{group.label}</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="material-symbols-outlined text-base">{group.icon}</span>
+                      <span className="text-xs font-black tracking-wide">{group.label}</span>
                     </div>
-                    <span className="text-xs font-bold px-2 py-0.5 rounded bg-white/80 shadow-2xs">
+                    <span className="text-[11px] font-bold px-1.5 py-0.2 rounded bg-white/80 shadow-2xs">
                       {group.items.length} việc
                     </span>
                   </div>
@@ -1534,7 +1534,7 @@ export const WorkPlanPage: React.FC = () => {
                         <div
                           key={task.id}
                           onClick={() => setSelectedTaskDetail(task)}
-                          className="p-3 sm:p-3.5 hover:bg-slate-50/80 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer"
+                          className="p-2 sm:p-2.5 hover:bg-slate-50/80 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-2 cursor-pointer"
                         >
                           <div className="flex items-start gap-3 flex-1 min-w-0">
                             {/* Checkbox toggle */}
