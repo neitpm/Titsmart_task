@@ -1814,68 +1814,73 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({ isSidebar = 
                 )}
               </div>
             </div>
-            {/* Hàng 1: Phân tách rõ ràng THÔNG BÁO (Người dùng) và CẢNH BÁO (Hệ thống/Hạn chót) */}
-            <div className="grid grid-cols-2 gap-1.5 p-1 bg-slate-200/80 rounded-xl mb-2 text-xs font-bold">
-              <button
-                type="button"
-                onClick={() => setCategoryTab('notifications')}
-                className={`py-1.5 px-2 rounded-lg text-center flex items-center justify-center gap-1.5 transition-all ${
-                  categoryTab === 'notifications'
-                    ? 'bg-white text-primary shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <span className="material-symbols-outlined text-[16px]">notifications</span>
-                <span>Thông báo</span>
-                {unreadDirectCount > 0 && (
-                  <span className="px-1.5 py-0.2 bg-blue-600 text-white rounded-full text-[10px] font-bold">
-                    {unreadDirectCount}
-                  </span>
-                )}
-              </button>
-              <button
-                type="button"
-                onClick={() => setCategoryTab('alerts')}
-                className={`py-1.5 px-2 rounded-lg text-center flex items-center justify-center gap-1.5 transition-all ${
-                  categoryTab === 'alerts'
-                    ? 'bg-amber-500 text-white shadow-xs font-bold'
-                    : 'text-amber-800 hover:text-amber-950'
-                }`}
-              >
-                <span className="material-symbols-outlined text-[16px]">warning</span>
-                <span>Cảnh báo</span>
-                {unreadAlertCount > 0 && (
-                  <span className="px-1.5 py-0.2 bg-red-600 text-white rounded-full text-[10px] font-bold">
-                    {unreadAlertCount}
-                  </span>
-                )}
-              </button>
-            </div>
+            {/* Thanh điều hướng 1 hàng siêu gọn: Thông báo (37) | Cảnh báo (13) + Toggle Chưa đọc / Tất cả */}
+            <div className="flex items-center justify-between gap-1 p-1 bg-slate-200/80 rounded-xl text-xs font-bold">
+              {/* Bên trái: 2 Tab Thông báo & Cảnh báo */}
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setCategoryTab('notifications')}
+                  className={`py-1 px-2 rounded-lg flex items-center gap-1 transition-all ${
+                    categoryTab === 'notifications'
+                      ? 'bg-white text-primary shadow-xs font-bold'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[15px]">notifications</span>
+                  <span>Thông báo</span>
+                  {unreadDirectCount > 0 && (
+                    <span className="px-1.5 py-0.2 bg-blue-600 text-white rounded-full text-[10px] font-bold">
+                      {unreadDirectCount}
+                    </span>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCategoryTab('alerts')}
+                  className={`py-1 px-2 rounded-lg flex items-center gap-1 transition-all ${
+                    categoryTab === 'alerts'
+                      ? 'bg-amber-500 text-white shadow-xs font-bold'
+                      : 'text-amber-800 hover:text-amber-950'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[15px]">warning</span>
+                  <span>Cảnh báo</span>
+                  {unreadAlertCount > 0 && (
+                    <span className="px-1.5 py-0.2 bg-red-600 text-white rounded-full text-[10px] font-bold">
+                      {unreadAlertCount}
+                    </span>
+                  )}
+                </button>
+              </div>
 
-            {/* Hàng 2: Bộ lọc Chưa đọc / Tất cả trong tab đang chọn */}
-            <div className="flex rounded-lg bg-slate-200/50 p-0.5 text-[11px] font-semibold">
-              <button
-                type="button"
-                onClick={() => setActiveTab('unread')}
-                className={`flex-1 py-1 rounded-md text-center transition-all ${
-                  activeTab === 'unread'
-                    ? 'bg-white text-primary shadow-2xs font-bold'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                Chưa đọc ({activeCategoryUnreadList.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab('all')}
-                className={`flex-1 py-1 rounded-md text-center transition-all ${
-                  activeTab === 'all'
-                    ? 'bg-white text-primary shadow-2xs font-bold'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                Tất cả ({categoryNotifications.length})
-              </button>
+              {/* Bên phải: Toggle Chưa đọc / Tất cả */}
+              <div className="flex items-center rounded-lg bg-slate-300/60 p-0.5 text-[11px] font-semibold shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('unread')}
+                  className={`px-2 py-0.5 rounded-md text-center transition-all ${
+                    activeTab === 'unread'
+                      ? 'bg-white text-primary shadow-2xs font-bold'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                  title="Chỉ hiển thị chưa đọc"
+                >
+                  Chưa đọc ({activeCategoryUnreadList.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('all')}
+                  className={`px-2 py-0.5 rounded-md text-center transition-all ${
+                    activeTab === 'all'
+                      ? 'bg-white text-primary shadow-2xs font-bold'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                  title="Hiển thị tất cả"
+                >
+                  Tất cả ({categoryNotifications.length})
+                </button>
+              </div>
             </div>
           </div>
 
