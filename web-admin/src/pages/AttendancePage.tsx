@@ -856,55 +856,76 @@ export const AttendancePage: React.FC = () => {
   };
 
   const handleTriggerGpsScan = () => {
-    if (!navigator.geolocation) {
-      setGpsError('Thiết bị hoặc trình duyệt không hỗ trợ định vị GPS');
+    if (typeof window === 'undefined' || !navigator.geolocation) {
+      setGpsError('Thiết bị hoặc trình duyệt không hỗ trợ định vị GPS.');
       return;
     }
     setIsGpsScanning(true);
     setGpsError(null);
+
+    const onGpsSuccess = (pos: GeolocationPosition) => {
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+
+      // Ưu tiên đối chiếu với dự án Văn phòng (OFFICE) hoặc dự án đầu tiên có tọa độ
+      const officeProj = projects.find(p => (p.code || '').toUpperCase() === 'OFFICE' && p.latitude !== undefined && p.longitude !== undefined)
+        || projects.find(p => (p.name || '').toLowerCase().includes('văn phòng') && p.latitude !== undefined && p.longitude !== undefined);
+
+      let distanceMeters = 0;
+      let isWithinRadius = true;
+      let locationName = 'Vị trí hiện tại';
+
+      if (officeProj && officeProj.latitude !== undefined && officeProj.longitude !== undefined) {
+        distanceMeters = calculateDistanceMeters(lat, lng, officeProj.latitude, officeProj.longitude);
+        isWithinRadius = distanceMeters <= (officeProj.radiusMeters || 500);
+        locationName = officeProj.name || 'Văn phòng';
+      } else {
+        const nearest = findNearestLocation(lat, lng, attendanceConfig.locations);
+        distanceMeters = nearest.distanceMeters;
+        isWithinRadius = nearest.isWithinRadius;
+        locationName = nearest.nearestLocation?.name || 'Vị trí hiện tại';
+      }
+
+      setGpsData({
+        lat,
+        lng,
+        distanceMeters,
+        locationName,
+        isWithinRadius,
+      });
+
+      // Nếu ở xa văn phòng (> 500m) và cho phép làm việc ngoài văn phòng, tự động chuyển sang "Tại công trình / Dự án"
+      if (distanceMeters > 500 && attendanceConfig.allowFieldWork !== false) {
+        setWorkLocationType(prev => prev === 'office' ? 'field' : prev);
+      }
+      setIsGpsScanning(false);
+    };
+
+    const onGpsError = (err: GeolocationPositionError) => {
+      // Nếu lần đầu gọi độ chính xác cao (GPS phần cứng) bị timeout hoặc lỗi trên máy tính/điện thoại yếu sóng, thử lại chế độ fallback mạng
+      navigator.geolocation.getCurrentPosition(
+        onGpsSuccess,
+        (fallbackErr) => {
+          setIsGpsScanning(false);
+          let errorMsg = 'Chưa thể lấy vị trí GPS.';
+          if (fallbackErr.code === fallbackErr.PERMISSION_DENIED) {
+            errorMsg = 'Quyền truy cập vị trí GPS đang bị chặn. Vui lòng bấm vào biểu tượng ổ khóa/vị trí trên thanh địa chỉ trình duyệt hoặc Cài đặt điện thoại và chọn "Cho phép (Allow)" truy cập vị trí.';
+          } else if (fallbackErr.code === fallbackErr.POSITION_UNAVAILABLE) {
+            errorMsg = 'Thiết bị chưa bật GPS hoặc không có tín hiệu vệ tinh/mạng. Vui lòng bật Định vị (Vị trí) trong cài đặt thiết bị.';
+          } else if (fallbackErr.code === fallbackErr.TIMEOUT) {
+            errorMsg = 'Thời gian quét GPS hết hạn. Vui lòng kiểm tra lại kết nối mạng hoặc bấm "Lấy lại vị trí".';
+          }
+          setGpsError(errorMsg);
+        },
+        { enableHighAccuracy: false, timeout: 15000, maximumAge: 60000 }
+      );
+    };
+
+    // 1. Thử lấy vị trí với độ chính xác cao
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const lat = pos.coords.latitude;
-        const lng = pos.coords.longitude;
-
-        // Ưu tiên đối chiếu với dự án Văn phòng (OFFICE) hoặc dự án đầu tiên có tọa độ
-        const officeProj = projects.find(p => (p.code || '').toUpperCase() === 'OFFICE' && p.latitude !== undefined && p.longitude !== undefined)
-          || projects.find(p => (p.name || '').toLowerCase().includes('văn phòng') && p.latitude !== undefined && p.longitude !== undefined);
-
-        let distanceMeters = 0;
-        let isWithinRadius = true;
-        let locationName = 'Vị trí hiện tại';
-
-        if (officeProj && officeProj.latitude !== undefined && officeProj.longitude !== undefined) {
-          distanceMeters = calculateDistanceMeters(lat, lng, officeProj.latitude, officeProj.longitude);
-          isWithinRadius = distanceMeters <= (officeProj.radiusMeters || 500);
-          locationName = officeProj.name || 'Văn phòng';
-        } else {
-          const nearest = findNearestLocation(lat, lng, attendanceConfig.locations);
-          distanceMeters = nearest.distanceMeters;
-          isWithinRadius = nearest.isWithinRadius;
-          locationName = nearest.nearestLocation?.name || 'Vị trí hiện tại';
-        }
-
-        setGpsData({
-          lat,
-          lng,
-          distanceMeters,
-          locationName,
-          isWithinRadius,
-        });
-
-        // Nếu ở xa văn phòng (> 500m) và cho phép làm việc ngoài văn phòng, tự động chuyển sang "Tại công trình / Dự án"
-        if (distanceMeters > 500 && attendanceConfig.allowFieldWork !== false) {
-          setWorkLocationType(prev => prev === 'office' ? 'field' : prev);
-        }
-        setIsGpsScanning(false);
-      },
-      (err) => {
-        setIsGpsScanning(false);
-        setGpsError(err.message || 'Không thể lấy vị trí GPS. Vui lòng bật quyền truy cập vị trí trên trình duyệt.');
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
+      onGpsSuccess,
+      onGpsError,
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 }
     );
   };
 
@@ -3786,11 +3807,24 @@ export const AttendancePage: React.FC = () => {
                   </div>
                 );
               })() : gpsError ? (
-                <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700 flex items-start gap-2">
-                  <span className="material-symbols-outlined text-[18px] shrink-0 text-red-500">warning</span>
-                  <div>
-                    <div className="font-bold">Không thể lấy vị trí GPS</div>
-                    <div className="text-[11px] text-red-600 mt-0.5">{gpsError}</div>
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-900 flex flex-col gap-2">
+                  <div className="flex items-start gap-2">
+                    <span className="material-symbols-outlined text-[20px] shrink-0 text-amber-600">location_off</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-bold text-slate-800">Cần bật quyền truy cập vị trí GPS</div>
+                      <div className="text-[11px] text-slate-600 mt-0.5 leading-relaxed">{gpsError}</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-end gap-2 pt-1 border-t border-amber-200/60">
+                    <button
+                      type="button"
+                      onClick={handleTriggerGpsScan}
+                      disabled={isGpsScanning}
+                      className="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-md font-bold text-xs flex items-center gap-1 cursor-pointer transition shadow-2xs"
+                    >
+                      <span className="material-symbols-outlined text-[15px]">my_location</span>
+                      <span>Đồng ý & Bật vị trí GPS</span>
+                    </button>
                   </div>
                 </div>
               ) : null}
