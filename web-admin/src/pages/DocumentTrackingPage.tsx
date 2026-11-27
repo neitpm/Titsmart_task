@@ -405,51 +405,9 @@ export const DocumentTrackingPage: React.FC = () => {
         ) : null
       )}
 
-      {/* 2. TAB NGHIỆP VỤ: TỔNG QUAN | HỒ SƠ ĐẦU VÀO | HỒ SƠ ĐẦU RA */}
-      <div className="bg-white border-b border-slate-200 px-3 md:px-5 flex items-center justify-between">
-        <div className="flex items-center gap-1 overflow-x-auto custom-scrollbar">
-          {/* Tab 2: Hồ sơ đầu vào */}
-          <button
-            type="button"
-            onClick={() => handleSelectMainTab('input')}
-            className={`py-2.5 px-3.5 text-xs font-bold border-b-2 transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
-              activeMainTab === 'input'
-                ? 'border-rose-600 text-rose-700 bg-rose-50/40'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            <span className="material-symbols-outlined text-[17px]">upload_file</span>
-            <span>Hồ sơ đầu vào</span>
-            <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-rose-100 text-rose-800">
-              {inputDocs.length}
-            </span>
-          </button>
 
-          {/* Tab 3: Hồ sơ đầu ra */}
-          <button
-            type="button"
-            onClick={() => handleSelectMainTab('output')}
-            className={`py-2.5 px-3.5 text-xs font-bold border-b-2 transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
-              activeMainTab === 'output'
-                ? 'border-emerald-600 text-emerald-700 bg-emerald-50/40'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            <span className="material-symbols-outlined text-[17px]">download_for_offline</span>
-            <span>Hồ sơ đầu ra</span>
-            <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-emerald-100 text-emerald-800">
-              {outputDocs.length}
-            </span>
-          </button>
-        </div>
 
-        {/* Thông tin phụ bên phải */}
-        <div className="hidden md:flex items-center gap-2 text-xs text-slate-500">
-          <span>Tổng số: <b className="text-slate-800">{projectScopedDocs.length}</b> hồ sơ</span>
-        </div>
-      </div>
-
-      {/* 3. NỘI DUNG TỪNG TAB */}
+      {/* 3. NỘI DUNG – hiển thị theo tab từ sidebar hoặc overview */}
       {activeMainTab === 'overview' ? (
         <PullToRefresh onRefresh={async () => { await fetchAccounting(); }} className="flex-1 overflow-y-auto">
           <div className="p-0">
@@ -463,33 +421,17 @@ export const DocumentTrackingPage: React.FC = () => {
         </PullToRefresh>
       ) : (
         <div className="flex-1 overflow-hidden flex flex-col min-h-0">
-          {activeMainTab === 'input' && (
-            <DocumentFlowTable
-              flow="input"
-              documents={inputDocs}
-              isLockedProject={isLockedProject}
-              onEdit={handleEditDoc}
-              onDelete={handleDeleteDoc}
-              onViewDetail={handleViewDetailDoc}
-              onOpenNew={() => handleOpenNew('input')}
-              onExportExcel={handleExportCurrentExcel}
-              isAllowedToManage={isAllowedToManage}
-            />
-          )}
-
-          {activeMainTab === 'output' && (
-            <DocumentFlowTable
-              flow="output"
-              documents={outputDocs}
-              isLockedProject={isLockedProject}
-              onEdit={handleEditDoc}
-              onDelete={handleDeleteDoc}
-              onViewDetail={handleViewDetailDoc}
-              onOpenNew={() => handleOpenNew('output')}
-              onExportExcel={handleExportCurrentExcel}
-              isAllowedToManage={isAllowedToManage}
-            />
-          )}
+          <DocumentFlowTable
+            flow={activeMainTab as 'input' | 'output'}
+            documents={activeMainTab === 'input' ? inputDocs : outputDocs}
+            isLockedProject={isLockedProject}
+            onEdit={handleEditDoc}
+            onDelete={handleDeleteDoc}
+            onViewDetail={handleViewDetailDoc}
+            onOpenNew={() => handleOpenNew(activeMainTab as 'input' | 'output')}
+            onExportExcel={handleExportCurrentExcel}
+            isAllowedToManage={isAllowedToManage}
+          />
         </div>
       )}
 
