@@ -443,7 +443,8 @@ export const DocumentDetailModal: React.FC<DocumentDetailModalProps> = ({
               )}
 
               {/* BẢNG CHỈ TIÊU CHI TIẾT */}
-              <table className="w-full text-xs text-left">
+              <div className="overflow-x-auto table-scrollbar custom-scrollbar w-full">
+                <table className="w-full text-xs text-left min-w-[550px]">
                 <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
                   <tr>
                     <th className="py-2 px-3.5">Chỉ tiêu tài chính</th>
@@ -544,6 +545,7 @@ export const DocumentDetailModal: React.FC<DocumentDetailModalProps> = ({
                   </tr>
                 </tbody>
               </table>
+              </div>
             </div>
 
             {/* 2. CẢNH BÁO TRẠNG THÁI KÝ & THIẾU CHỨNG TỪ */}

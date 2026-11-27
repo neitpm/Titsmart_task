@@ -469,8 +469,8 @@ export const DocumentTrackingPage: React.FC = () => {
       </div>
 
       {/* 3. NỘI DUNG TỪNG TAB */}
-      <PullToRefresh onRefresh={async () => { await fetchAccounting(); }} className="flex-1 overflow-y-auto">
-        {activeMainTab === 'overview' && (
+      {activeMainTab === 'overview' ? (
+        <PullToRefresh onRefresh={async () => { await fetchAccounting(); }} className="flex-1 overflow-y-auto">
           <div className="p-2 md:p-3">
             <DocumentOverviewTab
               inputDocs={inputDocs}
@@ -479,36 +479,38 @@ export const DocumentTrackingPage: React.FC = () => {
               onViewDetail={handleViewDetailDoc}
             />
           </div>
-        )}
+        </PullToRefresh>
+      ) : (
+        <div className="flex-1 overflow-hidden flex flex-col min-h-0">
+          {activeMainTab === 'input' && (
+            <DocumentFlowTable
+              flow="input"
+              documents={inputDocs}
+              isLockedProject={isLockedProject}
+              onEdit={handleEditDoc}
+              onDelete={handleDeleteDoc}
+              onViewDetail={handleViewDetailDoc}
+              onOpenNew={() => handleOpenNew('input')}
+              onExportExcel={handleExportCurrentExcel}
+              isAllowedToManage={isAllowedToManage}
+            />
+          )}
 
-        {activeMainTab === 'input' && (
-          <DocumentFlowTable
-            flow="input"
-            documents={inputDocs}
-            isLockedProject={isLockedProject}
-            onEdit={handleEditDoc}
-            onDelete={handleDeleteDoc}
-            onViewDetail={handleViewDetailDoc}
-            onOpenNew={() => handleOpenNew('input')}
-            onExportExcel={handleExportCurrentExcel}
-            isAllowedToManage={isAllowedToManage}
-          />
-        )}
-
-        {activeMainTab === 'output' && (
-          <DocumentFlowTable
-            flow="output"
-            documents={outputDocs}
-            isLockedProject={isLockedProject}
-            onEdit={handleEditDoc}
-            onDelete={handleDeleteDoc}
-            onViewDetail={handleViewDetailDoc}
-            onOpenNew={() => handleOpenNew('output')}
-            onExportExcel={handleExportCurrentExcel}
-            isAllowedToManage={isAllowedToManage}
-          />
-        )}
-      </PullToRefresh>
+          {activeMainTab === 'output' && (
+            <DocumentFlowTable
+              flow="output"
+              documents={outputDocs}
+              isLockedProject={isLockedProject}
+              onEdit={handleEditDoc}
+              onDelete={handleDeleteDoc}
+              onViewDetail={handleViewDetailDoc}
+              onOpenNew={() => handleOpenNew('output')}
+              onExportExcel={handleExportCurrentExcel}
+              isAllowedToManage={isAllowedToManage}
+            />
+          )}
+        </div>
+      )}
 
       {/* 4. MODAL CHI TIẾT 4 TAB (TỔNG QUAN, ĐỢT CHI, CHECKLIST, PHIÊN BẢN) */}
       {isDetailModalOpen && selectedDetailDoc && (
