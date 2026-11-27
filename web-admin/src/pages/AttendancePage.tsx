@@ -855,11 +855,33 @@ export const AttendancePage: React.FC = () => {
     }
   };
 
-  const handleTriggerGpsScan = () => {
-    if (typeof window === 'undefined' || !navigator.geolocation) {
+  const handleTriggerGpsScan = async () => {
+    if (typeof window === 'undefined') return;
+
+    // Trình duyệt chỉ cho phép Web Geolocation trong secure context. Khi nhân sự
+    // mở app qua http://192.168.x.x trên điện thoại, navigator.geolocation có thể
+    // bị ẩn hoặc trả lỗi ngay, trong khi cùng app trên Electron/localhost vẫn chạy.
+    if (!window.isSecureContext) {
+      setGpsError('Không thể lấy vị trí từ địa chỉ HTTP không bảo mật. Trên điện thoại, hãy mở TITSMART bằng đường dẫn HTTPS của hệ thống hoặc dùng ứng dụng đã cài đặt; không dùng http://IP-mạng:5173.');
+      return;
+    }
+
+    if (!navigator.geolocation) {
       setGpsError('Thiết bị hoặc trình duyệt không hỗ trợ định vị GPS.');
       return;
     }
+
+    // Báo sớm trường hợp người dùng đã chặn quyền thay vì luôn đợi timeout.
+    try {
+      const permission = await navigator.permissions?.query({ name: 'geolocation' as PermissionName });
+      if (permission?.state === 'denied') {
+        setGpsError('Quyền truy cập vị trí đang bị chặn. Vui lòng cho phép vị trí cho TITSMART trong cài đặt trình duyệt/điện thoại, sau đó bấm “Lấy lại vị trí”.');
+        return;
+      }
+    } catch {
+      // Safari và một số WebView không hỗ trợ Permissions API; vẫn tiếp tục gọi GPS.
+    }
+
     setIsGpsScanning(true);
     setGpsError(null);
 
@@ -901,23 +923,35 @@ export const AttendancePage: React.FC = () => {
       setIsGpsScanning(false);
     };
 
+    const formatGpsError = (error: GeolocationPositionError) => {
+      let errorMsg = 'Chưa thể lấy vị trí GPS.';
+      if (error.code === error.PERMISSION_DENIED) {
+        errorMsg = 'Quyền truy cập vị trí GPS đang bị chặn. Vui lòng bấm biểu tượng vị trí trên thanh địa chỉ trình duyệt hoặc vào Cài đặt điện thoại để cho phép TITSMART dùng vị trí.';
+      } else if (error.code === error.POSITION_UNAVAILABLE) {
+        errorMsg = 'Thiết bị chưa xác định được vị trí. Hãy bật Dịch vụ vị trí, bật Wi‑Fi/Dữ liệu di động và thử lại ở nơi có tín hiệu tốt hơn.';
+      } else if (error.code === error.TIMEOUT) {
+        errorMsg = 'Hết thời gian lấy vị trí. Hãy kiểm tra tín hiệu GPS/mạng rồi bấm “Lấy lại vị trí”.';
+      }
+      return errorMsg;
+    };
+
     const onGpsError = (err: GeolocationPositionError) => {
-      // Nếu lần đầu gọi độ chính xác cao (GPS phần cứng) bị timeout hoặc lỗi trên máy tính/điện thoại yếu sóng, thử lại chế độ fallback mạng
+      // Người dùng đã từ chối quyền thì không có ích gì khi gọi lại lần hai.
+      if (err.code === err.PERMISSION_DENIED) {
+        setIsGpsScanning(false);
+        setGpsError(formatGpsError(err));
+        return;
+      }
+
+      // GPS phần cứng có thể cần nhiều thời gian trên điện thoại/đi trong nhà.
+      // Nếu không có kết quả, hạ độ chính xác để cho phép định vị qua Wi-Fi/mạng.
       navigator.geolocation.getCurrentPosition(
         onGpsSuccess,
         (fallbackErr) => {
           setIsGpsScanning(false);
-          let errorMsg = 'Chưa thể lấy vị trí GPS.';
-          if (fallbackErr.code === fallbackErr.PERMISSION_DENIED) {
-            errorMsg = 'Quyền truy cập vị trí GPS đang bị chặn. Vui lòng bấm vào biểu tượng ổ khóa/vị trí trên thanh địa chỉ trình duyệt hoặc Cài đặt điện thoại và chọn "Cho phép (Allow)" truy cập vị trí.';
-          } else if (fallbackErr.code === fallbackErr.POSITION_UNAVAILABLE) {
-            errorMsg = 'Thiết bị chưa bật GPS hoặc không có tín hiệu vệ tinh/mạng. Vui lòng bật Định vị (Vị trí) trong cài đặt thiết bị.';
-          } else if (fallbackErr.code === fallbackErr.TIMEOUT) {
-            errorMsg = 'Thời gian quét GPS hết hạn. Vui lòng kiểm tra lại kết nối mạng hoặc bấm "Lấy lại vị trí".';
-          }
-          setGpsError(errorMsg);
+          setGpsError(formatGpsError(fallbackErr));
         },
-        { enableHighAccuracy: false, timeout: 15000, maximumAge: 60000 }
+        { enableHighAccuracy: false, timeout: 20000, maximumAge: 60000 }
       );
     };
 
@@ -925,7 +959,7 @@ export const AttendancePage: React.FC = () => {
     navigator.geolocation.getCurrentPosition(
       onGpsSuccess,
       onGpsError,
-      { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 }
+      { enableHighAccuracy: true, timeout: 20000, maximumAge: 30000 }
     );
   };
 
