@@ -44,6 +44,8 @@ import { ViewModeToolbar, resolveViewMode, AppViewMode } from '../components/com
 import { StatusKanbanBoard } from '../components/common/StatusKanbanBoard';
 import { useTableColumnResize } from '../services/useTableColumnResize';
 import { ColumnResizeHandle } from '../components/common/ColumnResizeHandle';
+import { Capacitor } from '@capacitor/core';
+import { Geolocation } from '@capacitor/geolocation';
 
 interface AttendanceLog {
   id: string;
@@ -858,37 +860,10 @@ export const AttendancePage: React.FC = () => {
   const handleTriggerGpsScan = async () => {
     if (typeof window === 'undefined') return;
 
-    // Trình duyệt chỉ cho phép Web Geolocation trong secure context. Khi nhân sự
-    // mở app qua http://192.168.x.x trên điện thoại, navigator.geolocation có thể
-    // bị ẩn hoặc trả lỗi ngay, trong khi cùng app trên Electron/localhost vẫn chạy.
-    if (!window.isSecureContext) {
-      setGpsError('Không thể lấy vị trí từ địa chỉ HTTP không bảo mật. Trên điện thoại, hãy mở TITSMART bằng đường dẫn HTTPS của hệ thống hoặc dùng ứng dụng đã cài đặt; không dùng http://IP-mạng:5173.');
-      return;
-    }
-
-    if (!navigator.geolocation) {
-      setGpsError('Thiết bị hoặc trình duyệt không hỗ trợ định vị GPS.');
-      return;
-    }
-
-    // Báo sớm trường hợp người dùng đã chặn quyền thay vì luôn đợi timeout.
-    try {
-      const permission = await navigator.permissions?.query({ name: 'geolocation' as PermissionName });
-      if (permission?.state === 'denied') {
-        setGpsError('Quyền truy cập vị trí đang bị chặn. Vui lòng cho phép vị trí cho TITSMART trong cài đặt trình duyệt/điện thoại, sau đó bấm “Lấy lại vị trí”.');
-        return;
-      }
-    } catch {
-      // Safari và một số WebView không hỗ trợ Permissions API; vẫn tiếp tục gọi GPS.
-    }
-
     setIsGpsScanning(true);
     setGpsError(null);
 
-    const onGpsSuccess = (pos: GeolocationPosition) => {
-      const lat = pos.coords.latitude;
-      const lng = pos.coords.longitude;
-
+    const onGpsSuccessData = (lat: number, lng: number) => {
       // Ưu tiên đối chiếu với dự án Văn phòng (OFFICE) hoặc dự án đầu tiên có tọa độ
       const officeProj = projects.find(p => (p.code || '').toUpperCase() === 'OFFICE' && p.latitude !== undefined && p.longitude !== undefined)
         || projects.find(p => (p.name || '').toLowerCase().includes('văn phòng') && p.latitude !== undefined && p.longitude !== undefined);
@@ -923,12 +898,74 @@ export const AttendancePage: React.FC = () => {
       setIsGpsScanning(false);
     };
 
+    // 1. NẾU ĐANG CHẠY TRÊN NATIVE (Android APK / iOS app qua Capacitor)
+    if (Capacitor.isNativePlatform()) {
+      try {
+        let permStatus = await Geolocation.checkPermissions();
+        if (permStatus.location !== 'granted') {
+          permStatus = await Geolocation.requestPermissions({ permissions: ['location'] });
+        }
+
+        if (permStatus.location !== 'granted') {
+          setIsGpsScanning(false);
+          setGpsError('Ứng dụng chưa được cấp quyền vị trí. Vui lòng vào Cài đặt điện thoại -> Ứng dụng -> TITSMART -> Quyền -> Cho phép Vị trí.');
+          return;
+        }
+
+        const position = await Geolocation.getCurrentPosition({
+          enableHighAccuracy: true,
+          timeout: 20000,
+          maximumAge: 30000
+        });
+
+        if (position?.coords) {
+          onGpsSuccessData(position.coords.latitude, position.coords.longitude);
+          return;
+        }
+      } catch (nativeErr: any) {
+        console.warn('Native GPS scan failed, trying web fallback...', nativeErr);
+        // Thử lại với độ chính xác thấp hơn
+        try {
+          const fallbackPos = await Geolocation.getCurrentPosition({
+            enableHighAccuracy: false,
+            timeout: 20000,
+            maximumAge: 60000
+          });
+          if (fallbackPos?.coords) {
+            onGpsSuccessData(fallbackPos.coords.latitude, fallbackPos.coords.longitude);
+            return;
+          }
+        } catch (e: any) {
+          setIsGpsScanning(false);
+          setGpsError('Không thể lấy vị trí từ thiết bị. Hãy chắc chắn bạn đã bật GPS trong Cài đặt điện thoại và cấp quyền Vị trí cho ứng dụng.');
+          return;
+        }
+      }
+    }
+
+    // 2. NẾU CHẠY TRÊN WEB TRÌNH DUYỆT / DESKTOP
+    if (!window.isSecureContext) {
+      setIsGpsScanning(false);
+      setGpsError('Trình duyệt chặn lấy vị trí ở địa chỉ HTTP không bảo mật. Vui lòng mở bằng HTTPS hoặc dùng file cài đặt App TITSMART.');
+      return;
+    }
+
+    if (!navigator.geolocation) {
+      setIsGpsScanning(false);
+      setGpsError('Thiết bị hoặc trình duyệt không hỗ trợ định vị GPS.');
+      return;
+    }
+
+    const onGpsSuccess = (pos: GeolocationPosition) => {
+      onGpsSuccessData(pos.coords.latitude, pos.coords.longitude);
+    };
+
     const formatGpsError = (error: GeolocationPositionError) => {
       let errorMsg = 'Chưa thể lấy vị trí GPS.';
       if (error.code === error.PERMISSION_DENIED) {
-        errorMsg = 'Quyền truy cập vị trí GPS đang bị chặn. Vui lòng bấm biểu tượng vị trí trên thanh địa chỉ trình duyệt hoặc vào Cài đặt điện thoại để cho phép TITSMART dùng vị trí.';
+        errorMsg = 'Quyền truy cập vị trí GPS đang bị chặn. Vui lòng bấm biểu tượng ổ khóa/vị trí trên thanh địa chỉ trình duyệt hoặc vào Cài đặt điện thoại để cho phép vị trí.';
       } else if (error.code === error.POSITION_UNAVAILABLE) {
-        errorMsg = 'Thiết bị chưa xác định được vị trí. Hãy bật Dịch vụ vị trí, bật Wi‑Fi/Dữ liệu di động và thử lại ở nơi có tín hiệu tốt hơn.';
+        errorMsg = 'Thiết bị chưa xác định được vị trí. Hãy bật Dịch vụ định vị GPS, bật Wi‑Fi/4G và thử lại ở nơi thoáng.';
       } else if (error.code === error.TIMEOUT) {
         errorMsg = 'Hết thời gian lấy vị trí. Hãy kiểm tra tín hiệu GPS/mạng rồi bấm “Lấy lại vị trí”.';
       }
@@ -936,26 +973,23 @@ export const AttendancePage: React.FC = () => {
     };
 
     const onGpsError = (err: GeolocationPositionError) => {
-      // Người dùng đã từ chối quyền thì không có ích gì khi gọi lại lần hai.
-      if (err.code === err.PERMISSION_DENIED) {
-        setIsGpsScanning(false);
-        setGpsError(formatGpsError(err));
+      // Nếu lỗi timeout hoặc unavailable, thử fallback độ chính xác thấp
+      if (err.code !== err.PERMISSION_DENIED) {
+        navigator.geolocation.getCurrentPosition(
+          onGpsSuccess,
+          (fallbackErr) => {
+            setIsGpsScanning(false);
+            setGpsError(formatGpsError(fallbackErr));
+          },
+          { enableHighAccuracy: false, timeout: 20000, maximumAge: 60000 }
+        );
         return;
       }
-
-      // GPS phần cứng có thể cần nhiều thời gian trên điện thoại/đi trong nhà.
-      // Nếu không có kết quả, hạ độ chính xác để cho phép định vị qua Wi-Fi/mạng.
-      navigator.geolocation.getCurrentPosition(
-        onGpsSuccess,
-        (fallbackErr) => {
-          setIsGpsScanning(false);
-          setGpsError(formatGpsError(fallbackErr));
-        },
-        { enableHighAccuracy: false, timeout: 20000, maximumAge: 60000 }
-      );
+      setIsGpsScanning(false);
+      setGpsError(formatGpsError(err));
     };
 
-    // 1. Thử lấy vị trí với độ chính xác cao
+    // Thử lấy vị trí qua Web Geolocation
     navigator.geolocation.getCurrentPosition(
       onGpsSuccess,
       onGpsError,
