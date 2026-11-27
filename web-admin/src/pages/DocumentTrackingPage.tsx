@@ -370,14 +370,8 @@ export const DocumentTrackingPage: React.FC = () => {
           </div>
         </section>
       ) : (
-        /* Khi ở trong chi tiết dự án */
-        <section className="border-b border-slate-200 bg-white px-3 md:px-5 py-2 flex flex-wrap items-center justify-between gap-2 shadow-2xs z-30">
-          <div className="flex items-center gap-2">
-            <span className="font-extrabold text-sm md:text-base text-slate-800 uppercase border-l-4 border-primary pl-2">
-              HỒ SƠ DỰ ÁN ({resolvedProjectCode})
-            </span>
-          </div>
-
+        /* Khi ở trong chi tiết dự án: gắn nút lên thanh project-header-actions và không tạo thêm thanh header trùng lặp */
+        portalNode ? createPortal(
           <div className="flex items-center gap-2">
             <ImportExportDropdown
               onImportClick={() => fileInputRef.current?.click()}
@@ -406,27 +400,14 @@ export const DocumentTrackingPage: React.FC = () => {
                 </CustomSelect>
               </div>
             )}
-          </div>
-        </section>
+          </div>,
+          portalNode
+        ) : null
       )}
 
       {/* 2. TAB NGHIỆP VỤ: TỔNG QUAN | HỒ SƠ ĐẦU VÀO | HỒ SƠ ĐẦU RA */}
       <div className="bg-white border-b border-slate-200 px-3 md:px-5 flex items-center justify-between">
         <div className="flex items-center gap-1 overflow-x-auto custom-scrollbar">
-          {/* Tab 1: Tổng quan */}
-          <button
-            type="button"
-            onClick={() => handleSelectMainTab('overview')}
-            className={`py-2.5 px-3.5 text-xs font-bold border-b-2 transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
-              activeMainTab === 'overview'
-                ? 'border-primary text-primary'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            <span className="material-symbols-outlined text-[17px]">dashboard</span>
-            <span>{isLockedProject ? 'Tổng quan hồ sơ' : 'Tổng quan'}</span>
-          </button>
-
           {/* Tab 2: Hồ sơ đầu vào */}
           <button
             type="button"
