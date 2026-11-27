@@ -265,6 +265,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
             req: 'VIEW_DOCUMENTS',
             children: [
               {
+                label: 'Chưa phân loại',
+                path: `/projects/${currentProject.id}/documents?tab=unclassified`,
+                icon: 'help_outline',
+                isActive: (pathname: string, search: string) => {
+                  const sp = new URLSearchParams(search);
+                  return pathname.includes('/documents') && sp.get('tab') === 'unclassified';
+                }
+              },
+              {
                 label: 'Hồ sơ đầu vào',
                 path: `/projects/${currentProject.id}/documents?tab=input`,
                 icon: 'upload_file',
@@ -473,6 +482,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
     ];
 
     const documentSubItems = [
+      {
+        label: 'Chưa phân loại',
+        path: '/document-tracking?tab=unclassified',
+        icon: 'help_outline',
+        isActive: (pathname: string, search: string) => {
+          const sp = new URLSearchParams(search);
+          return pathname === '/document-tracking' && sp.get('tab') === 'unclassified';
+        }
+      },
       {
         label: 'Hồ sơ đầu vào',
         path: '/document-tracking?tab=input',

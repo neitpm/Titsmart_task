@@ -62,23 +62,23 @@ export const DocumentTrackingPage: React.FC = () => {
     }
   }, [resolvedProjectCode]);
 
-  // Cấu trúc 3 TAB CHUẨN: 'overview' | 'input' | 'output'
-  const [activeMainTab, setActiveMainTab] = useState<'overview' | 'input' | 'output'>(() => {
+  // Hồ sơ lịch sử chưa có flowType phải được xác nhận trước khi vào Đầu vào/Đầu ra.
+  const [activeMainTab, setActiveMainTab] = useState<'overview' | 'unclassified' | 'input' | 'output'>(() => {
     const tabParam = searchParams.get('tab');
-    if (tabParam === 'input' || tabParam === 'output') return tabParam;
+    if (tabParam === 'input' || tabParam === 'output' || tabParam === 'unclassified') return tabParam;
     return 'overview';
   });
 
   useEffect(() => {
     const tabParam = searchParams.get('tab');
-    if (tabParam === 'input' || tabParam === 'output') {
+    if (tabParam === 'input' || tabParam === 'output' || tabParam === 'unclassified') {
       setActiveMainTab(tabParam);
     } else if (tabParam === 'overview') {
       setActiveMainTab('overview');
     }
   }, [searchParams]);
 
-  const handleSelectMainTab = (tab: 'overview' | 'input' | 'output') => {
+  const handleSelectMainTab = (tab: 'overview' | 'unclassified' | 'input' | 'output') => {
     setActiveMainTab(tab);
     const nextParams = new URLSearchParams(searchParams);
     if (tab === 'overview') {
@@ -143,8 +143,12 @@ export const DocumentTrackingPage: React.FC = () => {
     return projectScopedDocs.filter(d => resolveDocumentFlow(d) === 'output');
   }, [projectScopedDocs]);
 
+  const unclassifiedDocs = useMemo(() => {
+    return projectScopedDocs.filter(d => resolveDocumentFlow(d) === 'unclassified');
+  }, [projectScopedDocs]);
+
   // Handlers mở modal tạo mới
-  const handleOpenNew = (flow: DocumentFlow) => {
+  const handleOpenNew = (flow: 'input' | 'output') => {
     setModalFlow(flow);
     setEditingDoc(null);
     setIsModalOpen(true);
@@ -152,9 +156,43 @@ export const DocumentTrackingPage: React.FC = () => {
 
   const handleEditDoc = (doc: DocumentTrack) => {
     const flow = resolveDocumentFlow(doc);
+    if (flow === 'unclassified') {
+      triggerToast('Vui lòng xác nhận hồ sơ là Đầu vào hoặc Đầu ra trước khi chỉnh sửa.', 'warning');
+      return;
+    }
     setModalFlow(flow);
     setEditingDoc(doc);
     setIsModalOpen(true);
+  };
+
+  const handleClassifyDoc = async (doc: DocumentTrack, targetFlow: 'input' | 'output') => {
+    const targetLabel = targetFlow === 'input' ? 'Hồ sơ đầu vào (phải trả)' : 'Hồ sơ đầu ra (phải thu)';
+    const hasFinancialActivity = Number(doc.paidAmount ?? doc.prepayAmount ?? 0) > 0;
+    const reason = window.prompt(
+      `Xác nhận phân loại ${doc.contractNo || doc.contractName} thành ${targetLabel}.\n` +
+      `${hasFinancialActivity ? 'Hồ sơ đã có phát sinh tiền: thao tác này chỉ đổi luồng hiển thị, không điều chỉnh số tiền. ' : ''}` +
+      'Nhập lý do phân loại:',
+      'Phân loại lại hồ sơ lịch sử'
+    );
+    if (reason === null) return;
+
+    try {
+      const actor = user?.name || user?.username || 'Người dùng';
+      await updateDocumentTrack(doc.id, {
+        flowType: targetFlow,
+        flowClassificationReason: reason.trim() || 'Phân loại lại hồ sơ lịch sử',
+        flowClassifiedAt: new Date().toISOString(),
+        flowClassifiedBy: actor,
+        side: targetFlow === 'input' ? 'Bên trả' : 'Bên nhận'
+      });
+      logActivity(
+        `Phân loại hồ sơ ${doc.contractNo || doc.contractName}: Chưa phân loại → ${targetFlow === 'input' ? 'Đầu vào' : 'Đầu ra'}. Lý do: ${reason.trim() || 'Phân loại lại hồ sơ lịch sử'}`,
+        doc.projectCode || 'COMPANY'
+      );
+      triggerToast(`Đã chuyển hồ sơ sang ${targetLabel}.`, 'success');
+    } catch (err: any) {
+      triggerToast(`Không thể phân loại hồ sơ: ${err?.message || 'Xin thử lại'}`, 'warning');
+    }
   };
 
   const handleViewDetailDoc = (doc: DocumentTrack) => {
@@ -205,8 +243,8 @@ export const DocumentTrackingPage: React.FC = () => {
 
   // Xuất Excel theo luồng hiện tại
   const handleExportCurrentExcel = async () => {
-    const targetDocs = activeMainTab === 'input' ? inputDocs : (activeMainTab === 'output' ? outputDocs : projectScopedDocs);
-    const flowTitle = activeMainTab === 'input' ? 'HO_SO_DAU_VAO' : (activeMainTab === 'output' ? 'HO_SO_DAU_RA' : 'HO_SO_TONG_HOP');
+    const targetDocs = activeMainTab === 'input' ? inputDocs : (activeMainTab === 'output' ? outputDocs : (activeMainTab === 'unclassified' ? unclassifiedDocs : projectScopedDocs));
+    const flowTitle = activeMainTab === 'input' ? 'HO_SO_DAU_VAO' : (activeMainTab === 'output' ? 'HO_SO_DAU_RA' : (activeMainTab === 'unclassified' ? 'HO_SO_CHUA_PHAN_LOAI' : 'HO_SO_TONG_HOP'));
 
     const data = targetDocs.map((t, idx) => {
       const flow = resolveDocumentFlow(t);
@@ -217,7 +255,7 @@ export const DocumentTrackingPage: React.FC = () => {
 
       return {
         'STT': idx + 1,
-        'Luồng hồ sơ': flow === 'input' ? 'Đầu vào (Phải trả)' : 'Đầu ra (Phải thu)',
+        'Luồng hồ sơ': flow === 'input' ? 'Đầu vào (Phải trả)' : (flow === 'output' ? 'Đầu ra (Phải thu)' : 'Chưa phân loại'),
         'Mã hồ sơ': t.contractNo || '',
         'Loại chứng từ': t.subType || '',
         'Trích yếu / Nội dung': t.contractName || '',
@@ -251,7 +289,7 @@ export const DocumentTrackingPage: React.FC = () => {
         ? 'BẢNG THEO DÕI HỒ SƠ ĐẦU VÀO (CÔNG TY PHẢI TRẢ TIỀN)'
         : (activeMainTab === 'output'
           ? 'BẢNG THEO DÕI HỒ SƠ ĐẦU RA (THU TIỀN TỪ KHÁCH HÀNG / CĐT)'
-          : 'BẢNG THEO DÕI TOÀN BỘ HỒ SƠ DỰ ÁN & CÔNG TY'),
+          : (activeMainTab === 'unclassified' ? 'BẢNG HỒ SƠ CHƯA PHÂN LOẠI – CẦN XÁC NHẬN LUỒNG' : 'BẢNG THEO DÕI TOÀN BỘ HỒ SƠ DỰ ÁN & CÔNG TY')),
       data
     });
   };
@@ -286,7 +324,7 @@ export const DocumentTrackingPage: React.FC = () => {
             paidAmount: Number(row[11]) || 0,
             prepayAmount: Number(row[11]) || 0,
             docStatus: String(row[12] || 'Nháp'),
-            flowType: activeMainTab === 'output' ? 'output' : 'input'
+            flowType: activeMainTab === 'output' ? 'output' : (activeMainTab === 'input' ? 'input' : 'unclassified')
           } as any);
           importCount++;
         });
@@ -422,15 +460,16 @@ export const DocumentTrackingPage: React.FC = () => {
       ) : (
         <div className="flex-1 overflow-hidden flex flex-col min-h-0">
           <DocumentFlowTable
-            flow={activeMainTab as 'input' | 'output'}
-            documents={activeMainTab === 'input' ? inputDocs : outputDocs}
+            flow={activeMainTab as DocumentFlow}
+            documents={activeMainTab === 'input' ? inputDocs : (activeMainTab === 'output' ? outputDocs : unclassifiedDocs)}
             isLockedProject={isLockedProject}
             onEdit={handleEditDoc}
             onDelete={handleDeleteDoc}
             onViewDetail={handleViewDetailDoc}
-            onOpenNew={() => handleOpenNew(activeMainTab as 'input' | 'output')}
+            onOpenNew={() => activeMainTab !== 'unclassified' && handleOpenNew(activeMainTab as 'input' | 'output')}
             onExportExcel={handleExportCurrentExcel}
             isAllowedToManage={isAllowedToManage}
+            onClassify={handleClassifyDoc}
           />
         </div>
       )}

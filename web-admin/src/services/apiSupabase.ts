@@ -2220,6 +2220,9 @@ export const api = {
           let parsedCreatorName = row.created_by_name || row.created_by || '';
           let parsedUpdatedBy = row.updated_by || '';
           let cleanNotes = notesText;
+          let parsedFlowType: 'input' | 'output' | 'unclassified' = row.flow_type === 'input' || row.flow_type === 'output'
+            ? row.flow_type
+            : 'unclassified';
 
           if (notesText.includes('[STATUS:')) {
             const match = notesText.match(/\[STATUS:([^|]+)\|PAY:([^|]+)\|COMP:([^|\]]+)(?:\|CREATOR:([^|]*))?(?:\|CID:([^|]*))?(?:\|UPD:([^\]]*))?\]/);
@@ -2233,6 +2236,14 @@ export const api = {
               cleanNotes = notesText.replace(match[0], '').trim();
             }
           }
+
+          // Tương thích dữ liệu Product chưa chạy migration cột flow_type: lưu nhãn
+          // tối thiểu trong notes để người dùng phân loại xong không bị mất sau khi tải lại.
+          const flowTag = notesText.match(/\[FLOW:(input|output)\]/i);
+          if (parsedFlowType === 'unclassified' && flowTag) {
+            parsedFlowType = flowTag[1].toLowerCase() as 'input' | 'output';
+          }
+          cleanNotes = cleanNotes.replace(/\[FLOW:(?:input|output)\]/ig, '').trim();
 
           const finalCreatorName = parsedCreatorName || parsedUpdatedBy || row.updated_by || '';
           const finalUpdatedBy = parsedUpdatedBy || row.updated_by || finalCreatorName || '';
@@ -2260,6 +2271,10 @@ export const api = {
             notes: cleanNotes,
             dueDate: row.due_date || row.expected_approval_date || '',
             remindDays: row.remind_days || 3,
+            flowType: parsedFlowType,
+            flowClassificationReason: row.flow_classification_reason || '',
+            flowClassifiedAt: row.flow_classified_at || '',
+            flowClassifiedBy: row.flow_classified_by || '',
             fileUrls: (row.file_urls && row.file_urls.length > 0) ? row.file_urls : (row.soft_copy_link ? [row.soft_copy_link] : []),
             createdAt: row.created_at || '',
             createdById: parsedCreatorId,
@@ -2284,8 +2299,9 @@ export const api = {
       const contractNoVal = data.contractNo || `HD-${Date.now().toString().slice(-6)}`;
       const contractNameVal = data.contractName || 'Hồ sơ mới';
       const statusTag = `[STATUS:${data.docStatus || 'Chưa ký'}|PAY:${data.paymentStatus || 'Chưa thanh toán'}|COMP:${data.isCompleted ? '1' : '0'}|CREATOR:${data.createdByName || ''}|CID:${data.createdById || ''}|UPD:${data.updatedBy || data.createdByName || ''}]`;
-      const baseNotes = (data.notes || '').replace(/\[STATUS:[^\]]+\]/g, '').trim();
-      const combinedNotes = `${statusTag} ${baseNotes}`.trim();
+      const flowTag = data.flowType === 'input' || data.flowType === 'output' ? `[FLOW:${data.flowType}]` : '';
+      const baseNotes = (data.notes || '').replace(/\[STATUS:[^\]]+\]/g, '').replace(/\[FLOW:(?:input|output)\]/ig, '').trim();
+      const combinedNotes = `${statusTag} ${flowTag} ${baseNotes}`.trim();
 
       // Ensure 'COMPANY' or 'OFFICE' project row exists if referenced
       const ensureCompanyProject = async (code: string) => {
@@ -2354,6 +2370,10 @@ export const api = {
         notes: combinedNotes,
         due_date: cleanDate(data.dueDate),
         remind_days: data.remindDays || 3,
+        flow_type: data.flowType === 'input' || data.flowType === 'output' ? data.flowType : null,
+        flow_classification_reason: data.flowClassificationReason || null,
+        flow_classified_at: data.flowClassifiedAt || null,
+        flow_classified_by: data.flowClassifiedBy || null,
         file_urls: Array.isArray(data.fileUrls) ? data.fileUrls : (data.fileUrls ? [data.fileUrls] : []),
         updated_by: data.updatedBy || data.createdByName || ''
       };
@@ -2405,11 +2425,15 @@ export const api = {
       // Đảm bảo không bao giờ làm mất người tạo gốc (createdByName, createdById)
       let originalCreatorName = data.createdByName;
       let originalCreatorId = data.createdById;
+      let existingNotes = '';
 
-      if (!originalCreatorName || !originalCreatorId) {
+      // Lấy ghi chú cũ cả khi đang cập nhật trường khác, để giữ nhãn [FLOW]
+      // trên các Product DB chưa bổ sung cột flow_type.
+      if (!originalCreatorName || !originalCreatorId || data.flowType === undefined) {
         try {
           const { data: existingRow } = await supabase.from('document_tracks').select('notes').eq('id', id).maybeSingle();
           if (existingRow?.notes) {
+            existingNotes = existingRow.notes;
             const m = existingRow.notes.match(/\|CREATOR:([^|]*)\|CID:([^|]*)/);
             if (m) {
               if (!originalCreatorName && m[1]) originalCreatorName = m[1];
@@ -2422,8 +2446,11 @@ export const api = {
       }
 
       const statusTag = `[STATUS:${data.docStatus || 'Chưa ký'}|PAY:${data.paymentStatus || 'Chưa thanh toán'}|COMP:${data.isCompleted ? '1' : '0'}|CREATOR:${originalCreatorName || ''}|CID:${originalCreatorId || ''}|UPD:${data.updatedBy || ''}]`;
-      const baseNotes = (data.notes || '').replace(/\[STATUS:[^\]]+\]/g, '').trim();
-      const combinedNotes = `${statusTag} ${baseNotes}`.trim();
+      const savedFlow = existingNotes.match(/\[FLOW:(input|output)\]/i)?.[1]?.toLowerCase();
+      const effectiveFlow = data.flowType === 'input' || data.flowType === 'output' ? data.flowType : savedFlow;
+      const flowTag = effectiveFlow === 'input' || effectiveFlow === 'output' ? `[FLOW:${effectiveFlow}]` : '';
+      const baseNotes = (data.notes || '').replace(/\[STATUS:[^\]]+\]/g, '').replace(/\[FLOW:(?:input|output)\]/ig, '').trim();
+      const combinedNotes = `${statusTag} ${flowTag} ${baseNotes}`.trim();
 
       const fullPayload: any = {};
       if (data.contractNo !== undefined) fullPayload.contract_no = data.contractNo;
@@ -2448,6 +2475,10 @@ export const api = {
       if (data.notes !== undefined) fullPayload.notes = combinedNotes;
       if (data.dueDate !== undefined) fullPayload.due_date = cleanDate(data.dueDate);
       if (data.remindDays !== undefined) fullPayload.remind_days = data.remindDays;
+      if (data.flowType !== undefined) fullPayload.flow_type = data.flowType === 'input' || data.flowType === 'output' ? data.flowType : null;
+      if (data.flowClassificationReason !== undefined) fullPayload.flow_classification_reason = data.flowClassificationReason || null;
+      if (data.flowClassifiedAt !== undefined) fullPayload.flow_classified_at = data.flowClassifiedAt || null;
+      if (data.flowClassifiedBy !== undefined) fullPayload.flow_classified_by = data.flowClassifiedBy || null;
       if (data.fileUrls !== undefined) {
         fullPayload.file_urls = Array.isArray(data.fileUrls) ? data.fileUrls : (data.fileUrls ? [data.fileUrls] : []);
       }
