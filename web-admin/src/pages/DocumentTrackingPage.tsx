@@ -307,7 +307,6 @@ export const DocumentTrackingPage: React.FC = () => {
         <section className="border-b border-slate-200 bg-white px-3 md:px-5 py-2 md:h-13 flex flex-wrap items-center justify-between gap-3 shadow-2xs z-30">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-primary text-2xl">folder_managed</span>
               <h1 className="text-base md:text-lg text-slate-900 border-l-4 border-primary pl-2 uppercase font-extrabold tracking-wide">
                 QUẢN LÝ HỒ SƠ
               </h1>
@@ -321,8 +320,8 @@ export const DocumentTrackingPage: React.FC = () => {
                 onChange={e => setFilterProjectCode(e.target.value)}
                 className="w-48 text-xs px-2.5 py-1 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white"
               >
-                <option value="all">🏢 Toàn bộ công ty & Dự án</option>
-                <option value="COMPANY">🏢 Hồ sơ Văn phòng / Chung</option>
+                <option value="all">Toàn bộ công ty & Dự án</option>
+                <option value="COMPANY">Hồ sơ Văn phòng / Chung</option>
                 {projects.map(p => (
                   <option key={p.id} value={p.code}>
                     [{p.code}] {p.name}
@@ -378,8 +377,7 @@ export const DocumentTrackingPage: React.FC = () => {
         /* Khi ở trong chi tiết dự án */
         <section className="border-b border-slate-200 bg-white px-3 md:px-5 py-2 flex flex-wrap items-center justify-between gap-2 shadow-2xs z-30">
           <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-primary text-xl">folder_open</span>
-            <span className="font-extrabold text-sm md:text-base text-slate-800 uppercase">
+            <span className="font-extrabold text-sm md:text-base text-slate-800 uppercase border-l-4 border-primary pl-2">
               HỒ SƠ DỰ ÁN ({resolvedProjectCode})
             </span>
           </div>
