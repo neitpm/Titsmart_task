@@ -321,6 +321,12 @@ export interface InventoryTransaction {
   totalPrice?: number;
   sourceOrProject: string; // Nguồn Nhập hoặc Mã Dự Án xuất
   receiverName?: string; // Người Nhận (đối với xuất kho)
+  receiverId?: string; // ID nhân sự nhận bàn giao / phụ trách
+  isAsset?: boolean; // True nếu là tài sản/công cụ lâu bền của cty cấp phát
+  custodyStatus?: 'IN_USE' | 'RETURNED' | 'TRANSFERRED' | 'LOST'; // Trạng thái nắm giữ
+  ownership?: 'COMPANY_OWNED' | 'PROJECT_CONSUMED'; // Quyền sở hữu (mặc định COMPANY_OWNED)
+  returnDate?: string; // Ngày hoàn trả về kho
+  returnTransactionId?: string; // ID phiếu nhập kho hoàn trả tương ứng
   notes?: string;
   createdAt: string;
   updatedBy?: string;

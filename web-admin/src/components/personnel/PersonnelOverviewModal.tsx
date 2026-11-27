@@ -109,6 +109,7 @@ export const PersonnelOverviewModal: React.FC<PersonnelOverviewModalProps> = ({
     if (!person) return [];
     return inventoryTransactions.filter(tx => {
       if (tx.type !== 'EXPORT') return false;
+      if (tx.receiverId && tx.receiverId === person.id) return true;
       const recName = String(tx.receiverName || '').trim().toLowerCase();
       const notes = String(tx.notes || '').trim().toLowerCase();
       if (personName && (recName === personName || recName.includes(personName) || personName.includes(recName))) return true;
@@ -118,11 +119,13 @@ export const PersonnelOverviewModal: React.FC<PersonnelOverviewModalProps> = ({
   }, [inventoryTransactions, person, personName]);
 
   const isEquipmentOrTool = (tx: InventoryTransaction) => {
+    if (tx.isAsset) return true;
     const text = `${tx.category || ''} ${tx.materialName || ''} ${tx.specs || ''} ${tx.notes || ''}`.toLowerCase();
     return text.includes('đồ nghề') || text.includes('thiết bị') || text.includes('công cụ') || text.includes('dụng cụ') || text.includes('máy') || text.includes('khoan') || text.includes('thước') || text.includes('búa') || text.includes('kìm');
   };
 
   const toolCount = personMaterialsAndTools.filter(isEquipmentOrTool).length;
+  const inCustodyCount = personMaterialsAndTools.filter(tx => (tx.isAsset || isEquipmentOrTool(tx)) && tx.custodyStatus !== 'RETURNED').length;
   const materialCount = personMaterialsAndTools.length - toolCount;
 
   // Lọc tác vụ hiển thị
@@ -732,29 +735,33 @@ export const PersonnelOverviewModal: React.FC<PersonnelOverviewModalProps> = ({
                         <th className="p-2.5">Quy cách / Mã</th>
                         <th className="p-2.5 text-right">Số lượng</th>
                         <th className="p-2.5 text-center">ĐVT</th>
-                        <th className="p-2.5">Dự án</th>
+                        <th className="p-2.5">Dự án sử dụng</th>
+                        <th className="p-2.5 text-center">Quyền sở hữu</th>
+                        <th className="p-2.5 text-center">Trạng thái</th>
                         <th className="p-2.5">Ghi chú</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 text-slate-700">
                       {filteredMaterials.length === 0 ? (
                         <tr>
-                          <td colSpan={9} className="p-8 text-center text-slate-400 italic">
+                          <td colSpan={11} className="p-8 text-center text-slate-400 italic">
                             Chưa có dữ liệu vật tư hay đồ nghề nào được xuất cho nhân sự này
                           </td>
                         </tr>
                       ) : (
                         filteredMaterials.map((tx, idx) => {
                           const isTool = isEquipmentOrTool(tx);
+                          const isReturned = tx.custodyStatus === 'RETURNED';
                           return (
-                            <tr key={tx.id || idx} className="hover:bg-slate-50 transition-colors">
+                            <tr key={tx.id || idx} className={`hover:bg-slate-50 transition-colors ${isReturned ? 'bg-slate-50/60 opacity-75' : ''}`}>
                               <td className="p-2.5 text-center font-mono font-bold text-slate-400">{idx + 1}</td>
                               <td className="p-2.5 whitespace-nowrap text-[11px] text-slate-600">{formatDate(tx.date)}</td>
                               <td className="p-2.5 whitespace-nowrap">
                                 <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                  tx.isAsset ? 'bg-indigo-50 text-indigo-800 border border-indigo-200' :
                                   isTool ? 'bg-amber-50 text-amber-800 border border-amber-200' : 'bg-blue-50 text-blue-700 border border-blue-200'
                                 }`}>
-                                  {isTool ? 'Đồ nghề / Thiết bị' : 'Vật tư'}
+                                  {tx.isAsset ? 'Tài sản Cấp phát' : isTool ? 'Đồ nghề / Thiết bị' : 'Vật tư'}
                                 </span>
                               </td>
                               <td className="p-2.5 font-bold text-slate-900 leading-snug">
@@ -769,6 +776,22 @@ export const PersonnelOverviewModal: React.FC<PersonnelOverviewModalProps> = ({
                               <td className="p-2.5 text-center text-slate-500">{tx.unit}</td>
                               <td className="p-2.5 whitespace-nowrap font-mono font-bold text-[10px] text-primary">
                                 {tx.sourceOrProject || '-'}
+                              </td>
+                              <td className="p-2.5 text-center whitespace-nowrap">
+                                <span className="px-1.5 py-0.5 bg-slate-100 border border-slate-200 rounded text-[10px] font-bold text-slate-700">
+                                  Của Công Ty
+                                </span>
+                              </td>
+                              <td className="p-2.5 text-center whitespace-nowrap">
+                                {isReturned ? (
+                                  <span className="px-1.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded text-[10px] font-bold">
+                                    Đã trả kho
+                                  </span>
+                                ) : (
+                                  <span className="px-1.5 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded text-[10px] font-bold">
+                                    Đang nắm giữ
+                                  </span>
+                                )}
                               </td>
                               <td className="p-2.5 text-[11px] text-slate-500 max-w-xs truncate">{tx.notes || '-'}</td>
                             </tr>

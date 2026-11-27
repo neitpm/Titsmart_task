@@ -94,6 +94,8 @@ export const MaterialTrackingPage: React.FC = () => {
   const [showDesktopExportMenu, setShowDesktopExportMenu] = useState(false);
   const materials = useRealtimeStore(s => s.materials);
   const projects = useRealtimeStore(s => s.projects);
+  const engineers = useRealtimeStore(s => s.engineers);
+  const fetchEngineers = useRealtimeStore(s => s.fetchEngineers);
   const inventoryTransactions = useRealtimeStore(s => s.inventoryTransactions);
   const addMaterial = useRealtimeStore(s => s.addMaterial);
   const addMaterialsBatch = useRealtimeStore(s => s.addMaterialsBatch);
@@ -112,7 +114,8 @@ export const MaterialTrackingPage: React.FC = () => {
 
   useEffect(() => {
     fetchMaterials(projectId);
-  }, [projectId, fetchMaterials]);
+    fetchEngineers();
+  }, [projectId, fetchMaterials, fetchEngineers]);
 
   const [toastState, setToastState] = useState({ show: false, message: '', type: 'success' as 'success' | 'info' | 'warning' });
   const [loading, setLoading] = useState(false);
@@ -360,14 +363,16 @@ export const MaterialTrackingPage: React.FC = () => {
 
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const getInitialTab = (): 'OVERVIEW' | 'IMPORT' | 'EXPORT' => {
+  const getInitialTab = (): 'OVERVIEW' | 'STOCK' | 'IMPORT' | 'EXPORT' | 'ASSETS' => {
     const t = searchParams.get('tab')?.toUpperCase();
     if (t === 'IMPORT' || t === 'NHAP_KHO' || t === 'NHAP') return 'IMPORT';
     if (t === 'EXPORT' || t === 'XUAT_KHO' || t === 'XUAT') return 'EXPORT';
+    if (t === 'STOCK' || t === 'INVENTORY' || t === 'TON_KHO') return 'STOCK';
+    if (t === 'ASSETS' || t === 'CUSTODY' || t === 'CAP_PHAT') return 'ASSETS';
     return 'OVERVIEW';
   };
 
-  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'STOCK' | 'IMPORT' | 'EXPORT'>(getInitialTab);
+  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'STOCK' | 'IMPORT' | 'EXPORT' | 'ASSETS'>(getInitialTab);
 
   // Column widths for Inventory Stock Table
   const defaultStockColWidths = useMemo(() => ({
@@ -401,6 +406,8 @@ export const MaterialTrackingPage: React.FC = () => {
       if (activeTab !== 'EXPORT') setActiveTab('EXPORT');
     } else if (t === 'STOCK' || t === 'INVENTORY' || t === 'TON_KHO') {
       if (activeTab !== 'STOCK') setActiveTab('STOCK');
+    } else if (t === 'ASSETS' || t === 'CUSTODY' || t === 'CAP_PHAT') {
+      if (activeTab !== 'ASSETS') setActiveTab('ASSETS');
     } else if (t === 'OVERVIEW' || !t) {
       if (activeTab !== 'OVERVIEW') setActiveTab('OVERVIEW');
     }
@@ -838,7 +845,19 @@ export const MaterialTrackingPage: React.FC = () => {
   const [txDate, setTxDate] = useState(new Date().toISOString().split('T')[0]);
   const [txSourceOrProject, setTxSourceOrProject] = useState('');
   const [txReceiverName, setTxReceiverName] = useState('');
+  const [txReceiverId, setTxReceiverId] = useState('');
+  const [txIsAsset, setTxIsAsset] = useState(false);
+  const [txOwnership, setTxOwnership] = useState<'COMPANY_OWNED' | 'PROJECT_CONSUMED'>('COMPANY_OWNED');
   const [txNotes, setTxNotes] = useState('');
+
+  // Asset return/transfer modal state
+  const [isReturnModalOpen, setIsReturnModalOpen] = useState(false);
+  const [selectedAssetTx, setSelectedAssetTx] = useState<InventoryTransaction | null>(null);
+  const [returnQuantity, setReturnQuantity] = useState(1);
+  const [returnDate, setReturnDate] = useState(new Date().toISOString().split('T')[0]);
+  const [returnNotes, setReturnNotes] = useState('');
+  const [returnActionType, setReturnActionType] = useState<'WAREHOUSE' | 'TRANSFER_STAFF'>('WAREHOUSE');
+  const [newCustodianId, setNewCustodianId] = useState('');
 
   const [confirmConfig, setConfirmConfig] = useState<{
     isOpen: boolean;
@@ -1335,6 +1354,9 @@ export const MaterialTrackingPage: React.FC = () => {
     setTxDate(new Date().toISOString().split('T')[0]);
     setTxSourceOrProject('');
     setTxReceiverName('');
+    setTxReceiverId('');
+    setTxIsAsset(type === 'EXPORT' ? false : false);
+    setTxOwnership('COMPANY_OWNED');
     setTxNotes('');
     setIsTransactionModalOpen(true);
   };
@@ -1364,6 +1386,10 @@ export const MaterialTrackingPage: React.FC = () => {
           totalPrice: calculatedTotalPrice,
           sourceOrProject: txSourceOrProject,
           receiverName: txReceiverName,
+          receiverId: txReceiverId || undefined,
+          isAsset: transactionType === 'EXPORT' ? txIsAsset : false,
+          custodyStatus: transactionType === 'EXPORT' && txIsAsset ? 'IN_USE' : undefined,
+          ownership: transactionType === 'EXPORT' ? txOwnership : undefined,
           notes: txNotes,
           // Truyền thêm để backend dùng khi vật tư chưa tồn tại trong DB
           projectCode: material.projectCode || 'COMPANY',
@@ -1380,7 +1406,7 @@ export const MaterialTrackingPage: React.FC = () => {
         setFilterUnit('');
         setSearchQuery('');
         if (!projectId) setFilterProject('');
-        triggerToast(`Thêm nhật ký ${transactionType === 'IMPORT' ? 'Nhập' : 'Xuất'} cho \"${material.name}\" thành công!`, 'success');
+        triggerToast(`Thêm nhật ký ${transactionType === 'IMPORT' ? 'Nhập' : 'Xuất'} cho "${material.name}" thành công!`, 'success');
       } catch (error: any) {
         triggerToast(error.message || 'Lỗi khi thêm nhật ký!', 'warning');
       } finally {
@@ -1407,6 +1433,76 @@ export const MaterialTrackingPage: React.FC = () => {
     }
 
     commitTransaction();
+  };
+
+  const handleOpenAssetAction = (tx: InventoryTransaction) => {
+    setSelectedAssetTx(tx);
+    setReturnQuantity(tx.quantity || 1);
+    setReturnDate(new Date().toISOString().split('T')[0]);
+    setReturnNotes('');
+    setReturnActionType('WAREHOUSE');
+    setNewCustodianId('');
+    setIsReturnModalOpen(true);
+  };
+
+  const handleConfirmAssetAction = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedAssetTx) return;
+
+    setLoading(true);
+    setLoadingMessage('Đang xử lý...');
+    try {
+      if (returnActionType === 'WAREHOUSE') {
+        // 1. Tạo phiếu Nhập kho hoàn trả tài sản về kho tổng
+        const returnTx = {
+          type: 'IMPORT' as const,
+          date: returnDate,
+          materialId: selectedAssetTx.materialId,
+          materialCode: selectedAssetTx.materialCode,
+          materialName: selectedAssetTx.materialName,
+          specs: selectedAssetTx.specs || '',
+          unit: selectedAssetTx.unit,
+          quantity: returnQuantity,
+          unitPrice: selectedAssetTx.unitPrice || 0,
+          totalPrice: (selectedAssetTx.unitPrice || 0) * returnQuantity,
+          sourceOrProject: `Thu hồi từ ${selectedAssetTx.receiverName || 'Nhân viên'} (${selectedAssetTx.sourceOrProject})`,
+          receiverName: 'Kho Tổng',
+          notes: returnNotes ? `Hoàn trả tài sản: ${returnNotes}` : 'Hoàn trả tài sản công ty về kho',
+          isAsset: false,
+        };
+        await addInventoryTransaction(returnTx as any);
+
+        // 2. Cập nhật trạng thái phiếu xuất ban đầu thành RETURNED
+        await updateInventoryTransaction(selectedAssetTx.id, {
+          custodyStatus: 'RETURNED',
+          returnDate: returnDate,
+          notes: (selectedAssetTx.notes ? selectedAssetTx.notes + ' | ' : '') + `Đã hoàn trả về kho ngày ${returnDate}`
+        });
+
+        triggerToast(`Đã thu hồi thành công "${selectedAssetTx.materialName}" về kho!`, 'success');
+      } else {
+        // Chuyển giao quyền phụ trách cho nhân sự khác
+        const newEng = engineers.find(e => e.id === newCustodianId);
+        const newEngName = newEng?.name || newEng?.username || 'Nhân sự mới';
+
+        await updateInventoryTransaction(selectedAssetTx.id, {
+          receiverId: newCustodianId,
+          receiverName: newEngName,
+          custodyStatus: 'IN_USE',
+          notes: (selectedAssetTx.notes ? selectedAssetTx.notes + ' | ' : '') + `Bàn giao từ ${selectedAssetTx.receiverName} sang ${newEngName} ngày ${returnDate}`
+        });
+
+        triggerToast(`Đã bàn giao trách nhiệm quản lý cho "${newEngName}"!`, 'success');
+      }
+
+      setIsReturnModalOpen(false);
+      setSelectedAssetTx(null);
+    } catch (err: any) {
+      triggerToast('Lỗi: ' + (err.message || 'Không thể cập nhật tài sản'), 'warning');
+    } finally {
+      setLoading(false);
+      setLoadingMessage('');
+    }
   };
 
   // History Modal State
@@ -1739,30 +1835,50 @@ export const MaterialTrackingPage: React.FC = () => {
                 </div>
               }
             />
-            <div className="p-3 grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <div className="p-3 grid grid-cols-1 sm:grid-cols-4 gap-2">
               <button
                 type="button"
                 onClick={() => setActiveTab('STOCK')}
-                className="text-left p-3 bg-white border border-slate-200 rounded-md hover:border-primary transition-colors cursor-pointer"
+                className="text-left p-3 bg-white border border-slate-200 rounded-md hover:border-primary transition-colors cursor-pointer shadow-2xs"
               >
-                <div className="text-xs font-bold text-slate-900">Bảng Tồn kho</div>
-                <div className="text-[11px] text-slate-500 mt-0.5">Xem chi tiết số lượng tồn đầu, nhập, xuất và tồn cuối</div>
+                <div className="flex items-center gap-1.5 text-xs font-bold text-slate-900">
+                  <span className="material-symbols-outlined text-[16px] text-blue-600">inventory_2</span>
+                  <span>Bảng Tồn kho</span>
+                </div>
+                <div className="text-[11px] text-slate-500 mt-1">Xem số lượng tồn đầu, nhập, xuất và tồn cuối</div>
               </button>
               <button
                 type="button"
                 onClick={() => setActiveTab('IMPORT')}
-                className="text-left p-3 bg-white border border-slate-200 rounded-md hover:border-primary transition-colors cursor-pointer"
+                className="text-left p-3 bg-white border border-slate-200 rounded-md hover:border-primary transition-colors cursor-pointer shadow-2xs"
               >
-                <div className="text-xs font-bold text-slate-900">Phiếu Nhập kho</div>
-                <div className="text-[11px] text-slate-500 mt-0.5">Quản lý lịch sử nhập vật tư theo dự án</div>
+                <div className="flex items-center gap-1.5 text-xs font-bold text-slate-900">
+                  <span className="material-symbols-outlined text-[16px] text-emerald-600">login</span>
+                  <span>Phiếu Nhập kho</span>
+                </div>
+                <div className="text-[11px] text-slate-500 mt-1">Lịch sử nhập vật tư, nhập mua mới theo dự án</div>
               </button>
               <button
                 type="button"
                 onClick={() => setActiveTab('EXPORT')}
-                className="text-left p-3 bg-white border border-slate-200 rounded-md hover:border-primary transition-colors cursor-pointer"
+                className="text-left p-3 bg-white border border-slate-200 rounded-md hover:border-primary transition-colors cursor-pointer shadow-2xs"
               >
-                <div className="text-xs font-bold text-slate-900">Phiếu Xuất kho</div>
-                <div className="text-[11px] text-slate-500 mt-0.5">Theo dõi xuất kho và cấp phát vật tư</div>
+                <div className="flex items-center gap-1.5 text-xs font-bold text-slate-900">
+                  <span className="material-symbols-outlined text-[16px] text-amber-600">logout</span>
+                  <span>Phiếu Xuất kho</span>
+                </div>
+                <div className="text-[11px] text-slate-500 mt-1">Theo dõi xuất kho đến dự án & người tiếp nhận</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('ASSETS')}
+                className="text-left p-3 bg-white border border-indigo-200 rounded-md hover:border-indigo-500 transition-colors cursor-pointer shadow-2xs bg-indigo-50/20"
+              >
+                <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-900">
+                  <span className="material-symbols-outlined text-[16px] text-indigo-600">badge</span>
+                  <span>Tài sản cấp phát ({inventoryTransactions.filter(t => t.type === 'EXPORT' && (t.isAsset || t.custodyStatus === 'IN_USE')).length})</span>
+                </div>
+                <div className="text-[11px] text-indigo-600/80 mt-1">Thiết bị nhân sự đang giữ, sở hữu bởi công ty</div>
               </button>
             </div>
           </>
@@ -2040,6 +2156,115 @@ export const MaterialTrackingPage: React.FC = () => {
             </table>
           </PullToRefresh>
         )}
+
+        {/* TAB 4: TÀI SẢN & CÔNG CỤ CẤP PHÁT CHO NHÂN SỰ / DỰ ÁN */}
+        {activeTab === 'ASSETS' && (() => {
+          const assetTxs = inventoryTransactions.filter(tx => tx.type === 'EXPORT' && (tx.isAsset || tx.custodyStatus === 'IN_USE' || tx.custodyStatus === 'RETURNED'));
+          const inUseCount = assetTxs.filter(t => t.custodyStatus !== 'RETURNED').length;
+          const returnedCount = assetTxs.filter(t => t.custodyStatus === 'RETURNED').length;
+
+          return (
+            <div className="flex-1 flex flex-col min-h-0">
+              <div className="px-3 py-2 bg-indigo-50/60 border-b border-indigo-100 flex flex-wrap items-center justify-between gap-2 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-indigo-700 text-lg">badge</span>
+                  <span className="font-bold text-indigo-950">Quản lý Tài sản / Công cụ cấp phát cho Nhân sự & Dự án</span>
+                  <span className="text-slate-500">|</span>
+                  <span className="text-slate-600">Đang bàn giao nắm giữ: <b className="text-amber-700">{inUseCount}</b></span>
+                  <span className="text-slate-500">|</span>
+                  <span className="text-slate-600">Đã hoàn trả về kho: <b className="text-emerald-700">{returnedCount}</b></span>
+                </div>
+                <div className="text-[11px] text-indigo-800 bg-white/80 px-2.5 py-1 rounded border border-indigo-200">
+                  <span className="font-bold">Quyền sở hữu:</span> 100% thuộc Công ty, nhân sự có trách nhiệm bảo quản & hoàn trả khi hoàn thành công việc.
+                </div>
+              </div>
+
+              <PullToRefresh onRefresh={async () => { await fetchMaterials(projectId); }} className="w-full overflow-auto table-scrollbar custom-scrollbar flex-1 pb-16 md:pb-0">
+                <table className="w-full text-left border-collapse min-w-[1050px]">
+                  <thead>
+                    <tr className="border-b border-slate-200 text-slate-700 font-extrabold text-[11px] uppercase tracking-wider sticky top-0 shadow-2xs z-10">
+                      <th className="p-3 bg-slate-50 whitespace-nowrap">Ngày Giao</th>
+                      <th className="p-3 bg-slate-50 whitespace-nowrap">Mã Thiết Bị</th>
+                      <th className="p-3 min-w-56 bg-slate-50 whitespace-nowrap">Tên Tài Sản / Thiết Bị</th>
+                      <th className="p-3 text-slate-500 bg-slate-50 whitespace-nowrap">Quy Cách / Thông Số</th>
+                      <th className="p-3 text-right bg-slate-50 whitespace-nowrap">SL</th>
+                      <th className="p-3 text-center bg-slate-50 whitespace-nowrap">ĐVT</th>
+                      <th className="p-3 bg-slate-50 whitespace-nowrap">Dự Án / Nơi Sử Dụng</th>
+                      <th className="p-3 bg-slate-50 whitespace-nowrap">Nhân Sự Chịu Trách Nhiệm</th>
+                      <th className="p-3 text-center bg-slate-50 whitespace-nowrap">Trạng Thái Nắm Giữ</th>
+                      <th className="p-3 bg-slate-50 whitespace-nowrap">Quyền Sở Hữu</th>
+                      <th className="p-3 text-center bg-slate-50 whitespace-nowrap">Thao Tác</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-700">
+                    {assetTxs.map((tx) => {
+                      const isReturned = tx.custodyStatus === 'RETURNED';
+                      return (
+                        <tr key={tx.id} className={`hover:bg-slate-50 transition-colors ${isReturned ? 'bg-slate-50/50 opacity-75' : ''}`}>
+                          <td className="p-3 font-bold text-slate-900">{tx.date ? new Date(tx.date).toLocaleDateString("vi-VN") : "-"}</td>
+                          <td className="p-3 font-mono text-indigo-700 font-semibold">{cleanCodeString(tx.materialCode, tx.materialName)}</td>
+                          <td className="p-3 font-bold text-slate-800">
+                            <div>{tx.materialName}</div>
+                            {tx.notes && <div className="text-[11px] text-slate-400 font-normal italic mt-0.5">{tx.notes}</div>}
+                          </td>
+                          <td className="p-3 text-slate-500">{tx.specs || '-'}</td>
+                          <td className="p-3 text-right font-bold text-indigo-700">{tx.quantity.toLocaleString('vi-VN')}</td>
+                          <td className="p-3 text-center text-slate-500">{tx.unit}</td>
+                          <td className="p-3 font-semibold text-slate-800">{tx.sourceOrProject || 'Tại công trình'}</td>
+                          <td className="p-3">
+                            <div className="font-bold text-slate-900 flex items-center gap-1.5">
+                              <span className="material-symbols-outlined text-[15px] text-slate-400">person</span>
+                              <span>{tx.receiverName || 'Chưa chỉ định'}</span>
+                            </div>
+                          </td>
+                          <td className="p-3 text-center">
+                            {isReturned ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                <span className="material-symbols-outlined text-[12px]">check_circle</span>
+                                Đã trả về kho {tx.returnDate ? `(${new Date(tx.returnDate).toLocaleDateString('vi-VN')})` : ''}
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300 animate-pulse">
+                                <span className="material-symbols-outlined text-[12px]">schedule</span>
+                                Đang nắm giữ / Sử dụng
+                              </span>
+                            )}
+                          </td>
+                          <td className="p-3">
+                            <span className="text-[11px] font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                              Của Công Ty
+                            </span>
+                          </td>
+                          <td className="p-3 text-center">
+                            {!isReturned ? (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenAssetAction(tx)}
+                                className="px-2.5 py-1 text-xs font-bold text-indigo-700 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 rounded border border-indigo-200 transition-colors inline-flex items-center gap-1 cursor-pointer"
+                              >
+                                <span className="material-symbols-outlined text-[14px]">swap_horiz</span>
+                                <span>Hoàn trả / Chuyển giao</span>
+                              </button>
+                            ) : (
+                              <span className="text-slate-400 text-xs italic">Đã xong</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {assetTxs.length === 0 && (
+                      <tr>
+                        <td colSpan={11} className="p-8 text-center text-slate-500">
+                          Chưa có tài sản hoặc thiết bị nào được cấp phát cho nhân viên / dự án. Khi xuất kho, hãy đánh dấu <b>"Cấp phát Thiết bị / Tài sản công ty"</b> để theo dõi hoàn trả tại đây.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </PullToRefresh>
+            </div>
+          );
+        })()}
       </section>
       </div>
 
@@ -2271,9 +2496,77 @@ export const MaterialTrackingPage: React.FC = () => {
             <input type="text" required placeholder={transactionType === 'IMPORT' ? "VD: Nhà cung cấp A, Dự án B trả về..." : "VD: Dự án Phước Tân..."} value={txSourceOrProject} onChange={(e) => setTxSourceOrProject(e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none bg-white" />
           </div>
           {transactionType === 'EXPORT' && (
-            <div>
-              <label className="block font-bold text-slate-700 mb-1">Người nhận</label>
-              <input type="text" placeholder="VD: Kỹ sư Nguyễn Văn A" value={txReceiverName} onChange={(e) => setTxReceiverName(e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none bg-white" />
+            <div className="space-y-3 p-3 bg-slate-50 border border-slate-200 rounded-lg">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  Nhân sự phụ trách / Tiếp nhận <span className="text-slate-400 font-normal">(Thuộc công ty)</span>
+                </label>
+                <CustomSelect
+                  value={txReceiverId}
+                  onChange={(e) => {
+                    const selId = e.target.value;
+                    setTxReceiverId(selId);
+                    const eng = engineers.find(eng => eng.id === selId);
+                    if (eng) {
+                      setTxReceiverName(eng.name || eng.username || '');
+                    }
+                  }}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none bg-white text-xs"
+                >
+                  <option value="">-- Chọn nhân viên chịu trách nhiệm --</option>
+                  {engineers.map((eng) => (
+                    <option key={eng.id} value={eng.id}>
+                      {eng.name || eng.username} - {eng.title || eng.role || 'Nhân sự'}
+                    </option>
+                  ))}
+                </CustomSelect>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Hoặc Tên người nhận ngoài (nếu có)</label>
+                <input 
+                  type="text" 
+                  placeholder="VD: Kỹ sư Nguyễn Văn A" 
+                  value={txReceiverName} 
+                  onChange={(e) => setTxReceiverName(e.target.value)} 
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none bg-white text-xs" 
+                />
+              </div>
+
+              {/* Tùy chọn Quản lý Tài sản Cấp phát */}
+              <div className="pt-2 border-t border-slate-200/80 space-y-2">
+                <label className="flex items-start gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={txIsAsset}
+                    onChange={(e) => setTxIsAsset(e.target.checked)}
+                    className="w-4 h-4 rounded text-primary focus:ring-primary mt-0.5"
+                  />
+                  <div>
+                    <span className="font-bold text-slate-800 text-xs">Cấp phát Thiết bị / Tài sản công ty (Cần theo dõi hoàn trả)</span>
+                    <p className="text-[11px] text-slate-500">
+                      Đánh dấu nếu đây là máy móc, công cụ dụng cụ, thiết bị bàn giao cho nhân sự/dự án sử dụng tạm thời. Quyền sở hữu vẫn thuộc 100% của Công ty.
+                    </p>
+                  </div>
+                </label>
+
+                {txIsAsset && (
+                  <div className="pl-6 pt-1 flex items-center gap-4 text-xs">
+                    <span className="font-bold text-slate-600">Quyền sở hữu:</span>
+                    <label className="inline-flex items-center gap-1.5 cursor-pointer">
+                      <input 
+                        type="radio" 
+                        name="txOwnership" 
+                        value="COMPANY_OWNED" 
+                        checked={txOwnership === 'COMPANY_OWNED'}
+                        onChange={() => setTxOwnership('COMPANY_OWNED')}
+                        className="text-primary focus:ring-primary"
+                      />
+                      <span className="font-semibold text-emerald-700">Tài sản Công ty (Thu hồi khi xong việc)</span>
+                    </label>
+                  </div>
+                )}
+              </div>
             </div>
           )}
           <div>
@@ -2364,6 +2657,144 @@ export const MaterialTrackingPage: React.FC = () => {
               <button type="submit" disabled={loading || !mergeTargetMaterialId} className="px-5 py-1.5 bg-indigo-600 disabled:opacity-50 text-white rounded-lg font-bold hover:bg-indigo-700 flex items-center gap-1 shadow-xs">
                 <span className="material-symbols-outlined text-[16px]">call_merge</span>
                 Xác nhận gộp vật tư
+              </button>
+            </div>
+          </form>
+        )}
+      </Modal>
+
+      {/* MODAL HOÀN TRẢ / BÀN GIAO TÀI SẢN */}
+      <Modal 
+        isOpen={isReturnModalOpen} 
+        onClose={() => { setIsReturnModalOpen(false); setSelectedAssetTx(null); }} 
+        title="Hoàn Trả / Bàn Giao Tài Sản & Thiết Bị"
+      >
+        {selectedAssetTx && (
+          <form onSubmit={handleConfirmAssetAction} className="space-y-4 text-xs">
+            {/* Thông tin tài sản đang chọn */}
+            <div className="p-3 bg-indigo-50/70 border border-indigo-200 rounded-lg text-indigo-950 space-y-1">
+              <div className="font-extrabold text-sm text-indigo-900">
+                [{selectedAssetTx.materialCode}] {selectedAssetTx.materialName}
+              </div>
+              <div className="grid grid-cols-2 gap-2 pt-1 text-[11px] text-slate-700">
+                <div>Số lượng: <b className="text-indigo-800">{selectedAssetTx.quantity} {selectedAssetTx.unit}</b></div>
+                <div>Ngày xuất giao ban đầu: <b>{new Date(selectedAssetTx.date).toLocaleDateString('vi-VN')}</b></div>
+                <div>Đang sử dụng tại: <b>{selectedAssetTx.sourceOrProject}</b></div>
+                <div>Người chịu trách nhiệm hiện tại: <b className="text-amber-800">{selectedAssetTx.receiverName || 'Chưa rõ'}</b></div>
+              </div>
+            </div>
+
+            {/* Chọn hành động */}
+            <div>
+              <label className="block font-bold text-slate-700 mb-1.5">Hình thức xử lý *</label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setReturnActionType('WAREHOUSE')}
+                  className={`p-2.5 rounded-lg border text-left cursor-pointer transition-all flex items-start gap-2 ${
+                    returnActionType === 'WAREHOUSE'
+                      ? 'border-emerald-500 bg-emerald-50/80 text-emerald-950 ring-2 ring-emerald-500/20'
+                      : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[18px] text-emerald-600 mt-0.5">warehouse</span>
+                  <div>
+                    <div className="font-bold">Thu hồi về Kho Tổng</div>
+                    <div className="text-[10px] text-slate-500 mt-0.5">Nhân sự hoàn trả máy móc về kho công ty</div>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setReturnActionType('TRANSFER_STAFF')}
+                  className={`p-2.5 rounded-lg border text-left cursor-pointer transition-all flex items-start gap-2 ${
+                    returnActionType === 'TRANSFER_STAFF'
+                      ? 'border-indigo-500 bg-indigo-50/80 text-indigo-950 ring-2 ring-indigo-500/20'
+                      : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[18px] text-indigo-600 mt-0.5">group</span>
+                  <div>
+                    <div className="font-bold">Bàn giao Nhân sự khác</div>
+                    <div className="text-[10px] text-slate-500 mt-0.5">Chuyển trách nhiệm người giữ tại hiện trường</div>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            {returnActionType === 'TRANSFER_STAFF' ? (
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  Nhân sự nhận bàn giao mới *
+                </label>
+                <CustomSelect
+                  required
+                  value={newCustodianId}
+                  onChange={(e) => setNewCustodianId(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none bg-white text-xs"
+                >
+                  <option value="">-- Chọn nhân viên tiếp nhận bàn giao --</option>
+                  {engineers.map((eng) => (
+                    <option key={eng.id} value={eng.id}>
+                      {eng.name || eng.username} - {eng.title || eng.role || 'Nhân sự'}
+                    </option>
+                  ))}
+                </CustomSelect>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Ngày hoàn trả *</label>
+                  <input
+                    type="date"
+                    required
+                    value={returnDate}
+                    onChange={(e) => setReturnDate(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none bg-white text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Số lượng hoàn trả *</label>
+                  <input
+                    type="number"
+                    step="any"
+                    required
+                    min="0.001"
+                    max={selectedAssetTx.quantity}
+                    value={returnQuantity}
+                    onChange={(e) => setReturnQuantity(Number(e.target.value))}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none bg-white text-xs font-semibold"
+                  />
+                </div>
+              </div>
+            )}
+
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Ghi chú / Biên bản bàn giao</label>
+              <input
+                type="text"
+                placeholder="VD: Thiết bị hoạt động tốt, có biên bản bàn giao số 01..."
+                value={returnNotes}
+                onChange={(e) => setReturnNotes(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none bg-white text-xs"
+              />
+            </div>
+
+            <div className="pt-3 flex justify-end gap-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => { setIsReturnModalOpen(false); setSelectedAssetTx(null); }}
+                className="px-4 py-1.5 border border-slate-200 rounded-lg font-semibold text-slate-600 hover:bg-slate-100 cursor-pointer"
+              >
+                Hủy
+              </button>
+              <button
+                type="submit"
+                disabled={loading || (returnActionType === 'TRANSFER_STAFF' && !newCustodianId)}
+                className="px-5 py-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-lg font-bold flex items-center gap-1 cursor-pointer shadow-xs"
+              >
+                <span className="material-symbols-outlined text-[16px]">check</span>
+                Xác nhận {returnActionType === 'WAREHOUSE' ? 'Thu hồi về kho' : 'Bàn giao nhân sự'}
               </button>
             </div>
           </form>

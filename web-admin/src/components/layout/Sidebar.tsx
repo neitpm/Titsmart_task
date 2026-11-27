@@ -478,6 +478,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
           const sp = new URLSearchParams(search);
           return pathname === '/materials' && sp.get('tab') === 'export';
         }
+      },
+      {
+        label: 'Cấp phát tài sản',
+        path: '/materials?tab=assets',
+        icon: 'badge',
+        isActive: (pathname: string, search: string) => {
+          const sp = new URLSearchParams(search);
+          return pathname === '/materials' && (sp.get('tab') === 'assets' || sp.get('tab') === 'custody');
+        }
       }
     ];
 

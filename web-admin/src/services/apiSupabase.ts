@@ -1104,7 +1104,26 @@ export const api = {
       if (companyId) query = query.eq('company_id', companyId);
       const { data, error } = await query;
       if (error) throw error;
-      return mapArray(data || []);
+      const list = mapArray(data || []);
+      return list.map((tx: any) => {
+        const notesStr = tx.notes || '';
+        if (notesStr) {
+          // Parse [ASSET_TAG:receiverId:::isAsset:::custodyStatus:::returnDate]
+          const assetMatch = notesStr.match(/\[ASSET_INFO:([^\]]+)\]/i);
+          if (assetMatch) {
+            try {
+              const info = JSON.parse(assetMatch[1]);
+              if (info.receiverId) tx.receiverId = info.receiverId;
+              if (info.isAsset !== undefined) tx.isAsset = info.isAsset;
+              if (info.custodyStatus) tx.custodyStatus = info.custodyStatus;
+              if (info.ownership) tx.ownership = info.ownership;
+              if (info.returnDate) tx.returnDate = info.returnDate;
+              if (info.returnTxId) tx.returnTransactionId = info.returnTxId;
+            } catch {}
+          }
+        }
+        return tx;
+      });
     },
     createTransaction: async (data: any) => {
       const payload = toSnakeCase(data);
@@ -1113,6 +1132,20 @@ export const api = {
       // material_id in Postgres is UUID. If it's a local temp ID (mat-1789...), strip it
       if (payload.material_id && !UUID_RE.test(String(payload.material_id))) {
         delete payload.material_id;
+      }
+
+      // Encode asset info inside notes if present
+      if (data.isAsset || data.receiverId || data.custodyStatus) {
+        const assetObj = {
+          receiverId: data.receiverId || '',
+          isAsset: Boolean(data.isAsset),
+          custodyStatus: data.custodyStatus || 'IN_USE',
+          ownership: data.ownership || 'COMPANY_OWNED',
+          returnDate: data.returnDate || '',
+          returnTxId: data.returnTransactionId || ''
+        };
+        const assetTag = `[ASSET_INFO:${JSON.stringify(assetObj)}]`;
+        payload.notes = (payload.notes ? payload.notes + ' ' : '') + assetTag;
       }
 
       // Loại bỏ các trường không thuộc bảng inventory_transactions
@@ -1126,6 +1159,14 @@ export const api = {
 
       const { data: result, error } = await supabase.from('inventory_transactions').insert(sanitizedPayload).select().single();
       if (error) throw error;
+      
+      // Parse back asset fields into returned object
+      const camelResult = toCamelCase(result);
+      if (data.receiverId) camelResult.receiverId = data.receiverId;
+      if (data.isAsset !== undefined) camelResult.isAsset = data.isAsset;
+      if (data.custodyStatus) camelResult.custodyStatus = data.custodyStatus;
+      if (data.ownership) camelResult.ownership = data.ownership;
+      if (data.returnDate) camelResult.returnDate = data.returnDate;
       
       // Update material stock by ID or Code, or create material if not exists
       const matIdOrCode = data.materialId || data.materialCode;
@@ -1220,6 +1261,21 @@ export const api = {
     },
     updateTransaction: async (id: string, data: any) => {
       const payload = toSnakeCase(data);
+      if (data.isAsset !== undefined || data.receiverId !== undefined || data.custodyStatus !== undefined || data.returnDate !== undefined) {
+        // preserve or update notes
+        const existingNotes = data.notes || '';
+        const cleanNotes = existingNotes.replace(/\[ASSET_INFO:[^\]]+\]/gi, '').trim();
+        const assetObj = {
+          receiverId: data.receiverId || '',
+          isAsset: Boolean(data.isAsset),
+          custodyStatus: data.custodyStatus || 'IN_USE',
+          ownership: data.ownership || 'COMPANY_OWNED',
+          returnDate: data.returnDate || '',
+          returnTxId: data.returnTransactionId || ''
+        };
+        const assetTag = `[ASSET_INFO:${JSON.stringify(assetObj)}]`;
+        payload.notes = (cleanNotes ? cleanNotes + ' ' : '') + assetTag;
+      }
       const allowedKeys = ['type', 'date', 'material_id', 'material_code', 'material_name', 'specs', 'category', 'unit', 'quantity', 'unit_price', 'total_price', 'source_or_project', 'receiver_name', 'notes', 'updated_at', 'updated_by'];
       const sanitizedPayload: any = {};
       for (const key of Object.keys(payload)) {
