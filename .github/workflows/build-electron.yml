@@ -83,6 +83,16 @@ jobs:
         distribution: 'zulu'
         java-version: '17'
 
+    - name: Cache Gradle packages
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+        restore-keys: |
+          ${{ runner.os }}-gradle-
+
     - name: Install Web-Admin Dependencies
       working-directory: ./web-admin
       run: npm install
@@ -109,7 +119,10 @@ jobs:
 
     - name: Build Android Debug APK
       working-directory: ./web-admin/android
-      run: ./gradlew assembleDebug --no-daemon
+      run: ./gradlew assembleDebug --no-daemon --configuration-cache --max-workers=2
+      timeout-minutes: 20
+      env:
+        GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.caching=true"
 
     - name: Rename APK File
       run: |
