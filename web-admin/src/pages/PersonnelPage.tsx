@@ -1,7 +1,7 @@
 import { Permission, Engineer } from '../types';
 import { getDefaultPermissions, hasPermission, isDirector } from '../services/authStore';
 import React, { useMemo, useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 import { exportToStyledExcel } from '../utils/excelExportUtils';
 import { useRealtimeStore } from '../services/realtimeStore';
@@ -24,6 +24,7 @@ import { ViewModeToolbar, resolveViewMode, AppViewMode } from '../components/com
 import { StatusKanbanBoard } from '../components/common/StatusKanbanBoard';
 import { PersonnelOverviewModal } from '../components/personnel/PersonnelOverviewModal';
 import { DepartmentManagementModal } from '../components/personnel/DepartmentManagementModal';
+import { DepartmentManagementView } from '../components/personnel/DepartmentManagementView';
 import { DepartmentTransferModal } from '../components/personnel/DepartmentTransferModal';
 import { DepartmentHistoryModal } from '../components/personnel/DepartmentHistoryModal';
 import { useDepartmentStore } from '../services/departmentStore';
@@ -203,6 +204,37 @@ export const PersonnelPage: React.FC = () => {
   const [avatarUploading, setAvatarUploading] = useState(false);
   const user = useAuthStore(state => state.user);
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Tab Điều hướng: 'overview' (Tổng quan) | 'department' (Phòng ban) | 'list' (Nhân sự)
+  const [activeTab, setActiveTab] = useState<'overview' | 'department' | 'list'>(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam === 'department') return 'department';
+    if (tabParam === 'list' || tabParam === 'personnel') return 'list';
+    return 'overview';
+  });
+
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam === 'department') {
+      setActiveTab('department');
+    } else if (tabParam === 'list' || tabParam === 'personnel') {
+      setActiveTab('list');
+    } else {
+      setActiveTab('overview');
+    }
+  }, [searchParams]);
+
+  const handleSelectTab = (tab: 'overview' | 'department' | 'list') => {
+    setActiveTab(tab);
+    const nextParams = new URLSearchParams(searchParams);
+    if (tab === 'overview') {
+      nextParams.delete('tab');
+    } else {
+      nextParams.set('tab', tab);
+    }
+    setSearchParams(nextParams, { replace: true });
+  };
   const isDirectorUser = isDirector(user);
   const isSysAdminUser = isSystemAdmin(user);
   const isCompanyAdminUser = user?.companyRole === 'company_admin' || user?.role === 'admin' || isDirectorUser || isSysAdminUser;
@@ -823,38 +855,30 @@ export const PersonnelPage: React.FC = () => {
       <section className="border-b border-slate-200 bg-white pl-3 pr-16 md:pr-20 py-2.5 md:py-0 md:h-12 shadow-sm">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between h-full">
           <div className="flex items-center justify-between w-full md:w-auto h-8 md:h-auto mb-1 md:mb-0">
-            <h2 className="page-title text-base md:text-lg font-extrabold text-slate-900 border-l-4 border-primary pl-2">Nhân sự</h2>
+            <h2 className="page-title text-base md:text-lg font-extrabold text-slate-900 border-l-4 border-primary pl-2 uppercase tracking-wide">
+              Nhân sự
+            </h2>
           </div>
 
           <div className="flex items-center gap-2 justify-between md:justify-end w-full md:w-auto pt-0.5 md:pt-0 flex-wrap">
             {/* Search Input (Mobile + Desktop) */}
-            <div className="relative flex-1 min-w-[120px] md:w-56 md:flex-initial">
-              <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs">search</span>
-              <input
-                type="text"
-                placeholder="Tìm nhân sự..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary focus:bg-white transition-all h-8 md:h-[34px]"
-              />
-            </div>
+            {activeTab === 'list' && (
+              <div className="relative flex-1 min-w-[120px] md:w-56 md:flex-initial">
+                <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs">search</span>
+                <input
+                  type="text"
+                  placeholder="Tìm nhân sự..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary focus:bg-white transition-all h-8 md:h-[34px]"
+                />
+              </div>
+            )}
 
-            <span className="h-8 md:h-[34px] px-3 md:px-3 rounded-lg flex items-center bg-blue-50 text-primary text-xs font-bold border border-blue-100 shrink-0">{engineers.filter(e => e.role !== 'Quản trị viên' && e.username !== 'admin').length} nhân sự</span>
+            <span className="h-8 md:h-[34px] px-3 md:px-3 rounded-lg flex items-center bg-blue-50 text-primary text-xs font-bold border border-blue-100 shrink-0">
+              {engineers.filter(e => e.role !== 'Quản trị viên' && e.username !== 'admin').length} nhân sự
+            </span>
 
-            {/* Nút Quản lý Phòng ban */}
-            <button
-              type="button"
-              onClick={() => setIsDepartmentModalOpen(true)}
-              title="Quản lý Phòng ban & Cơ cấu tổ chức"
-              className="bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-primary h-8 md:h-[34px] px-2.5 md:px-3.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs shrink-0 cursor-pointer transition-colors"
-            >
-              <span className="material-symbols-outlined text-[16px] text-slate-500">corporate_fare</span>
-              <span>Phòng ban</span>
-              <span className="px-1.5 py-0.2 rounded-full bg-slate-100 text-slate-600 text-[10px] font-bold border border-slate-200">
-                {departments.filter(d => d.status === 'ACTIVE').length}
-              </span>
-            </button>
-            
             {/* Menu Gộp Nhập / Xuất file */}
             <ImportExportDropdown
               onExportExcel={handleExportExcel}
@@ -862,8 +886,6 @@ export const PersonnelPage: React.FC = () => {
               onExportPdf={() => window.print()}
               onExportWord={handleExportExcel}
             />
-
-            
 
             {(hasPermission(user, 'MANAGE_USERS') || hasPermission(user, 'EDIT_USERS')) && (
               <button
@@ -879,119 +901,193 @@ export const PersonnelPage: React.FC = () => {
         </div>
       </section>
 
-      <TabOverview
-        kpis={[
-          {
-            id: 'all',
-            label: 'Tổng nhân sự',
-            value: engineers.length,
-            tone: 'default',
-          },
-          {
-            id: 'active',
-            label: 'Đang hoạt động',
-            value: engineers.filter((e) => !e.isLocked).length,
-            tone: 'success',
-          },
-          {
-            id: 'departments',
-            label: 'Phòng ban',
-            value: departments.filter(d => d.status === 'ACTIVE').length,
-            tone: 'primary',
-          },
-          {
-            id: 'filtered',
-            label: 'Hiển thị hiện tại',
-            value: people.length,
-            tone: 'info',
-          },
-        ]}
-        chartTitle="Cơ cấu nhân sự theo phòng ban"
-        hasChartData={departments.length > 0 && engineers.length > 0}
-        chartContent={
-          <div className="h-44 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={departments
-                  .filter(d => d.status === 'ACTIVE')
-                  .map(dept => {
-                    const count = engineers.filter(e =>
-                      e.departmentId === dept.id ||
-                      e.departmentCode?.toUpperCase() === dept.code.toUpperCase() ||
-                      (e.departmentName && e.departmentName.toLowerCase() === dept.name.toLowerCase()) ||
-                      ((e as any).department && (e as any).department.toLowerCase() === dept.name.toLowerCase())
-                    ).length;
-                    return {
-                      name: dept.name.replace('Phòng ', 'P. ').replace('Ban ', 'B. '),
-                      count
-                    };
-                  })
-                }
-                margin={{ top: 8, right: 16, left: 0, bottom: 4 }}
-              >
-                <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#475569' }} axisLine={false} tickLine={false} />
-                <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} width={28} />
-                <Tooltip cursor={{ fill: '#f1f5f9' }} contentStyle={{ fontSize: '12px', borderRadius: '6px' }} />
-                <Bar dataKey="count" name="Số nhân sự" radius={[3, 3, 0, 0]} barSize={36} fill="#1e40af" />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        }
-      />
+      {/* THANH TAB ĐIỀU HƯỚNG CHÍNH: TỔNG QUAN | PHÒNG BAN | NHÂN SỰ */}
+      <div className="bg-white border-b border-slate-200 px-3 md:px-4 flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-1 overflow-x-auto custom-scrollbar">
+          {/* Tab 1: Tổng quan */}
+          <button
+            type="button"
+            onClick={() => handleSelectTab('overview')}
+            className={`py-2.5 px-3.5 text-xs font-bold border-b-2 transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+              activeTab === 'overview'
+                ? 'border-primary text-primary bg-blue-50/50'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <span className="material-symbols-outlined text-[17px]">grid_view</span>
+            <span>Tổng quan</span>
+          </button>
 
-      <div className="flex-1 w-full max-w-full overflow-hidden flex flex-col">
-        {/* THANH BỘ LỌC PHÒNG BAN & TRẠNG THÁI */}
-        <div className="bg-white border-b border-slate-200 px-3 py-2 flex flex-wrap items-center justify-between gap-2 text-xs">
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-1.5 font-bold text-slate-500">
-              <span className="material-symbols-outlined text-[16px]">filter_list</span>
-              <span>Lọc phòng ban:</span>
-            </div>
+          {/* Tab 2: Phòng ban */}
+          <button
+            type="button"
+            onClick={() => handleSelectTab('department')}
+            className={`py-2.5 px-3.5 text-xs font-bold border-b-2 transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+              activeTab === 'department'
+                ? 'border-primary text-primary bg-blue-50/50'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <span className="material-symbols-outlined text-[17px]">corporate_fare</span>
+            <span>Phòng ban</span>
+            <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-blue-100 text-blue-800 font-bold">
+              {departments.filter(d => d.status === 'ACTIVE').length}
+            </span>
+          </button>
 
-            <div className="w-64">
-              <CustomSelect
-                value={selectedDepartmentFilter}
-                onChange={(e) => setSelectedDepartmentFilter(e.target.value)}
-                searchable={true}
-                className="w-full text-xs font-bold text-slate-700"
-              >
-                <option value="all">-- Tất cả phòng ban ({engineers.length}) --</option>
-                {departments.map((dept) => {
-                  const count = people.filter(p =>
-                    p.departmentId === dept.id ||
-                    p.departmentCode?.toUpperCase() === dept.code.toUpperCase() ||
-                    (p.departmentName && p.departmentName.toLowerCase() === dept.name.toLowerCase()) ||
-                    ((p as any).department && (p as any).department.toLowerCase() === dept.name.toLowerCase())
-                  ).length;
-                  return (
-                    <option key={dept.id} value={dept.id}>
-                      {dept.name} ({count}) {dept.status === 'INACTIVE' ? '- Ngừng dùng' : ''}
-                    </option>
-                  );
-                })}
-              </CustomSelect>
-            </div>
-
-            {selectedDepartmentFilter !== 'all' && (
-              <button
-                type="button"
-                onClick={() => setSelectedDepartmentFilter('all')}
-                className="px-2 py-1 text-xs text-rose-600 hover:bg-rose-50 rounded font-bold transition-colors flex items-center gap-0.5 cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-sm">close</span>
-                <span>Bỏ lọc</span>
-              </button>
-            )}
-          </div>
-
-          <div className="flex items-center gap-1">
-            <span className="text-slate-400 text-[11px] font-medium mr-1">Hiển thị: <strong>{people.length}</strong> / {engineers.length} nhân sự</span>
-          </div>
+          {/* Tab 3: Nhân sự */}
+          <button
+            type="button"
+            onClick={() => handleSelectTab('list')}
+            className={`py-2.5 px-3.5 text-xs font-bold border-b-2 transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+              activeTab === 'list'
+                ? 'border-primary text-primary bg-blue-50/50'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <span className="material-symbols-outlined text-[17px]">groups</span>
+            <span>Nhân sự</span>
+            <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-slate-100 text-slate-700 font-bold">
+              {engineers.filter(e => e.role !== 'Quản trị viên' && e.username !== 'admin').length}
+            </span>
+          </button>
         </div>
 
-      <section className="flex-1 grid grid-cols-1 gap-0 overflow-hidden">
-        <div className="bg-white border-b border-r border-slate-200 shadow-xs overflow-hidden flex flex-col">
-          <PullToRefresh onRefresh={async () => { await Promise.all([fetchEngineers(), fetchProjects()]); }} className="flex-1 overflow-x-auto overflow-y-auto custom-scrollbar relative p-3">
+        <div className="hidden sm:flex items-center gap-2 text-xs text-slate-500">
+          <span>Tổng số: <b className="text-slate-800">{engineers.length}</b> tài khoản</span>
+        </div>
+      </div>
+
+      {/* NỘI DUNG THEO TỪNG TAB */}
+      {activeTab === 'overview' && (
+        <PullToRefresh onRefresh={async () => { await Promise.all([fetchEngineers(), fetchProjects(), fetchDepartments()]); }} className="flex-1 overflow-y-auto">
+          <TabOverview
+            kpis={[
+              {
+                id: 'all',
+                label: 'Tổng nhân sự',
+                value: engineers.length,
+                tone: 'default',
+              },
+              {
+                id: 'active',
+                label: 'Đang hoạt động',
+                value: engineers.filter((e) => !e.isLocked).length,
+                tone: 'success',
+              },
+              {
+                id: 'departments',
+                label: 'Phòng ban',
+                value: departments.filter(d => d.status === 'ACTIVE').length,
+                tone: 'primary',
+              },
+              {
+                id: 'filtered',
+                label: 'Hiển thị hiện tại',
+                value: people.length,
+                tone: 'info',
+              },
+            ]}
+            chartTitle="Cơ cấu nhân sự theo phòng ban"
+            hasChartData={departments.length > 0 && engineers.length > 0}
+            chartContent={
+              <div className="h-44 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={departments
+                      .filter(d => d.status === 'ACTIVE')
+                      .map(dept => {
+                        const count = engineers.filter(e =>
+                          e.departmentId === dept.id ||
+                          e.departmentCode?.toUpperCase() === dept.code.toUpperCase() ||
+                          (e.departmentName && e.departmentName.toLowerCase() === dept.name.toLowerCase()) ||
+                          ((e as any).department && (e as any).department.toLowerCase() === dept.name.toLowerCase())
+                        ).length;
+                        return {
+                          name: dept.name.replace('Phòng ', 'P. ').replace('Ban ', 'B. '),
+                          count
+                        };
+                      })
+                    }
+                    margin={{ top: 8, right: 16, left: 0, bottom: 4 }}
+                  >
+                    <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#475569' }} axisLine={false} tickLine={false} />
+                    <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} width={28} />
+                    <Tooltip cursor={{ fill: '#f1f5f9' }} contentStyle={{ fontSize: '12px', borderRadius: '6px' }} />
+                    <Bar dataKey="count" name="Số nhân sự" radius={[3, 3, 0, 0]} barSize={36} fill="#1e40af" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            }
+          />
+        </PullToRefresh>
+      )}
+
+      {activeTab === 'department' && (
+        <DepartmentManagementView
+          engineers={engineers}
+          onSelectDepartmentFilter={(deptId) => {
+            setSelectedDepartmentFilter(deptId);
+            handleSelectTab('list');
+          }}
+          isInline={true}
+        />
+      )}
+
+      {activeTab === 'list' && (
+        <div className="flex-1 w-full max-w-full overflow-hidden flex flex-col">
+          {/* THANH BỘ LỌC PHÒNG BAN & TRẠNG THÁI */}
+          <div className="bg-white border-b border-slate-200 px-3 py-2 flex flex-wrap items-center justify-between gap-2 text-xs">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-1.5 font-bold text-slate-500">
+                <span className="material-symbols-outlined text-[16px]">filter_list</span>
+                <span>Lọc phòng ban:</span>
+              </div>
+
+              <div className="w-64">
+                <CustomSelect
+                  value={selectedDepartmentFilter}
+                  onChange={(e) => setSelectedDepartmentFilter(e.target.value)}
+                  searchable={true}
+                  className="w-full text-xs font-bold text-slate-700"
+                >
+                  <option value="all">-- Tất cả phòng ban ({engineers.length}) --</option>
+                  {departments.map((dept) => {
+                    const count = people.filter(p =>
+                      p.departmentId === dept.id ||
+                      p.departmentCode?.toUpperCase() === dept.code.toUpperCase() ||
+                      (p.departmentName && p.departmentName.toLowerCase() === dept.name.toLowerCase()) ||
+                      ((p as any).department && (p as any).department.toLowerCase() === dept.name.toLowerCase())
+                    ).length;
+                    return (
+                      <option key={dept.id} value={dept.id}>
+                        {dept.name} ({count}) {dept.status === 'INACTIVE' ? '- Ngừng dùng' : ''}
+                      </option>
+                    );
+                  })}
+                </CustomSelect>
+              </div>
+
+              {selectedDepartmentFilter !== 'all' && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedDepartmentFilter('all')}
+                  className="px-2 py-1 text-xs text-rose-600 hover:bg-rose-50 rounded font-bold transition-colors flex items-center gap-0.5 cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-sm">close</span>
+                  <span>Bỏ lọc</span>
+                </button>
+              )}
+            </div>
+
+            <div className="flex items-center gap-1">
+              <span className="text-slate-400 text-[11px] font-medium mr-1">Hiển thị: <strong>{people.length}</strong> / {engineers.length} nhân sự</span>
+            </div>
+          </div>
+
+        <section className="flex-1 grid grid-cols-1 gap-0 overflow-hidden">
+          <div className="bg-white border-b border-r border-slate-200 shadow-xs overflow-hidden flex flex-col">
+            <PullToRefresh onRefresh={async () => { await Promise.all([fetchEngineers(), fetchProjects()]); }} className="flex-1 overflow-x-auto overflow-y-auto custom-scrollbar relative p-3">
             {/* 1. DẠNG THẺ (GRID) - Hồ sơ nhân sự đầy đủ */}
             {viewMode === 'grid' && (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5">
@@ -1495,6 +1591,7 @@ export const PersonnelPage: React.FC = () => {
         </div>
       </section>
       </div>
+      )}
 
       <Modal size='xl' isOpen={isFormOpen} onClose={closeForm} title={editingPersonId ? 'Chỉnh sửa nhân sự' : 'Thêm nhân sự'}>
         <form onSubmit={async (e) => { e.preventDefault(); if (loading || isSubmittingRef.current) return; isSubmittingRef.current = true; setLoading(true); try { await handleSavePerson(e); } finally { isSubmittingRef.current = false; setLoading(false); } }} className="p-1">

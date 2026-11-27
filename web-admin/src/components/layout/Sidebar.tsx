@@ -493,6 +493,27 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
       }
     ];
 
+    const personnelSubItems = [
+      {
+        label: 'Phòng ban',
+        path: '/personnel?tab=department',
+        icon: 'corporate_fare',
+        isActive: (pathname: string, search: string) => {
+          const sp = new URLSearchParams(search);
+          return pathname === '/personnel' && sp.get('tab') === 'department';
+        }
+      },
+      {
+        label: 'Nhân sự',
+        path: '/personnel?tab=list',
+        icon: 'person',
+        isActive: (pathname: string, search: string) => {
+          const sp = new URLSearchParams(search);
+          return pathname === '/personnel' && (sp.get('tab') === 'list' || sp.get('tab') === 'personnel');
+        }
+      }
+    ];
+
     const mainItems = [
       { label: 'Tổng quan', path: '/dashboard', icon: 'analytics', req: 'VIEW_PROJECTS' },
       { 
@@ -530,7 +551,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
         req: 'VIEW_TASKS',
         children: attendanceSubItems
       },
-      { label: 'Nhân sự', path: '/personnel', icon: 'groups', req: 'VIEW_USERS' }
+      { 
+        label: 'Nhân sự', 
+        path: '/personnel', 
+        icon: 'groups', 
+        req: 'VIEW_USERS',
+        children: personnelSubItems
+      }
     ];
 
     return [{
@@ -631,7 +658,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
                   const isInventorySection = (item.label === 'Kho Dự án' || item.path.includes('/inventory')) && location.pathname.includes('/inventory');
                   const isPlanSection = (item.label === 'Kế hoạch' || item.path.includes('/plan')) && location.pathname.includes('/plan');
                   const isDocumentSection = (item.label === 'Quản lý hồ sơ' || item.label === 'Hồ sơ' || item.path.includes('/document-tracking') || item.path.includes('/documents')) && (location.pathname.includes('/document-tracking') || location.pathname.includes('/documents'));
-                  const isParentActive = isTaskSection || isAttendanceSection || isProjectsSection || isMaterialsSection || isCostPlanSection || isInventorySection || isPlanSection || isDocumentSection;
+                  const isPersonnelSection = (item.label === 'Nhân sự' || item.path.includes('/personnel')) && location.pathname.includes('/personnel');
+                  const isParentActive = isTaskSection || isAttendanceSection || isProjectsSection || isMaterialsSection || isCostPlanSection || isInventorySection || isPlanSection || isDocumentSection || isPersonnelSection;
                   const isSubOpen = openSubMenus[item.label] ?? true;
                   
                   return (
