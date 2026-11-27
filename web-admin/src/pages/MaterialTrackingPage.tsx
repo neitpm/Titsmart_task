@@ -1437,10 +1437,10 @@ export const MaterialTrackingPage: React.FC = () => {
               </h2>
             </div>
           </header>
-          <section className="border-b border-slate-200 bg-white px-3 py-2 flex flex-wrap items-center justify-between gap-2 relative z-20 shrink-0">
-            <div className="flex items-center gap-2 justify-between md:justify-end w-full">
-              {/* Mobile & Desktop Search Input */}
-              <div className="relative flex-1 md:w-60 min-w-0">
+          {/* Mobile Search & Action Bar */}
+          <section className="md:hidden border-b border-slate-200 bg-white px-3 py-2 flex items-center justify-between gap-2 relative z-20 shrink-0">
+            <div className="flex items-center gap-2 justify-between w-full">
+              <div className="relative flex-1 min-w-0">
                 <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs">search</span>
                 <input
                   type="text"
@@ -1459,27 +1459,8 @@ export const MaterialTrackingPage: React.FC = () => {
                 className="hidden" 
               />
 
-              {/* Desktop Action Buttons */}
-              {/* Desktop Export File Dropdown */}
-              <div className="hidden md:block">
-                <ImportExportDropdown
-                  onExportExcel={handleExportExcel}
-                  onExportCsv={handleExportExcel}
-                  onExportPdf={() => window.print()}
-                  onExportWord={handleExportExcel}
-                />
-              </div>
-
-              {/* Desktop Warehouse Action Dropdown */}
-              <div className="hidden md:block">
-                <WarehouseActionDropdown
-                  onImportClick={() => handleOpenTransaction('IMPORT')}
-                  onExportClick={() => handleOpenTransaction('EXPORT')}
-                />
-              </div>
-
               {/* Mobile Warehouse Action Dropdown */}
-              <div className="md:hidden shrink-0">
+              <div className="shrink-0">
                 <WarehouseActionDropdown
                   onImportClick={() => handleOpenTransaction('IMPORT')}
                   onExportClick={() => handleOpenTransaction('EXPORT')}
@@ -1489,7 +1470,7 @@ export const MaterialTrackingPage: React.FC = () => {
               </div>
 
               {/* Mobile Export File Dropdown Menu */}
-              <div className="md:hidden shrink-0">
+              <div className="shrink-0">
                 <ImportExportDropdown
                   onExportExcel={handleExportExcel}
                   onExportCsv={handleExportExcel}
@@ -1575,17 +1556,31 @@ export const MaterialTrackingPage: React.FC = () => {
             </div>
           )}
           
-          {/* Lọc chi tiết - ẩn trên mobile để tối ưu giao diện */}
-          <div className="hidden md:flex h-[40px] px-5 bg-slate-50/80 border-t border-slate-100 items-center gap-3 overflow-x-auto custom-scrollbar justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2.5 text-slate-500 font-bold text-xs whitespace-nowrap pr-1">
+          {/* Lọc chi tiết & Tìm kiếm & Thao tác trên cùng 1 hàng */}
+          <div className="hidden md:flex min-h-[42px] px-3 md:px-4 bg-white border-b border-slate-200 items-center gap-2.5 overflow-x-auto custom-scrollbar justify-between">
+            <div className="flex items-center gap-2 flex-wrap min-w-0">
+              {/* Ô tìm kiếm vật tư */}
+              <div className="relative w-48 lg:w-56 shrink-0">
+                <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs">search</span>
+                <input
+                  type="text"
+                  placeholder="Tìm vật tư..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary focus:bg-white transition-all h-8"
+                />
+              </div>
+
+              <div className="h-4 w-[1px] bg-slate-200 mx-0.5 shrink-0" />
+
+              <div className="flex items-center gap-1.5 text-slate-500 font-bold text-xs whitespace-nowrap shrink-0">
                 <span className="material-symbols-outlined text-[16px]">filter_list</span>
                 Lọc chi tiết:
               </div>
               
               {!projectId && (
                 <CustomSelect 
-                  className="px-1.5 py-0.5 bg-white border border-slate-200 rounded text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-primary/20 min-w-[160px] max-w-[220px] truncate cursor-pointer hover:bg-slate-50 transition-colors font-semibold"
+                  className="px-1.5 py-0.5 bg-white border border-slate-200 rounded text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-primary/20 min-w-[140px] max-w-[200px] truncate cursor-pointer hover:bg-slate-50 transition-colors font-semibold h-8"
                   value={filterProject}
                   onChange={(e) => setFilterProject(e.target.value)}
                 >
@@ -1595,7 +1590,7 @@ export const MaterialTrackingPage: React.FC = () => {
               )}
 
               <CustomSelect 
-                className="px-1.5 py-0.5 bg-white border border-slate-200 rounded text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-primary/20 min-w-[150px] max-w-[200px] truncate cursor-pointer hover:bg-slate-50 transition-colors"
+                className="px-1.5 py-0.5 bg-white border border-slate-200 rounded text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-primary/20 min-w-[130px] max-w-[180px] truncate cursor-pointer hover:bg-slate-50 transition-colors h-8"
                 value={filterCategory}
                 onChange={(e) => setFilterCategory(e.target.value)}
               >
@@ -1604,7 +1599,7 @@ export const MaterialTrackingPage: React.FC = () => {
               </CustomSelect>
 
               <CustomSelect 
-                className="px-1.5 py-0.5 bg-white border border-slate-200 rounded text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-primary/20 min-w-[150px] max-w-[200px] truncate cursor-pointer hover:bg-slate-50 transition-colors"
+                className="px-1.5 py-0.5 bg-white border border-slate-200 rounded text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-primary/20 min-w-[130px] max-w-[180px] truncate cursor-pointer hover:bg-slate-50 transition-colors h-8"
                 value={filterName}
                 onChange={(e) => setFilterName(e.target.value)}
               >
@@ -1613,7 +1608,7 @@ export const MaterialTrackingPage: React.FC = () => {
               </CustomSelect>
 
               <CustomSelect 
-                className="px-1.5 py-0.5 bg-white border border-slate-200 rounded text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-primary/20 min-w-[100px] max-w-[150px] truncate cursor-pointer hover:bg-slate-50 transition-colors"
+                className="px-1.5 py-0.5 bg-white border border-slate-200 rounded text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-primary/20 min-w-[90px] max-w-[130px] truncate cursor-pointer hover:bg-slate-50 transition-colors h-8"
                 value={filterUnit}
                 onChange={(e) => setFilterUnit(e.target.value)}
               >
@@ -1623,8 +1618,8 @@ export const MaterialTrackingPage: React.FC = () => {
 
               {/* Lọc theo ngày */}
               <div className="flex items-center gap-1.5 shrink-0">
-                <div className="flex items-center gap-1.5 border border-slate-200 rounded px-1 py-0.5 bg-white shadow-sm">
-                  <span className="text-slate-400 font-medium whitespace-nowrap text-[11px] ml-1">Từ</span>
+                <div className="flex items-center gap-1.5 border border-slate-200 rounded px-1.5 h-8 bg-white shadow-2xs">
+                  <span className="text-slate-400 font-medium whitespace-nowrap text-[11px]">Từ</span>
                   <input
                     type="date"
                     value={filterDateFrom}
@@ -1652,6 +1647,22 @@ export const MaterialTrackingPage: React.FC = () => {
                 </div>
               </div>
             </div>
+
+            {/* Các nút thao tác Nhập/Xuất File & Kho */}
+            {!projectId && (
+              <div className="flex items-center gap-1.5 shrink-0">
+                <ImportExportDropdown
+                  onExportExcel={handleExportExcel}
+                  onExportCsv={handleExportExcel}
+                  onExportPdf={() => window.print()}
+                  onExportWord={handleExportExcel}
+                />
+                <WarehouseActionDropdown
+                  onImportClick={() => handleOpenTransaction('IMPORT')}
+                  onExportClick={() => handleOpenTransaction('EXPORT')}
+                />
+              </div>
+            )}
           </div>
         </div>
 
