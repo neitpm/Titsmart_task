@@ -894,11 +894,11 @@ export const DocumentDetailModal: React.FC<DocumentDetailModalProps> = ({
                               : 'bg-slate-50 text-slate-600 border-slate-300'))
                       }`}
                     >
-                      <option value="CHUA_CO">⚪ Chưa có</option>
-                      <option value="DA_TAI_LEN">📥 Đã tải lên</option>
-                      <option value="CHO_KIEM_TRA">⏳ Chờ kiểm tra</option>
-                      <option value="HOP_LE">✅ Hợp lệ</option>
-                      <option value="YEU_CAU_BO_SUNG">❌ Yêu cầu bổ sung</option>
+                      <option value="CHUA_CO">Chưa có</option>
+                      <option value="DA_TAI_LEN">Đã tải lên</option>
+                      <option value="CHO_KIEM_TRA">Chờ kiểm tra</option>
+                      <option value="HOP_LE">Hợp lệ</option>
+                      <option value="YEU_CAU_BO_SUNG">Yêu cầu bổ sung</option>
                     </CustomSelect>
                   </div>
                 </div>

@@ -206,10 +206,10 @@ export const DocumentFlowTable: React.FC<DocumentFlowTableProps> = ({
                 className="w-full text-xs px-2.5 py-1.5 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white font-medium"
               >
                 <option value="all">Tất cả thời hạn</option>
-                <option value="no_due">⚪ Chưa xác định hạn</option>
-                <option value="warning">🔔 Sắp đến hạn</option>
-                <option value="overdue">🔴 Quá hạn thanh toán</option>
-                <option value="completed">🟢 Đã thanh toán / Đã thu đủ</option>
+                <option value="no_due">Chưa xác định hạn</option>
+                <option value="warning">Sắp đến hạn</option>
+                <option value="overdue">Quá hạn thanh toán</option>
+                <option value="completed">Đã thanh toán / Đã thu đủ</option>
               </CustomSelect>
             </div>
 
