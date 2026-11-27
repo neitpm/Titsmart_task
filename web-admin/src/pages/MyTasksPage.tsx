@@ -536,7 +536,9 @@ export const MyTasksPage: React.FC = () => {
               arrow_forward_ios
             </span>
             <h1 className="text-sm md:text-base font-bold text-slate-700 shrink-0">
-              {category === 'direct' ? 'Phát sinh' : (isAdmin ? 'Việc của tôi' : 'Dự án')}
+              {assignmentScope === 'following' 
+                ? 'Công việc liên quan' 
+                : (category === 'direct' ? 'Phát sinh' : (isAdmin ? 'Công việc được giao' : 'Dự án'))}
             </h1>
           </div>
         </div>
@@ -579,55 +581,6 @@ export const MyTasksPage: React.FC = () => {
             </CustomSelect>
           )}
         </div>
-      </div>
-
-      {/* Scope Navigation Tabs: Công việc được giao vs Công việc liên quan */}
-      <div className="bg-white border-b border-slate-200 px-3 md:px-6 pt-2.5 flex items-center gap-2 overflow-x-auto shrink-0 select-none">
-        <button
-          type="button"
-          onClick={() => {
-            setAssignmentScope('assigned');
-            const nextParams = new URLSearchParams(searchParams);
-            nextParams.set('scope', 'assigned');
-            navigate({ search: nextParams.toString() }, { replace: true });
-          }}
-          className={`flex items-center gap-2 pb-2.5 px-3 border-b-2 font-bold text-xs transition-colors cursor-pointer shrink-0 ${
-            assignmentScope === 'assigned'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-slate-500 hover:text-slate-800'
-          }`}
-        >
-          <span className="material-symbols-outlined text-[17px]">assignment_ind</span>
-          <span>Công việc được giao</span>
-          <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-extrabold ${
-            assignmentScope === 'assigned' ? 'bg-primary/10 text-primary' : 'bg-slate-100 text-slate-600'
-          }`}>
-            {scopeCounts.assigned}
-          </span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => {
-            setAssignmentScope('following');
-            const nextParams = new URLSearchParams(searchParams);
-            nextParams.set('scope', 'following');
-            navigate({ search: nextParams.toString() }, { replace: true });
-          }}
-          className={`flex items-center gap-2 pb-2.5 px-3 border-b-2 font-bold text-xs transition-colors cursor-pointer shrink-0 ${
-            assignmentScope === 'following'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-slate-500 hover:text-slate-800'
-          }`}
-        >
-          <span className="material-symbols-outlined text-[17px]">visibility</span>
-          <span>Công việc liên quan (Theo dõi)</span>
-          <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-extrabold ${
-            assignmentScope === 'following' ? 'bg-primary/10 text-primary' : 'bg-slate-100 text-slate-600'
-          }`}>
-            {scopeCounts.following}
-          </span>
-        </button>
       </div>
 
       {/* Sub-tab Filter Chips */}
