@@ -14,6 +14,7 @@ import { ProjectMaterialPlan, ProjectPurchasing, ProjectExpense, LaborPayroll , 
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
 import { MaterialAndPurchasingTab } from './cost-plan/MaterialAndPurchasingTab';
 import { PaymentRequestTab } from './cost-plan/PaymentRequestTab';
+import { FinancialPerformanceTab } from './cost-plan/FinancialPerformanceTab';
 import { supabase } from '../lib/supabase';
 import { api } from '../services/apiSupabase';
 
@@ -1543,8 +1544,8 @@ export const ProjectCostPlanPage: React.FC = () => {
   // Đồng bộ tab từ URL searchParams nếu có thay đổi
   useEffect(() => {
     const tabParam = searchParams.get('tab');
-    if (tabParam && ['TECH', 'DOCS', 'FINANCE', 'EXPENSE', 'PAYMENT_REQUEST'].includes(tabParam)) {
-      setActiveTab(tabParam);
+    if (tabParam && ['TECH', 'DOCS', 'FINANCE', 'EXPENSE', 'PAYMENT_REQUEST', 'PROFIT', 'FINANCIAL_PERFORMANCE'].includes(tabParam)) {
+      setActiveTab(tabParam === 'FINANCIAL_PERFORMANCE' ? 'PROFIT' : tabParam);
     } else if (!tabParam) {
       setActiveTab('TECH');
     }
@@ -1566,6 +1567,7 @@ export const ProjectCostPlanPage: React.FC = () => {
       else if (activeTab === 'FINANCE') outletContext.setSubTitle('Thanh toán');
       else if (activeTab === 'EXPENSE') outletContext.setSubTitle('Chi phí');
       else if (activeTab === 'PAYMENT_REQUEST') outletContext.setSubTitle('Yêu cầu thanh toán');
+      else if (activeTab === 'PROFIT' || activeTab === 'FINANCIAL_PERFORMANCE') outletContext.setSubTitle('Hiệu quả tài chính');
       else outletContext.setSubTitle('');
     }
 
@@ -2585,7 +2587,7 @@ export const ProjectCostPlanPage: React.FC = () => {
       missingFireInspection,
       orderedCount,
       progressPercent,
-      totalProjectCost: totalPurchasing + totalExp,
+      totalProjectCost: totalPurchasing + totalExp + totalLab,
     };
   }, [selectedProject, currentProjMaterialPlans, currentProjPurchasing, currentProjExpenses, currentProjLabor]);
 
@@ -2705,8 +2707,8 @@ export const ProjectCostPlanPage: React.FC = () => {
           "Trạng thái ĐH mua": pRecord?.orderStatus || "",
           "Tình trạng hợp đồng": pRecord?.contractStatus || "",
           "% tạm ứng": pRecord ? Math.round(pRecord.prepayPercent * 100) : 0,
-          "Chi phí (Giá vốn)": pRecord?.prepayAmount || 0,
-          "Lợi nhuận": pRecord ? ((pRecord.totalAmount || 0) - (pRecord.prepayAmount || 0)) : 0,
+          "Đã tạm ứng / Thanh toán": pRecord?.prepayAmount || 0,
+          "Còn phải trả NCC": pRecord ? ((pRecord.totalAmount || 0) - (pRecord.prepayAmount || 0)) : 0,
           "Hạn thanh toán": pRecord?.paymentDate || "",
           "Hóa đơn VAT": pRecord?.invoiceStatus || "",
           "Ghi chú": cleanNotes(p.notes) || ""
@@ -2841,7 +2843,12 @@ export const ProjectCostPlanPage: React.FC = () => {
       )}
 
       {/* TAB CONTENTS */}
-      <div className="bg-white border-x border-b border-slate-200 shadow-xs overflow-hidden flex-1 flex flex-col">
+      <div className="bg-white border-b border-slate-200 shadow-2xs overflow-hidden flex-1 flex flex-col">
+        {/* FINANCIAL PERFORMANCE & PROFITABILITY TAB */}
+        {(activeTab === 'PROFIT' || activeTab === 'FINANCIAL_PERFORMANCE') && (
+          <FinancialPerformanceTab selectedProjectCode={selectedProject} />
+        )}
+
         {/* MATERIAL PLAN TAB */}
         {(activeTab === 'TECH' || activeTab === 'DOCS' || activeTab === 'FINANCE') && (
           <MaterialAndPurchasingTab

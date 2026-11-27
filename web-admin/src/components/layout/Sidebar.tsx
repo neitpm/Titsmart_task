@@ -197,6 +197,17 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
               const tab = sp.get('tab');
               return tab === 'EXPENSE' || tab === 'PAYMENT_REQUEST';
             }
+          },
+          {
+            label: 'Hiệu quả tài chính',
+            path: `/projects/${currentProject.id}/cost-plan?tab=PROFIT`,
+            icon: 'trending_up',
+            isActive: (pathname: string, search: string) => {
+              if (!pathname.includes('/cost-plan')) return false;
+              const sp = new URLSearchParams(search);
+              const tab = sp.get('tab');
+              return tab === 'PROFIT' || tab === 'FINANCIAL_PERFORMANCE';
+            }
           }
         ] : [
           {

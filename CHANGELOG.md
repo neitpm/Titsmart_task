@@ -1,5 +1,17 @@
 # Changelog
 
+## v3.9.18 (2026-11-27)
+
+- Mô-đun Quản lý Hiệu quả Tài chính & Lợi nhuận Dự án (`Hiệu quả tài chính`):
+  - Tách bạch rõ 2 lớp: Lợi nhuận Kế hoạch (Dự toán) vs Lợi nhuận Thực tế (Tạm tính).
+  - Tách biệt hai chiều phụ lục: Phụ lục đầu ra (tăng/giảm doanh thu CĐT) và Phụ lục đầu vào (tăng/giảm giá vốn mua hàng, nhân công, thầu phụ).
+  - Tách bạch rạch ròi giữa Lợi nhuận kế toán và Quản trị dòng tiền (Tiền đã thu - Tiền đã chi).
+  - Bổ sung 4 thẻ KPI tài chính cốt lõi: Doanh thu phê duyệt, Tổng giá vốn thực tế, Lợi nhuận tạm tính, Dòng tiền dự án & Công nợ CĐT.
+  - Hỗ trợ nút cài đặt nhanh giá trị hợp đồng gốc (HĐ đầu ra) ngay trên thẻ Doanh thu.
+  - Chuẩn hóa layout không có margin/padding thừa, tối ưu hóa giao diện sát lề sắc nét.
+  - Chuẩn hóa công thức `totalProjectCost` (cộng thêm toàn bộ chi phí nhân công công nhật).
+  - Xuất Excel sửa tên cột phản ánh đúng bản chất thanh toán và công nợ NCC.
+
 ## v3.9.17 (2026-11-27)
 
 - Khắc phục chấm công trên Desktop / Máy tính bàn không có module GPS:
