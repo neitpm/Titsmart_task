@@ -36,13 +36,26 @@ export const DocumentFormModal: React.FC<DocumentFormModalProps> = ({
 }) => {
   const { user } = useAuthStore();
   const projects = useRealtimeStore(s => s.projects);
+  const engineers = useRealtimeStore(s => s.engineers);
   const documentTracks = useRealtimeStore(s => s.documentTracks);
   const expenses = useRealtimeStore(s => s.expenses);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
 
-  // Form Fields
+  // Danh sách gợi ý người phụ trách / liên hệ từ nhân sự công ty và lịch sử hồ sơ
+  const receiverOptions = useMemo(() => {
+    const set = new Set<string>();
+    // 1. Thêm nhân sự từ danh sách nhân viên
+    engineers.forEach(eng => {
+      if (eng.name?.trim()) set.add(eng.name.trim());
+    });
+    // 2. Thêm từ lịch sử các hồ sơ đã lập
+    documentTracks.forEach(doc => {
+      if (doc.receiverName?.trim()) set.add(doc.receiverName.trim());
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'vi'));
+  }, [engineers, documentTracks]);
   const [contractNo, setContractNo] = useState('');
   const [contractName, setContractName] = useState('');
   const [projectCode, setProjectCode] = useState(defaultProjectCode || 'COMPANY');
@@ -392,13 +405,18 @@ export const DocumentFormModal: React.FC<DocumentFormModalProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <label className="block font-semibold text-slate-700 mb-1">Người phụ trách / liên hệ</label>
-              <input
-                type="text"
+              <CustomSelect
+                searchable
+                allowCustomInput
+                placeholder="Chọn hoặc nhập người liên hệ..."
                 value={receiverName}
                 onChange={e => setReceiverName(e.target.value)}
-                placeholder="Họ tên người liên hệ"
-                className="w-full px-3 py-2 border border-slate-200 bg-white rounded-lg focus:ring-1 focus:ring-primary"
-              />
+                className="w-full px-3 py-2 border border-slate-200 bg-white rounded-lg focus:ring-1 focus:ring-primary font-medium text-slate-800"
+              >
+                {receiverOptions.map(name => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
+              </CustomSelect>
             </div>
             <div>
               <label className="block font-semibold text-slate-700 mb-1">Số điện thoại</label>
