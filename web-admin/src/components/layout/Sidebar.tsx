@@ -299,15 +299,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
 
       return [
         {
-          title: '',
-          collapsible: false,
-          items: [
-            { label: 'Tất cả dự án', path: '/projects', icon: 'arrow_back' }
-          ].filter(() => hasPermission(user, 'VIEW_PROJECTS'))
-        },
-        {
           title: currentProject.name,
           collapsible: false,
+          backPath: hasPermission(user, 'VIEW_PROJECTS') ? '/projects' : undefined,
+          backLabel: 'Tất cả dự án',
           items: projectItems
         }
       ].filter(group => group.items.length > 0);
@@ -601,7 +596,21 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
                   className={`flex items-center justify-between mb-2 select-none px-1 transition-opacity duration-200 ${isExpanded ? 'opacity-100' : 'opacity-0 pointer-events-none'} ${group.collapsible !== false ? 'cursor-pointer hover:text-primary' : ''}`}
                   onClick={() => group.collapsible !== false && toggleGroup(group.title)}
                 >
-                  <h3 className={`text-[11px] font-black uppercase tracking-wider truncate ${group.collapsible !== false ? 'text-slate-500 hover:text-primary' : 'text-slate-700'}`}>{group.title}</h3>
+                  <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                    {(group as any).backPath && (
+                      <NavLink
+                        to={(group as any).backPath}
+                        title={(group as any).backLabel || 'Quay lại'}
+                        onClick={(e) => e.stopPropagation()}
+                        className="w-5 h-5 rounded flex items-center justify-center text-slate-500 hover:text-primary hover:bg-blue-50 transition-colors shrink-0"
+                      >
+                        <span className="material-symbols-outlined text-[15px] font-bold">arrow_back</span>
+                      </NavLink>
+                    )}
+                    <h3 className={`text-[11px] font-black uppercase tracking-wider truncate ${(group as any).backPath ? 'text-slate-800' : (group.collapsible !== false ? 'text-slate-500 hover:text-primary' : 'text-slate-700')}`}>
+                      {group.title}
+                    </h3>
+                  </div>
                   {group.collapsible !== false && (
                     <span className="material-symbols-outlined text-[14px] text-slate-400 shrink-0">
                       {collapsedGroups[group.title] ? 'expand_more' : 'expand_less'}
