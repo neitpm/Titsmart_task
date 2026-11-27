@@ -30,6 +30,10 @@ export const MyTasksPage: React.FC = () => {
     const cat = searchParams.get('category');
     return cat === 'direct' ? 'direct' : 'project';
   });
+  const [assignmentScope, setAssignmentScope] = useState<'assigned' | 'following'>(() => {
+    const scope = searchParams.get('scope') || searchParams.get('view');
+    return scope === 'following' || scope === 'related' ? 'following' : 'assigned';
+  });
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'in_progress' | 'review' | 'completed' | 'overdue'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterProjectCode, setFilterProjectCode] = useState('all');
@@ -44,6 +48,12 @@ export const MyTasksPage: React.FC = () => {
     const catParam = searchParams.get('category');
     if (catParam === 'direct' || catParam === 'project') {
       setCategory(catParam);
+    }
+    const scopeParam = searchParams.get('scope') || searchParams.get('view');
+    if (scopeParam === 'following' || scopeParam === 'related') {
+      setAssignmentScope('following');
+    } else if (scopeParam === 'assigned') {
+      setAssignmentScope('assigned');
     }
     const tabParam = searchParams.get('tab');
     if (tabParam === 'completed') setStatusFilter('completed');
@@ -64,6 +74,15 @@ export const MyTasksPage: React.FC = () => {
       if (found) {
         const isDirect = found.sectionName === 'Giao việc trực tiếp' || found.projectCode === 'COMPANY' || found.code?.startsWith('TASK-DIRECT');
         setCategory(isDirect ? 'direct' : 'project');
+
+        // Tự động chuyển tab đúng: Được giao hay Liên quan
+        const isAssignee = user ? isUserTaskAssignee(user, found, engineers) : false;
+        const isFollower = user ? isUserTaskFollower(user, found, engineers) : false;
+        if (!isAssignee && isFollower) {
+          setAssignmentScope('following');
+        } else {
+          setAssignmentScope('assigned');
+        }
 
         if (found.status === 'Hoàn thành') {
           setStatusFilter('completed');
@@ -115,13 +134,32 @@ export const MyTasksPage: React.FC = () => {
     useRealtimeStore.getState().fetchTasks(undefined);
   }, []);
 
-  const allMyTasks = useMemo(() => {
+  // Tất cả công việc mà user có vai trò (Được giao hoặc Theo dõi)
+  const allAssignedTasks = useMemo(() => {
     if (!user) return [];
-    return tasks.filter(t => !t.isSectionHeader && (
-      isUserTaskAssignee(user, t, engineers) ||
-      isUserTaskFollower(user, t, engineers)
-    ));
+    return tasks.filter(t => !t.isSectionHeader && isUserTaskAssignee(user, t, engineers));
   }, [tasks, user, engineers]);
+
+  const allFollowingTasks = useMemo(() => {
+    if (!user) return [];
+    return tasks.filter(t => !t.isSectionHeader && !isUserTaskAssignee(user, t, engineers) && isUserTaskFollower(user, t, engineers));
+  }, [tasks, user, engineers]);
+
+  const allMyTasks = useMemo(() => {
+    return assignmentScope === 'following' ? allFollowingTasks : allAssignedTasks;
+  }, [assignmentScope, allFollowingTasks, allAssignedTasks]);
+
+  // Counts cho 2 tab chính: Được giao và Liên quan
+  const scopeCounts = useMemo(() => {
+    const filterCat = (list: Task[]) => list.filter(t => {
+      const isDirect = t.sectionName === 'Giao việc trực tiếp' || t.projectCode === 'COMPANY' || t.code?.startsWith('TASK-DIRECT');
+      return category === 'direct' ? isDirect : !isDirect;
+    });
+    return {
+      assigned: filterCat(allAssignedTasks).length,
+      following: filterCat(allFollowingTasks).length
+    };
+  }, [allAssignedTasks, allFollowingTasks, category]);
 
   // Filter tasks strictly by category (Dự án vs Phát sinh)
   const myCategoryTasks = useMemo(() => {
@@ -543,6 +581,55 @@ export const MyTasksPage: React.FC = () => {
         </div>
       </div>
 
+      {/* Scope Navigation Tabs: Công việc được giao vs Công việc liên quan */}
+      <div className="bg-white border-b border-slate-200 px-3 md:px-6 pt-2.5 flex items-center gap-2 overflow-x-auto shrink-0 select-none">
+        <button
+          type="button"
+          onClick={() => {
+            setAssignmentScope('assigned');
+            const nextParams = new URLSearchParams(searchParams);
+            nextParams.set('scope', 'assigned');
+            navigate({ search: nextParams.toString() }, { replace: true });
+          }}
+          className={`flex items-center gap-2 pb-2.5 px-3 border-b-2 font-bold text-xs transition-colors cursor-pointer shrink-0 ${
+            assignmentScope === 'assigned'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          <span className="material-symbols-outlined text-[17px]">assignment_ind</span>
+          <span>Công việc được giao</span>
+          <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-extrabold ${
+            assignmentScope === 'assigned' ? 'bg-primary/10 text-primary' : 'bg-slate-100 text-slate-600'
+          }`}>
+            {scopeCounts.assigned}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setAssignmentScope('following');
+            const nextParams = new URLSearchParams(searchParams);
+            nextParams.set('scope', 'following');
+            navigate({ search: nextParams.toString() }, { replace: true });
+          }}
+          className={`flex items-center gap-2 pb-2.5 px-3 border-b-2 font-bold text-xs transition-colors cursor-pointer shrink-0 ${
+            assignmentScope === 'following'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          <span className="material-symbols-outlined text-[17px]">visibility</span>
+          <span>Công việc liên quan (Theo dõi)</span>
+          <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-extrabold ${
+            assignmentScope === 'following' ? 'bg-primary/10 text-primary' : 'bg-slate-100 text-slate-600'
+          }`}>
+            {scopeCounts.following}
+          </span>
+        </button>
+      </div>
+
       {/* Sub-tab Filter Chips */}
       <div className="bg-slate-50 border-b border-slate-200 px-3 md:px-6 py-2 flex items-center gap-1.5 overflow-x-auto custom-scrollbar shrink-0">
         <button
@@ -658,9 +745,13 @@ export const MyTasksPage: React.FC = () => {
                   : 'Không tìm thấy công việc nào phù hợp.'}
               </p>
               <p className="text-xs text-slate-400">
-                {category === 'direct' 
-                  ? 'Các công việc phát sinh/giao trực tiếp được phân công sẽ hiển thị tại đây.'
-                  : 'Các công việc thuộc các dự án đảm nhiệm sẽ hiển thị tại đây.'}
+                {assignmentScope === 'following'
+                  ? (category === 'direct'
+                    ? 'Các công việc phát sinh bạn được thêm vào theo dõi sẽ hiển thị tại đây.'
+                    : 'Các công việc dự án bạn được thêm vào theo dõi (CC) sẽ hiển thị tại đây.')
+                  : (category === 'direct' 
+                    ? 'Các công việc phát sinh/giao trực tiếp bạn đảm nhiệm sẽ hiển thị tại đây.'
+                    : 'Các công việc dự án bạn trực tiếp đảm nhiệm sẽ hiển thị tại đây.')}
               </p>
             </div>
           ) : (

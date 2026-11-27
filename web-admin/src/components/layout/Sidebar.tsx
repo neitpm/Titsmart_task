@@ -354,10 +354,32 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
       },
       ...(isAdmin ? [{
         label: 'Việc của tôi',
-        path: '/my-tasks',
+        path: '/my-tasks?scope=assigned',
         icon: 'person',
-        isActive: (pathname: string) => pathname === '/my-tasks'
-      }] : []),
+        isActive: (pathname: string, search: string) => {
+          const sp = new URLSearchParams(search);
+          return pathname === '/my-tasks' && (sp.get('scope') === 'assigned' || !sp.get('scope'));
+        }
+      },
+      {
+        label: 'Việc liên quan',
+        path: '/my-tasks?scope=following',
+        icon: 'visibility',
+        isActive: (pathname: string, search: string) => {
+          const sp = new URLSearchParams(search);
+          return pathname === '/my-tasks' && (sp.get('scope') === 'following' || sp.get('scope') === 'related');
+        }
+      }] : [
+      {
+        label: 'Việc liên quan',
+        path: '/my-tasks?scope=following',
+        icon: 'visibility',
+        isActive: (pathname: string, search: string) => {
+          const sp = new URLSearchParams(search);
+          return pathname === '/my-tasks' && (sp.get('scope') === 'following' || sp.get('scope') === 'related');
+        }
+      }
+      ]),
       {
         label: 'Kế hoạch',
         path: '/work-plan',
