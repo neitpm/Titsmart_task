@@ -345,13 +345,11 @@ const generateDocumentDueNotifications = (tracks: DocumentTrack[], existingNotif
       track.docStatus === 'Đã hoàn thành' ||
       track.docStatus === 'Hoàn thành';
     const isPaid = track.paymentStatus?.includes('Đã');
-    if (track.isCompleted || isSigned || isPaid || (!track.dueDate && track.receiveDate)) return;
+    // Quy tắc: Nếu người dùng không nhập hạn (dueDate là null, rỗng hoặc undefined), KHÔNG bao giờ tự tính hạn hay báo quá hạn/hạn hôm nay
+    if (!track.dueDate || !track.dueDate.trim()) return;
+    if (track.isCompleted || isSigned || isPaid) return;
 
-    const effectiveDueDate = track.dueDate || track.receiveDate || track.sendDate;
-    if (!effectiveDueDate) return;
-
-    if (!track.dueDate && track.receiveDate) return;
-
+    const effectiveDueDate = track.dueDate;
     const due = parseFlexibleDate(effectiveDueDate);
     if (!due) return;
     due.setHours(0, 0, 0, 0);

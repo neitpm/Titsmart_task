@@ -1,46 +1,75 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
-import * as XLSX from 'xlsx';
-import { exportToStyledExcel } from '../utils/excelExportUtils';
 import { useParams, useSearchParams, useOutletContext } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { useRealtimeStore } from '../services/realtimeStore';
-import { useAuthStore, hasPermission, canManageItem } from '../services/authStore';
-import { Modal } from '../components/common/Modal';
-import { FileViewerItem } from '../components/common/FileViewerItem';
+import { useAuthStore, hasPermission, canManageItem, isDirector, isSystemAdmin } from '../services/authStore';
 import { Toast } from '../components/common/Toast';
-import { DocumentTrack } from '../types';
 import { ConfirmModal } from '../components/common/ConfirmModal';
-import { CustomSelect } from '@/components/common/CustomSelect';
 import { ImportExportDropdown } from '../components/common/ImportExportDropdown';
-import { FileUpload } from '../components/common/FileUpload';
-import { AuditInfoCell } from '../components/common/AuditInfoCell';
 import { PullToRefresh } from '../components/common/PullToRefresh';
-import { useUIStore } from '../services/uiStore';
-import { useTableColumnResize } from '../services/useTableColumnResize';
-import { ColumnResizeHandle } from '../components/common/ColumnResizeHandle';
-import { ViewModeToolbar, resolveViewMode, AppViewMode } from '../components/common/ViewModeToolbar';
-import { StatusKanbanBoard } from '../components/common/StatusKanbanBoard';
+import { DocumentTrack } from '../types';
+import { exportToStyledExcel } from '../utils/excelExportUtils';
+import * as XLSX from 'xlsx';
+
+import {
+  DocumentFlow,
+  resolveDocumentFlow,
+  formatCurrency,
+  formatDateDisplay,
+  calculateDocumentDueInfo
+} from './documents/documentConstants';
+import { DocumentOverviewTab } from './documents/DocumentOverviewTab';
+import { DocumentFlowTable } from './documents/DocumentFlowTable';
+import { DocumentFormModal } from './documents/DocumentFormModal';
+import { CustomSelect } from '@/components/common/CustomSelect';
 
 export const DocumentTrackingPage: React.FC = () => {
   const documentTracks = useRealtimeStore(s => s.documentTracks);
   const projects = useRealtimeStore(s => s.projects);
-  const updateProject = useRealtimeStore(s => s.updateProject);
   const addDocumentTrack = useRealtimeStore(s => s.addDocumentTrack);
   const updateDocumentTrack = useRealtimeStore(s => s.updateDocumentTrack);
   const deleteDocumentTrack = useRealtimeStore(s => s.deleteDocumentTrack);
   const fetchAccounting = useRealtimeStore(s => s.fetchAccounting);
   const logActivity = useRealtimeStore(s => s.logActivity);
 
+  const { user } = useAuthStore();
+  const { projectId } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const outletContext = useOutletContext<any>();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Chế độ xem theo chuẩn appViewMode chung và toolbar
-  const appViewMode = useUIStore(s => s.appViewMode);
-  const setAppViewMode = useUIStore(s => s.setAppViewMode);
-  const supportedDocModes: AppViewMode[] = ['grid', 'compact_grid', 'table', 'table_detailed', 'kanban'];
-  const viewMode = resolveViewMode(appViewMode, supportedDocModes);
+  // Phân quyền tài chính / hồ sơ
+  const isAllowedToManage = hasPermission(user, 'MANAGE_DOCUMENTS') || hasPermission(user, 'CREATE_DOCUMENTS') || isDirector(user) || isSystemAdmin(user);
 
-  const [fileViewerUrls, setFileViewerUrls] = useState<string[] | null>(null);
+  // Xác định dự án hiện tại (nếu ở trong trang chi tiết dự án)
+  const resolvedProjectCode = useMemo(() => {
+    if (!projectId) return '';
+    const proj = projects.find(p => p.id === projectId || p.code === projectId);
+    return proj ? proj.code : projectId;
+  }, [projectId, projects]);
 
+  const isLockedProject = Boolean(resolvedProjectCode);
+
+  // Lọc theo dự án ở cấp toàn công ty
+  const [filterProjectCode, setFilterProjectCode] = useState<string>(() => {
+    return resolvedProjectCode || searchParams.get('project') || 'all';
+  });
+
+  useEffect(() => {
+    if (resolvedProjectCode) {
+      setFilterProjectCode(resolvedProjectCode);
+    }
+  }, [resolvedProjectCode]);
+
+  // Cấu trúc 3 TAB CHUẨN: 'overview' | 'input' | 'output'
+  const [activeMainTab, setActiveMainTab] = useState<'overview' | 'input' | 'output'>('overview');
+
+  // Modal tạo / sửa
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalFlow, setModalFlow] = useState<DocumentFlow>('input');
+  const [editingDoc, setEditingDoc] = useState<DocumentTrack | null>(null);
+
+  // Modal xác nhận xóa
   const [confirmConfig, setConfirmConfig] = useState({
     isOpen: false,
     title: '',
@@ -50,15 +79,142 @@ export const DocumentTrackingPage: React.FC = () => {
     confirmText: 'Xác nhận'
   });
 
+  // Toast
   const [toastState, setToastState] = useState({ show: false, message: '', type: 'success' as 'success' | 'info' | 'warning' });
-  const [loading, setLoading] = useState(false);
-  const [isFileUploading, setIsFileUploading] = useState(false);
-  const isSubmittingRef = useRef(false);
   const triggerToast = (message: string, type: 'success' | 'info' | 'warning' = 'success') => {
     setToastState({ show: true, message, type });
     setTimeout(() => setToastState({ show: false, message: '', type: 'success' }), 3000);
   };
 
+  // Portal gắn nút header khi ở trong dự án
+  const [portalNode, setPortalNode] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    setPortalNode(document.getElementById('project-header-actions'));
+  }, []);
+
+  // Lọc danh sách theo dự án hiện tại (nếu có khóa hoặc đang chọn)
+  const projectScopedDocs = useMemo(() => {
+    return documentTracks.filter(doc => {
+      if (isLockedProject) {
+        return doc.projectCode === resolvedProjectCode;
+      }
+      if (filterProjectCode !== 'all') {
+        return doc.projectCode === filterProjectCode;
+      }
+      return true;
+    });
+  }, [documentTracks, isLockedProject, resolvedProjectCode, filterProjectCode]);
+
+  // Phân tách thành 2 luồng: Đầu vào & Đầu ra
+  const inputDocs = useMemo(() => {
+    return projectScopedDocs.filter(d => resolveDocumentFlow(d) === 'input');
+  }, [projectScopedDocs]);
+
+  const outputDocs = useMemo(() => {
+    return projectScopedDocs.filter(d => resolveDocumentFlow(d) === 'output');
+  }, [projectScopedDocs]);
+
+  // Handlers mở modal tạo mới
+  const handleOpenNew = (flow: DocumentFlow) => {
+    setModalFlow(flow);
+    setEditingDoc(null);
+    setIsModalOpen(true);
+  };
+
+  const handleEditDoc = (doc: DocumentTrack) => {
+    const flow = resolveDocumentFlow(doc);
+    setModalFlow(flow);
+    setEditingDoc(doc);
+    setIsModalOpen(true);
+  };
+
+  const handleDeleteDoc = (doc: DocumentTrack) => {
+    setConfirmConfig({
+      isOpen: true,
+      title: 'Xóa hồ sơ',
+      message: `Bạn có chắc chắn muốn xóa hồ sơ "${doc.contractNo || doc.contractName}" không? Thao tác này không thể hoàn tác.`,
+      isDestructive: true,
+      confirmText: 'Xóa vĩnh viễn',
+      onConfirm: async () => {
+        try {
+          await deleteDocumentTrack(doc.id);
+          logActivity(`Đã xóa hồ sơ: ${doc.contractNo || doc.contractName}`, doc.projectCode || 'COMPANY');
+          triggerToast('Đã xóa hồ sơ thành công!', 'success');
+        } catch (err: any) {
+          triggerToast('Lỗi khi xóa hồ sơ: ' + (err.message || 'Xin thử lại'), 'warning');
+        } finally {
+          setConfirmConfig(prev => ({ ...prev, isOpen: false }));
+        }
+      }
+    });
+  };
+
+  const handleSaveDoc = async (data: Partial<DocumentTrack>) => {
+    if (editingDoc) {
+      await updateDocumentTrack(editingDoc.id, data);
+      logActivity(`Cập nhật hồ sơ: ${data.contractNo || editingDoc.contractNo}`, data.projectCode || 'COMPANY');
+      triggerToast('Đã cập nhật hồ sơ thành công!', 'success');
+    } else {
+      await addDocumentTrack(data as any);
+      logActivity(`Tạo hồ sơ mới: ${data.contractNo || data.contractName}`, data.projectCode || 'COMPANY');
+      triggerToast('Đã thêm hồ sơ mới thành công!', 'success');
+    }
+  };
+
+  // Xuất Excel theo luồng hiện tại
+  const handleExportCurrentExcel = async () => {
+    const targetDocs = activeMainTab === 'input' ? inputDocs : (activeMainTab === 'output' ? outputDocs : projectScopedDocs);
+    const flowTitle = activeMainTab === 'input' ? 'HO_SO_DAU_VAO' : (activeMainTab === 'output' ? 'HO_SO_DAU_RA' : 'HO_SO_TONG_HOP');
+
+    const data = targetDocs.map((t, idx) => {
+      const flow = resolveDocumentFlow(t);
+      const val = t.totalAmount ?? t.contractValue ?? 0;
+      const paid = t.paidAmount ?? t.prepayAmount ?? 0;
+      const remain = Math.max(0, val - paid);
+      const dueInfo = calculateDocumentDueInfo(t);
+
+      return {
+        'STT': idx + 1,
+        'Luồng hồ sơ': flow === 'input' ? 'Đầu vào (Phải trả)' : 'Đầu ra (Phải thu)',
+        'Mã hồ sơ': t.contractNo || '',
+        'Loại chứng từ': t.subType || '',
+        'Trích yếu / Nội dung': t.contractName || '',
+        'Đối tác / Công ty': t.company || '',
+        'Người liên hệ': t.receiverName || '',
+        'Số điện thoại': t.phone || '',
+        'Dự án': projects.find(p => p.code === t.projectCode)?.name || t.projectCode || '',
+        'Số hóa đơn/chứng từ': t.invoiceNo || '',
+        'Tổng tiền (VNĐ)': val,
+        'Đã thanh toán / Đã thu (VNĐ)': paid,
+        'Còn nợ / Còn phải thu (VNĐ)': remain,
+        'Ngày lập / Ngày gửi': formatDateDisplay(t.sendDate),
+        'Hạn thanh toán': dueInfo.hasDueDate ? formatDateDisplay(t.dueDate) : 'Chưa xác định hạn',
+        'Tình trạng hạn': dueInfo.text,
+        'Ngày thực tế': formatDateDisplay(t.actualPaymentDate),
+        'Trạng thái quy trình': t.docStatus || '',
+        'Trạng thái thanh toán': t.paymentStatus || '',
+        'Ghi chú': t.notes || ''
+      };
+    });
+
+    if (data.length === 0) {
+      triggerToast('Không có dữ liệu hồ sơ để xuất!', 'warning');
+      return;
+    }
+
+    await exportToStyledExcel({
+      fileName: `${flowTitle}_${new Date().toISOString().split('T')[0]}.xlsx`,
+      sheetName: 'DanhSachHoSo',
+      title: activeMainTab === 'input'
+        ? 'BẢNG THEO DÕI HỒ SƠ ĐẦU VÀO (CÔNG TY PHẢI TRẢ TIỀN)'
+        : (activeMainTab === 'output'
+          ? 'BẢNG THEO DÕI HỒ SƠ ĐẦU RA (THU TIỀN TỪ KHÁCH HÀNG / CĐT)'
+          : 'BẢNG THEO DÕI TOÀN BỘ HỒ SƠ DỰ ÁN & CÔNG TY'),
+      data
+    });
+  };
+
+  // Nhập file Excel (giữ lại khả năng tương thích)
   const handleImportExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -68,113 +224,32 @@ export const DocumentTrackingPage: React.FC = () => {
       try {
         const bstr = evt.target?.result;
         const wb = XLSX.read(bstr, { type: 'binary' });
+        const sheet = wb.Sheets[wb.SheetNames[0]];
+        const rows: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1 });
 
-        // Ensure this is a Document Tracking workbook
-        const hasDocSheets = wb.SheetNames.some(name => 
-          name.toUpperCase().includes('HỒ SƠ') || name.toUpperCase().includes('HOSO')
-        );
-        const forbiddenKeywords = ['TỒN KHO', 'NHẬP KHO', 'XUẤT KHO', 'TONKHO', 'NHAPKHO', 'XUATKHO', 'NHÂN SỰ', 'NHANSU', 'CHI PHÍ', 'CÔNG NHẬT'];
-        const hasForbiddenSheets = wb.SheetNames.some(name => 
-          forbiddenKeywords.some(keyword => name.toUpperCase().includes(keyword))
-        );
-        if (!hasDocSheets || hasForbiddenSheets) {
-          triggerToast('File này không phải là file Theo dõi Hồ sơ phù hợp!', 'warning');
-          if (fileInputRef.current) fileInputRef.current.value = '';
-          return;
-        }
-
-        const parseExcelDate = (dateVal: any) => {
-          if (!dateVal) return '';
-          if (typeof dateVal === 'string') return dateVal;
-          try {
-            const date = new Date((dateVal - 25569) * 86400 * 1000);
-            return date.toISOString().split('T')[0];
-          } catch (e) {
-            return String(dateVal);
-          }
-        };
-
-        const numVal = (val: any) => {
-          if (val === null || val === undefined) return 0;
-          if (typeof val === 'number') return val;
-          const cleaned = String(val).replace(/[^0-9.-]/g, '');
-          const parsed = parseFloat(cleaned);
-          return isNaN(parsed) ? 0 : parsed;
-        };
-
-        const sheetName = wb.SheetNames.find(s => s.includes('HỒ SƠ') || s.includes('HoSo')) || wb.SheetNames[0];
-        if (!sheetName) {
-          triggerToast('Không tìm thấy sheet hồ sơ nào!', 'warning');
-          return;
-        }
-
-        const sheet = wb.Sheets[sheetName];
-        const rows = XLSX.utils.sheet_to_json<any[]>(sheet, { header: 1 });
-        if (!rows || rows.length === 0) {
-          triggerToast('Sheet không có dữ liệu!', 'warning');
-          return;
-        }
-
-        let startRowIndex = -1;
-        let headerRow: any[] = [];
-        for (let i = 0; i < Math.min(rows.length, 10); i++) {
-          const r = rows[i];
-          if (r && (r.includes('STT') || r.includes('Số hợp đồng') || r.includes('SỐ HỢP ĐỒNG') || r.includes('stt') || r.some((cell: any) => String(cell).toLowerCase() === 'stt'))) {
-            startRowIndex = i + 1;
-            headerRow = r;
-            break;
-          }
-        }
-
-        if (startRowIndex === -1) {
-          triggerToast('Không tìm thấy dòng tiêu đề (STT) trong file Excel!', 'warning');
-          return;
-        }
-
-        const headerString = headerRow.map(c => String(c || '').toLowerCase()).join('|');
-        const isDocTracking = headerString.includes('hợp đồng') || headerString.includes('người nhận') || headerString.includes('ngày gửi') || headerString.includes('tạm ứng') || headerString.includes('hồ sơ');
-        if (!isDocTracking) {
-          triggerToast('File không đúng cấu trúc của Theo dõi Hồ sơ (thiếu cột Số hợp đồng/Người nhận/Tạm ứng)!', 'warning');
-          return;
-        }
-
-        const dataRows = rows.slice(startRowIndex);
         let importCount = 0;
-
-        dataRows.forEach((row) => {
-          const contractName = row[2];
-          if (!contractName) return;
-
-          let projectCode = String(row[3] || 'KHÁC');
-          const upperProj = projectCode.toUpperCase();
-          if (upperProj.includes('NĂM CĂN')) projectCode = 'NĂM CĂN';
-          else if (upperProj.includes('PHƯỚC LÝ')) projectCode = 'PHƯỚC LÝ';
-          else if (upperProj.includes('PHƯỚC TÂN')) projectCode = 'PHƯỚC TÂN';
-          else if (upperProj.includes('ĐẮK') || upperProj.includes('DAK')) projectCode = 'DAKRLAP';
-
+        rows.slice(1).forEach((row) => {
+          if (!row || !row[2]) return;
           addDocumentTrack({
-            stt: String(row[0] || ''),
-            contractNo: String(row[1] || ''),
-            contractName: String(contractName),
+            contractNo: String(row[1] || `HD-${Date.now().toString().slice(-6)}`),
+            contractName: String(row[2] || 'Hồ sơ nhập'),
+            projectCode: resolvedProjectCode || String(row[3] || 'COMPANY'),
             company: String(row[4] || ''),
             receiverName: String(row[5] || ''),
             phone: String(row[6] || ''),
-            address: String(row[7] || ''),
-            sendDate: parseExcelDate(row[8]),
-            receiveDate: parseExcelDate(row[9]),
-            docStatus: String(row[10] || 'Chưa nhận'),
-            side: String(row[11] || ''),
-            contractValue: numVal(row[12]),
-            prepayPercent: numVal(row[13]),
-            prepayAmount: numVal(row[14]),
-            paymentStatus: String(row[15] || 'Chưa thanh toán'),
-            isCompleted: row[16] === true || String(row[16]).toLowerCase() === 'true' || String(row[16]).includes('1'),
-            notes: String(row[17] || '')
-          });
+            sendDate: new Date().toISOString().split('T')[0],
+            dueDate: null, // MẶC ĐỊNH LƯU NULL, KHÔNG TỰ ĐIỀN HÔM NAY
+            totalAmount: Number(row[10]) || 0,
+            contractValue: Number(row[10]) || 0,
+            paidAmount: Number(row[11]) || 0,
+            prepayAmount: Number(row[11]) || 0,
+            docStatus: String(row[12] || 'Nháp'),
+            flowType: activeMainTab === 'output' ? 'output' : 'input'
+          } as any);
           importCount++;
         });
-        logActivity(`Đã nhập ${importCount} hồ sơ gửi đi từ file Excel`, 'COMPANY');
-        triggerToast(`Đã nhập thành công ${importCount} hồ sơ gửi đi từ file Excel!`, 'success');
+
+        triggerToast(`Đã nhập thành công ${importCount} hồ sơ từ file Excel!`, 'success');
         if (fileInputRef.current) fileInputRef.current.value = '';
       } catch (err: any) {
         triggerToast('Lỗi phân tích Excel: ' + err.message, 'warning');
@@ -183,1395 +258,252 @@ export const DocumentTrackingPage: React.FC = () => {
     reader.readAsBinaryString(file);
   };
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'delivery' | 'finance' | 'completion'>('overview');
-
-  // Modals state
-  const outletContext = useOutletContext<any>();
-  const [portalNode, setPortalNode] = useState<HTMLElement | null>(null);
-  useEffect(() => { setPortalNode(document.getElementById('project-header-actions')); }, []);
-  const [isNewDocOpen, setIsNewDocOpen] = useState(false);
-  const [editingDoc, setEditingDoc] = useState<DocumentTrack | null>(null);
-  const [showExportMenu, setShowExportMenu] = useState(false);
-  const [showMobileExportMenu, setShowMobileExportMenu] = useState(false);
-  const [showMobileSearchInput, setShowMobileSearchInput] = useState(false);
-
-  // Forms state
-  const [newDoc, setNewDoc] = useState<Partial<DocumentTrack>>({
-    docType: 'Giao',
-    stt: '', contractNo: '', contractName: '', projectCode: '', company: '', receiverName: '', phone: '', address: '', sendDate: new Date().toISOString().split('T')[0], receiveDate: '', docStatus: 'Chưa ký', side: 'Bên trả', contractValue: 0, prepayPercent: 0, prepayAmount: 0, paymentStatus: 'Chưa thanh toán', isCompleted: false, notes: ''
-  });
-
-  // Helper utilities
-  const getSttNumber = (stt?: string) => {
-    const parsed = Number(String(stt || '').replace(/\D/g, ''));
-    return Number.isFinite(parsed) ? parsed : Number.MAX_SAFE_INTEGER;
-  };
-
-  const { projectId } = useParams();
-  const [searchParams] = useSearchParams();
-  const { user } = useAuthStore();
-
-  const resolvedProjectCode = useMemo(() => {
-    if (!projectId) return '';
-    const proj = projects.find(p => p.id === projectId || p.code === projectId);
-    return proj ? proj.code : projectId;
-  }, [projectId, projects]);
-
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Quản lý độ rộng cột có thể kéo thả
-  const defaultDocColWidths = useMemo(() => ({
-    col_created_date: 115,
-    col_side: 75,
-    col_project: 180,
-    col_contract_no: 150,
-    col_contract_name: 250,
-    col_company: 250,
-    col_receiver: 130,
-    col_send_date: 95,
-    col_receive_date: 95,
-    col_deadline: 105,
-    col_value: 115,
-    col_prepay: 90,
-    col_payment: 110,
-    col_files: 45,
-    col_status: 90,
-    col_creator: 145,
-    col_updater: 130,
-    col_actions: 45,
-  }), []);
-
-  const { widths: colWidths, startResize, resetWidths } = useTableColumnResize({
-    tableId: 'table_documents',
-    defaultWidths: defaultDocColWidths,
-  });
-  const [isDiagramModalOpen, setIsDiagramModalOpen] = useState(false);
-  const [diagramUploadUrl, setDiagramUploadUrl] = useState<string[]>([]);
-
-  // Filters state
-  const [filterProjectCode, setFilterProjectCode] = useState('all');
-
-  useEffect(() => {
-    if (documentTracks.length === 0) {
-      fetchAccounting();
-    }
-  }, []);
-
-  useEffect(() => {
-    if (resolvedProjectCode) {
-      setFilterProjectCode(resolvedProjectCode);
-      setNewDoc(prev => ({ ...prev, projectCode: resolvedProjectCode }));
-    }
-  }, [resolvedProjectCode]);
-
-  const [highlightId, setHighlightId] = useState<string | null>(null);
-  const [highlightKeyword, setHighlightKeyword] = useState<string | null>(null);
-  const [isHighlightActive, setIsHighlightActive] = useState<boolean>(false);
-
-  useEffect(() => {
-    const pParam = searchParams.get('project');
-    const docIdParam = searchParams.get('docId');
-    const highlightParam = searchParams.get('highlight');
-    const searchParam = searchParams.get('search');
-    
-    if (highlightParam) {
-      setHighlightKeyword(highlightParam.toLowerCase().trim());
-      setIsHighlightActive(true);
-      // Hiển thị tất cả dự án để nhìn thấy toàn bộ danh sách
-      if (!resolvedProjectCode) {
-        setFilterProjectCode('all');
-      }
-    } else if (docIdParam) {
-      setHighlightId(docIdParam);
-      setIsHighlightActive(true);
-      if (!resolvedProjectCode) {
-        setFilterProjectCode('all');
-      }
-    } else if (pParam) {
-      setFilterProjectCode(pParam);
-    }
-    
-    if (searchParam && !highlightParam) {
-      setHighlightKeyword(searchParam.toLowerCase().trim());
-      setIsHighlightActive(true);
-      if (!resolvedProjectCode) {
-        setFilterProjectCode('all');
-      }
-    }
-  }, [searchParams, resolvedProjectCode]);
-  const [filterDocStatus, setFilterDocStatus] = useState('all');
-  const [filterPaymentStatus, setFilterPaymentStatus] = useState('all');
-  const [filterDocType, setFilterDocType] = useState('all');
-  const [filterDueStatus, setFilterDueStatus] = useState('all'); // 'all' | 'warning' | 'overdue' | 'normal'
-  const [filterDateFrom, setFilterDateFrom] = useState('');
-  const [filterDateTo, setFilterDateTo] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
-  const tablePaginationMode = useUIStore(s => s.tablePaginationMode);
-  const tablePageSize = useUIStore(s => s.tablePageSize);
-
-  const [documentPage, setDocumentPage] = useState(1);
-  const [docVisibleLimit, setDocVisibleLimit] = useState(tablePageSize || 25);
-
-  useEffect(() => {
-    setDocVisibleLimit(tablePageSize || 25);
-  }, [tablePageSize]);
-
-  // Helper for due date calculation
-  const getDueInfo = (track: DocumentTrack) => {
-    const isSigned = track.docStatus === 'Đã ký' || 
-      track.docStatus === 'Đã nhận đủ' || 
-      track.docStatus === 'Đã duyệt' || 
-      track.docStatus === 'Đã nộp' || 
-      track.docStatus === 'Đã hoàn thành' ||
-      track.docStatus === 'Hoàn thành';
-    const isPaid = track.paymentStatus?.includes('Đã');
-    if (track.isCompleted || isSigned || isPaid || (!track.dueDate && track.receiveDate)) return { status: 'none', daysLeft: null, text: '' };
-    const effectiveDueDate = track.dueDate || track.receiveDate || track.sendDate;
-    if (!effectiveDueDate) return { status: 'none', daysLeft: null, text: '' };
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const due = new Date(effectiveDueDate);
-    due.setHours(0, 0, 0, 0);
-    const diffTime = due.getTime() - today.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    const remind = track.remindDays || 3;
-
-    if (diffDays < 0) {
-      return { status: 'overdue', daysLeft: diffDays, text: `Quá hạn ${Math.abs(diffDays)} ngày` };
-    } else if (diffDays <= remind) {
-      return { status: 'warning', daysLeft: diffDays, text: diffDays === 0 ? 'Hạn hôm nay 🔔' : `Còn ${diffDays} ngày` };
-    }
-    return { status: 'normal', daysLeft: diffDays, text: `Còn ${diffDays} ngày` };
-  };
-
-  const docProjectOptions = useMemo(() => {
-    const pCodes = new Set<string>();
-    documentTracks.forEach(t => {
-      const code = t.projectCode || projects.find(p => p.id === (t as any).projectId)?.code;
-      if (code) pCodes.add(code);
-    });
-    return Array.from(pCodes).sort();
-  }, [documentTracks, projects]);
-
-  const defaultPaymentStatuses = ['Chưa thanh toán', 'Đã thanh toán', 'Đã thanh toán 1 phần', 'Chờ thanh toán', 'Đã quyết toán'];
-  const defaultDocStatuses = ['Chưa nhận', 'Đã nhận đủ', 'Chưa ký', 'Đã ký', 'Đã gửi đi', 'Đã đổi gửi lại', 'Đã hoàn thành'];
-
-  const docStatusOptions = useMemo(() => {
-    const statuses = new Set<string>(defaultDocStatuses);
-    documentTracks.forEach(t => { if (t.docStatus) statuses.add(t.docStatus); });
-    return Array.from(statuses).sort();
-  }, [documentTracks]);
-
-  const paymentStatusOptions = useMemo(() => {
-    const statuses = new Set<string>(defaultPaymentStatuses);
-    documentTracks.forEach(t => { if (t.paymentStatus) statuses.add(t.paymentStatus); });
-    return Array.from(statuses).sort();
-  }, [documentTracks]);
-
-  // Filtered tracks
-  const filteredTracks = useMemo(() => {
-    let result = [...documentTracks];
-    
-    if (filterProjectCode !== 'all') {
-      result = result.filter(t => (t.projectCode || projects.find(p => p.id === (t as any).projectId)?.code) === filterProjectCode);
-    }
-    if (filterDocStatus !== 'all') {
-      result = result.filter(t => t.docStatus === filterDocStatus);
-    }
-    if (filterPaymentStatus !== 'all') {
-      result = result.filter(t => t.paymentStatus === filterPaymentStatus);
-    }
-    if (filterDueStatus !== 'all') {
-      result = result.filter(t => {
-        const info = getDueInfo(t);
-        if (filterDueStatus === 'warning') return info.status === 'warning';
-        if (filterDueStatus === 'overdue') return info.status === 'overdue';
-        if (filterDueStatus === 'normal') return info.status === 'normal' || info.status === 'none';
-        return true;
-      });
-    }
-    if (filterDateFrom || filterDateTo) {
-      result = result.filter(t => {
-        const dates = [t.sendDate, t.receiveDate, t.dueDate, t.updatedAt?.split('T')[0]].filter(Boolean) as string[];
-        if (dates.length === 0) return false;
-        return dates.some(d => {
-          const fromOk = filterDateFrom ? d >= filterDateFrom : true;
-          const toOk = filterDateTo ? d <= filterDateTo : true;
-          return fromOk && toOk;
-        });
-      });
-    }
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      result = result.filter(t => 
-        (t.contractNo || '').toLowerCase().includes(q) ||
-        (t.contractName || '').toLowerCase().includes(q) ||
-        (t.company || '').toLowerCase().includes(q) ||
-        (t.receiverName || '').toLowerCase().includes(q)
-      );
-    }
-
-    const getTrackTimestamp = (t: DocumentTrack): number => {
-      // Thứ tự hồ sơ phải dựa trên ngày lập, không dựa vào lần chỉnh sửa cuối.
-      // Nếu dữ liệu cũ chưa có created_at thì dùng ngày gửi làm phương án tương thích.
-      if (t.createdAt) {
-        const ms = new Date(t.createdAt).getTime();
-        if (!isNaN(ms) && ms > 0) return ms;
-      }
-      if (t.id && String(t.id).startsWith('doc-')) {
-        const num = Number(String(t.id).replace('doc-', ''));
-        if (!isNaN(num) && num > 1000000) return num;
-      }
-      if (t.sendDate) {
-        const ms = new Date(t.sendDate).getTime();
-        if (!isNaN(ms) && ms > 0) return ms;
-      }
-      if (t.receiveDate) {
-        const ms = new Date(t.receiveDate).getTime();
-        if (!isNaN(ms) && ms > 0) return ms;
-      }
-      return 0;
-    };
-
-    return result.sort((a, b) => {
-      const timeA = getTrackTimestamp(a);
-      const timeB = getTrackTimestamp(b);
-      if (timeB !== timeA) return timeB - timeA;
-      
-      const sttA = getSttNumber(a.stt);
-      const sttB = getSttNumber(b.stt);
-      if (sttB !== sttA) return sttB - sttA;
-      return String(b.contractNo || '').localeCompare(String(a.contractNo || ''), 'vi');
-    });
-  }, [documentTracks, filterProjectCode, filterDocStatus, filterPaymentStatus, filterDueStatus, filterDateFrom, filterDateTo, searchQuery, projects]);
-
-  const effectivePageSize = tablePageSize || 25;
-  const documentTotalPages = Math.max(1, Math.ceil(filteredTracks.length / effectivePageSize));
-  const paginatedTracks = useMemo(() => {
-    if (tablePaginationMode === 'infinite') {
-      return filteredTracks.slice(0, docVisibleLimit);
-    }
-    const start = (documentPage - 1) * effectivePageSize;
-    return filteredTracks.slice(start, start + effectivePageSize);
-  }, [filteredTracks, documentPage, effectivePageSize, tablePaginationMode, docVisibleLimit]);
-
-  useEffect(() => {
-    setDocumentPage(1);
-    setDocVisibleLimit(effectivePageSize);
-  }, [filterProjectCode, filterDocStatus, filterPaymentStatus, filterDueStatus, filterDateFrom, filterDateTo, searchQuery, effectivePageSize]);
-
-  useEffect(() => {
-    if (documentPage > documentTotalPages) setDocumentPage(documentTotalPages);
-  }, [documentPage, documentTotalPages]);
-
-  useEffect(() => {
-    if (isHighlightActive && (highlightId || highlightKeyword)) {
-      const timer = setTimeout(() => {
-        const elem = document.querySelector('.highlighted-doc-row');
-        if (elem) {
-          elem.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-      }, 400);
-
-      const fadeTimer = setTimeout(() => {
-        setIsHighlightActive(false);
-      }, 9000);
-
-      return () => {
-        clearTimeout(timer);
-        clearTimeout(fadeTimer);
-      };
-    }
-  }, [isHighlightActive, highlightId, highlightKeyword, filteredTracks]);
-
-  // Computed summary metrics
-  const summary = useMemo(() => {
-    const totalCount = filteredTracks.length;
-    const completedDocs = filteredTracks.filter(t => t.docStatus === 'Đã ký' || t.docStatus === 'Đã nhận đủ').length;
-    const paidCount = filteredTracks.filter(t => t.paymentStatus?.includes('Đã')).length;
-    const totalContractVal = filteredTracks.reduce((sum, t) => sum + (t.contractValue || 0), 0);
-    const totalPrepayVal = filteredTracks.reduce((sum, t) => sum + (t.prepayAmount || 0), 0);
-
-    return {
-      totalCount,
-      completedDocs,
-      paidCount,
-      totalContractVal,
-      totalPrepayVal
-    };
-  }, [filteredTracks]);
-
-  const handleExportExcel = async () => {
-    const data = filteredTracks.map((t, idx) => ({
-      'STT': t.stt || idx + 1,
-      'Số hợp đồng': t.contractNo,
-      'Tên hợp đồng': t.contractName,
-      'Dự án': projects.find(p => p.code === t.projectCode)?.name || t.projectCode || '',
-      'Công ty': t.company,
-      'Người nhận': t.receiverName,
-      'Số điện thoại': t.phone,
-      'Địa chỉ': t.address,
-      'Ngày gửi': t.sendDate,
-      'Ngày nhận': t.receiveDate || '',
-      'Trạng thái hồ sơ': t.docStatus,
-      'Bên': t.side || '',
-      'Giá trị HĐ (VNĐ)': t.contractValue,
-      'Tạm ứng (%)': Number(t.prepayPercent || 0) <= 1 && Number(t.prepayPercent || 0) > 0 ? Math.round(Number(t.prepayPercent) * 100) : Number(t.prepayPercent || 0),
-      'Số tiền tạm ứng (VNĐ)': t.prepayAmount,
-      'Trạng thái thanh toán': t.paymentStatus,
-      'Hoàn tất': t.isCompleted ? 'Hoàn tất' : 'Chưa hoàn tất',
-      'Ghi chú': t.notes || ''
-    }));
-
-    if (data.length === 0) {
-      triggerToast('Không có dữ liệu hồ sơ để xuất!', 'warning');
-      return;
-    }
-
-    await exportToStyledExcel({
-      fileName: `Theo_Doi_Ho_So_Gui_Di_${new Date().toISOString().split('T')[0]}.xlsx`,
-      sheetName: 'TheoDoiHoSo',
-      title: 'BẢNG THEO DÕI HỒ SƠ GỬI ĐI VÀ THANH TOÁN',
-      data,
-    });
-  };
-
   return (
-    <>
-      <style>{`.doc-tracking-page .page-header-title { font-family: 'Inter', sans-serif !important; font-weight: 900 !important; }`}</style>
-      <div className="doc-tracking-page flex flex-col flex-1 h-full bg-slate-50 relative overflow-hidden">
-      
-      {/* HEADER SECTION */}
-            {!projectId && (
-        <section className="border-b border-slate-200 bg-white shadow-sm px-3 md:px-4 pr-12 sm:pr-14 md:pr-16 py-1 md:py-0 md:h-12 flex flex-col md:flex-row justify-between items-start md:items-center relative z-50">
-          <div className="flex items-center justify-between w-full md:w-auto h-8 md:h-auto mb-1 md:mb-0">
-            <h1 className="page-header-title text-base md:text-lg text-slate-900 border-l-4 border-primary pl-2 uppercase font-extrabold truncate">QUẢN LÝ HỒ SƠ</h1>
+    <div className="flex flex-col flex-1 h-full bg-slate-50 relative overflow-hidden text-slate-800">
+      {/* 1. HEADER SECTION (Cấp Công ty hoặc Cấp Dự án) */}
+      {!isLockedProject ? (
+        <section className="border-b border-slate-200 bg-white px-3 md:px-5 py-2 md:h-13 flex flex-wrap items-center justify-between gap-3 shadow-2xs z-30">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-primary text-2xl">folder_managed</span>
+              <h1 className="text-base md:text-lg text-slate-900 border-l-4 border-primary pl-2 uppercase font-extrabold tracking-wide">
+                QUẢN LÝ HỒ SƠ
+              </h1>
+            </div>
+
+            {/* Lọc dự án ở cấp công ty */}
+            <div className="hidden sm:flex items-center gap-1.5 ml-4 pl-4 border-l border-slate-200 text-xs">
+              <span className="text-slate-500 font-medium">Dự án:</span>
+              <CustomSelect
+                value={filterProjectCode}
+                onChange={e => setFilterProjectCode(e.target.value)}
+                className="w-48 text-xs px-2.5 py-1 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white"
+              >
+                <option value="all">🏢 Toàn bộ công ty & Dự án</option>
+                <option value="COMPANY">🏢 Hồ sơ Văn phòng / Chung</option>
+                {projects.map(p => (
+                  <option key={p.id} value={p.code}>
+                    [{p.code}] {p.name}
+                  </option>
+                ))}
+              </CustomSelect>
+            </div>
           </div>
 
-          <div className="flex items-center gap-1.5 w-full md:w-auto pt-0.5 md:pt-0">
-            <input 
-              type="file" 
-              ref={fileInputRef} 
-              onChange={handleImportExcel} 
-              accept=".xlsx,.xls,.csv" 
-              className="hidden" 
+          <div className="flex items-center gap-2">
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleImportExcel}
+              accept=".xlsx,.xls,.csv"
+              className="hidden"
             />
 
-            {/* Mobile Search Input */}
-            <div className="relative flex-1 min-w-0 md:hidden">
-              <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">search</span>
-              <input
-                type="text"
-                placeholder="Tìm nhanh hồ sơ..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary focus:bg-white transition-all h-8"
-              />
-            </div>
+            <ImportExportDropdown
+              onImportClick={() => fileInputRef.current?.click()}
+              importLabel="Nhập Excel"
+              onExportExcel={handleExportCurrentExcel}
+              onExportCsv={handleExportCurrentExcel}
+              onExportPdf={() => window.print()}
+              onExportWord={handleExportCurrentExcel}
+            />
 
-            {/* Desktop Export File Dropdown */}
-            <div className="hidden md:block">
-              <ImportExportDropdown
-                onImportClick={() => fileInputRef.current?.click()}
-                importLabel="Nhập từ file"
-                onExportExcel={handleExportExcel}
-                onExportCsv={handleExportExcel}
-                onExportPdf={() => window.print()}
-                onExportWord={handleExportExcel}
-              />
-            </div>
+            {isAllowedToManage && (
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => handleOpenNew('input')}
+                  className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow-2xs cursor-pointer transition"
+                  title="Thêm hồ sơ đầu vào (Công ty phải trả)"
+                >
+                  <span className="material-symbols-outlined text-[15px]">upload_file</span>
+                  <span className="hidden sm:inline">Hồ sơ đầu vào</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleOpenNew('output')}
+                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow-2xs cursor-pointer transition"
+                  title="Thêm hồ sơ đầu ra (Thu tiền từ khách/CĐT)"
+                >
+                  <span className="material-symbols-outlined text-[15px]">download_for_offline</span>
+                  <span className="hidden sm:inline">Hồ sơ đầu ra</span>
+                </button>
+              </div>
+            )}
+          </div>
+        </section>
+      ) : (
+        /* Khi ở trong chi tiết dự án */
+        <section className="border-b border-slate-200 bg-white px-3 md:px-5 py-2 flex flex-wrap items-center justify-between gap-2 shadow-2xs z-30">
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-primary text-xl">folder_open</span>
+            <span className="font-extrabold text-sm md:text-base text-slate-800 uppercase">
+              HỒ SƠ DỰ ÁN ({resolvedProjectCode})
+            </span>
+          </div>
 
-            <button 
-              onClick={() => {
-                const code = resolvedProjectCode || (filterProjectCode !== 'all' ? filterProjectCode : '');
-                setNewDoc(prev => ({ ...prev, projectCode: code || prev.projectCode || '' }));
-                setIsNewDocOpen(true);
-              }} 
-              className="hidden md:flex items-center gap-1.5 bg-primary text-white h-[34px] px-3.5 rounded-lg text-xs font-bold hover:opacity-90 active:scale-95 transition-all shadow-xs cursor-pointer"
-            >
-              <span className="material-symbols-outlined text-[14px]">add</span>
-              Thêm hồ sơ mới
-            </button>
+          <div className="flex items-center gap-2">
+            <ImportExportDropdown
+              onImportClick={() => fileInputRef.current?.click()}
+              importLabel="Nhập Excel"
+              onExportExcel={handleExportCurrentExcel}
+              onExportCsv={handleExportCurrentExcel}
+              onExportPdf={() => window.print()}
+              onExportWord={handleExportCurrentExcel}
+            />
 
-            {/* Mobile Compact '+' Add Button */}
-            <button 
-              onClick={() => {
-                const code = resolvedProjectCode || (filterProjectCode !== 'all' ? filterProjectCode : '');
-                setNewDoc(prev => ({ ...prev, projectCode: code || prev.projectCode || '' }));
-                setIsNewDocOpen(true);
-              }} 
-              title="Thêm hồ sơ mới"
-              className="md:hidden flex items-center justify-center bg-primary text-white h-8 w-8 rounded-lg hover:opacity-90 active:scale-95 transition-all shadow-xs shrink-0"
-            >
-              <span className="material-symbols-outlined text-base">add</span>
-            </button>
-
-            {/* Mobile Import/Export Dropdown */}
-            <div className="md:hidden shrink-0">
-              <ImportExportDropdown
-                onImportClick={() => fileInputRef.current?.click()}
-                importLabel="Nhập từ file"
-                onExportExcel={handleExportExcel}
-                onExportCsv={handleExportExcel}
-                onExportPdf={() => window.print()}
-                onExportWord={handleExportExcel}
-                buttonLabel=""
-                buttonClassName="!h-8 !px-2"
-              />
-            </div>
+            {isAllowedToManage && (
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => handleOpenNew('input')}
+                  className="px-2.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer shadow-2xs"
+                >
+                  <span className="material-symbols-outlined text-[14px]">add</span>
+                  <span>Đầu vào</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleOpenNew('output')}
+                  className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer shadow-2xs"
+                >
+                  <span className="material-symbols-outlined text-[14px]">add</span>
+                  <span>Đầu ra</span>
+                </button>
+              </div>
+            )}
           </div>
         </section>
       )}
 
-      {projectId && portalNode && createPortal(
-        <div className="flex items-center gap-1.5 flex-nowrap">
-          <input 
-            type="file" 
-            ref={fileInputRef} 
-            onChange={handleImportExcel} 
-            accept=".xlsx,.xls,.csv" 
-            className="hidden" 
-          />
-
-          {/* Menu Gộp Nhập / Xuất file */}
-          <ImportExportDropdown
-            onImportClick={() => fileInputRef.current?.click()}
-            importLabel="Nhập từ file"
-            onExportExcel={handleExportExcel}
-            onExportCsv={handleExportExcel}
-            onExportPdf={() => window.print()}
-            onExportWord={handleExportExcel}
-          />
-
-          {(hasPermission(user, 'CREATE_DOCUMENTS') || hasPermission(user, 'MANAGE_DOCUMENTS')) && (
-            <button 
-              onClick={() => {
-                const code = resolvedProjectCode || (filterProjectCode !== 'all' ? filterProjectCode : '');
-                setNewDoc(prev => ({ ...prev, projectCode: code || prev.projectCode || '' }));
-                setIsNewDocOpen(true);
-              }} 
-              className="hidden md:flex items-center gap-1.5 bg-primary text-white h-[34px] px-3.5 rounded-lg text-xs font-bold hover:opacity-90 active:scale-95 transition-all shadow-xs cursor-pointer"
-            >
-              <span className="material-symbols-outlined text-[14px]">add</span>
-              Thêm hồ sơ mới
-            </button>
-          )}
-        </div>
-      , portalNode)}
-
-      <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden p-0 space-y-0">
-      {/* TABS & TABLE */}
-      <section className="bg-white flex flex-col flex-1 min-w-0 min-h-0 border-y border-slate-200 rounded-none shadow-none overflow-hidden">
-
-          {/* MOBILE ACTION & SEARCH BAR (Chỉ hiển thị khi đang ở trong tab Dự án, vì trang Quản lý hồ sơ độc lập đã có thanh search ở Header) */}
-          {projectId && (
-            <div className="md:hidden flex items-center gap-1.5 p-2 border-b border-slate-200 bg-white">
-              <div className="relative flex-1 min-w-0">
-                <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">search</span>
-                <input
-                  type="text"
-                  placeholder="Tìm kiếm..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary focus:bg-white transition-all h-8"
-                />
-              </div>
-
-              {/* '+' Add Button */}
-              {(hasPermission(user, 'CREATE_DOCUMENTS') || hasPermission(user, 'MANAGE_DOCUMENTS')) && (
-                <button
-                  onClick={() => {
-                    const code = resolvedProjectCode || (filterProjectCode !== 'all' ? filterProjectCode : '');
-                    setNewDoc(prev => ({ ...prev, projectCode: code || prev.projectCode || '' }));
-                    setIsNewDocOpen(true);
-                  }}
-                  title="Thêm hồ sơ mới"
-                  className="flex items-center justify-center bg-primary text-white h-8 w-8 rounded-lg hover:opacity-90 active:scale-95 transition-all shadow-xs shrink-0"
-                >
-                  <span className="material-symbols-outlined text-base">add</span>
-                </button>
-              )}
-
-              {/* Export Dropdown */}
-              <ImportExportDropdown
-                onImportClick={() => fileInputRef.current?.click()}
-                importLabel="Nhập từ file"
-                onExportExcel={handleExportExcel}
-                onExportCsv={handleExportExcel}
-                onExportPdf={() => window.print()}
-                onExportWord={handleExportExcel}
-                buttonClassName="!h-8 !px-2"
-              />
-            </div>
-          )}
-
-          {/* FILTER BAR - hỗ trợ cả desktop & mobile */}
-          <div className="flex border-b border-slate-200 bg-white px-2.5 md:px-4 py-1.5 md:py-2 gap-2 md:gap-3 sticky top-0 z-20 flex-row items-center justify-between text-xs text-slate-600">
-            <div className="flex items-center gap-1.5 md:gap-3 overflow-x-auto custom-scrollbar py-0.5 flex-1 min-w-0">
-              <div className="flex items-center gap-1 font-bold text-slate-500 whitespace-nowrap shrink-0">
-                <span className="material-symbols-outlined text-[15px]">filter_list</span>
-                <span className="text-[11px] md:hidden">Lọc:</span>
-              </div>
-              
-              {!projectId && (
-                <div className="flex items-center gap-1 shrink-0">
-                  <span className="text-slate-500 font-medium whitespace-nowrap text-[11px]">Dự án:</span>
-                  <CustomSelect
-                    value={filterProjectCode}
-                    onChange={e => setFilterProjectCode(e.target.value)}
-                    className="min-w-[85px] max-w-[95px] border border-slate-200 rounded px-1.5 py-0.5 bg-white text-xs truncate"
-                  >
-                    <option value="all">Tất cả</option>
-                    {docProjectOptions.map(opt => (
-                      <option key={opt} value={opt}>{projects.find(p => p.code === opt)?.name || opt}</option>
-                    ))}
-                  </CustomSelect>
-                </div>
-              )}
-
-              <div className="flex items-center gap-1 shrink-0">
-                <span className="text-slate-500 font-medium whitespace-nowrap text-[11px]">Trạng thái:</span>
-                <CustomSelect
-                  value={filterDocStatus}
-                  onChange={e => setFilterDocStatus(e.target.value)}
-                  className="min-w-[80px] border border-slate-200 rounded px-1.5 py-0.5 bg-white text-xs truncate"
-                >
-                  <option value="all">Tất cả</option>
-                  {docStatusOptions.map(opt => (
-                    <option key={opt} value={opt}>{opt}</option>
-                  ))}
-                </CustomSelect>
-              </div>
-
-              <div className="flex items-center gap-1 shrink-0">
-                <span className="text-slate-500 font-medium whitespace-nowrap text-[11px]">Thanh toán:</span>
-                <CustomSelect
-                  value={filterPaymentStatus}
-                  onChange={e => setFilterPaymentStatus(e.target.value)}
-                  className="min-w-[85px] border border-slate-200 rounded px-1.5 py-0.5 bg-white text-xs truncate"
-                >
-                  <option value="all">Tất cả</option>
-                  {paymentStatusOptions.map(opt => (
-                    <option key={opt} value={opt}>{opt}</option>
-                  ))}
-                </CustomSelect>
-              </div>
-
-              <div className="flex items-center gap-1 shrink-0">
-                <span className="text-slate-500 font-medium whitespace-nowrap text-[11px]">Hạn nộp:</span>
-                <CustomSelect
-                  value={filterDueStatus}
-                  onChange={e => setFilterDueStatus(e.target.value)}
-                  className="min-w-[80px] border border-slate-200 rounded px-1.5 py-0.5 bg-white text-xs truncate font-semibold"
-                >
-                  <option value="all">Tất cả</option>
-                  <option value="warning">🔔 Sắp đến hạn</option>
-                  <option value="overdue">⚠️ Quá hạn</option>
-                  <option value="normal">✅ Trong hạn / Đã xong</option>
-                </CustomSelect>
-              </div>
-
-              <div className="flex items-center gap-1 shrink-0">
-                <span className="text-slate-500 font-medium whitespace-nowrap text-[11px]">Từ:</span>
-                <div className="flex items-center gap-1 border border-slate-200 rounded px-1 py-0.5 bg-white shadow-xs">
-                  <input
-                    type="date"
-                    value={filterDateFrom}
-                    onChange={e => setFilterDateFrom(e.target.value)}
-                    className="bg-transparent border-none outline-none text-xs w-[85px] text-slate-700 cursor-pointer"
-                  />
-                  <span className="text-slate-300">|</span>
-                  <span className="text-slate-400 font-medium whitespace-nowrap text-[11px]">Đến:</span>
-                  <input
-                    type="date"
-                    value={filterDateTo}
-                    onChange={e => setFilterDateTo(e.target.value)}
-                    className="bg-transparent border-none outline-none text-xs w-[85px] text-slate-700 cursor-pointer"
-                  />
-                  {(filterDateFrom || filterDateTo) && (
-                    <button
-                      type="button"
-                      onClick={() => { setFilterDateFrom(''); setFilterDateTo(''); }}
-                      className="text-slate-400 hover:text-slate-600 px-0.5 text-xs font-bold cursor-pointer"
-                      title="Xóa lọc ngày"
-                    >
-                      ✕
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Desktop Search Bar */}
-            <div className="hidden md:flex items-center shrink-0">
-              <div className="relative">
-                <span className="material-symbols-outlined absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 text-sm">search</span>
-                <input
-                  type="text"
-                  placeholder="Tìm số HĐ, công ty..."
-                  value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
-                  className="pl-7 pr-2 py-1 border border-slate-200 rounded-md text-xs w-[150px] lg:w-[180px] focus:outline-none focus:ring-1 focus:ring-primary"
-                />
-              </div>
-            </div>
-          </div>
-
-        <PullToRefresh
-          onRefresh={async () => {
-            await fetchAccounting();
-          }}
-          className="flex-1 w-full min-w-0 flex flex-col overflow-hidden"
-        >
-          <div 
-            onScroll={(e) => {
-              if (tablePaginationMode !== 'infinite') return;
-              const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
-              if (scrollHeight - (scrollTop + clientHeight) < 350) {
-                if (docVisibleLimit < filteredTracks.length) {
-                  setDocVisibleLimit(prev => Math.min(filteredTracks.length, prev + effectivePageSize));
-                }
-              }
-            }}
-            className="w-full flex-1 overflow-x-auto overflow-y-auto table-scrollbar always-visible-scrollbar min-w-0 select-text"
+      {/* 2. TAB NGHIỆP VỤ: TỔNG QUAN | HỒ SƠ ĐẦU VÀO | HỒ SƠ ĐẦU RA */}
+      <div className="bg-white border-b border-slate-200 px-3 md:px-5 flex items-center justify-between">
+        <div className="flex items-center gap-1 overflow-x-auto custom-scrollbar">
+          {/* Tab 1: Tổng quan */}
+          <button
+            type="button"
+            onClick={() => setActiveMainTab('overview')}
+            className={`py-2.5 px-3.5 text-xs font-bold border-b-2 transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+              activeMainTab === 'overview'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
           >
-            <table className="w-full text-left border-collapse text-[11px] table-fixed min-w-[1950px]">
-              <colgroup>
-                <col style={{ width: colWidths.col_created_date }} />
-                <col style={{ width: colWidths.col_side }} />
-                {!projectId && <col style={{ width: colWidths.col_project }} />}
-                <col style={{ width: colWidths.col_contract_no }} />
-                <col style={{ width: colWidths.col_contract_name }} />
-                <col style={{ width: colWidths.col_company }} />
-                <col style={{ width: colWidths.col_receiver }} />
-                <col style={{ width: colWidths.col_send_date }} />
-                <col style={{ width: colWidths.col_receive_date }} />
-                <col style={{ width: colWidths.col_deadline }} />
-                <col style={{ width: colWidths.col_value }} />
-                <col style={{ width: colWidths.col_prepay }} />
-                <col style={{ width: colWidths.col_payment }} />
-                <col style={{ width: colWidths.col_files }} />
-                <col style={{ width: colWidths.col_status }} />
-                <col style={{ width: colWidths.col_creator }} />
-                <col style={{ width: colWidths.col_updater }} />
-                <col style={{ width: colWidths.col_actions }} />
-              </colgroup>
-              
-              <thead className="bg-slate-50 border-b border-slate-200 text-[11px] font-extrabold text-slate-600 uppercase tracking-tight sticky top-0 z-10 leading-tight shadow-xs">
-                <tr>
-                  <th className="relative px-1 py-1.5 text-center whitespace-nowrap bg-slate-50">Ngày lập hồ sơ<ColumnResizeHandle onMouseDown={(e) => startResize('col_created_date', e)} /></th>
-                  <th className="relative px-1 py-1.5 text-center whitespace-nowrap bg-slate-50">Bên<ColumnResizeHandle onMouseDown={(e) => startResize('col_side', e)} /></th>
-                  {!projectId && <th className="relative px-1.5 py-1.5 whitespace-nowrap bg-slate-50">Dự án<ColumnResizeHandle onMouseDown={(e) => startResize('col_project', e)} /></th>}
-                  <th className="relative px-1.5 py-1.5 whitespace-nowrap bg-slate-50">Số HĐ<ColumnResizeHandle onMouseDown={(e) => startResize('col_contract_no', e)} /></th>
-                  <th className="relative px-1.5 py-1.5 whitespace-nowrap bg-slate-50">Tên hợp đồng<ColumnResizeHandle onMouseDown={(e) => startResize('col_contract_name', e)} /></th>
-                  <th className="relative px-1.5 py-1.5 whitespace-nowrap bg-slate-50">Công ty / Đối tác<ColumnResizeHandle onMouseDown={(e) => startResize('col_company', e)} /></th>
-                  <th className="relative px-1.5 py-1.5 whitespace-nowrap bg-slate-50">Người nhận<ColumnResizeHandle onMouseDown={(e) => startResize('col_receiver', e)} /></th>
-                  <th className="relative px-1 py-1.5 text-center whitespace-nowrap bg-slate-50">Ngày gửi<ColumnResizeHandle onMouseDown={(e) => startResize('col_send_date', e)} /></th>
-                  <th className="relative px-1 py-1.5 text-center whitespace-nowrap bg-slate-50">Ngày nhận<ColumnResizeHandle onMouseDown={(e) => startResize('col_receive_date', e)} /></th>
-                  <th className="relative px-1 py-1.5 text-center whitespace-nowrap bg-slate-50">Hạn nộp<ColumnResizeHandle onMouseDown={(e) => startResize('col_deadline', e)} /></th>
-                  <th className="relative px-1.5 py-1.5 text-right whitespace-nowrap bg-slate-50">Giá trị HĐ (đ)<ColumnResizeHandle onMouseDown={(e) => startResize('col_value', e)} /></th>
-                  <th className="relative px-1 py-1.5 text-center whitespace-nowrap bg-slate-50">Tạm ứng<ColumnResizeHandle onMouseDown={(e) => startResize('col_prepay', e)} /></th>
-                  <th className="relative px-1 py-1.5 text-center whitespace-nowrap bg-slate-50">Thanh toán<ColumnResizeHandle onMouseDown={(e) => startResize('col_payment', e)} /></th>
-                  <th className="relative px-1 py-1.5 text-center whitespace-nowrap bg-slate-50">File<ColumnResizeHandle onMouseDown={(e) => startResize('col_files', e)} /></th>
-                  <th className="relative px-1 py-1.5 text-center whitespace-nowrap bg-slate-50">Hồ sơ<ColumnResizeHandle onMouseDown={(e) => startResize('col_status', e)} /></th>
-                  <th className="relative px-1.5 py-1.5 text-center whitespace-nowrap bg-slate-50">Người lập hồ sơ<ColumnResizeHandle onMouseDown={(e) => startResize('col_creator', e)} /></th>
-                  <th className="relative px-1.5 py-1.5 text-center whitespace-nowrap bg-slate-50">Người cập nhật<ColumnResizeHandle onMouseDown={(e) => startResize('col_updater', e)} /></th>
-                  <th className="relative px-1 py-1.5 text-center whitespace-nowrap bg-slate-50">TT<ColumnResizeHandle onMouseDown={(e) => startResize('col_actions', e)} /></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-[11px] text-slate-700 leading-tight">
-                {paginatedTracks.map((track) => {
-                  const isMatch = isHighlightActive && Boolean(
-                    (highlightId && track.id === highlightId) ||
-                    (highlightKeyword && (
-                      (track.contractName || '').toLowerCase().includes(highlightKeyword) ||
-                      (track.contractNo || '').toLowerCase().includes(highlightKeyword)
-                    ))
-                  );
+            <span className="material-symbols-outlined text-[17px]">dashboard</span>
+            <span>{isLockedProject ? 'Tổng quan hồ sơ' : 'Tổng quan'}</span>
+          </button>
 
-                  return (
-                  <tr 
-                    key={track.id} 
-                    className={`transition-all align-middle cursor-pointer ${
-                      isMatch
-                        ? 'highlighted-doc-row bg-amber-100/60 hover:bg-amber-100/80 border-l-4 border-l-amber-500 border-y border-amber-300/70 ring-1 ring-inset ring-amber-300/50 font-medium'
-                        : 'hover:bg-blue-50/20'
-                    }`} 
-                    onClick={() => {
-                      setIsHighlightActive(false);
-                      const rawPct = Number(track.prepayPercent || 0);
-                      const displayPct = rawPct > 0 && rawPct <= 1 ? Math.round(rawPct * 100) : (rawPct > 1 ? rawPct : 0);
-                      const contractVal = Number(track.contractValue || 0);
-                      const prepayAmt = track.prepayAmount !== undefined && track.prepayAmount !== null 
-                        ? Number(track.prepayAmount) 
-                        : (contractVal > 0 && displayPct > 0 ? Math.round(contractVal * (displayPct / 100)) : 0);
-                      setEditingDoc({ 
-                        ...track, 
-                        contractValue: contractVal,
-                        prepayPercent: displayPct,
-                        prepayAmount: prepayAmt,
-                        notes: (track.notes || '').replace(/\[STATUS:[^\]]+\]/g, '').trim() 
-                      });
-                    }}
-                  >
-                    <td className="px-1 py-1 text-center">
-                      <span className={`px-1 py-0.5 rounded text-[10px] font-mono inline-block whitespace-nowrap ${track.createdAt ? 'bg-slate-100 text-slate-700' : 'text-slate-300'}`}>
-                        {track.createdAt ? new Date(track.createdAt).toLocaleDateString('vi-VN') : '-'}
-                      </span>
-                    </td>
-                    <td className="px-1 py-1 text-center whitespace-nowrap">
-                      <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold whitespace-nowrap shrink-0 ${
-                        track.side === 'Bên nhận' ? 'bg-emerald-50 text-emerald-600 border border-emerald-200/60' :
-                        track.side === 'Bên gửi' ? 'bg-indigo-50 text-indigo-600 border border-indigo-200/60' :
-                        'bg-amber-50 text-amber-600 border border-amber-200/60'
-                      }`}>
-                        {track.side || 'Bên trả'}
-                      </span>
-                    </td>
-                    {!projectId && (
-                      <td className="px-1 py-1 text-[10px] font-bold text-slate-700 leading-tight">
-                        <div className="break-words leading-snug" title={projects.find(p => p.id === (track as any).projectId || p.code === track.projectCode)?.name || track.projectCode}>
-                          {projects.find(p => p.id === (track as any).projectId || p.code === track.projectCode)?.name || track.projectCode || '-'}
-                        </div>
-                      </td>
-                    )}
-                    <td className="px-1 py-1 font-mono text-[10px] text-slate-800 leading-tight">
-                      <div className="break-words leading-snug" title={track.contractNo}>
-                        {track.contractNo || '-'}
-                      </div>
-                    </td>
-                    <td className="px-1.5 py-1">
-                      <div className="font-bold text-slate-900 leading-snug break-words" title={track.contractName}>
-                        {track.contractName}
-                      </div>
-                    </td>
-                    <td className="px-1.5 py-1">
-                      <div className="font-medium text-slate-800 leading-snug break-words" title={track.company}>
-                        {track.company || '-'}
-                      </div>
-                    </td>
-                    <td className="px-1.5 py-1">
-                      <div className="font-medium text-slate-700 leading-snug break-words" title={track.receiverName}>{track.receiverName || '-'}</div>
-                      {track.phone && <div className="text-[10px] text-slate-400 font-mono mt-0.5 whitespace-nowrap">{track.phone}</div>}
-                    </td>
-                    <td className="px-1 py-1 text-center">
-                      <span className={`px-1 py-0.5 rounded text-[10px] font-mono inline-block whitespace-nowrap ${track.sendDate ? 'bg-slate-100 text-slate-700' : 'text-slate-300'}`}>
-                        {track.sendDate ? new Date(track.sendDate).toLocaleDateString('vi-VN') : '-'}
-                      </span>
-                    </td>
-                    <td className="px-1 py-1 text-center">
-                      <span className={`px-1 py-0.5 rounded text-[10px] font-mono inline-block whitespace-nowrap ${track.receiveDate ? 'bg-blue-50 text-blue-700 font-bold' : 'text-slate-300'}`}>
-                        {track.receiveDate ? new Date(track.receiveDate).toLocaleDateString('vi-VN') : '-'}
-                      </span>
-                    </td>
-                    <td className="px-1 py-1 text-center">
-                      {(() => {
-                        const info = getDueInfo(track);
-                        const effDate = track.dueDate || track.receiveDate || track.sendDate;
-                        const dueStr = effDate ? new Date(effDate).toLocaleDateString('vi-VN') : (track.updatedAt ? new Date(track.updatedAt).toLocaleDateString('vi-VN') : '');
+          {/* Tab 2: Hồ sơ đầu vào */}
+          <button
+            type="button"
+            onClick={() => setActiveMainTab('input')}
+            className={`py-2.5 px-3.5 text-xs font-bold border-b-2 transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+              activeMainTab === 'input'
+                ? 'border-rose-600 text-rose-700 bg-rose-50/40'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <span className="material-symbols-outlined text-[17px]">upload_file</span>
+            <span>Hồ sơ đầu vào</span>
+            <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-rose-100 text-rose-800">
+              {inputDocs.length}
+            </span>
+          </button>
 
-                        if (info.status === 'none' && (track.isCompleted || (track.docStatus === 'Đã ký' || track.docStatus === 'Đã nhận đủ') && track.paymentStatus?.includes('Đã'))) {
-                          return (
-                            <div className="flex flex-col items-center">
-                              <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.5 rounded">Đã xong</span>
-                              {dueStr && <span className="text-[9px] text-slate-400 font-mono mt-0.5">{dueStr}</span>}
-                            </div>
-                          );
-                        }
-                        if (!effDate) {
-                          return <span className="text-slate-300 italic text-[10px]">-</span>;
-                        }
-                        if (info.status === 'overdue') {
-                          return (
-                            <div className="flex flex-col items-center">
-                              <span className="text-[10px] font-bold text-rose-700 bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded flex items-center gap-0.5">
-                                <span className="material-symbols-outlined text-[12px]">warning</span> {info.text}
-                              </span>
-                              {dueStr && <span className="text-[9px] text-slate-400 font-mono mt-0.5">{dueStr}</span>}
-                            </div>
-                          );
-                        }
-                        if (info.status === 'warning') {
-                          return (
-                            <div className="flex flex-col items-center">
-                              <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded flex items-center gap-0.5">
-                                <span className="material-symbols-outlined text-[12px]">notifications_active</span> {info.text}
-                              </span>
-                              {dueStr && <span className="text-[9px] text-slate-400 font-mono mt-0.5">{dueStr}</span>}
-                            </div>
-                          );
-                        }
-                        return (
-                          <div className="flex flex-col items-center">
-                            <span className="text-[10px] font-medium text-slate-600 font-mono">{dueStr}</span>
-                          </div>
-                        );
-                      })()}
-                    </td>
-                    <td className="px-1 py-1 text-right font-bold text-slate-900 text-[10px]">
-                      <div className="truncate" title={(track.contractValue || 0).toLocaleString('vi-VN')}>
-                        {(track.contractValue || 0).toLocaleString('vi-VN')}
-                      </div>
-                    </td>
-                    <td className="px-1 py-1 text-center">
-                      <div className="font-bold text-blue-700 text-[10.5px] truncate">{(() => { const p = Number(track.prepayPercent || 0); return p <= 1 && p > 0 ? Math.round(p * 100) : Math.round(p); })()}%</div>
-                      <div className="text-[9px] text-slate-500 font-mono mt-0.5 truncate">{(track.prepayAmount || 0).toLocaleString('vi-VN')}đ</div>
-                    </td>
-                    <td className="px-1 py-1 text-center">
-                      <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold whitespace-nowrap ${track.paymentStatus?.includes('Đã') ? 'text-emerald-700 bg-emerald-50' : 'text-rose-700 bg-rose-50'}`}>
-                        {track.paymentStatus || 'Chưa TT'}
-                      </span>
-                    </td>
-                    <td className="px-0.5 py-1 text-center" onClick={(e) => e.stopPropagation()}>
-                      {track.fileUrls && track.fileUrls.length > 0 ? (
-                        <button type="button" onClick={(e) => { e.stopPropagation(); setFileViewerUrls(track.fileUrls || []); }} title="Xem file đính kèm" className="relative inline-flex items-center justify-center w-6 h-6 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-colors">
-                          <span className="material-symbols-outlined text-[15px]">description</span>
-                          {track.fileUrls.length > 1 && <span className="absolute -top-1 -right-1 bg-rose-500 text-white text-[8px] font-bold px-1 rounded-full">{track.fileUrls.length}</span>}
-                        </button>
-                      ) : (
-                        <span className="text-slate-300 text-xs">-</span>
-                      )}
-                    </td>
-                    <td className="px-1 py-1 text-center">
-                      <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold whitespace-nowrap ${
-                        track.docStatus === 'Đã ký' || track.docStatus === 'Đã nhận đủ' 
-                          ? 'text-emerald-700 bg-emerald-50' 
-                          : track.docStatus === 'Chưa ký' || track.docStatus === 'Chưa nhận'
-                          ? 'text-amber-700 bg-amber-50 font-bold'
-                          : 'text-slate-600 bg-slate-100'
-                      }`}>
-                        {track.docStatus || 'Chưa ký'}
-                      </span>
-                    </td>
-                    <td className="px-1.5 py-1 text-center overflow-hidden">
-                      <span className="block truncate font-medium text-slate-700" title={track.createdByName || '-'}>{track.createdByName || '-'}</span>
-                    </td>
-                    <td className="px-1.5 py-1 overflow-hidden">
-                      <AuditInfoCell 
-                        updatedBy={track.updatedBy || track.createdByName} 
-                        updatedAt={track.updatedAt} 
-                        projectCode={track.projectCode}
-                        itemTitle={track.contractName || track.contractNo}
-                      />
-                    </td>
-                    
-                    <td className="px-0.5 py-1 text-center" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex items-center justify-center gap-1">
-                        {canManageItem(user, track, 'DELETE_DOCUMENTS') ? (
-                          <button onClick={() => {
-                            const docLabel = track.contractNo || track.contractName || 'này';
-                            setConfirmConfig({
-                              isOpen: true,
-                              title: 'Xóa thông tin theo dõi hồ sơ',
-                              message: `Bạn chắc chắn muốn xóa hồ sơ hợp đồng "${docLabel}"?`,
-                              onConfirm: async () => {
-                                try {
-                                  await deleteDocumentTrack(track.id);
-                                  triggerToast(`Đã xóa hồ sơ "${docLabel}" thành công!`, 'success');
-                                } catch (err) {
-                                  triggerToast('Lỗi khi xóa hồ sơ, vui lòng thử lại!', 'warning');
-                                } finally {
-                                  setConfirmConfig(prev => ({ ...prev, isOpen: false }));
-                                }
-                              },
-                              isDestructive: true,
-                              confirmText: 'Xóa'
-                            });
-                          }} title="Xóa hồ sơ" className="p-1 text-rose-600 hover:bg-rose-50 rounded-lg cursor-pointer"><span className="material-symbols-outlined text-[15px]">delete</span></button>
-                        ) : (
-                          <span title="Chỉ người tạo hoặc Quản trị viên mới có quyền xóa" className="p-1 text-slate-300 cursor-not-allowed"><span className="material-symbols-outlined text-[15px]">lock</span></span>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-              </tbody>
-            </table>
-            {filteredTracks.length > 0 && (() => {
-              if (tablePaginationMode === 'infinite') {
-                return null;
-              }
+          {/* Tab 3: Hồ sơ đầu ra */}
+          <button
+            type="button"
+            onClick={() => setActiveMainTab('output')}
+            className={`py-2.5 px-3.5 text-xs font-bold border-b-2 transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+              activeMainTab === 'output'
+                ? 'border-emerald-600 text-emerald-700 bg-emerald-50/40'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <span className="material-symbols-outlined text-[17px]">download_for_offline</span>
+            <span>Hồ sơ đầu ra</span>
+            <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-emerald-100 text-emerald-800">
+              {outputDocs.length}
+            </span>
+          </button>
+        </div>
 
-              return (
-                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-white px-4 py-2 text-xs text-slate-600 shrink-0 select-none shadow-xs">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium whitespace-nowrap">Hiển thị {filteredTracks.length === 0 ? 0 : (documentPage - 1) * effectivePageSize + 1}-{Math.min(documentPage * effectivePageSize, filteredTracks.length)} / {filteredTracks.length} hồ sơ</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <button type="button" disabled={documentPage <= 1} onClick={() => setDocumentPage(1)} className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 font-medium hover:bg-slate-50 transition-colors disabled:cursor-not-allowed disabled:opacity-40 shadow-xs">Đầu</button>
-                    <button type="button" disabled={documentPage <= 1} onClick={() => setDocumentPage(page => Math.max(1, page - 1))} className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 font-medium hover:bg-slate-50 transition-colors disabled:cursor-not-allowed disabled:opacity-40 shadow-xs">Trước</button>
-                    <span className="px-3 font-semibold text-slate-700 whitespace-nowrap">Trang {documentPage} / {documentTotalPages}</span>
-                    <button type="button" disabled={documentPage >= documentTotalPages} onClick={() => setDocumentPage(page => Math.min(documentTotalPages, page + 1))} className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 font-medium hover:bg-slate-50 transition-colors disabled:cursor-not-allowed disabled:opacity-40 shadow-xs">Sau</button>
-                    <button type="button" disabled={documentPage >= documentTotalPages} onClick={() => setDocumentPage(documentTotalPages)} className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 font-medium hover:bg-slate-50 transition-colors disabled:cursor-not-allowed disabled:opacity-40 shadow-xs">Cuối</button>
-                  </div>
-                </div>
-              );
-            })()}
-          </div>
-        </PullToRefresh>
-
-      </section>
+        {/* Thông tin phụ bên phải */}
+        <div className="hidden md:flex items-center gap-2 text-xs text-slate-500">
+          <span>Tổng số: <b className="text-slate-800">{projectScopedDocs.length}</b> hồ sơ</span>
+        </div>
       </div>
 
-      {/* MODALS */}
-      {/* Add New Doc Modal */}
-      <Modal isOpen={isNewDocOpen} onClose={() => setIsNewDocOpen(false)} title="Thêm thông tin Hồ Sơ Gửi Đi mới">
-        <form onSubmit={async (e) => {
-          e.preventDefault();
-          if (isSubmitting) return;
-          setIsSubmitting(true);
-          try {
-            const val = Number(newDoc.contractValue || 0);
-            const rawPct = Number(newDoc.prepayPercent || 0);
-            const prepayPct = rawPct > 0 ? (rawPct > 1 ? rawPct / 100 : rawPct) : 0;
-            const prepayAmt = Number(newDoc.prepayAmount ?? (val > 0 && prepayPct > 0 ? Math.round(val * prepayPct) : 0));
-
-            await addDocumentTrack({
-              stt: newDoc.stt || String(documentTracks.length + 1),
-              contractNo: newDoc.contractNo || '',
-              contractName: newDoc.contractName || '',
-              projectCode: newDoc.projectCode || '',
-              company: newDoc.company || '',
-              receiverName: newDoc.receiverName || '',
-              phone: newDoc.phone || '',
-              address: newDoc.address || '',
-              sendDate: newDoc.sendDate || new Date().toISOString().split('T')[0],
-              receiveDate: newDoc.receiveDate || '',
-              dueDate: newDoc.dueDate || '',
-              remindDays: newDoc.remindDays || 3,
-              docStatus: newDoc.docStatus || 'Chưa ký',
-              side: newDoc.side || 'Bên trả',
-              contractValue: val,
-              prepayPercent: prepayPct,
-              prepayAmount: prepayAmt,
-              paymentStatus: newDoc.paymentStatus || 'Chưa thanh toán',
-              isCompleted: !!newDoc.isCompleted,
-              notes: newDoc.notes || '',
-              fileUrls: newDoc.fileUrls || [],
-              docType: newDoc.docType || 'Giao',
-              createdById: user?.id,
-              createdByName: user?.name || user?.username
-            });
-            triggerToast(`Đã thêm hồ sơ \"${newDoc.contractNo || newDoc.contractName || 'hồ sơ mới'}\" thành công!`, 'success');
-            setIsNewDocOpen(false);
-            setNewDoc({stt: '', contractNo: '', contractName: '', projectCode: '', company: '', receiverName: '', phone: '', address: '', sendDate: new Date().toISOString().split('T')[0], receiveDate: '', dueDate: '', remindDays: 3, docStatus: 'Chưa ký', side: 'Bên trả', contractValue: 0, prepayPercent: 0, prepayAmount: 0, paymentStatus: 'Chưa thanh toán', isCompleted: false, notes: '', fileUrls: [], docType: 'Giao'});
-          } catch (err: any) {
-            triggerToast('Lỗi khi thêm hồ sơ: ' + (err.message || 'Xin thử lại'), 'warning');
-          } finally {
-            setIsSubmitting(false);
-          }
-        }} className="space-y-3 text-xs">
-          <div className="grid grid-cols-2 gapx-1 py-1">
-            <div className="min-w-0">
-              <label className="block font-bold mb-1 truncate">Phân loại hồ sơ *</label>
-              <CustomSelect required value={newDoc.docType || 'Giao'} onChange={(e) => setNewDoc({...newDoc, docType: e.target.value})} className="w-full border rounded-lg p-2 bg-white font-bold mb-3">
-                <option value="Giao">Giao hồ sơ (Gửi đi)</option>
-                <option value="Nhận">Nhận hồ sơ (Nhận về)</option>
-              </CustomSelect>
-              <label className="block font-bold mb-1 truncate">Dự án (Không bắt buộc)</label>
-              <CustomSelect 
-                disabled={Boolean(resolvedProjectCode)} 
-                value={newDoc.projectCode || resolvedProjectCode || (filterProjectCode !== 'all' ? filterProjectCode : '')} 
-                onChange={(e) => setNewDoc({...newDoc, projectCode: e.target.value})} 
-                className="w-full border rounded-lg p-2 bg-white font-bold truncate"
-              >
-                <option value="">-- Không thuộc dự án --</option>
-                <option value="COMPANY">Chung nội bộ / Hồ sơ Công ty</option>
-                {projects.map(p => (
-                  <option key={p.code} value={p.code}>{p.name}</option>
-                ))}
-              </CustomSelect>
-            </div>
-            <div><label className="block font-bold mb-1">Tên Hợp đồng / Hồ sơ *</label><input type="text" required value={newDoc.contractName || ''} onChange={(e) => setNewDoc({...newDoc, contractName: e.target.value})} className="w-full border rounded-lg p-2 font-bold bg-white" /></div>
-          </div>
-          <div className="grid grid-cols-2 gapx-1 py-1">
-            <div><label className="block font-bold mb-1">Mã/Số Hợp đồng</label><input type="text" value={newDoc.contractNo || ''} onChange={(e) => setNewDoc({...newDoc, contractNo: e.target.value})} className="w-full border rounded-lg p-2 bg-white" /></div>
-            <div><label className="block font-bold mb-1">Công ty / Đối tác nhận *</label><input type="text" required value={newDoc.company || ''} onChange={(e) => setNewDoc({...newDoc, company: e.target.value})} className="w-full border rounded-lg p-2 bg-white" /></div>
-          </div>
-          <div className="grid grid-cols-3 gapx-1 py-1">
-            <div><label className="block font-bold mb-1">Người nhận trực tiếp</label><input type="text" value={newDoc.receiverName || ''} onChange={(e) => setNewDoc({...newDoc, receiverName: e.target.value})} className="w-full border rounded-lg p-2 bg-white" /></div>
-            <div><label className="block font-bold mb-1">SĐT người nhận</label><input type="text" value={newDoc.phone || ''} onChange={(e) => setNewDoc({...newDoc, phone: e.target.value})} className="w-full border rounded-lg p-2 bg-white" /></div>
-            <div>
-              <label className="block font-bold mb-1">Bên</label>
-              <CustomSelect value={newDoc.side || ''} onChange={(e) => setNewDoc({...newDoc, side: e.target.value})} className="w-full border rounded-lg p-2 bg-white">
-                <option value="">-- Chọn bên --</option>
-                <option value="Bên nhận">Bên nhận</option>
-                <option value="Bên gửi">Bên gửi</option>
-                <option value="Bên trả">Bên trả</option>
-              </CustomSelect>
-            </div>
-          </div>
-          <div><label className="block font-bold mb-1">Địa chỉ nhận hồ sơ</label><input type="text" value={newDoc.address || ''} onChange={(e) => setNewDoc({...newDoc, address: e.target.value})} className="w-full border rounded-lg p-2 bg-white" /></div>
-          <div className="grid grid-cols-3 gapx-1 py-1 bg-amber-50/50 p-2 rounded-lg border border-amber-200">
-            <div><label className="block font-bold mb-1 text-slate-800">Ngày gửi đi</label><input type="date" value={newDoc.sendDate || ''} onChange={(e) => setNewDoc({...newDoc, sendDate: e.target.value})} className="w-full border rounded-lg p-2 bg-white" /></div>
-            <div><label className="block font-bold mb-1 text-slate-800">Ngày nhận thực tế</label><input type="date" value={newDoc.receiveDate || ''} onChange={(e) => setNewDoc(prev => ({...prev, receiveDate: e.target.value, ...(e.target.value ? { docStatus: prev.docStatus === 'Chưa ký' || prev.docStatus === 'Chưa nhận' ? 'Đã nhận đủ' : prev.docStatus } : {})}))} className="w-full border rounded-lg p-2 bg-white" /></div>
-            <div><label className="block font-bold mb-1 text-amber-900">Hạn nộp / Hẹn trả 🔔</label><input type="date" value={newDoc.dueDate || ''} onChange={(e) => setNewDoc({...newDoc, dueDate: e.target.value})} className="w-full border border-amber-300 rounded-lg p-2 bg-white font-bold text-amber-900" /></div>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 py-1 bg-slate-50 p-2.5 rounded-lg border border-slate-200">
-            <div>
-              <label className="block font-bold mb-1 text-slate-800">Giá trị HĐ (đ)</label>
-              <input 
-                type="text"
-                inputMode="numeric"
-                value={newDoc.contractValue ? Number(newDoc.contractValue).toLocaleString('vi-VN') : ''} 
-                placeholder="0" 
-                onChange={(e) => {
-                  const rawVal = e.target.value.replace(/\D/g, '');
-                  const val = rawVal === '' ? 0 : Number(rawVal);
-                  const pct = Number(newDoc.prepayPercent || 0);
-                  setNewDoc(prev => ({
-                    ...prev, 
-                    contractValue: val,
-                    prepayAmount: val > 0 && pct > 0 ? Math.round(val * (pct / 100)) : (pct === 0 ? 0 : prev.prepayAmount)
-                  }));
-                }} 
-                className="w-full border border-slate-300 rounded-lg p-2 bg-white font-bold text-slate-900 focus:ring-1 focus:ring-primary focus:outline-none" 
-              />
-            </div>
-            <div>
-              <label className="block font-bold mb-1 text-slate-800">Tạm ứng (%)</label>
-              <input 
-                type="number" 
-                step="any" 
-                min="0" 
-                max="100" 
-                value={newDoc.prepayPercent !== undefined && newDoc.prepayPercent !== null && newDoc.prepayPercent !== 0 ? newDoc.prepayPercent : ''} 
-                placeholder="0" 
-                onChange={(e) => {
-                  const valStr = e.target.value;
-                  const pct = valStr === '' ? 0 : Math.min(100, Math.max(0, Number(valStr)));
-                  const cVal = Number(newDoc.contractValue || 0);
-                  setNewDoc(prev => ({
-                    ...prev, 
-                    prepayPercent: valStr === '' ? 0 : pct,
-                    prepayAmount: cVal > 0 ? Math.round(cVal * (pct / 100)) : 0
-                  }));
-                }} 
-                className="w-full border border-slate-300 rounded-lg p-2 bg-white font-bold text-blue-700 focus:ring-1 focus:ring-primary focus:outline-none" 
-              />
-            </div>
-            <div>
-              <label className="block font-bold mb-1 text-slate-800">Tiền tạm ứng (đ)</label>
-              <input 
-                type="text"
-                inputMode="numeric"
-                value={newDoc.prepayAmount ? Number(newDoc.prepayAmount).toLocaleString('vi-VN') : ''} 
-                placeholder="0" 
-                onChange={(e) => {
-                  const rawVal = e.target.value.replace(/\D/g, '');
-                  const amt = rawVal === '' ? 0 : Number(rawVal);
-                  const cVal = Number(newDoc.contractValue || 0);
-                  const calcPct = cVal > 0 ? Math.round((amt / cVal) * 1000) / 10 : 0;
-                  setNewDoc(prev => ({
-                    ...prev, 
-                    prepayAmount: amt,
-                    prepayPercent: cVal > 0 ? Math.min(100, calcPct) : prev.prepayPercent
-                  }));
-                }} 
-                className="w-full border border-slate-300 rounded-lg p-2 bg-white font-bold text-slate-900 focus:ring-1 focus:ring-primary focus:outline-none" 
-              />
-            </div>
-            <div>
-              <label className="block font-bold mb-1 text-slate-800">Thanh toán</label>
-              <input 
-                type="text"
-                list="payment-status-list"
-                value={newDoc.paymentStatus || ''} 
-                onChange={(e) => setNewDoc({...newDoc, paymentStatus: e.target.value})} 
-                placeholder="Nhập hoặc chọn trạng thái..."
-                className="w-full border border-slate-300 rounded-lg p-2 bg-white font-bold text-slate-900 focus:ring-1 focus:ring-primary focus:outline-none" 
-              />
-              <datalist id="payment-status-list">
-                {paymentStatusOptions.map(opt => (
-                  <option key={opt} value={opt} />
-                ))}
-              </datalist>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gapx-1 py-1">
-            <div>
-              <label className="block font-bold mb-1">Trạng thái hồ sơ</label>
-              <input 
-                type="text"
-                list="doc-status-list"
-                value={newDoc.docStatus || ''} 
-                onChange={(e) => setNewDoc(prev => ({...prev, docStatus: e.target.value, ...(e.target.value === 'Đã nhận đủ' || e.target.value === 'Đã ký') && !prev.receiveDate ? { receiveDate: new Date().toISOString().split('T')[0] } : {}}))} 
-                placeholder="Nhập hoặc chọn trạng thái..."
-                className="w-full border rounded-lg p-2 bg-white font-bold text-slate-900 focus:ring-1 focus:ring-primary focus:outline-none" 
-              />
-              <datalist id="doc-status-list">
-                {docStatusOptions.map(opt => (
-                  <option key={opt} value={opt} />
-                ))}
-              </datalist>
-            </div>
-              <div className="flex items-center pt-5 gap-2"><input type="checkbox" checked={Boolean(newDoc.isCompleted)} onChange={(e) => setNewDoc(prev => ({...prev, isCompleted: e.target.checked, ...(e.target.checked ? { docStatus: 'Đã ký' } : {})}))} className="w-4 h-4" /> <span className="font-bold">Đã hoàn tất hồ sơ</span></div>
-          </div>
-          <div><label className="block font-bold mb-1">Ghi chú</label><input type="text" value={newDoc.notes || ''} onChange={(e) => setNewDoc({...newDoc, notes: e.target.value})} className="w-full border rounded-lg p-2 bg-white" /></div>
-          <FileUpload multiple label="File đính kèm" value={newDoc.fileUrls} onChange={(urls) => setNewDoc({...newDoc, fileUrls: Array.isArray(urls) ? urls : [urls]})} onUploadStateChange={setIsFileUploading} />
-          <div className="pt-3 border-t flex justify-end gap-2">
-            <button disabled={isSubmitting || isFileUploading} type="button" onClick={() => setIsNewDocOpen(false)} className="px-4 py-1.5 border rounded-lg font-semibold hover:bg-slate-100 disabled:opacity-50">Hủy</button>
-            <button disabled={isSubmitting || isFileUploading} type="submit" className="px-5 py-1.5 bg-primary text-white rounded-lg font-bold flex items-center gap-2 disabled:opacity-50">
-              {(isSubmitting || isFileUploading) && (
-                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-              )}
-              {isFileUploading ? 'Đang tải tệp lên...' : (isSubmitting ? 'Đang thêm...' : 'Thêm hồ sơ mới')}
-            </button>
-          </div>
-        </form>
-      </Modal>
-
-      {/* Edit Doc Modal */}
-      <Modal isOpen={!!editingDoc} onClose={() => setEditingDoc(null)} title={editingDoc && !canManageItem(user, editingDoc, 'EDIT_DOCUMENTS') ? "Chi tiết Theo dõi Hồ sơ (Chỉ xem)" : "Cập nhật Theo dõi Hồ sơ Gửi Đi"}>
-        {editingDoc && (
-          <form onSubmit={async (e) => {
-            e.preventDefault();
-            if (!canManageItem(user, editingDoc, 'EDIT_DOCUMENTS')) return;
-            if (isSubmitting) return;
-            setIsSubmitting(true);
-            try {
-              const val = Number(editingDoc.contractValue || 0);
-              const rawPct = Number(editingDoc.prepayPercent || 0);
-              const prepayPct = rawPct > 0 ? (rawPct > 1 ? rawPct / 100 : rawPct) : 0;
-              const prepayAmt = Number(editingDoc.prepayAmount ?? (val > 0 && prepayPct > 0 ? Math.round(val * prepayPct) : 0));
-
-              await updateDocumentTrack(editingDoc.id, {
-                // Chỉ gửi các trường nghiệp vụ. Thông tin người lập/người cập nhật
-                // do store/API quản lý, tránh thao tác xem làm ghi đè audit fields.
-                projectCode: editingDoc.projectCode,
-                contractNo: editingDoc.contractNo,
-                contractName: editingDoc.contractName,
-                company: editingDoc.company,
-                receiverName: editingDoc.receiverName,
-                phone: editingDoc.phone,
-                address: editingDoc.address,
-                sendDate: editingDoc.sendDate,
-                receiveDate: editingDoc.receiveDate,
-                dueDate: editingDoc.dueDate,
-                docStatus: editingDoc.docStatus,
-                docType: editingDoc.docType,
-                side: editingDoc.side,
-                contractValue: editingDoc.contractValue,
-                paymentStatus: editingDoc.paymentStatus,
-                isCompleted: editingDoc.isCompleted,
-                fileUrls: editingDoc.fileUrls,
-                remindDays: editingDoc.remindDays,
-                prepayPercent: prepayPct,
-                notes: (editingDoc.notes || '').replace(/\[STATUS:[^\]]+\]/g, '').trim(),
-                prepayAmount: prepayAmt
-              });
-              triggerToast(`Đã cập nhật hồ sơ \"${editingDoc.contractNo || editingDoc.contractName || 'hồ sơ'}\" thành công!`, 'success');
-              setEditingDoc(null);
-            } catch (err: any) {
-              triggerToast('Lỗi khi cập nhật hồ sơ: ' + (err.message || 'Xin thử lại'), 'warning');
-            } finally {
-              setIsSubmitting(false);
-            }
-          }} className="space-y-3 text-xs">
-            {!canManageItem(user, editingDoc, 'EDIT_DOCUMENTS') && (
-              <div className="p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-xs flex items-center gap-2 mb-2">
-                <span className="material-symbols-outlined text-base text-amber-600">lock</span>
-                <span>Bạn đang xem hồ sơ ở chế độ chỉ đọc. Chỉ người tạo ({editingDoc.createdByName || editingDoc.updatedBy || 'Chính chủ'}) hoặc Quản trị viên mới có quyền chỉnh sửa/xóa hồ sơ này.</span>
-              </div>
-            )}
-            <fieldset disabled={!canManageItem(user, editingDoc, 'EDIT_DOCUMENTS')} className="space-y-3">
-              <div className="grid grid-cols-2 gapx-1 py-1">
-                <div className="min-w-0">
-                  <label className="block font-bold mb-1 truncate">Dự án (Không bắt buộc)</label>
-                  <CustomSelect 
-                    disabled={Boolean(resolvedProjectCode)} 
-                    value={editingDoc.projectCode || projects.find(p => p.id === (editingDoc as any).projectId)?.code || resolvedProjectCode || (filterProjectCode !== 'all' ? filterProjectCode : '')} 
-                    onChange={(e) => setEditingDoc({...editingDoc, projectCode: e.target.value})} 
-                    className="w-full border rounded-lg p-2 bg-white font-bold truncate"
-                  >
-                    <option value="">-- Không thuộc dự án --</option>
-                    <option value="COMPANY">Chung nội bộ / Hồ sơ Công ty</option>
-                    {projects.map(p => (
-                      <option key={p.code} value={p.code}>{p.name}</option>
-                    ))}
-                  </CustomSelect>
-                </div>
-                <div><label className="block font-bold mb-1">Tên Hợp đồng / Hồ sơ *</label><input type="text" required value={editingDoc.contractName || ''} onChange={(e) => setEditingDoc({...editingDoc, contractName: e.target.value})} className="w-full border rounded-lg p-2 font-bold bg-white" /></div>
-              </div>
-              <div className="grid grid-cols-2 gapx-1 py-1">
-                <div><label className="block font-bold mb-1">Số HĐ</label><input type="text" value={editingDoc.contractNo || ''} onChange={(e) => setEditingDoc({...editingDoc, contractNo: e.target.value})} className="w-full border rounded-lg p-2 bg-white" /></div>
-                <div><label className="block font-bold mb-1">Công ty nhận *</label><input type="text" required value={editingDoc.company || ''} onChange={(e) => setEditingDoc({...editingDoc, company: e.target.value})} className="w-full border rounded-lg p-2 bg-white" /></div>
-              </div>
-              <div className="grid grid-cols-3 gapx-1 py-1">
-                <div><label className="block font-bold mb-1">Người nhận</label><input type="text" value={editingDoc.receiverName || ''} onChange={(e) => setEditingDoc({...editingDoc, receiverName: e.target.value})} className="w-full border rounded-lg p-2 bg-white" /></div>
-                <div><label className="block font-bold mb-1">SĐT nhận</label><input type="text" value={editingDoc.phone || ''} onChange={(e) => setEditingDoc({...editingDoc, phone: e.target.value})} className="w-full border rounded-lg p-2 bg-white" /></div>
-                <div>
-                  <label className="block font-bold mb-1">Bên</label>
-                  <CustomSelect value={editingDoc.side || ''} onChange={(e) => setEditingDoc({...editingDoc, side: e.target.value})} className="w-full border rounded-lg p-2 bg-white">
-                    <option value="">-- Chọn bên --</option>
-                    <option value="Bên nhận">Bên nhận</option>
-                    <option value="Bên gửi">Bên gửi</option>
-                    <option value="Bên trả">Bên trả</option>
-                  </CustomSelect>
-                </div>
-              </div>
-              <div><label className="block font-bold mb-1">Địa chỉ</label><input type="text" value={editingDoc.address || ''} onChange={(e) => setEditingDoc({...editingDoc, address: e.target.value})} className="w-full border rounded-lg p-2 bg-white" /></div>
-              <div className="grid grid-cols-3 gapx-1 py-1 bg-amber-50/50 p-2 rounded-lg border border-amber-200">
-                <div><label className="block font-bold mb-1 text-slate-800">Ngày gửi đi</label><input type="date" value={editingDoc.sendDate || ''} onChange={(e) => setEditingDoc({...editingDoc, sendDate: e.target.value})} className="w-full border rounded-lg p-2 bg-white" /></div>
-                <div><label className="block font-bold mb-1 text-slate-800">Ngày nhận thực tế</label><input type="date" value={editingDoc.receiveDate || ''} onChange={(e) => setEditingDoc(prev => prev ? ({...prev, receiveDate: e.target.value, ...(e.target.value ? { docStatus: prev.docStatus === 'Chưa ký' || prev.docStatus === 'Chưa nhận' ? 'Đã nhận đủ' : prev.docStatus } : {})}) : null)} className="w-full border rounded-lg p-2 bg-white" /></div>
-                <div><label className="block font-bold mb-1 text-amber-900">Hạn nộp / Hẹn trả 🔔</label><input type="date" value={editingDoc.dueDate || ''} onChange={(e) => setEditingDoc({...editingDoc, dueDate: e.target.value})} className="w-full border border-amber-300 rounded-lg p-2 bg-white font-bold text-amber-900" /></div>
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 py-1 bg-slate-50 p-2.5 rounded-lg border border-slate-200">
-                <div>
-                  <label className="block font-bold mb-1 text-slate-800">Giá trị HĐ (đ)</label>
-                  <input 
-                    type="text"
-                    inputMode="numeric"
-                    value={editingDoc.contractValue ? Number(editingDoc.contractValue).toLocaleString('vi-VN') : ''} 
-                    placeholder="0" 
-                    onChange={(e) => {
-                      const rawVal = e.target.value.replace(/\D/g, '');
-                      const val = rawVal === '' ? 0 : Number(rawVal);
-                      const pct = Number(editingDoc.prepayPercent || 0);
-                      setEditingDoc(prev => prev ? ({
-                        ...prev, 
-                        contractValue: val,
-                        prepayAmount: val > 0 && pct > 0 ? Math.round(val * (pct / 100)) : (pct === 0 ? 0 : prev.prepayAmount)
-                      }) : null);
-                    }} 
-                    className="w-full border border-slate-300 rounded-lg p-2 bg-white font-bold text-slate-900 focus:ring-1 focus:ring-primary focus:outline-none" 
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold mb-1 text-slate-800">Tạm ứng (%)</label>
-                  <input 
-                    type="number" 
-                    step="any" 
-                    min="0" 
-                    max="100" 
-                    value={editingDoc.prepayPercent !== undefined && editingDoc.prepayPercent !== null && editingDoc.prepayPercent !== 0 ? editingDoc.prepayPercent : ''} 
-                    placeholder="0" 
-                    onChange={(e) => {
-                      const valStr = e.target.value;
-                      const pct = valStr === '' ? 0 : Math.min(100, Math.max(0, Number(valStr)));
-                      const cVal = Number(editingDoc.contractValue || 0);
-                      setEditingDoc(prev => prev ? ({
-                        ...prev, 
-                        prepayPercent: valStr === '' ? 0 : pct,
-                        prepayAmount: cVal > 0 ? Math.round(cVal * (pct / 100)) : 0
-                      }) : null);
-                    }} 
-                    className="w-full border border-slate-300 rounded-lg p-2 bg-white font-bold text-blue-700 focus:ring-1 focus:ring-primary focus:outline-none" 
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold mb-1 text-slate-800">Tiền tạm ứng (đ)</label>
-                  <input 
-                    type="text"
-                    inputMode="numeric"
-                    value={editingDoc.prepayAmount ? Number(editingDoc.prepayAmount).toLocaleString('vi-VN') : ''} 
-                    placeholder="0" 
-                    onChange={(e) => {
-                      const rawVal = e.target.value.replace(/\D/g, '');
-                      const amt = rawVal === '' ? 0 : Number(rawVal);
-                      const cVal = Number(editingDoc.contractValue || 0);
-                      const calcPct = cVal > 0 ? Math.round((amt / cVal) * 1000) / 10 : 0;
-                      setEditingDoc(prev => prev ? ({
-                        ...prev, 
-                        prepayAmount: amt,
-                        prepayPercent: cVal > 0 ? Math.min(100, calcPct) : prev.prepayPercent
-                      }) : null);
-                    }} 
-                    className="w-full border border-slate-300 rounded-lg p-2 bg-white font-bold text-slate-900 focus:ring-1 focus:ring-primary focus:outline-none" 
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold mb-1 text-slate-800">Thanh toán</label>
-                  <input 
-                    type="text"
-                    list="payment-status-list-edit"
-                    value={editingDoc.paymentStatus || ''} 
-                    onChange={(e) => setEditingDoc({...editingDoc, paymentStatus: e.target.value})} 
-                    placeholder="Nhập hoặc chọn trạng thái..."
-                    className="w-full border border-slate-300 rounded-lg p-2 bg-white font-bold text-slate-900 focus:ring-1 focus:ring-primary focus:outline-none" 
-                  />
-                  <datalist id="payment-status-list-edit">
-                    {paymentStatusOptions.map(opt => (
-                      <option key={opt} value={opt} />
-                    ))}
-                  </datalist>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gapx-1 py-1">
-                <div>
-                  <label className="block font-bold mb-1">Trạng thái hồ sơ</label>
-                  <input 
-                    type="text"
-                    list="doc-status-list-edit"
-                    value={editingDoc.docStatus || ''} 
-                    onChange={(e) => setEditingDoc(prev => prev ? ({...prev, docStatus: e.target.value, ...(e.target.value === 'Đã nhận đủ' || e.target.value === 'Đã ký') && !prev.receiveDate ? { receiveDate: new Date().toISOString().split('T')[0] } : {}}) : null)} 
-                    placeholder="Nhập hoặc chọn trạng thái..."
-                    className="w-full border rounded-lg p-2 bg-white font-bold text-slate-900 focus:ring-1 focus:ring-primary focus:outline-none" 
-                  />
-                  <datalist id="doc-status-list-edit">
-                    {docStatusOptions.map(opt => (
-                      <option key={opt} value={opt} />
-                    ))}
-                  </datalist>
-                </div>
-                <div className="flex items-center pt-5 gap-2"><input type="checkbox" checked={Boolean(editingDoc.isCompleted)} onChange={(e) => setEditingDoc(prev => prev ? ({...prev, isCompleted: e.target.checked, ...(e.target.checked ? { docStatus: 'Đã ký' } : {})}) : null)} className="w-4 h-4" /> <span className="font-bold">Đã hoàn tất hồ sơ</span></div>
-              </div>
-              <div><label className="block font-bold mb-1">Ghi chú</label><input type="text" value={(editingDoc.notes || '').replace(/\[STATUS:[^\]]+\]/g, '').trim()} onChange={(e) => setEditingDoc({...editingDoc, notes: e.target.value})} className="w-full border rounded-lg p-2 bg-white" /></div>
-              <FileUpload multiple label="File đính kèm" value={editingDoc.fileUrls} onChange={(urls) => setEditingDoc({...editingDoc, fileUrls: Array.isArray(urls) ? urls : [urls]})} onUploadStateChange={setIsFileUploading} />
-            </fieldset>
-            <div className="pt-3 border-t flex justify-end gap-2">
-              <button disabled={isSubmitting || isFileUploading} type="button" onClick={() => setEditingDoc(null)} className="px-4 py-1.5 border rounded-lg font-semibold hover:bg-slate-100 disabled:opacity-50">
-                {!canManageItem(user, editingDoc) ? 'Đóng' : 'Hủy'}
-              </button>
-              {canManageItem(user, editingDoc) && (
-                <button disabled={isSubmitting || isFileUploading} type="submit" className="px-5 py-1.5 bg-primary text-white rounded-lg font-bold flex items-center gap-2 disabled:opacity-50 cursor-pointer">
-                  {(isSubmitting || isFileUploading) && (
-                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                )}
-                  {isFileUploading ? 'Đang tải tệp lên...' : (isSubmitting ? 'Đang lưu...' : 'Cập nhật')}
-                </button>
-              )}
-            </div>
-          </form>
+      {/* 3. NỘI DUNG TỪNG TAB */}
+      <PullToRefresh onRefresh={async () => { await fetchAccounting(); }} className="flex-1 overflow-y-auto p-3 md:p-4">
+        {activeMainTab === 'overview' && (
+          <DocumentOverviewTab
+            inputDocs={inputDocs}
+            outputDocs={outputDocs}
+            onSelectTab={(tab) => setActiveMainTab(tab)}
+            onEditDoc={handleEditDoc}
+          />
         )}
-      </Modal>
-      {/* Confirm Modal */}
+
+        {activeMainTab === 'input' && (
+          <DocumentFlowTable
+            flow="input"
+            documents={inputDocs}
+            isLockedProject={isLockedProject}
+            onEdit={handleEditDoc}
+            onDelete={handleDeleteDoc}
+            onOpenNew={() => handleOpenNew('input')}
+            onExportExcel={handleExportCurrentExcel}
+            isAllowedToManage={isAllowedToManage}
+          />
+        )}
+
+        {activeMainTab === 'output' && (
+          <DocumentFlowTable
+            flow="output"
+            documents={outputDocs}
+            isLockedProject={isLockedProject}
+            onEdit={handleEditDoc}
+            onDelete={handleDeleteDoc}
+            onOpenNew={() => handleOpenNew('output')}
+            onExportExcel={handleExportCurrentExcel}
+            isAllowedToManage={isAllowedToManage}
+          />
+        )}
+      </PullToRefresh>
+
+      {/* 4. MODAL FORM TẠO/SỬA HỒ SƠ */}
+      {isModalOpen && (
+        <DocumentFormModal
+          isOpen={isModalOpen}
+          flow={modalFlow}
+          documentData={editingDoc}
+          defaultProjectCode={resolvedProjectCode || (filterProjectCode !== 'all' ? filterProjectCode : 'COMPANY')}
+          lockedProject={isLockedProject}
+          onClose={() => setIsModalOpen(false)}
+          onSave={handleSaveDoc}
+          triggerToast={triggerToast}
+        />
+      )}
+
+      {/* 5. MODAL XÁC NHẬN XÓA */}
       <ConfirmModal
         isOpen={confirmConfig.isOpen}
-        onClose={() => setConfirmConfig({ ...confirmConfig, isOpen: false })}
-        onConfirm={confirmConfig.onConfirm}
         title={confirmConfig.title}
         message={confirmConfig.message}
+        onConfirm={confirmConfig.onConfirm}
+        onClose={() => setConfirmConfig(prev => ({ ...prev, isOpen: false }))}
         isDestructive={confirmConfig.isDestructive}
         confirmText={confirmConfig.confirmText}
       />
-      <Toast show={toastState.show} message={toastState.message} type={toastState.type} />
 
-      {fileViewerUrls && (
-        <Modal
-          isOpen={true}
-          onClose={() => setFileViewerUrls(null)}
-          title="Tài liệu đính kèm"
-          size="full"
-          defaultMaximized={true}
-          icon="description"
-        >
-          <div className="flex flex-col space-y-4 flex-1 h-full min-h-0">
-            {fileViewerUrls.map((url, index) => (
-              <FileViewerItem key={index} url={url} index={index} />
-            ))}
-          </div>
-        </Modal>
-      )}
+      {/* 6. TOAST THÔNG BÁO */}
+      <Toast
+        show={toastState.show}
+        message={toastState.message}
+        type={toastState.type}
+        onClose={() => setToastState(prev => ({ ...prev, show: false }))}
+      />
     </div>
-      
-    </>
   );
 };

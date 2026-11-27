@@ -1040,9 +1040,25 @@ export interface DocumentTrack {
   paymentStatus: string;
   isCompleted: boolean;
   notes?: string;
-  dueDate?: string; // Ngày hẹn trả / hạn nộp hồ sơ
+  dueDate?: string | null; // Hạn thanh toán / Hạn phải thu (cho phép null nếu chưa xác định)
   remindDays?: number; // Số ngày nhắc trước hạn (VD: 3, 5, 7)
   fileUrls?: string[];
+
+  // === Mở rộng hỗ trợ Hồ sơ đầu vào & Hồ sơ đầu ra ===
+  flowType?: 'input' | 'output'; // 'input': Hồ sơ đầu vào, 'output': Hồ sơ đầu ra
+  subType?: string; // Báo giá, Hợp đồng, Đơn đặt hàng, Biên bản nghiệm thu, Hóa đơn VAT, Đề nghị thanh toán...
+  beforeTaxAmount?: number; // Giá trị trước thuế
+  vatRate?: number; // % VAT (0, 8, 10, v.v.)
+  vatAmount?: number; // Tiền VAT
+  totalAmount?: number; // Tổng tiền đã gồm VAT (= contractValue)
+  paidAmount?: number; // Đã thanh toán (đầu vào) hoặc Đã thu (đầu ra)
+  remainingAmount?: number; // Còn phải trả (đầu vào) hoặc Còn phải thu (đầu ra)
+  acceptedAmount?: number; // Giá trị đã nghiệm thu (đầu ra)
+  invoiceNo?: string; // Số hóa đơn VAT / chứng từ
+  invoiceDate?: string | null; // Ngày hóa đơn / chứng từ
+  actualPaymentDate?: string | null; // Ngày thanh toán thực tế / Ngày nhận tiền thực tế
+  paymentRefId?: string; // Liên kết Yêu cầu thanh toán / Chi phí / Đơn mua hàng / Hợp đồng
+  
   /** Thời điểm hồ sơ được tạo, không thay đổi khi hồ sơ được chỉnh sửa. */
   createdAt?: string;
   createdById?: string;
