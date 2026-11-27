@@ -1,5 +1,15 @@
 # Changelog
 
+## v3.9.17 (2026-11-27)
+
+- Khắc phục chấm công trên Desktop / Máy tính bàn không có module GPS:
+  - Tự động nhận diện môi trường Desktop / LAN khi gặp lỗi `POSITION_UNAVAILABLE` hoặc `TIMEOUT`.
+  - Tự động lấy vị trí qua IP Geolocation hoặc fallback nhanh về vị trí Văn phòng công ty.
+  - Bổ sung nút "Dùng vị trí Văn phòng (Desktop)" trực tiếp trong hộp thoại chấm công.
+- Ẩn hoàn toàn thẻ hệ thống kỹ thuật `[ASSIGNED_USERS:...]` khỏi lịch sử trao đổi thảo luận và ghi chú công việc.
+- Khắc phục lỗi build APK Android trên GitHub Actions (429 Too Many Requests từ Apache Maven):
+  - Bổ sung mirror `https://plugins.gradle.org/m2/` và cơ chế auto-retry khi tải dependencies.
+
 ## v3.9.16 (2026-11-27)
 
 - Quản lý kho, vật tư & tài sản liên kết nhân sự và dự án:

@@ -857,6 +857,41 @@ export const AttendancePage: React.FC = () => {
     }
   };
 
+  const applyGpsCoordinates = (lat: number, lng: number) => {
+    // Ưu tiên đối chiếu với dự án Văn phòng (OFFICE) hoặc dự án đầu tiên có tọa độ
+    const officeProj = projects.find(p => (p.code || '').toUpperCase() === 'OFFICE' && p.latitude !== undefined && p.longitude !== undefined)
+      || projects.find(p => (p.name || '').toLowerCase().includes('văn phòng') && p.latitude !== undefined && p.longitude !== undefined);
+
+    let distanceMeters = 0;
+    let isWithinRadius = true;
+    let locationName = 'Vị trí hiện tại';
+
+    if (officeProj && officeProj.latitude !== undefined && officeProj.longitude !== undefined) {
+      distanceMeters = calculateDistanceMeters(lat, lng, officeProj.latitude, officeProj.longitude);
+      isWithinRadius = distanceMeters <= (officeProj.radiusMeters || 500);
+      locationName = officeProj.name || 'Văn phòng';
+    } else {
+      const nearest = findNearestLocation(lat, lng, attendanceConfig.locations);
+      distanceMeters = nearest.distanceMeters;
+      isWithinRadius = nearest.isWithinRadius;
+      locationName = nearest.nearestLocation?.name || 'Vị trí hiện tại';
+    }
+
+    setGpsData({
+      lat,
+      lng,
+      distanceMeters,
+      locationName,
+      isWithinRadius,
+    });
+
+    // Nếu ở xa văn phòng (> 500m) và cho phép làm việc ngoài văn phòng, tự động chuyển sang "Tại công trình / Dự án"
+    if (distanceMeters > 500 && attendanceConfig.allowFieldWork !== false) {
+      setWorkLocationType(prev => prev === 'office' ? 'field' : prev);
+    }
+    setIsGpsScanning(false);
+  };
+
   const handleTriggerGpsScan = async () => {
     if (typeof window === 'undefined') return;
 
@@ -864,38 +899,7 @@ export const AttendancePage: React.FC = () => {
     setGpsError(null);
 
     const onGpsSuccessData = (lat: number, lng: number) => {
-      // Ưu tiên đối chiếu với dự án Văn phòng (OFFICE) hoặc dự án đầu tiên có tọa độ
-      const officeProj = projects.find(p => (p.code || '').toUpperCase() === 'OFFICE' && p.latitude !== undefined && p.longitude !== undefined)
-        || projects.find(p => (p.name || '').toLowerCase().includes('văn phòng') && p.latitude !== undefined && p.longitude !== undefined);
-
-      let distanceMeters = 0;
-      let isWithinRadius = true;
-      let locationName = 'Vị trí hiện tại';
-
-      if (officeProj && officeProj.latitude !== undefined && officeProj.longitude !== undefined) {
-        distanceMeters = calculateDistanceMeters(lat, lng, officeProj.latitude, officeProj.longitude);
-        isWithinRadius = distanceMeters <= (officeProj.radiusMeters || 500);
-        locationName = officeProj.name || 'Văn phòng';
-      } else {
-        const nearest = findNearestLocation(lat, lng, attendanceConfig.locations);
-        distanceMeters = nearest.distanceMeters;
-        isWithinRadius = nearest.isWithinRadius;
-        locationName = nearest.nearestLocation?.name || 'Vị trí hiện tại';
-      }
-
-      setGpsData({
-        lat,
-        lng,
-        distanceMeters,
-        locationName,
-        isWithinRadius,
-      });
-
-      // Nếu ở xa văn phòng (> 500m) và cho phép làm việc ngoài văn phòng, tự động chuyển sang "Tại công trình / Dự án"
-      if (distanceMeters > 500 && attendanceConfig.allowFieldWork !== false) {
-        setWorkLocationType(prev => prev === 'office' ? 'field' : prev);
-      }
-      setIsGpsScanning(false);
+      applyGpsCoordinates(lat, lng);
     };
 
     // 1. NẾU ĐANG CHẠY TRÊN NATIVE (Android APK / iOS app qua Capacitor)
@@ -972,12 +976,45 @@ export const AttendancePage: React.FC = () => {
       return errorMsg;
     };
 
-    const onGpsError = (err: GeolocationPositionError) => {
-      // Nếu lỗi timeout hoặc unavailable, thử fallback độ chính xác thấp
+    const onGpsError = async (err: GeolocationPositionError) => {
+      // Nếu lỗi timeout hoặc unavailable trên Desktop / Máy tính bàn không có chip GPS
+      const isDesktop = !Capacitor.isNativePlatform() && (Boolean((window as any).electronAPI) || !('ontouchstart' in window));
+
+      if (isDesktop && (err.code === err.POSITION_UNAVAILABLE || err.code === err.TIMEOUT)) {
+        console.warn('Desktop lacks hardware GPS, attempting IP geolocation fallback...', err);
+        try {
+          const res = await fetch('https://ipapi.co/json/', { signal: AbortSignal.timeout(4000) });
+          if (res.ok) {
+            const data = await res.json();
+            if (data && typeof data.latitude === 'number' && typeof data.longitude === 'number') {
+              onGpsSuccessData(data.latitude, data.longitude);
+              return;
+            }
+          }
+        } catch (ipErr) {
+          console.warn('IP geolocation failed, falling back to office location...', ipErr);
+        }
+
+        // Nếu IP geo không khả dụng hoặc bị chặn, fallback về tọa độ Văn phòng công ty
+        const officeProj = projects.find(p => p.code === 'OFFICE' || p.code === 'VP' || p.name?.toLowerCase().includes('văn phòng'));
+        const fallbackLat = officeProj?.latitude || 10.7769; // Tọa độ mặc định công ty
+        const fallbackLng = officeProj?.longitude || 106.7009;
+        onGpsSuccessData(fallbackLat, fallbackLng);
+        return;
+      }
+
+      // Nếu lỗi timeout hoặc unavailable trên thiết bị khác, thử fallback độ chính xác thấp
       if (err.code !== err.PERMISSION_DENIED) {
         navigator.geolocation.getCurrentPosition(
           onGpsSuccess,
-          (fallbackErr) => {
+          async (fallbackErr) => {
+            if (isDesktop && (fallbackErr.code === fallbackErr.POSITION_UNAVAILABLE || fallbackErr.code === fallbackErr.TIMEOUT)) {
+              const officeProj = projects.find(p => p.code === 'OFFICE' || p.code === 'VP' || p.name?.toLowerCase().includes('văn phòng'));
+              const fallbackLat = officeProj?.latitude || 10.7769;
+              const fallbackLng = officeProj?.longitude || 106.7009;
+              onGpsSuccessData(fallbackLat, fallbackLng);
+              return;
+            }
             setIsGpsScanning(false);
             setGpsError(formatGpsError(fallbackErr));
           },
@@ -3884,6 +3921,21 @@ export const AttendancePage: React.FC = () => {
                     </div>
                   </div>
                   <div className="flex items-center justify-end gap-2 pt-1 border-t border-amber-200/60">
+                    {(!Capacitor.isNativePlatform() && (Boolean((window as any).electronAPI) || !('ontouchstart' in window))) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const officeProj = projects.find(p => p.code === 'OFFICE' || p.code === 'VP' || p.name?.toLowerCase().includes('văn phòng'));
+                          const fallbackLat = officeProj?.latitude || 10.7769;
+                          const fallbackLng = officeProj?.longitude || 106.7009;
+                          applyGpsCoordinates(fallbackLat, fallbackLng);
+                        }}
+                        className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 rounded-md font-semibold text-xs flex items-center gap-1 cursor-pointer transition shadow-2xs"
+                      >
+                        <span className="material-symbols-outlined text-[15px]">desktop_windows</span>
+                        <span>Dùng vị trí Văn phòng (Desktop)</span>
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={handleTriggerGpsScan}

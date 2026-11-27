@@ -74,6 +74,7 @@ export const parseTaskDiscussions = (notes?: string, issue?: string): TaskDiscus
     // Nếu không có [THREAD:...], chỉ lấy clean baseNotes nếu thực sự có ghi chú người dùng nhập
     const baseNotes = (threadIdx !== -1 ? notes.slice(0, threadIdx) : notes)
       .replace(/\[THREAD:[\s\S]*$/gi, '')
+      .replace(/\[ASSIGNED_USERS:[^\]]*\]/gi, '')
       .replace(/\[FOLLOWERS:[^\]]*\]/gi, '')
       .replace(/\[ASSIGNER:[^\]]*\]/gi, '')
       .replace(/\[tech-status:[^\]]*\]/gi, '')
@@ -92,12 +93,12 @@ export const parseTaskDiscussions = (notes?: string, issue?: string): TaskDiscus
       .replace(/\[DUE_DATE:[^\]]*\]/gi, '')
       .split('|')
       .map(s => s.trim())
-      .filter(s => Boolean(s) && !s.startsWith('{') && !s.includes('"senderId"') && !s.includes('[FOLLOWERS:') && !s.includes('[ASSIGNER:') && !s.includes('[START_DATE:') && !s.includes('[DUE_DATE:') && !s.includes('[tech-status:'))
+      .filter(s => Boolean(s) && !s.startsWith('{') && !s.includes('"senderId"') && !s.includes('[ASSIGNED_USERS:') && !s.includes('[FOLLOWERS:') && !s.includes('[ASSIGNER:') && !s.includes('[START_DATE:') && !s.includes('[DUE_DATE:') && !s.includes('[tech-status:'))
       .join(' | ')
       .trim();
 
     // Chỉ thêm nếu có nội dung ghi chú người dùng thực sự
-    if (baseNotes && baseNotes !== ']' && !baseNotes.startsWith('[FOLLOWERS:') && !baseNotes.startsWith('[ASSIGNER:') && !baseNotes.startsWith('[START_DATE:') && !baseNotes.startsWith('[DUE_DATE:')) {
+    if (baseNotes && baseNotes !== ']' && !baseNotes.startsWith('[ASSIGNED_USERS:') && !baseNotes.startsWith('[FOLLOWERS:') && !baseNotes.startsWith('[ASSIGNER:') && !baseNotes.startsWith('[START_DATE:') && !baseNotes.startsWith('[DUE_DATE:')) {
       result.push({
         id: 'legacy_note',
         senderName: 'Người giao việc',
@@ -166,9 +167,22 @@ export const appendTaskDiscussion = (
  */
 export const stripDiscussionThread = (notes?: string | null): string => {
   if (!notes || typeof notes !== 'string') return '';
-  let str = notes.replace(/\[FOLLOWERS:[^\]]*\]/gi, '').replace(/\[ASSIGNER:[^\]]*\]/gi, '').replace(/\[START_DATE:[^\]]*\]/gi, '').replace(/\[DUE_DATE:[^\]]*\]/gi, '');
+  let str = notes
+    .replace(/\[ASSIGNED_USERS:[^\]]*\]/gi, '')
+    .replace(/\[FOLLOWERS:[^\]]*\]/gi, '')
+    .replace(/\[ASSIGNER:[^\]]*\]/gi, '')
+    .replace(/\[START_DATE:[^\]]*\]/gi, '')
+    .replace(/\[DUE_DATE:[^\]]*\]/gi, '');
   const idx = str.indexOf('[THREAD:');
-  if (idx === -1) return str.replace(/\[FOLLOWERS:[^\]]*\]/gi, '').replace(/\[ASSIGNER:[^\]]*\]/gi, '').replace(/\[START_DATE:[^\]]*\]/gi, '').replace(/\[DUE_DATE:[^\]]*\]/gi, '').trim();
+  if (idx === -1) {
+    return str
+      .replace(/\[ASSIGNED_USERS:[^\]]*\]/gi, '')
+      .replace(/\[FOLLOWERS:[^\]]*\]/gi, '')
+      .replace(/\[ASSIGNER:[^\]]*\]/gi, '')
+      .replace(/\[START_DATE:[^\]]*\]/gi, '')
+      .replace(/\[DUE_DATE:[^\]]*\]/gi, '')
+      .trim();
+  }
   
   const before = str.slice(0, idx).trim();
   const threadStr = str.slice(idx);
@@ -206,7 +220,14 @@ export const stripDiscussionThread = (notes?: string | null): string => {
   
   const after = endIdx !== -1 ? threadStr.slice(endIdx + 1).trim() : '';
   const result = [before, after].filter(Boolean).join(' ').trim();
-  return result.replace(/\[THREAD:[\s\S]*$/gi, '').replace(/\[FOLLOWERS:[^\]]*\]/gi, '').replace(/\[ASSIGNER:[^\]]*\]/gi, '').replace(/\[START_DATE:[^\]]*\]/gi, '').replace(/\[DUE_DATE:[^\]]*\]/gi, '').trim();
+  return result
+    .replace(/\[THREAD:[\s\S]*$/gi, '')
+    .replace(/\[ASSIGNED_USERS:[^\]]*\]/gi, '')
+    .replace(/\[FOLLOWERS:[^\]]*\]/gi, '')
+    .replace(/\[ASSIGNER:[^\]]*\]/gi, '')
+    .replace(/\[START_DATE:[^\]]*\]/gi, '')
+    .replace(/\[DUE_DATE:[^\]]*\]/gi, '')
+    .trim();
 };
 
 /**
