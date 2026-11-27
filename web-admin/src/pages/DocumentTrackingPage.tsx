@@ -63,7 +63,31 @@ export const DocumentTrackingPage: React.FC = () => {
   }, [resolvedProjectCode]);
 
   // Cấu trúc 3 TAB CHUẨN: 'overview' | 'input' | 'output'
-  const [activeMainTab, setActiveMainTab] = useState<'overview' | 'input' | 'output'>('overview');
+  const [activeMainTab, setActiveMainTab] = useState<'overview' | 'input' | 'output'>(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam === 'input' || tabParam === 'output') return tabParam;
+    return 'overview';
+  });
+
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam === 'input' || tabParam === 'output') {
+      setActiveMainTab(tabParam);
+    } else if (tabParam === 'overview') {
+      setActiveMainTab('overview');
+    }
+  }, [searchParams]);
+
+  const handleSelectMainTab = (tab: 'overview' | 'input' | 'output') => {
+    setActiveMainTab(tab);
+    const nextParams = new URLSearchParams(searchParams);
+    if (tab === 'overview') {
+      nextParams.delete('tab');
+    } else {
+      nextParams.set('tab', tab);
+    }
+    setSearchParams(nextParams, { replace: true });
+  };
 
   // Modal tạo / sửa
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -400,7 +424,7 @@ export const DocumentTrackingPage: React.FC = () => {
           {/* Tab 1: Tổng quan */}
           <button
             type="button"
-            onClick={() => setActiveMainTab('overview')}
+            onClick={() => handleSelectMainTab('overview')}
             className={`py-2.5 px-3.5 text-xs font-bold border-b-2 transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
               activeMainTab === 'overview'
                 ? 'border-primary text-primary'
@@ -414,7 +438,7 @@ export const DocumentTrackingPage: React.FC = () => {
           {/* Tab 2: Hồ sơ đầu vào */}
           <button
             type="button"
-            onClick={() => setActiveMainTab('input')}
+            onClick={() => handleSelectMainTab('input')}
             className={`py-2.5 px-3.5 text-xs font-bold border-b-2 transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
               activeMainTab === 'input'
                 ? 'border-rose-600 text-rose-700 bg-rose-50/40'
@@ -431,7 +455,7 @@ export const DocumentTrackingPage: React.FC = () => {
           {/* Tab 3: Hồ sơ đầu ra */}
           <button
             type="button"
-            onClick={() => setActiveMainTab('output')}
+            onClick={() => handleSelectMainTab('output')}
             className={`py-2.5 px-3.5 text-xs font-bold border-b-2 transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
               activeMainTab === 'output'
                 ? 'border-emerald-600 text-emerald-700 bg-emerald-50/40'
@@ -458,7 +482,7 @@ export const DocumentTrackingPage: React.FC = () => {
           <DocumentOverviewTab
             inputDocs={inputDocs}
             outputDocs={outputDocs}
-            onSelectTab={(tab) => setActiveMainTab(tab)}
+            onSelectTab={(tab) => handleSelectMainTab(tab)}
             onViewDetail={handleViewDetailDoc}
           />
         )}

@@ -140,6 +140,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
     if (location.pathname.includes('/inventory')) {
       setOpenSubMenus(prev => ({ ...prev, 'Kho Dự án': true }));
     }
+    if (location.pathname.includes('/document-tracking') || location.pathname.includes('/documents')) {
+      setOpenSubMenus(prev => ({ ...prev, 'Quản lý hồ sơ': true, 'Hồ sơ': true }));
+    }
   }, [location.pathname]);
 
   const toggleGroup = (title: string) => {
@@ -255,7 +258,41 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
             req: 'VIEW_FINANCE',
             children: costPlanSubItems
           },
-          { label: 'Hồ sơ', path: `/projects/${currentProject.id}/documents`, icon: 'file_present', req: 'VIEW_DOCUMENTS' },
+          { 
+            label: 'Hồ sơ', 
+            path: `/projects/${currentProject.id}/documents`, 
+            icon: 'file_present', 
+            req: 'VIEW_DOCUMENTS',
+            children: [
+              {
+                label: 'Tổng quan hồ sơ',
+                path: `/projects/${currentProject.id}/documents?tab=overview`,
+                icon: 'dashboard',
+                isActive: (pathname: string, search: string) => {
+                  const sp = new URLSearchParams(search);
+                  return pathname.includes('/documents') && (sp.get('tab') === 'overview' || !sp.get('tab'));
+                }
+              },
+              {
+                label: 'Hồ sơ đầu vào',
+                path: `/projects/${currentProject.id}/documents?tab=input`,
+                icon: 'upload_file',
+                isActive: (pathname: string, search: string) => {
+                  const sp = new URLSearchParams(search);
+                  return pathname.includes('/documents') && sp.get('tab') === 'input';
+                }
+              },
+              {
+                label: 'Hồ sơ đầu ra',
+                path: `/projects/${currentProject.id}/documents?tab=output`,
+                icon: 'download_for_offline',
+                isActive: (pathname: string, search: string) => {
+                  const sp = new URLSearchParams(search);
+                  return pathname.includes('/documents') && sp.get('tab') === 'output';
+                }
+              }
+            ]
+          },
           { label: 'Thư viện', path: `/projects/${currentProject.id}/diagram`, icon: 'photo_library', req: 'VIEW_PROJECT_DIAGRAM' },
           { 
             label: 'Kho Dự án', 
@@ -449,6 +486,36 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
       }
     ];
 
+    const documentSubItems = [
+      {
+        label: 'Tổng quan',
+        path: '/document-tracking?tab=overview',
+        icon: 'dashboard',
+        isActive: (pathname: string, search: string) => {
+          const sp = new URLSearchParams(search);
+          return pathname === '/document-tracking' && (sp.get('tab') === 'overview' || !sp.get('tab'));
+        }
+      },
+      {
+        label: 'Hồ sơ đầu vào',
+        path: '/document-tracking?tab=input',
+        icon: 'upload_file',
+        isActive: (pathname: string, search: string) => {
+          const sp = new URLSearchParams(search);
+          return pathname === '/document-tracking' && sp.get('tab') === 'input';
+        }
+      },
+      {
+        label: 'Hồ sơ đầu ra',
+        path: '/document-tracking?tab=output',
+        icon: 'download_for_offline',
+        isActive: (pathname: string, search: string) => {
+          const sp = new URLSearchParams(search);
+          return pathname === '/document-tracking' && sp.get('tab') === 'output';
+        }
+      }
+    ];
+
     const mainItems = [
       { label: 'Tổng quan', path: '/dashboard', icon: 'analytics', req: 'VIEW_PROJECTS' },
       { 
@@ -465,7 +532,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
         req: 'VIEW_TASKS',
         children: taskSubItems
       },
-      { label: 'Quản lý hồ sơ', path: '/document-tracking', icon: 'folder_managed', req: 'VIEW_DOCUMENTS' },
+      { 
+        label: 'Quản lý hồ sơ', 
+        path: '/document-tracking', 
+        icon: 'folder_managed', 
+        req: 'VIEW_DOCUMENTS',
+        children: documentSubItems
+      },
       { 
         label: 'Tổng kho', 
         path: '/materials?tab=overview', 
@@ -566,7 +639,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
                   const isCostPlanSection = (item.label === 'Vật tư & Chi phí' || item.path.includes('/cost-plan')) && location.pathname.includes('/cost-plan');
                   const isInventorySection = (item.label === 'Kho Dự án' || item.path.includes('/inventory')) && location.pathname.includes('/inventory');
                   const isPlanSection = (item.label === 'Kế hoạch' || item.path.includes('/plan')) && location.pathname.includes('/plan');
-                  const isParentActive = isTaskSection || isAttendanceSection || isProjectsSection || isMaterialsSection || isCostPlanSection || isInventorySection || isPlanSection;
+                  const isDocumentSection = (item.label === 'Quản lý hồ sơ' || item.label === 'Hồ sơ' || item.path.includes('/document-tracking') || item.path.includes('/documents')) && (location.pathname.includes('/document-tracking') || location.pathname.includes('/documents'));
+                  const isParentActive = isTaskSection || isAttendanceSection || isProjectsSection || isMaterialsSection || isCostPlanSection || isInventorySection || isPlanSection || isDocumentSection;
                   const isSubOpen = openSubMenus[item.label] ?? true;
                   
                   return (
