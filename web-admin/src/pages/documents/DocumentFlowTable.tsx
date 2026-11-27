@@ -15,6 +15,7 @@ import { ColumnResizeHandle } from '@/components/common/ColumnResizeHandle';
 import { useTableColumnResize } from '@/services/useTableColumnResize';
 import { FileViewerItem } from '@/components/common/FileViewerItem';
 import { AuditInfoCell } from '@/components/common/AuditInfoCell';
+import { Modal } from '@/components/common/Modal';
 
 interface DocumentFlowTableProps {
   flow: DocumentFlow;
@@ -49,6 +50,8 @@ export const DocumentFlowTable: React.FC<DocumentFlowTableProps> = ({
   const [filterDueCategory, setFilterDueCategory] = useState<'all' | 'no_due' | 'warning' | 'overdue' | 'completed'>('all');
   const [filterDateFrom, setFilterDateFrom] = useState('');
   const [filterDateTo, setFilterDateTo] = useState('');
+  const [filePreviewDoc, setFilePreviewDoc] = useState<DocumentTrack | null>(null);
+  const [activeFileIndex, setActiveFileIndex] = useState(0);
 
   // Độ rộng cột
   const defaultColWidths = useMemo(() => ({
@@ -512,10 +515,19 @@ export const DocumentFlowTable: React.FC<DocumentFlowTableProps> = ({
                       {/* File đính kèm */}
                       <td className="p-2.5 text-center">
                         {doc.fileUrls && doc.fileUrls.length > 0 ? (
-                          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-blue-50 text-blue-700 font-bold rounded text-[11px]">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setActiveFileIndex(0);
+                              setFilePreviewDoc(doc);
+                            }}
+                            className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-blue-50 text-blue-700 font-bold rounded text-[11px] hover:bg-blue-100 hover:text-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-300 cursor-pointer transition-colors"
+                            title={`Xem ${doc.fileUrls.length} tệp đính kèm`}
+                            aria-label={`Xem ${doc.fileUrls.length} tệp đính kèm của ${doc.contractName || doc.contractNo || 'hồ sơ'}`}
+                          >
                             <span className="material-symbols-outlined text-[13px]">attach_file</span>
                             {doc.fileUrls.length}
-                          </span>
+                          </button>
                         ) : (
                           <span className="text-slate-300">-</span>
                         )}
@@ -590,6 +602,44 @@ export const DocumentFlowTable: React.FC<DocumentFlowTableProps> = ({
           </table>
         </div>
       </div>
+
+      <Modal
+        isOpen={!!filePreviewDoc}
+        onClose={() => setFilePreviewDoc(null)}
+        title={`Tệp đính kèm${filePreviewDoc?.contractNo ? ` · ${filePreviewDoc.contractNo}` : ''}`}
+        size="full"
+        defaultMaximized={true}
+        icon="attach_file"
+      >
+        <div className="flex flex-col flex-1 min-h-0 gap-3">
+          {(filePreviewDoc?.fileUrls?.length || 0) > 1 && (
+            <div className="flex flex-wrap gap-2 shrink-0 border-b border-slate-200 pb-3">
+              {filePreviewDoc?.fileUrls?.map((url, index) => (
+                <button
+                  key={`${url}-${index}`}
+                  type="button"
+                  onClick={() => setActiveFileIndex(index)}
+                  className={`px-3 py-1.5 text-xs font-semibold border rounded-md transition-colors cursor-pointer ${
+                    activeFileIndex === index
+                      ? 'bg-primary text-white border-primary'
+                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                  }`}
+                >
+                  Tệp {index + 1}
+                </button>
+              ))}
+            </div>
+          )}
+          {filePreviewDoc?.fileUrls?.[activeFileIndex] && (
+            <div className="flex-1 min-h-0">
+              <FileViewerItem
+                url={filePreviewDoc.fileUrls[activeFileIndex]}
+                index={activeFileIndex}
+              />
+            </div>
+          )}
+        </div>
+      </Modal>
     </div>
   );
 };
