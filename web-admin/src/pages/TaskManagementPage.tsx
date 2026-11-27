@@ -2980,7 +2980,7 @@ const hasSyncedRef = useRef(false);
               }
             }
           }}
-          className="w-full overflow-x-auto overflow-y-auto flex-1 custom-scrollbar"
+          className="w-full overflow-x-auto overflow-y-auto flex-1 table-scrollbar custom-scrollbar"
         >
           <table className="min-w-[1350px] w-full text-left border-collapse text-[11px] table-fixed" style={{ "--stt-width": `${maxSttWidth}px` } as React.CSSProperties}>
             <colgroup>

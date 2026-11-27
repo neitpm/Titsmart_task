@@ -1732,7 +1732,7 @@ export const MaterialTrackingPage: React.FC = () => {
 
         {activeTab === 'STOCK' && (
           <>
-            <PullToRefresh onRefresh={async () => { await fetchMaterials(projectId); }} className="overflow-auto custom-scrollbar flex-1 pb-16 md:pb-0">
+            <PullToRefresh onRefresh={async () => { await fetchMaterials(projectId); }} className="overflow-auto table-scrollbar custom-scrollbar flex-1 pb-16 md:pb-0">
               <table className="w-full text-left border-collapse table-fixed min-w-[1100px]">
                 <colgroup>
                   {!projectId && <col style={{ width: colWidths.col_project }} />}
@@ -1885,8 +1885,8 @@ export const MaterialTrackingPage: React.FC = () => {
         )}
 
         {activeTab === 'IMPORT' && (
-          <PullToRefresh onRefresh={async () => { await fetchMaterials(projectId); }} className="w-full overflow-auto custom-scrollbar flex-1 pb-16 md:pb-0">
-            <table className="w-full text-left border-collapse">
+          <PullToRefresh onRefresh={async () => { await fetchMaterials(projectId); }} className="w-full overflow-auto table-scrollbar custom-scrollbar flex-1 pb-16 md:pb-0">
+            <table className="w-full text-left border-collapse min-w-[950px]">
               <thead 
                 style={{ top: 0 }}
                 className="bg-slate-50 border-b border-slate-200 text-[10px] md:text-[11px] font-bold text-slate-500 uppercase tracking-wider sticky z-10 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05)] before:absolute before:inset-0 before:border-b before:border-slate-200"
@@ -1924,8 +1924,8 @@ export const MaterialTrackingPage: React.FC = () => {
         )}
 
         {activeTab === 'EXPORT' && (
-          <PullToRefresh onRefresh={async () => { await fetchMaterials(projectId); }} className="w-full overflow-auto custom-scrollbar flex-1 pb-16 md:pb-0">
-            <table className="w-full text-left border-collapse">
+          <PullToRefresh onRefresh={async () => { await fetchMaterials(projectId); }} className="w-full overflow-auto table-scrollbar custom-scrollbar flex-1 pb-16 md:pb-0">
+            <table className="w-full text-left border-collapse min-w-[950px]">
               <thead 
                 style={{ top: 0 }}
                 className="bg-slate-50 border-b border-slate-200 text-[10px] md:text-[11px] font-bold text-slate-500 uppercase tracking-wider sticky z-10 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05)] before:absolute before:inset-0 before:border-b before:border-slate-200"

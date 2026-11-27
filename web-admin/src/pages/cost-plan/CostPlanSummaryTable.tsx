@@ -336,7 +336,7 @@ export const CostPlanSummaryTable: React.FC<CostPlanSummaryTableProps> = ({
       {/* 3. CHẾ ĐỘ BẢNG DASHBOARD TỔNG THỂ TỪNG NHÂN SỰ (HIỂN THỊ TRỰC TIẾP KHÔNG CẦN BẤM MODAL) */}
       {viewMode === 'grid' && (
         <div className="border border-slate-200/90 rounded-xl overflow-hidden bg-white shadow-2xs">
-          <div className="overflow-x-auto custom-scrollbar">
+          <div className="overflow-x-auto table-scrollbar custom-scrollbar">
             <table className="w-full text-left border-collapse min-w-[700px] text-xs">
               <thead>
                 <tr className="bg-slate-100/90 border-b border-slate-200 text-[11px] font-bold text-slate-600 uppercase tracking-tight">

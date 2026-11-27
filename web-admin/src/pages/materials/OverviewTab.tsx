@@ -38,7 +38,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ materials, onEdit, onD
           <button type="button" onClick={() => { setSearchTerm(''); clearColumnFilters(); }} className="px-2 py-1.5 border border-slate-200 rounded-lg text-[11px] font-bold text-slate-500 hover:bg-slate-50">Xóa lọc</button>
         )}
       </div>
-      <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-240px)] custom-scrollbar">
+      <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-240px)] table-scrollbar custom-scrollbar">
         <table className="w-full min-w-[1240px] table-fixed text-left border-collapse">
           <thead className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase">
               <tr>

@@ -735,8 +735,8 @@ export const PaymentRequestTab: React.FC<PaymentRequestTabProps> = ({
       </StandardFilterToolbar>
 
       {/* ── 3. LIST TABLE ── */}
-      <div className="flex-1 overflow-auto bg-white custom-scrollbar">
-        <table className="w-full text-left border-collapse text-xs table-fixed">
+      <div className="flex-1 overflow-auto bg-white table-scrollbar custom-scrollbar min-h-0">
+        <table className="w-full text-left border-collapse text-xs table-fixed min-w-[1300px]">
           <colgroup>
             <col style={{ width: colWidths.col_code }} />
             <col style={{ width: colWidths.col_due_date }} />

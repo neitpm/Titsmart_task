@@ -833,7 +833,7 @@ export const DocumentTrackingPage: React.FC = () => {
                 }
               }
             }}
-            className="w-full flex-1 overflow-x-auto overflow-y-auto always-visible-scrollbar min-w-0 select-text"
+            className="w-full flex-1 overflow-x-auto overflow-y-auto table-scrollbar always-visible-scrollbar min-w-0 select-text"
           >
             <table className="w-full text-left border-collapse text-[11px] table-fixed min-w-[1950px]">
               <colgroup>

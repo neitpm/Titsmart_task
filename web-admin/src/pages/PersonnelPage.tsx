@@ -1125,7 +1125,8 @@ export const PersonnelPage: React.FC = () => {
 
             {/* 3. BẢNG GỌN (TABLE) - Danh sách nhân sự rút gọn */}
             {viewMode === 'table' && (
-              <table className="w-full text-[11px] sm:text-xs text-left border-collapse">
+              <div className="overflow-x-auto table-scrollbar custom-scrollbar">
+                <table className="w-full text-[11px] sm:text-xs text-left border-collapse min-w-[700px]">
                 <thead className="sticky top-0 z-20 bg-slate-50 text-slate-700 font-semibold text-[10px] sm:text-[11px] border-b border-slate-200">
                   <tr>
                     <th className="p-2 sm:p-2.5 bg-slate-50">Họ tên</th>
@@ -1165,11 +1166,12 @@ export const PersonnelPage: React.FC = () => {
                   })}
                 </tbody>
               </table>
+            </div>
             )}
 
             {/* 4. BẢNG CHI TIẾT (TABLE_DETAILED) - Đầy đủ thông tin, dự án, KPI, trạng thái */}
             {viewMode === 'table_detailed' && (
-              <div className="overflow-x-auto custom-scrollbar">
+              <div className="overflow-x-auto table-scrollbar custom-scrollbar">
                 <table className="w-full text-[11px] sm:text-xs text-left border-collapse table-fixed min-w-[1050px]">
                   <colgroup>
                     <col style={{ width: colWidths.col_name }} />

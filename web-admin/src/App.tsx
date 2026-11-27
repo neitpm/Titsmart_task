@@ -60,6 +60,11 @@ export const App: React.FC = () => {
   const companyName = useUIStore((s) => s.companyName) || 'TITSMART';
   const companySlogan = useUIStore((s) => s.companySlogan) || 'Project Manager';
   const fetchBrandingFromCloud = useUIStore((s) => s.fetchBrandingFromCloud);
+  const showTableHorizontalScrollbar = useUIStore((s) => s.showTableHorizontalScrollbar);
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-horizontal-scrollbar', showTableHorizontalScrollbar ? 'always' : 'auto');
+  }, [showTableHorizontalScrollbar]);
   const [loginStyle, setLoginStyle] = useState<'default' | 'variant'>(() => (localStorage.getItem('titsmart_login_style') as 'default' | 'variant') || 'default');
   const fetchProjects = useRealtimeStore(s => s.fetchProjects);
   const fetchTasks = useRealtimeStore(s => s.fetchTasks);

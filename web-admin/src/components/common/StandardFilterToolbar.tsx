@@ -75,8 +75,8 @@ export const StandardFilterToolbar: React.FC<StandardFilterToolbarProps> = ({
     <div
       className={`bg-white border-b border-slate-200 px-3 py-2 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-2 text-xs select-none ${className}`}
     >
-      {/* KHU VỰC BÊN TRÁI: CÁC BỘ LỌC NGHIỆP VỤ & NGÀY THÁNG */}
-      <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar pb-1 md:pb-0 flex-nowrap shrink">
+      {/* KHU VỰC BÊN TRÁI: CÁC BỘ LỌC NGHIỆP VỤ & NGÀY THÁNG (CÓ THANH CUỘN NGANG VỚI TAY KÉO RÕ RÀNG) */}
+      <div className="flex items-center gap-2 overflow-x-auto table-scrollbar custom-scrollbar pb-1.5 pt-0.5 flex-nowrap shrink min-w-0">
         {/* Biểu tượng Lọc + Tổng số kết quả */}
         <div className="flex items-center gap-1 text-slate-500 shrink-0 font-medium mr-0.5">
           <span className="material-symbols-outlined text-[16px] text-slate-400">filter_list</span>

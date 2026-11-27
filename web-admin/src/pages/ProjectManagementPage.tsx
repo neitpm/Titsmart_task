@@ -1851,7 +1851,7 @@ export const ProjectManagementPage: React.FC = () => {
             {/* Chế độ xem 2: Bảng Danh Sách Gọn (Compact Table View) - Tối ưu 500+ dự án */}
             {viewMode === 'table' && (
               <div className="bg-white border-b border-slate-200 overflow-hidden shadow-xs">
-                <div className="overflow-x-auto custom-scrollbar">
+                <div className="overflow-x-auto table-scrollbar custom-scrollbar">
                   <table className="w-full text-left border-collapse text-xs min-w-[950px]">
                     <thead className="bg-slate-50 text-slate-600 font-bold text-[11px] uppercase border-b border-slate-200 sticky top-0 z-10">
                       <tr>
@@ -2048,7 +2048,7 @@ export const ProjectManagementPage: React.FC = () => {
             {/* Chế độ xem 4: Dạng Bảng Chi Tiết (Detailed Table) */}
             {viewMode === 'table_detailed' && (
               <div className="bg-white border-b border-slate-200 overflow-hidden shadow-xs">
-                <div className="overflow-x-auto custom-scrollbar">
+                <div className="overflow-x-auto table-scrollbar custom-scrollbar">
                   <table className="w-full text-left border-collapse text-xs min-w-[1200px] table-fixed">
                     <colgroup>
                       <col style={{ width: colWidths.col_stt }} />

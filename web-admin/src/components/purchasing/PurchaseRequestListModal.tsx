@@ -109,7 +109,7 @@ export const PurchaseRequestListModal: React.FC<PurchaseRequestListModalProps> =
         </div>
 
         {/* Bảng danh sách yêu cầu */}
-        <div className="border border-slate-200 rounded-xl overflow-x-auto max-h-[60vh] custom-scrollbar">
+        <div className="border border-slate-200 rounded-xl overflow-x-auto max-h-[60vh] table-scrollbar custom-scrollbar">
           <table className="w-full text-xs text-left">
             <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
               <tr>

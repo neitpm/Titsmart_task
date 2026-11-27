@@ -93,7 +93,7 @@ export const LaborTab: React.FC<LaborTabProps> = ({
         </div>
       </div>
 
-      <div className="w-full max-w-full overflow-x-auto custom-scrollbar flex-1">
+      <div className="w-full max-w-full overflow-x-auto table-scrollbar custom-scrollbar flex-1">
         <table className="w-max text-left border-collapse table-fixed min-w-[1200px]">
           <colgroup>
             <col style={{ width: colWidths.col_date }} />

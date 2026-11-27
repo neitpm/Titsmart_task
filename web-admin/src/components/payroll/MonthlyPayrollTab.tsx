@@ -729,8 +729,8 @@ export const MonthlyPayrollTab: React.FC<MonthlyPayrollTabProps> = ({
           </div>
 
           {/* BẢNG TỔNG HỢP TOÀN BỘ NHÂN SỰ */}
-          <div className="bg-white overflow-x-auto">
-            <div className="overflow-x-auto">
+          <div className="bg-white overflow-x-auto table-scrollbar custom-scrollbar">
+            <div className="overflow-x-auto table-scrollbar custom-scrollbar">
               <table className="w-full text-xs text-left table-fixed min-w-[1180px]">
                 <colgroup>
                   <col style={{ width: colWidths.col_stt }} />

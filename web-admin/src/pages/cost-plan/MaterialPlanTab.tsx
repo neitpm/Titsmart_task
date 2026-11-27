@@ -533,7 +533,7 @@ export const MaterialPlanTab: React.FC<MaterialPlanTabProps> = ({
         </div>
       </div>
 
-      <div className="w-full max-w-full min-h-0 flex-1 overflow-x-auto custom-scrollbar">
+      <div className="w-full max-w-full min-h-0 flex-1 overflow-x-auto table-scrollbar custom-scrollbar">
         <table className="w-full table-fixed min-w-[1150px] border-collapse text-left text-xs" style={{ "--stt-width": `${maxSttWidth}px` } as React.CSSProperties}>
           <colgroup>
             <col style={{ width: colWidths.col_stt }} />

@@ -226,6 +226,8 @@ export const SettingsPage: React.FC = () => {
     enableTableColumnResize,
     setEnableTableColumnResize,
     resetTableColumnWidths,
+    showTableHorizontalScrollbar,
+    setShowTableHorizontalScrollbar,
     setAppViewMode,
     setTablePaginationMode,
     setTablePageSize,
@@ -1660,6 +1662,45 @@ export const SettingsPage: React.FC = () => {
                         <span
                           className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
                             enableTableColumnResize ? 'translate-x-5' : 'translate-x-0'
+                          }`}
+                        />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Tùy chọn 6: Hiển thị thanh cuộn ngang có tay kéo cho bảng dữ liệu */}
+                  <div className="flex items-center justify-between p-3.5 bg-slate-50/80 rounded-xl border border-slate-200 hover:border-slate-300 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <span className="material-symbols-outlined text-xl text-slate-600">swap_horiz</span>
+                      <div>
+                        <span className="text-xs font-bold text-slate-800 block">Hiển thị thanh cuộn ngang cho bảng dữ liệu</span>
+                        <span className="text-[11px] text-slate-500">
+                          {showTableHorizontalScrollbar
+                            ? 'Bật: Tất cả bảng dữ liệu và thanh lọc hiển thị thanh cuộn ngang có tay kéo rõ ràng, dễ cuộn và thao tác.'
+                            : 'Tắt: Ẩn thanh cuộn cố định, hỗ trợ cuộn linh hoạt bằng chuột, touchpad và cảm ứng.'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const nextVal = !showTableHorizontalScrollbar;
+                          setShowTableHorizontalScrollbar(nextVal);
+                          triggerToast(
+                            nextVal
+                              ? 'Đã BẬT thanh cuộn ngang cho toàn bộ bảng và thanh lọc'
+                              : 'Đã TẮT hiển thị thanh cuộn ngang cố định',
+                            'success'
+                          );
+                        }}
+                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                          showTableHorizontalScrollbar ? 'bg-primary' : 'bg-slate-300'
+                        }`}
+                      >
+                        <span
+                          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                            showTableHorizontalScrollbar ? 'translate-x-5' : 'translate-x-0'
                           }`}
                         />
                       </button>

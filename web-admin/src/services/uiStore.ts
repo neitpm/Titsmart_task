@@ -28,9 +28,11 @@ interface UIStoreState {
   tablePageSize: number;
   enableTableColumnResize: boolean;
   tableColumnWidths: Record<string, Record<string, number>>;
+  showTableHorizontalScrollbar: boolean;
   setEnableTableColumnResize: (val: boolean) => void;
   setTableColumnWidths: (tableId: string, widths: Record<string, number>) => void;
   resetTableColumnWidths: (tableId?: string) => void;
+  setShowTableHorizontalScrollbar: (val: boolean) => void;
   setAppViewMode: (val: UIStoreState['appViewMode']) => void;
   setTablePaginationMode: (val: 'infinite' | 'pagination') => void;
   setTablePageSize: (val: number) => void;
@@ -86,7 +88,9 @@ export const useUIStore = create<UIStoreState>()(
       appViewMode: 'grid',
       enableTableColumnResize: false,
       tableColumnWidths: {},
+      showTableHorizontalScrollbar: true,
       setEnableTableColumnResize: (val) => set({ enableTableColumnResize: val }),
+      setShowTableHorizontalScrollbar: (val) => set({ showTableHorizontalScrollbar: val }),
       setTableColumnWidths: (tableId, widths) =>
         set((state) => ({
           tableColumnWidths: {
@@ -193,6 +197,7 @@ export const useUIStore = create<UIStoreState>()(
         appViewMode: state.appViewMode,
         enableTableColumnResize: state.enableTableColumnResize,
         tableColumnWidths: state.tableColumnWidths,
+        showTableHorizontalScrollbar: state.showTableHorizontalScrollbar,
       }),
     }
   )

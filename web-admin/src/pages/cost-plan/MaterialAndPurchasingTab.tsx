@@ -1777,7 +1777,7 @@ export const MaterialAndPurchasingTab: React.FC<MaterialAndPurchasingTabProps> =
         onMouseLeave={handleMouseLeaveOrUp}
         onMouseUp={handleMouseLeaveOrUp}
         onMouseMove={handleMouseMove}
-        className={`w-full max-w-full min-h-0 flex-1 overflow-x-auto custom-scrollbar select-none ${isMouseDown ? 'cursor-grabbing' : 'cursor-grab'}`} 
+        className={`w-full max-w-full min-h-0 flex-1 overflow-x-auto table-scrollbar custom-scrollbar select-none ${isMouseDown ? 'cursor-grabbing' : 'cursor-grab'}`} 
         onScroll={(e) => {
           setIsScrolledHorizontally(e.currentTarget.scrollLeft > 10);
           if (tablePaginationMode === 'infinite') {

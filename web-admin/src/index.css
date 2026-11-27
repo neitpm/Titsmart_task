@@ -121,17 +121,118 @@
 
 .custom-scrollbar::-webkit-scrollbar {
   width: 6px;
-  height: 0px;
+  height: 9px;
 }
 .custom-scrollbar::-webkit-scrollbar:horizontal {
-  height: 6px;
+  height: 9px !important;
 }
 .custom-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
+  background: #f1f5f9;
+  border-radius: 9999px;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 10px;
+  background: #94a3b8;
+  border-radius: 9999px;
+  border: 1.5px solid #f1f5f9;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #0f294a;
+}
+
+/* ==========================================================================
+   TITSMART STANDARD HORIZONTAL & TABLE SCROLLBAR
+   Thanh cuộn ngang có tay kéo chuẩn TITSMART cho tất cả bảng dữ liệu & toolbar
+   ========================================================================== */
+
+.custom-scrollbar::-webkit-scrollbar:horizontal,
+.table-scrollbar::-webkit-scrollbar:horizontal,
+.table-hscroll::-webkit-scrollbar:horizontal,
+.overflow-x-auto::-webkit-scrollbar:horizontal,
+.always-visible-scrollbar::-webkit-scrollbar:horizontal {
+  height: 9px !important;
+  display: block !important;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track:horizontal,
+.table-scrollbar::-webkit-scrollbar-track:horizontal,
+.table-hscroll::-webkit-scrollbar-track:horizontal,
+.overflow-x-auto::-webkit-scrollbar-track:horizontal,
+.always-visible-scrollbar::-webkit-scrollbar-track:horizontal {
+  background: #f1f5f9 !important;
+  border-radius: 9999px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:horizontal,
+.table-scrollbar::-webkit-scrollbar-thumb:horizontal,
+.table-hscroll::-webkit-scrollbar-thumb:horizontal,
+.overflow-x-auto::-webkit-scrollbar-thumb:horizontal,
+.always-visible-scrollbar::-webkit-scrollbar-thumb:horizontal {
+  background: #94a3b8 !important;
+  border-radius: 9999px;
+  border: 1.5px solid #f1f5f9;
+  min-width: 40px;
+  transition: background 0.15s ease;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:horizontal:hover,
+.table-scrollbar::-webkit-scrollbar-thumb:horizontal:hover,
+.table-hscroll::-webkit-scrollbar-thumb:horizontal:hover,
+.overflow-x-auto::-webkit-scrollbar-thumb:horizontal:hover,
+.always-visible-scrollbar::-webkit-scrollbar-thumb:horizontal:hover {
+  background: #0f294a !important;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:horizontal:active,
+.table-scrollbar::-webkit-scrollbar-thumb:horizontal:active,
+.table-hscroll::-webkit-scrollbar-thumb:horizontal:active,
+.overflow-x-auto::-webkit-scrollbar-thumb:horizontal:active,
+.always-visible-scrollbar::-webkit-scrollbar-thumb:horizontal:active {
+  background: #0a1c33 !important;
+}
+
+.custom-scrollbar,
+.table-scrollbar,
+.table-hscroll,
+.overflow-x-auto,
+.always-visible-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #94a3b8 #f1f5f9;
+}
+
+/* Khi cài đặt bật (mặc định): tay kéo luôn hiện rõ ràng */
+html[data-horizontal-scrollbar="always"] .custom-scrollbar::-webkit-scrollbar:horizontal,
+html[data-horizontal-scrollbar="always"] .table-scrollbar::-webkit-scrollbar:horizontal,
+html[data-horizontal-scrollbar="always"] .table-hscroll::-webkit-scrollbar:horizontal,
+html[data-horizontal-scrollbar="always"] .overflow-x-auto::-webkit-scrollbar:horizontal {
+  height: 10px !important;
+  display: block !important;
+}
+
+html[data-horizontal-scrollbar="always"] .custom-scrollbar::-webkit-scrollbar-thumb:horizontal,
+html[data-horizontal-scrollbar="always"] .table-scrollbar::-webkit-scrollbar-thumb:horizontal,
+html[data-horizontal-scrollbar="always"] .table-hscroll::-webkit-scrollbar-thumb:horizontal,
+html[data-horizontal-scrollbar="always"] .overflow-x-auto::-webkit-scrollbar-thumb:horizontal {
+  background: #94a3b8 !important;
+}
+
+/* Khi cài đặt tắt: thanh mỏng hơn, hỗ trợ cuộn touchpad/Shift wheel */
+html[data-horizontal-scrollbar="auto"] .custom-scrollbar::-webkit-scrollbar:horizontal,
+html[data-horizontal-scrollbar="auto"] .table-scrollbar::-webkit-scrollbar:horizontal,
+html[data-horizontal-scrollbar="auto"] .table-hscroll::-webkit-scrollbar:horizontal,
+html[data-horizontal-scrollbar="auto"] .overflow-x-auto::-webkit-scrollbar:horizontal {
+  height: 5px !important;
+}
+html[data-horizontal-scrollbar="auto"] .custom-scrollbar::-webkit-scrollbar-thumb:horizontal,
+html[data-horizontal-scrollbar="auto"] .table-scrollbar::-webkit-scrollbar-thumb:horizontal,
+html[data-horizontal-scrollbar="auto"] .table-hscroll::-webkit-scrollbar-thumb:horizontal,
+html[data-horizontal-scrollbar="auto"] .overflow-x-auto::-webkit-scrollbar-thumb:horizontal {
+  background: rgba(148, 163, 184, 0.4) !important;
+}
+html[data-horizontal-scrollbar="auto"] .custom-scrollbar:hover::-webkit-scrollbar-thumb:horizontal,
+html[data-horizontal-scrollbar="auto"] .table-scrollbar:hover::-webkit-scrollbar-thumb:horizontal,
+html[data-horizontal-scrollbar="auto"] .table-hscroll:hover::-webkit-scrollbar-thumb:horizontal,
+html[data-horizontal-scrollbar="auto"] .overflow-x-auto:hover::-webkit-scrollbar-thumb:horizontal {
+  background: #94a3b8 !important;
 }
 
 .scrollbar-hide::-webkit-scrollbar,

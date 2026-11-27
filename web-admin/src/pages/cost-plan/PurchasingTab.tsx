@@ -508,7 +508,7 @@ export const PurchasingTab: React.FC<PurchasingTabProps> = ({
         </div>
       </div>
 
-      <div className="w-full max-w-full overflow-x-auto custom-scrollbar flex-1 min-h-0">
+      <div className="w-full max-w-full overflow-x-auto table-scrollbar custom-scrollbar flex-1 min-h-0">
         <table className="w-full table-fixed min-w-[1400px] border-collapse text-left text-xs" style={{ "--stt-width": `${maxSttWidth}px` } as React.CSSProperties}>
           <colgroup>
             <col style={{ width: colWidths.col_stt }} />

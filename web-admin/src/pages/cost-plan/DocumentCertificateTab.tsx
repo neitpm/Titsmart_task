@@ -613,7 +613,7 @@ export const DocumentCertificateTab: React.FC<DocumentCertificateTabProps> = ({
         </div>
       </div>
 
-      <div className="w-full overflow-x-auto custom-scrollbar flex-1 min-h-0">
+      <div className="w-full overflow-x-auto table-scrollbar custom-scrollbar flex-1 min-h-0">
         <table className="w-max min-w-full border-collapse text-left">
           <colgroup>
             <col className="w-10" /><col className="w-[180px]" /><col className="w-12" />

@@ -2170,7 +2170,8 @@ export const AttendancePage: React.FC = () => {
               ) : filteredLogs.length === 0 ? (
                 <div className="p-8 text-center text-slate-400 text-sm">Chưa có bản ghi chấm công nào.</div>
               ) : (
-                <table className="w-full text-left border-collapse text-xs table-fixed min-w-[900px]">
+                <div className="w-full overflow-x-auto table-scrollbar custom-scrollbar flex-1">
+                  <table className="w-full text-left border-collapse text-xs table-fixed min-w-[900px]">
                   <colgroup>
                     <col style={{ width: colWidths.col_user }} />
                     <col style={{ width: colWidths.col_shift }} />
@@ -2302,7 +2303,8 @@ export const AttendancePage: React.FC = () => {
                     ))}
                   </tbody>
                 </table>
-              )}
+              </div>
+            )}
             </PullToRefresh>
           </div>
         </div>
@@ -2612,7 +2614,7 @@ export const AttendancePage: React.FC = () => {
                 </div>
 
                 {/* Desktop View: Table */}
-                <div className="hidden md:block overflow-x-auto">
+                <div className="hidden md:block overflow-x-auto table-scrollbar custom-scrollbar">
                   <table className="w-full text-left border-collapse text-xs table-fixed min-w-[1310px]">
                     <colgroup>
                       <col style={{ width: leaveColWidths.col_emp }} />
@@ -2946,7 +2948,7 @@ export const AttendancePage: React.FC = () => {
                 </div>
 
                 {/* Desktop View Table: Full Width tràn viền giống Nghỉ phép */}
-                <div className="hidden md:block overflow-x-auto">
+                <div className="hidden md:block overflow-x-auto table-scrollbar custom-scrollbar">
                   <table className="w-full text-left border-collapse text-xs min-w-[900px]">
                     <thead>
                       <tr className="border-b border-slate-200 bg-slate-100/70 text-slate-600 font-bold uppercase sticky top-0 z-10 text-[10px]">
