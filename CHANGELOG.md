@@ -1,5 +1,15 @@
 # Changelog
 
+## v3.9.16 (2026-11-27)
+
+- Quản lý kho, vật tư & tài sản liên kết nhân sự và dự án:
+  - Nâng cấp modal Xuất kho: cho phép chọn nhân viên tiếp nhận chịu trách nhiệm từ danh sách công ty.
+  - Phân loại tài sản/thiết bị cấp phát (thuộc quyền sở hữu công ty, tạm giao nhân sự/dự án sử dụng).
+  - Thêm tab "Cấp phát tài sản" (`/materials?tab=assets`) theo dõi chi tiết thiết bị đang ở đâu, ai chịu trách nhiệm.
+  - Bổ sung tính năng "Hoàn trả về kho" (tự động tạo phiếu nhập kho thu hồi) và "Bàn giao nhân sự khác".
+  - Hiển thị danh mục tài sản/thiết bị đang nắm giữ và quyền sở hữu trong popup Chi tiết nhân sự (`PersonnelPage`).
+- Speed test & verify build thành công.
+
 ## v3.9.15 (2026-11-27)
 
 - Fix GPS Check-in trên thiết bị di động (Native APK & Web):
