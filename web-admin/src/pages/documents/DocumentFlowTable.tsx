@@ -26,6 +26,7 @@ interface DocumentFlowTableProps {
   onOpenNew: () => void;
   onExportExcel: () => void;
   isAllowedToManage: boolean;
+  onClassify?: (doc: DocumentTrack, targetFlow: 'input' | 'output') => void;
 }
 
 export const DocumentFlowTable: React.FC<DocumentFlowTableProps> = ({
@@ -37,8 +38,10 @@ export const DocumentFlowTable: React.FC<DocumentFlowTableProps> = ({
   onViewDetail,
   onOpenNew,
   onExportExcel,
-  isAllowedToManage
+  isAllowedToManage,
+  onClassify
 }) => {
+  const isUnclassified = flow === 'unclassified';
   // Bộ lọc
   const [searchTerm, setSearchTerm] = useState('');
   const [filterSubType, setFilterSubType] = useState('all');
@@ -146,14 +149,14 @@ export const DocumentFlowTable: React.FC<DocumentFlowTableProps> = ({
     return { totalValue, totalPaid, totalRemain, overdueCount, warningCount, noDueCount };
   }, [filteredDocs]);
 
-  const subTypeOptions = flow === 'input' ? INPUT_SUBTYPES : OUTPUT_SUBTYPES;
-  const statusOptions = flow === 'input' ? INPUT_STATUSES : OUTPUT_STATUSES;
-  const partnerHeader = flow === 'input' ? 'Nhà cung cấp / Đối tác' : 'Khách hàng / Chủ đầu tư';
-  const totalHeader = flow === 'input' ? 'Tổng tiền phải trả' : 'Tổng tiền phải thu';
-  const paidHeader = flow === 'input' ? 'Đã thanh toán' : 'Đã thu';
-  const remainHeader = flow === 'input' ? 'Còn phải trả' : 'Còn phải thu';
-  const dueHeader = flow === 'input' ? 'Hạn thanh toán' : 'Hạn phải thu';
-  const actualHeader = flow === 'input' ? 'Ngày chi TT' : 'Ngày thu TT';
+  const subTypeOptions = isUnclassified ? [] : (flow === 'input' ? INPUT_SUBTYPES : OUTPUT_SUBTYPES);
+  const statusOptions = isUnclassified ? [] : (flow === 'input' ? INPUT_STATUSES : OUTPUT_STATUSES);
+  const partnerHeader = isUnclassified ? 'Đối tác / bên liên quan' : (flow === 'input' ? 'Nhà cung cấp / Đối tác' : 'Khách hàng / Chủ đầu tư');
+  const totalHeader = isUnclassified ? 'Tổng giá trị' : (flow === 'input' ? 'Tổng tiền phải trả' : 'Tổng tiền phải thu');
+  const paidHeader = isUnclassified ? 'Đã phát sinh' : (flow === 'input' ? 'Đã thanh toán' : 'Đã thu');
+  const remainHeader = isUnclassified ? 'Chưa đối chiếu' : (flow === 'input' ? 'Còn phải trả' : 'Còn phải thu');
+  const dueHeader = isUnclassified ? 'Hạn (nếu có)' : (flow === 'input' ? 'Hạn thanh toán' : 'Hạn phải thu');
+  const actualHeader = isUnclassified ? 'Ngày phát sinh' : (flow === 'input' ? 'Ngày chi TT' : 'Ngày thu TT');
 
   const hasActiveFilter =
     searchTerm ||
@@ -299,8 +302,8 @@ export const DocumentFlowTable: React.FC<DocumentFlowTableProps> = ({
 
           <div className="flex items-center gap-4 text-xs font-medium">
             <div>Tổng: <b className="text-slate-900 font-mono">{formatCurrency(stats.totalValue)}</b></div>
-            <div>{paidHeader}: <b className="text-emerald-700 font-mono">{formatCurrency(stats.totalPaid)}</b></div>
-            <div>{remainHeader}: <b className="text-amber-700 font-mono">{formatCurrency(stats.totalRemain)}</b></div>
+            {!isUnclassified && <div>{paidHeader}: <b className="text-emerald-700 font-mono">{formatCurrency(stats.totalPaid)}</b></div>}
+            {!isUnclassified && <div>{remainHeader}: <b className="text-amber-700 font-mono">{formatCurrency(stats.totalRemain)}</b></div>}
             <button
               type="button"
               onClick={resetWidths}
@@ -422,7 +425,7 @@ export const DocumentFlowTable: React.FC<DocumentFlowTableProps> = ({
                       {/* Loại chứng từ */}
                       <td className="p-2.5">
                         <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-slate-100 text-slate-700 inline-block border border-slate-200">
-                          {doc.subType || (flow === 'input' ? 'Hóa đơn NCC' : 'Hợp đồng CĐT')}
+                          {doc.subType || (isUnclassified ? 'Chưa xác định' : (flow === 'input' ? 'Hóa đơn NCC' : 'Hợp đồng CĐT'))}
                         </span>
                       </td>
 
@@ -540,14 +543,33 @@ export const DocumentFlowTable: React.FC<DocumentFlowTableProps> = ({
                           >
                             <span className="material-symbols-outlined text-[17px]">visibility</span>
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => onEdit(doc)}
-                            className="p-1 text-slate-500 hover:text-primary hover:bg-slate-100 rounded cursor-pointer transition"
-                            title="Chỉnh sửa thông tin hồ sơ"
-                          >
-                            <span className="material-symbols-outlined text-[17px]">edit</span>
-                          </button>
+                          {isUnclassified ? (
+                            isAllowedToManage && onClassify && (
+                              <div className="flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => onClassify(doc, 'input')}
+                                  className="px-1.5 py-1 text-[10px] font-bold text-rose-700 bg-rose-50 border border-rose-200 rounded hover:bg-rose-100 cursor-pointer"
+                                  title="Xác nhận là Hồ sơ đầu vào / phải trả"
+                                >Vào</button>
+                                <button
+                                  type="button"
+                                  onClick={() => onClassify(doc, 'output')}
+                                  className="px-1.5 py-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded hover:bg-emerald-100 cursor-pointer"
+                                  title="Xác nhận là Hồ sơ đầu ra / phải thu"
+                                >Ra</button>
+                              </div>
+                            )
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => onEdit(doc)}
+                              className="p-1 text-slate-500 hover:text-primary hover:bg-slate-100 rounded cursor-pointer transition"
+                              title="Chỉnh sửa thông tin hồ sơ"
+                            >
+                              <span className="material-symbols-outlined text-[17px]">edit</span>
+                            </button>
+                          )}
                           {isAllowedToManage && (
                             <button
                               type="button"

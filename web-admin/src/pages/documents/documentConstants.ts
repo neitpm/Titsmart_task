@@ -1,6 +1,6 @@
 import { DocumentTrack } from '@/types';
 
-export type DocumentFlow = 'input' | 'output';
+export type DocumentFlow = 'input' | 'output' | 'unclassified';
 
 export const INPUT_SUBTYPES = [
   'Báo giá nhà cung cấp',
@@ -190,9 +190,7 @@ export const calculateDocumentDueInfo = (doc: DocumentTrack) => {
 /** Phân loại luồng hồ sơ (fallback cho dữ liệu cũ) */
 export const resolveDocumentFlow = (doc: DocumentTrack): DocumentFlow => {
   if (doc.flowType === 'input' || doc.flowType === 'output') return doc.flowType;
-  // Dựa vào side hoặc docType cũ
-  if (doc.side === 'Bên nhận' || doc.side === 'Khách hàng' || doc.side === 'Chủ đầu tư') {
-    return 'output';
-  }
-  return 'input';
+  // Dữ liệu lịch sử không có flowType phải được người có quyền xác nhận. Không dùng
+  // side/docType để tự đoán vì dễ đảo chiều công nợ phải thu/phải trả.
+  return 'unclassified';
 };

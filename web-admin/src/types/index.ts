@@ -1109,7 +1109,12 @@ export interface DocumentTrack {
   fileUrls?: string[];
 
   // === Mở rộng hỗ trợ Hồ sơ đầu vào & Hồ sơ đầu ra ===
-  flowType?: 'input' | 'output'; // 'input': Hồ sơ đầu vào, 'output': Hồ sơ đầu ra
+  // Chưa phân loại dành cho hồ sơ lịch sử được tạo trước khi hệ thống có luồng đầu vào/đầu ra.
+  // Không tự suy đoán để tránh làm sai công nợ phải thu/phải trả.
+  flowType?: 'input' | 'output' | 'unclassified';
+  flowClassificationReason?: string;
+  flowClassifiedAt?: string;
+  flowClassifiedBy?: string;
   subType?: string; // Báo giá, Hợp đồng, Đơn đặt hàng, Biên bản nghiệm thu, Hóa đơn VAT, Đề nghị thanh toán...
   beforeTaxAmount?: number; // Giá trị trước thuế
   vatRate?: number; // % VAT (0, 8, 10, v.v.)
