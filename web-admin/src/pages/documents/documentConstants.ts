@@ -32,7 +32,10 @@ export const INPUT_STATUSES = [
   'Chờ duyệt',
   'Chờ thanh toán',
   'Thanh toán một phần',
+  'Đã thanh toán – chờ ký xác nhận',
   'Đã thanh toán',
+  'Đang đối soát',
+  'Đã quyết toán',
   'Hủy'
 ];
 
@@ -45,9 +48,36 @@ export const OUTPUT_STATUSES = [
   'Được chấp thuận',
   'Đã xuất hóa đơn',
   'Thu một phần',
+  'Đã thu – chờ ký xác nhận',
   'Đã thu đủ',
+  'Đang đối soát',
   'Quá hạn'
 ];
+
+// Tạo danh sách Checklist chuẩn cho từng loại hồ sơ
+export const generateDefaultChecklist = (flow: DocumentFlow, subType?: string): import('@/types').DocumentChecklistItem[] => {
+  if (flow === 'input') {
+    return [
+      { id: 'chk-1', itemType: 'DE_NGHI', title: 'Đề nghị thanh toán / Tờ trình duyệt chi', isRequired: true, status: 'CHUA_CO' },
+      { id: 'chk-2', itemType: 'HOP_DONG', title: 'Báo giá / Hợp đồng / Đơn đặt hàng (PO)', isRequired: true, status: 'CHUA_CO' },
+      { id: 'chk-3', itemType: 'NGHIEM_THU', title: 'Biên bản giao hàng / Nghiệm thu đầu vào', isRequired: true, status: 'CHUA_CO' },
+      { id: 'chk-4', itemType: 'HOA_DON', title: 'Hóa đơn tài chính (VAT)', isRequired: true, status: 'CHUA_CO' },
+      { id: 'chk-5', itemType: 'UNC_PHIEU_CHI', title: 'Ủy nhiệm chi (UNC) / Phiếu chi có dấu ngân hàng', isRequired: true, status: 'CHUA_CO' },
+      { id: 'chk-6', itemType: 'QUYET_TOAN', title: 'Bảng quyết toán / Chứng từ hoàn ứng', isRequired: false, status: 'CHUA_CO' },
+      { id: 'chk-7', itemType: 'CHU_KY', title: 'Chữ ký / Biên lai xác nhận bên nhận tiền', isRequired: true, status: 'CHUA_CO' }
+    ];
+  } else {
+    return [
+      { id: 'chk-out-1', itemType: 'HOP_DONG', title: 'Hợp đồng kinh tế / Phụ lục ký với CĐT', isRequired: true, status: 'CHUA_CO' },
+      { id: 'chk-out-2', itemType: 'KHOI_LUONG', title: 'Hồ sơ khối lượng hoàn thành', isRequired: true, status: 'CHUA_CO' },
+      { id: 'chk-out-3', itemType: 'NGHIEM_THU', title: 'Biên bản nghiệm thu A-B / Nghiệm thu bàn giao', isRequired: true, status: 'CHUA_CO' },
+      { id: 'chk-out-4', itemType: 'HOA_DON_XUAT', title: 'Hóa đơn GTGT xuất cho khách hàng', isRequired: true, status: 'CHUA_CO' },
+      { id: 'chk-out-5', itemType: 'DE_NGHI_THU', title: 'Đề nghị thanh toán gửi CĐT / Khách hàng', isRequired: true, status: 'CHUA_CO' },
+      { id: 'chk-out-6', itemType: 'SAO_KE_TIEN_VE', title: 'Sao kê ngân hàng / Giấy báo Có tiền về', isRequired: true, status: 'CHUA_CO' },
+      { id: 'chk-out-7', itemType: 'BIEN_BAN_DOI_CHIEU', title: 'Biên bản đối chiếu công nợ / Xác nhận 2 bên', isRequired: true, status: 'CHUA_CO' }
+    ];
+  }
+};
 
 export const formatCurrency = (val?: number | null) => {
   if (val === undefined || val === null || isNaN(val)) return '0 đ';

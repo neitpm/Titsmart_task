@@ -22,6 +22,7 @@ interface DocumentFlowTableProps {
   isLockedProject?: boolean;
   onEdit: (doc: DocumentTrack) => void;
   onDelete: (doc: DocumentTrack) => void;
+  onViewDetail?: (doc: DocumentTrack) => void;
   onOpenNew: () => void;
   onExportExcel: () => void;
   isAllowedToManage: boolean;
@@ -33,6 +34,7 @@ export const DocumentFlowTable: React.FC<DocumentFlowTableProps> = ({
   isLockedProject = false,
   onEdit,
   onDelete,
+  onViewDetail,
   onOpenNew,
   onExportExcel,
   isAllowedToManage
@@ -552,11 +554,20 @@ export const DocumentFlowTable: React.FC<DocumentFlowTableProps> = ({
                       {/* Thao tác */}
                       <td className="p-2.5 text-center">
                         <div className="flex items-center justify-center gap-1">
+                          {/* Nút Xem chi tiết 4 tab: Tổng quan, Đợt chi, Checklist, Phiên bản */}
+                          <button
+                            type="button"
+                            onClick={() => onViewDetail ? onViewDetail(doc) : onEdit(doc)}
+                            className="p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded cursor-pointer transition"
+                            title="Xem chi tiết, các đợt thanh toán, checklist & lịch sử phiên bản"
+                          >
+                            <span className="material-symbols-outlined text-[17px]">visibility</span>
+                          </button>
                           <button
                             type="button"
                             onClick={() => onEdit(doc)}
                             className="p-1 text-slate-500 hover:text-primary hover:bg-slate-100 rounded cursor-pointer transition"
-                            title="Chỉnh sửa hồ sơ"
+                            title="Chỉnh sửa thông tin hồ sơ"
                           >
                             <span className="material-symbols-outlined text-[17px]">edit</span>
                           </button>

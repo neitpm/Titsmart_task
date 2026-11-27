@@ -21,6 +21,7 @@ import {
 import { DocumentOverviewTab } from './documents/DocumentOverviewTab';
 import { DocumentFlowTable } from './documents/DocumentFlowTable';
 import { DocumentFormModal } from './documents/DocumentFormModal';
+import { DocumentDetailModal } from './documents/DocumentDetailModal';
 import { CustomSelect } from '@/components/common/CustomSelect';
 
 export const DocumentTrackingPage: React.FC = () => {
@@ -68,6 +69,10 @@ export const DocumentTrackingPage: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalFlow, setModalFlow] = useState<DocumentFlow>('input');
   const [editingDoc, setEditingDoc] = useState<DocumentTrack | null>(null);
+
+  // Modal xem chi tiết 4 tab (Tổng quan, Đợt thanh toán, Checklist, Phiên bản)
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [selectedDetailDoc, setSelectedDetailDoc] = useState<DocumentTrack | null>(null);
 
   // Modal xác nhận xóa
   const [confirmConfig, setConfirmConfig] = useState({
@@ -126,6 +131,19 @@ export const DocumentTrackingPage: React.FC = () => {
     setModalFlow(flow);
     setEditingDoc(doc);
     setIsModalOpen(true);
+  };
+
+  const handleViewDetailDoc = (doc: DocumentTrack) => {
+    setSelectedDetailDoc(doc);
+    setIsDetailModalOpen(true);
+  };
+
+  const handleUpdateFromDetail = async (updatedData: Partial<DocumentTrack>, versionReason?: string) => {
+    if (!selectedDetailDoc) return;
+    await updateDocumentTrack(selectedDetailDoc.id, updatedData);
+    // Cập nhật state detail hiện tại để modal render mượt mà
+    setSelectedDetailDoc(prev => prev ? ({ ...prev, ...updatedData }) : null);
+    logActivity(`Cập nhật hồ sơ [${selectedDetailDoc.contractNo}]: ${versionReason || 'Điều chỉnh đợt chi / checklist / phiên bản'}`, selectedDetailDoc.projectCode || 'COMPANY');
   };
 
   const handleDeleteDoc = (doc: DocumentTrack) => {
@@ -441,7 +459,7 @@ export const DocumentTrackingPage: React.FC = () => {
             inputDocs={inputDocs}
             outputDocs={outputDocs}
             onSelectTab={(tab) => setActiveMainTab(tab)}
-            onEditDoc={handleEditDoc}
+            onViewDetail={handleViewDetailDoc}
           />
         )}
 
@@ -452,6 +470,7 @@ export const DocumentTrackingPage: React.FC = () => {
             isLockedProject={isLockedProject}
             onEdit={handleEditDoc}
             onDelete={handleDeleteDoc}
+            onViewDetail={handleViewDetailDoc}
             onOpenNew={() => handleOpenNew('input')}
             onExportExcel={handleExportCurrentExcel}
             isAllowedToManage={isAllowedToManage}
@@ -465,6 +484,7 @@ export const DocumentTrackingPage: React.FC = () => {
             isLockedProject={isLockedProject}
             onEdit={handleEditDoc}
             onDelete={handleDeleteDoc}
+            onViewDetail={handleViewDetailDoc}
             onOpenNew={() => handleOpenNew('output')}
             onExportExcel={handleExportCurrentExcel}
             isAllowedToManage={isAllowedToManage}
@@ -472,7 +492,21 @@ export const DocumentTrackingPage: React.FC = () => {
         )}
       </PullToRefresh>
 
-      {/* 4. MODAL FORM TẠO/SỬA HỒ SƠ */}
+      {/* 4. MODAL CHI TIẾT 4 TAB (TỔNG QUAN, ĐỢT CHI, CHECKLIST, PHIÊN BẢN) */}
+      {isDetailModalOpen && selectedDetailDoc && (
+        <DocumentDetailModal
+          isOpen={isDetailModalOpen}
+          documentData={selectedDetailDoc}
+          onClose={() => {
+            setIsDetailModalOpen(false);
+            setSelectedDetailDoc(null);
+          }}
+          onUpdate={handleUpdateFromDetail}
+          triggerToast={triggerToast}
+        />
+      )}
+
+      {/* 5. MODAL FORM TẠO/SỬA HỒ SƠ */}
       {isModalOpen && (
         <DocumentFormModal
           isOpen={isModalOpen}

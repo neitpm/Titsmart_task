@@ -7,32 +7,35 @@ interface DocumentOverviewTabProps {
   inputDocs: DocumentTrack[];
   outputDocs: DocumentTrack[];
   onSelectTab: (tab: 'input' | 'output') => void;
-  onEditDoc: (doc: DocumentTrack) => void;
+  onViewDetail: (doc: DocumentTrack) => void;
 }
 
 export const DocumentOverviewTab: React.FC<DocumentOverviewTabProps> = ({
   inputDocs,
   outputDocs,
   onSelectTab,
-  onEditDoc
+  onViewDetail
 }) => {
+  const allDocs = useMemo(() => [...inputDocs, ...outputDocs], [inputDocs, outputDocs]);
+
   // 1. Thống kê số liệu Đầu vào (Công ty phải trả)
   const inputStats = useMemo(() => {
     let totalMustPay = 0;
+    let totalApproved = 0;
     let totalPaid = 0;
     let totalRemaining = 0;
     let pendingApprovalCount = 0;
     let overdueCount = 0;
     let warningCount = 0;
-    const missingDocs: DocumentTrack[] = [];
-    const urgentDocs: DocumentTrack[] = [];
 
     inputDocs.forEach(d => {
-      const val = d.totalAmount ?? d.contractValue ?? 0;
+      const val = d.initialProposedAmount ?? d.totalAmount ?? d.contractValue ?? 0;
+      const app = d.approvedAmount ?? val;
       const paid = d.paidAmount ?? d.prepayAmount ?? 0;
-      const rem = Math.max(0, val - paid);
+      const rem = Math.max(0, app - paid);
 
       totalMustPay += val;
+      totalApproved += app;
       totalPaid += paid;
       totalRemaining += rem;
 
@@ -40,49 +43,43 @@ export const DocumentOverviewTab: React.FC<DocumentOverviewTabProps> = ({
         pendingApprovalCount++;
       }
 
-      // Thiếu hóa đơn hoặc file đính kèm
-      if ((!d.invoiceNo || !d.fileUrls || d.fileUrls.length === 0) && d.docStatus !== 'Nháp' && d.docStatus !== 'Hủy') {
-        missingDocs.push(d);
-      }
-
       const dueInfo = calculateDocumentDueInfo(d);
       if (dueInfo.status === 'overdue') {
         overdueCount++;
-        urgentDocs.push(d);
       } else if (dueInfo.status === 'warning' || dueInfo.status === 'due_today') {
         warningCount++;
-        urgentDocs.push(d);
       }
     });
 
     return {
       totalMustPay,
+      totalApproved,
       totalPaid,
       totalRemaining,
       pendingApprovalCount,
       overdueCount,
-      warningCount,
-      missingDocs: missingDocs.slice(0, 5),
-      urgentDocs: urgentDocs.slice(0, 5)
+      warningCount
     };
   }, [inputDocs]);
 
   // 2. Thống kê số liệu Đầu ra (Bên khác phải trả công ty)
   const outputStats = useMemo(() => {
     let totalMustCollect = 0;
+    let totalApproved = 0;
     let totalCollected = 0;
     let totalRemaining = 0;
     let pendingConfirmationCount = 0;
     let overdueCount = 0;
     let warningCount = 0;
-    const slowPayingClients = new Map<string, { count: number; totalRemain: number; clientName: string }>();
 
     outputDocs.forEach(d => {
-      const val = d.totalAmount ?? d.contractValue ?? 0;
+      const val = d.initialProposedAmount ?? d.totalAmount ?? d.contractValue ?? 0;
+      const app = d.approvedAmount ?? val;
       const col = d.paidAmount ?? d.prepayAmount ?? 0;
-      const rem = Math.max(0, val - col);
+      const rem = Math.max(0, app - col);
 
       totalMustCollect += val;
+      totalApproved += app;
       totalCollected += col;
       totalRemaining += rem;
 
@@ -93,34 +90,73 @@ export const DocumentOverviewTab: React.FC<DocumentOverviewTabProps> = ({
       const dueInfo = calculateDocumentDueInfo(d);
       if (dueInfo.status === 'overdue') {
         overdueCount++;
-        const cName = d.company || 'Khách hàng chưa đặt tên';
-        const curr = slowPayingClients.get(cName) || { count: 0, totalRemain: 0, clientName: cName };
-        curr.count += 1;
-        curr.totalRemain += rem;
-        slowPayingClients.set(cName, curr);
       } else if (dueInfo.status === 'warning' || dueInfo.status === 'due_today') {
         warningCount++;
       }
     });
 
-    const slowList = Array.from(slowPayingClients.values()).sort((a, b) => b.totalRemain - a.totalRemain).slice(0, 5);
-
     return {
       totalMustCollect,
+      totalApproved,
       totalCollected,
       totalRemaining,
       pendingConfirmationCount,
       overdueCount,
-      warningCount,
-      slowClients: slowList
+      warningCount
     };
   }, [outputDocs]);
 
-  // 3. Biểu đồ đường (Line Chart) biến động tài chính 6 tháng gần nhất
+  // 3. BỐN DANH SÁCH CẢNH BÁO KIỂM SOÁT BẮT BUỘC
+  // A. Hồ sơ thiếu chứng từ
+  const missingDocsList = useMemo(() => {
+    return allDocs.filter(d => {
+      if (d.docStatus === 'Hủy' || d.docStatus === 'Nháp') return false;
+      if (d.checklist && d.checklist.length > 0) {
+        return d.checklist.some(c => c.isRequired && c.status !== 'HOP_LE');
+      }
+      return !d.invoiceNo || !d.fileUrls || d.fileUrls.length === 0;
+    }).slice(0, 5);
+  }, [allDocs]);
+
+  // B. Đã chi tiền nhưng thiếu UNC / Phiếu chi có dấu
+  const missingUncList = useMemo(() => {
+    return allDocs.filter(d => {
+      const paid = d.paidAmount ?? d.prepayAmount ?? 0;
+      if (paid <= 0) return false;
+      if (d.installments && d.installments.length > 0) {
+        return d.installments.some(inst => !inst.proofFileUrls || inst.proofFileUrls.length === 0);
+      }
+      return !d.fileUrls || d.fileUrls.length === 0;
+    }).slice(0, 5);
+  }, [allDocs]);
+
+  // C. Đã thanh toán nhưng thiếu chữ ký / xác nhận bên nhận (Chờ ký hoặc Đang đối soát)
+  const pendingSignatureList = useMemo(() => {
+    return allDocs.filter(d => {
+      const paid = d.paidAmount ?? d.prepayAmount ?? 0;
+      if (paid <= 0) return false;
+      if (d.signatureStatus === 'CHO_KY_XAC_NHAN' || d.signatureStatus === 'DANG_DOI_SOAT' || d.docStatus?.includes('chờ ký') || d.docStatus?.includes('đối soát')) {
+        return true;
+      }
+      if (d.installments && d.installments.length > 0) {
+        return d.installments.some(i => i.confirmationStatus === 'CHO_XAC_NHAN' || i.confirmationStatus === 'TU_CHOI');
+      }
+      return false;
+    }).slice(0, 5);
+  }, [allDocs]);
+
+  // D. Hồ sơ sắp quá hạn hoặc quá hạn bổ sung chứng từ / nợ
+  const overdueOrUrgentList = useMemo(() => {
+    return allDocs.filter(d => {
+      const dueInfo = calculateDocumentDueInfo(d);
+      return dueInfo.status === 'overdue' || dueInfo.status === 'warning' || dueInfo.status === 'due_today';
+    }).slice(0, 5);
+  }, [allDocs]);
+
+  // 4. Biểu đồ đường (Line Chart) biến động tài chính 6 tháng gần nhất
   const chartData = useMemo(() => {
     const monthMap = new Map<string, { month: string; inputMustPay: number; inputPaid: number; outputMustCollect: number; outputCollected: number }>();
 
-    // Chuẩn bị nhãn 6 tháng gần nhất
     const now = new Date();
     for (let i = 5; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
@@ -133,7 +169,7 @@ export const DocumentOverviewTab: React.FC<DocumentOverviewTabProps> = ({
       const dateKey = (d.sendDate || (d.createdAt ? d.createdAt.split('T')[0] : '')).slice(0, 7);
       if (monthMap.has(dateKey)) {
         const item = monthMap.get(dateKey)!;
-        item.inputMustPay += (d.totalAmount ?? d.contractValue ?? 0);
+        item.inputMustPay += (d.approvedAmount ?? d.totalAmount ?? d.contractValue ?? 0);
         item.inputPaid += (d.paidAmount ?? d.prepayAmount ?? 0);
       }
     });
@@ -142,7 +178,7 @@ export const DocumentOverviewTab: React.FC<DocumentOverviewTabProps> = ({
       const dateKey = (d.sendDate || (d.createdAt ? d.createdAt.split('T')[0] : '')).slice(0, 7);
       if (monthMap.has(dateKey)) {
         const item = monthMap.get(dateKey)!;
-        item.outputMustCollect += (d.totalAmount ?? d.contractValue ?? 0);
+        item.outputMustCollect += (d.approvedAmount ?? d.totalAmount ?? d.contractValue ?? 0);
         item.outputCollected += (d.paidAmount ?? d.prepayAmount ?? 0);
       }
     });
@@ -154,7 +190,7 @@ export const DocumentOverviewTab: React.FC<DocumentOverviewTabProps> = ({
 
   return (
     <div className="space-y-4">
-      {/* KHỐI 1: KPI CƠ BẢN (CHỈ DÙNG DỮ LIỆU THỰC TẾ, GIAO DIỆN TITSMART SÁNG, GÓC BO NHẸ) */}
+      {/* KHỐI 1: KPI CƠ BẢN ĐỐI CHIẾU NGHĨA VỤ TIỀN THỰC TẾ */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Phân hệ 1: Hồ sơ đầu vào */}
         <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs">
@@ -173,29 +209,35 @@ export const DocumentOverviewTab: React.FC<DocumentOverviewTabProps> = ({
             </button>
           </div>
 
-          <div className="grid grid-cols-3 gap-2.5">
-            <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100">
-              <div className="text-[11px] text-slate-500 font-medium">Tổng phải trả</div>
-              <div className="font-mono font-bold text-sm text-slate-900 mt-1">
+          <div className="grid grid-cols-4 gap-2">
+            <div className="bg-slate-50 p-2 rounded-lg border border-slate-100">
+              <div className="text-[10px] text-slate-500 font-medium">Đề nghị ban đầu (V1)</div>
+              <div className="font-mono font-bold text-xs text-slate-900 mt-1 truncate" title={formatCurrency(inputStats.totalMustPay)}>
                 {formatCurrency(inputStats.totalMustPay)}
               </div>
             </div>
-            <div className="bg-emerald-50/50 p-2.5 rounded-lg border border-emerald-100">
-              <div className="text-[11px] text-emerald-700 font-medium">Đã thanh toán</div>
-              <div className="font-mono font-bold text-sm text-emerald-800 mt-1">
+            <div className="bg-blue-50/40 p-2 rounded-lg border border-blue-100">
+              <div className="text-[10px] text-blue-700 font-medium">Được duyệt</div>
+              <div className="font-mono font-bold text-xs text-blue-900 mt-1 truncate" title={formatCurrency(inputStats.totalApproved)}>
+                {formatCurrency(inputStats.totalApproved)}
+              </div>
+            </div>
+            <div className="bg-emerald-50/50 p-2 rounded-lg border border-emerald-100">
+              <div className="text-[10px] text-emerald-700 font-medium">Đã chi thực tế</div>
+              <div className="font-mono font-bold text-xs text-emerald-800 mt-1 truncate" title={formatCurrency(inputStats.totalPaid)}>
                 {formatCurrency(inputStats.totalPaid)}
               </div>
             </div>
-            <div className="bg-amber-50/50 p-2.5 rounded-lg border border-amber-100">
-              <div className="text-[11px] text-amber-700 font-medium">Còn phải trả</div>
-              <div className="font-mono font-bold text-sm text-amber-900 mt-1">
+            <div className="bg-amber-50/50 p-2 rounded-lg border border-amber-100">
+              <div className="text-[10px] text-amber-700 font-medium">Còn được chi</div>
+              <div className="font-mono font-bold text-xs text-amber-900 mt-1 truncate" title={formatCurrency(inputStats.totalRemaining)}>
                 {formatCurrency(inputStats.totalRemaining)}
               </div>
             </div>
           </div>
 
           <div className="mt-3 flex items-center justify-between text-xs text-slate-600 bg-slate-50/70 px-3 py-2 rounded-lg border border-slate-100">
-            <div>Chờ duyệt/thanh toán: <b className="text-blue-900">{inputStats.pendingApprovalCount}</b></div>
+            <div>Chờ duyệt/chi: <b className="text-blue-900">{inputStats.pendingApprovalCount}</b></div>
             <div>Sắp đến hạn: <b className="text-amber-800">{inputStats.warningCount}</b></div>
             <div>Quá hạn: <b className="text-rose-600">{inputStats.overdueCount}</b></div>
           </div>
@@ -218,22 +260,28 @@ export const DocumentOverviewTab: React.FC<DocumentOverviewTabProps> = ({
             </button>
           </div>
 
-          <div className="grid grid-cols-3 gap-2.5">
-            <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100">
-              <div className="text-[11px] text-slate-500 font-medium">Tổng phải thu</div>
-              <div className="font-mono font-bold text-sm text-slate-900 mt-1">
+          <div className="grid grid-cols-4 gap-2">
+            <div className="bg-slate-50 p-2 rounded-lg border border-slate-100">
+              <div className="text-[10px] text-slate-500 font-medium">HĐ/Dự toán ban đầu</div>
+              <div className="font-mono font-bold text-xs text-slate-900 mt-1 truncate" title={formatCurrency(outputStats.totalMustCollect)}>
                 {formatCurrency(outputStats.totalMustCollect)}
               </div>
             </div>
-            <div className="bg-emerald-50/50 p-2.5 rounded-lg border border-emerald-100">
-              <div className="text-[11px] text-emerald-700 font-medium">Đã thu về</div>
-              <div className="font-mono font-bold text-sm text-emerald-800 mt-1">
+            <div className="bg-blue-50/40 p-2 rounded-lg border border-blue-100">
+              <div className="text-[10px] text-blue-700 font-medium">Được duyệt</div>
+              <div className="font-mono font-bold text-xs text-blue-900 mt-1 truncate" title={formatCurrency(outputStats.totalApproved)}>
+                {formatCurrency(outputStats.totalApproved)}
+              </div>
+            </div>
+            <div className="bg-emerald-50/50 p-2 rounded-lg border border-emerald-100">
+              <div className="text-[10px] text-emerald-700 font-medium">Đã thu về</div>
+              <div className="font-mono font-bold text-xs text-emerald-800 mt-1 truncate" title={formatCurrency(outputStats.totalCollected)}>
                 {formatCurrency(outputStats.totalCollected)}
               </div>
             </div>
-            <div className="bg-amber-50/50 p-2.5 rounded-lg border border-amber-100">
-              <div className="text-[11px] text-amber-700 font-medium">Còn phải thu</div>
-              <div className="font-mono font-bold text-sm text-amber-900 mt-1">
+            <div className="bg-amber-50/50 p-2 rounded-lg border border-amber-100">
+              <div className="text-[10px] text-amber-700 font-medium">Còn phải thu</div>
+              <div className="font-mono font-bold text-xs text-amber-900 mt-1 truncate" title={formatCurrency(outputStats.totalRemaining)}>
                 {formatCurrency(outputStats.totalRemaining)}
               </div>
             </div>
@@ -247,7 +295,7 @@ export const DocumentOverviewTab: React.FC<DocumentOverviewTabProps> = ({
         </div>
       </div>
 
-      {/* KHỐI 2: BIỂU ĐỒ ĐƯỜNG DÒNG TIỀN THEO THỜI GIAN (CHỈ HIỂN THỊ KHI CÓ DỮ LIỆU) */}
+      {/* KHỐI 2: BIỂU ĐỒ ĐƯỜNG DÒNG TIỀN THEO THỜI GIAN */}
       {hasData && (
         <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs">
           <div className="flex items-center justify-between mb-3">
@@ -258,7 +306,7 @@ export const DocumentOverviewTab: React.FC<DocumentOverviewTabProps> = ({
             <span className="text-[11px] text-slate-400">Đơn vị: VNĐ</span>
           </div>
 
-          <div className="h-64 w-full">
+          <div className="h-60 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData} margin={{ top: 10, right: 20, left: 20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
@@ -283,97 +331,179 @@ export const DocumentOverviewTab: React.FC<DocumentOverviewTabProps> = ({
         </div>
       )}
 
-      {/* KHỐI 3: DANH SÁCH CẦN LƯU Ý (THIẾU CHỨNG TỪ, GẦN HẠN, CHẬM THANH TOÁN) */}
+      {/* KHỐI 3: BỐN DANH SÁCH CẢNH BÁO KIỂM SOÁT BẮT BUỘC (2x2 GRID) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Bảng 1: Đầu vào cần xử lý ngay */}
+        {/* 1. Hồ sơ thiếu chứng từ */}
         <div className="bg-white border border-slate-200 rounded-xl p-3.5 shadow-xs">
           <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-100">
             <div className="flex items-center gap-1.5 font-bold text-xs text-rose-800">
-              <span className="material-symbols-outlined text-[16px]">priority_high</span>
-              <span>Đầu vào gần hạn / Thiếu chứng từ</span>
+              <span className="material-symbols-outlined text-[16px]">folder_off</span>
+              <span>1. Hồ sơ thiếu chứng từ bắt buộc</span>
             </div>
-            <span className="text-[11px] text-slate-400">Top 5 hồ sơ</span>
+            <span className="text-[11px] font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded">
+              {missingDocsList.length} hồ sơ
+            </span>
           </div>
 
-          {inputStats.urgentDocs.length === 0 && inputStats.missingDocs.length === 0 ? (
-            <div className="py-6 text-center text-slate-400 text-xs">
+          {missingDocsList.length === 0 ? (
+            <div className="py-5 text-center text-slate-400 text-xs">
               <span className="material-symbols-outlined text-emerald-500 text-2xl block mb-1">check_circle</span>
-              Tất cả hồ sơ đầu vào đều đầy đủ chứng từ và đúng hạn.
+              Tất cả hồ sơ đều có đầy đủ chứng từ bắt buộc.
             </div>
           ) : (
             <div className="divide-y divide-slate-100 text-xs">
-              {[...inputStats.urgentDocs, ...inputStats.missingDocs].slice(0, 5).map(doc => {
-                const dueInfo = calculateDocumentDueInfo(doc);
-                const isMissing = !doc.invoiceNo || !doc.fileUrls || doc.fileUrls.length === 0;
-
-                return (
-                  <div
-                    key={doc.id}
-                    onClick={() => onEditDoc(doc)}
-                    className="py-2 flex items-center justify-between hover:bg-slate-50 cursor-pointer rounded px-1.5 transition"
-                  >
-                    <div className="min-w-0 pr-2">
-                      <div className="font-semibold text-slate-800 truncate" title={doc.contractName}>
-                        [{doc.contractNo}] {doc.contractName}
-                      </div>
-                      <div className="text-[11px] text-slate-500 truncate">
-                        NCC: {doc.company || '-'} • Còn nợ: <span className="font-mono font-medium text-amber-800">{formatCurrency((doc.totalAmount ?? doc.contractValue ?? 0) - (doc.paidAmount ?? 0))}</span>
-                      </div>
+              {missingDocsList.map(doc => (
+                <div
+                  key={doc.id}
+                  onClick={() => onViewDetail(doc)}
+                  className="py-2 flex items-center justify-between hover:bg-slate-50 cursor-pointer rounded px-1.5 transition"
+                >
+                  <div className="min-w-0 pr-2">
+                    <div className="font-semibold text-slate-800 truncate">
+                      [{doc.contractNo}] {doc.contractName}
                     </div>
-                    <div className="shrink-0 flex flex-col items-end gap-1">
-                      {dueInfo.hasDueDate ? (
-                        <span className={`px-1.5 py-0.5 rounded text-[10px] border ${dueInfo.badgeClass}`}>
-                          {dueInfo.text}
-                        </span>
-                      ) : null}
-                      {isMissing && (
-                        <span className="px-1.5 py-0.5 rounded text-[10px] bg-rose-50 text-rose-700 border border-rose-200">
-                          Thiếu hóa đơn/tệp
-                        </span>
-                      )}
+                    <div className="text-[11px] text-slate-500 truncate">
+                      Đối tác: {doc.company || '-'} • Giá trị: <span className="font-mono font-medium text-slate-700">{formatCurrency(doc.contractValue)}</span>
                     </div>
                   </div>
-                );
-              })}
+                  <span className="px-1.5 py-0.5 rounded text-[10px] bg-rose-50 text-rose-700 border border-rose-200 shrink-0 font-medium">
+                    Thiếu file/Checklist
+                  </span>
+                </div>
+              ))}
             </div>
           )}
         </div>
 
-        {/* Bảng 2: Đầu ra khách hàng chậm thanh toán */}
+        {/* 2. Đã chi tiền nhưng thiếu UNC / Phiếu chi */}
         <div className="bg-white border border-slate-200 rounded-xl p-3.5 shadow-xs">
           <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-100">
             <div className="flex items-center gap-1.5 font-bold text-xs text-amber-800">
-              <span className="material-symbols-outlined text-[16px]">schedule</span>
-              <span>Khách hàng đang chậm thanh toán</span>
+              <span className="material-symbols-outlined text-[16px]">no_sim</span>
+              <span>2. Đã chi tiền nhưng thiếu UNC / Phiếu chi</span>
             </div>
-            <span className="text-[11px] text-slate-400">Theo dư nợ quá hạn</span>
+            <span className="text-[11px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded">
+              {missingUncList.length} hồ sơ
+            </span>
           </div>
 
-          {outputStats.slowClients.length === 0 ? (
-            <div className="py-6 text-center text-slate-400 text-xs">
-              <span className="material-symbols-outlined text-emerald-500 text-2xl block mb-1">sentiment_satisfied</span>
-              Không có khoản nợ quá hạn nào từ khách hàng.
+          {missingUncList.length === 0 ? (
+            <div className="py-5 text-center text-slate-400 text-xs">
+              <span className="material-symbols-outlined text-emerald-500 text-2xl block mb-1">verified</span>
+              Mọi khoản tiền đã chi đều có chứng từ UNC/phiếu chi hợp lệ.
             </div>
           ) : (
             <div className="divide-y divide-slate-100 text-xs">
-              {outputStats.slowClients.map((c, i) => (
-                <div key={i} className="py-2 flex items-center justify-between">
+              {missingUncList.map(doc => (
+                <div
+                  key={doc.id}
+                  onClick={() => onViewDetail(doc)}
+                  className="py-2 flex items-center justify-between hover:bg-slate-50 cursor-pointer rounded px-1.5 transition"
+                >
                   <div className="min-w-0 pr-2">
-                    <div className="font-semibold text-slate-800 truncate" title={c.clientName}>
-                      {c.clientName}
+                    <div className="font-semibold text-slate-800 truncate">
+                      [{doc.contractNo}] {doc.contractName}
                     </div>
-                    <div className="text-[11px] text-slate-500">
-                      Có <b>{c.count}</b> hồ sơ đã quá hạn thu
+                    <div className="text-[11px] text-slate-500 truncate">
+                      Đã chi: <span className="font-mono font-bold text-emerald-700">{formatCurrency(doc.paidAmount)}</span> • Chưa có UNC
                     </div>
                   </div>
-                  <div className="shrink-0 text-right">
-                    <div className="font-mono font-bold text-rose-700">
-                      {formatCurrency(c.totalRemain)}
-                    </div>
-                    <span className="text-[10px] text-slate-400">còn phải thu</span>
-                  </div>
+                  <span className="px-1.5 py-0.5 rounded text-[10px] bg-amber-100 text-amber-900 border border-amber-300 shrink-0 font-bold">
+                    Cần upload UNC
+                  </span>
                 </div>
               ))}
+            </div>
+          )}
+        </div>
+
+        {/* 3. Đã thanh toán nhưng thiếu chữ ký xác nhận */}
+        <div className="bg-white border border-slate-200 rounded-xl p-3.5 shadow-xs">
+          <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-100">
+            <div className="flex items-center gap-1.5 font-bold text-xs text-blue-900">
+              <span className="material-symbols-outlined text-[16px]">draw</span>
+              <span>3. Đã chuyển tiền nhưng chờ ký / Đang đối soát</span>
+            </div>
+            <span className="text-[11px] font-bold text-blue-800 bg-blue-50 px-2 py-0.5 rounded">
+              {pendingSignatureList.length} hồ sơ
+            </span>
+          </div>
+
+          {pendingSignatureList.length === 0 ? (
+            <div className="py-5 text-center text-slate-400 text-xs">
+              <span className="material-symbols-outlined text-emerald-500 text-2xl block mb-1">task_alt</span>
+              Tất cả đợt chi đều đã được bên nhận ký nhận đầy đủ.
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-100 text-xs">
+              {pendingSignatureList.map(doc => (
+                <div
+                  key={doc.id}
+                  onClick={() => onViewDetail(doc)}
+                  className="py-2 flex items-center justify-between hover:bg-slate-50 cursor-pointer rounded px-1.5 transition"
+                >
+                  <div className="min-w-0 pr-2">
+                    <div className="font-semibold text-slate-800 truncate">
+                      [{doc.contractNo}] {doc.contractName}
+                    </div>
+                    <div className="text-[11px] text-slate-500 truncate">
+                      Người nhận: {doc.receiverName || doc.company || '-'} • Tiền đã chuyển: <span className="font-mono font-bold text-emerald-700">{formatCurrency(doc.paidAmount)}</span>
+                    </div>
+                  </div>
+                  <span className={`px-1.5 py-0.5 rounded text-[10px] shrink-0 font-bold ${
+                    doc.signatureStatus === 'DANG_DOI_SOAT' || doc.docStatus?.includes('đối soát')
+                      ? 'bg-rose-100 text-rose-800 border border-rose-300'
+                      : 'bg-amber-100 text-amber-800 border border-amber-300'
+                  }`}>
+                    {doc.signatureStatus === 'DANG_DOI_SOAT' || doc.docStatus?.includes('đối soát') ? 'Đang đối soát' : 'Chờ ký nhận'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* 4. Hồ sơ sắp quá hạn hoặc quá hạn bổ sung chứng từ */}
+        <div className="bg-white border border-slate-200 rounded-xl p-3.5 shadow-xs">
+          <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-100">
+            <div className="flex items-center gap-1.5 font-bold text-xs text-rose-800">
+              <span className="material-symbols-outlined text-[16px]">alarm</span>
+              <span>4. Sắp đến hạn & Quá hạn chứng từ / thanh toán</span>
+            </div>
+            <span className="text-[11px] font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded">
+              {overdueOrUrgentList.length} hồ sơ
+            </span>
+          </div>
+
+          {overdueOrUrgentList.length === 0 ? (
+            <div className="py-5 text-center text-slate-400 text-xs">
+              <span className="material-symbols-outlined text-emerald-500 text-2xl block mb-1">sentiment_satisfied</span>
+              Không có hồ sơ nào bị quá hạn.
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-100 text-xs">
+              {overdueOrUrgentList.map(doc => {
+                const dueInfo = calculateDocumentDueInfo(doc);
+                return (
+                  <div
+                    key={doc.id}
+                    onClick={() => onViewDetail(doc)}
+                    className="py-2 flex items-center justify-between hover:bg-slate-50 cursor-pointer rounded px-1.5 transition"
+                  >
+                    <div className="min-w-0 pr-2">
+                      <div className="font-semibold text-slate-800 truncate">
+                        [{doc.contractNo}] {doc.contractName}
+                      </div>
+                      <div className="text-[11px] text-slate-500 truncate">
+                        Hạn: {formatDateDisplay(doc.dueDate)} • Còn nợ: <span className="font-mono font-medium text-amber-800">{formatCurrency((doc.approvedAmount ?? doc.contractValue ?? 0) - (doc.paidAmount ?? 0))}</span>
+                      </div>
+                    </div>
+                    <span className={`px-1.5 py-0.5 rounded text-[10px] border shrink-0 ${dueInfo.badgeClass}`}>
+                      {dueInfo.text}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>

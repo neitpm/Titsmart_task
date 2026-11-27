@@ -1018,6 +1018,68 @@ export interface LaborPayroll {
   updatedAt?: string;
 }
 
+// Đợt thanh toán của một hồ sơ
+export interface DocumentPaymentInstallment {
+  id: string;
+  installmentNo: number; // Đợt 1, 2, 3...
+  title: string; // Nội dung chi / thu (VD: Tạm ứng 30%, Thanh toán đợt 1...)
+  amount: number; // Số tiền
+  paymentDate: string; // Ngày chuyển tiền / nhận tiền thực tế
+  paymentMethod?: 'UNC' | 'TIEN_MAT' | 'CHUYEN_KHOAN';
+  transactionCode?: string; // Mã giao dịch ngân hàng / Số phiếu chi / Số UNC
+  payerOrReceiver?: string; // Người chi / Người nhận
+  proofFileUrls?: string[]; // Ảnh UNC / Phiếu chi / Sao kê
+  
+  // Trạng thái ký và xác nhận bên nhận:
+  // 'CHO_XAC_NHAN': Đã chuyển tiền nhưng chờ bên nhận ký/xác nhận
+  // 'DA_XAC_NHAN': Bên nhận đã ký nhận tiền
+  // 'TU_CHOI': Bên nhận từ chối ký hoặc phát hiện sai số tiền (chuyển sang 'Đang đối soát')
+  confirmationStatus: 'CHO_XAC_NHAN' | 'DA_XAC_NHAN' | 'TU_CHOI';
+  confirmedBy?: string; // Tên người ký xác nhận
+  confirmedAt?: string; // Thời điểm ký xác nhận
+  confirmationSignatureUrl?: string; // File chữ ký / Biên bản ký nhận
+  discrepancyNote?: string; // Ghi chú đối soát nếu sai số tiền hoặc từ chối
+}
+
+// Mục checklist chứng từ bắt buộc của hồ sơ
+export interface DocumentChecklistItem {
+  id: string;
+  itemType: string; // Đề nghị/tờ trình, Báo giá/Hợp đồng, Biên bản nghiệm thu, Hóa đơn VAT, Phiếu chi/UNC, Chứng từ quyết toán, Chữ ký/xác nhận
+  title: string;
+  isRequired: boolean;
+  // Trạng thái: Chưa có → Đã tải lên → Chờ kiểm tra → Hợp lệ / Yêu cầu bổ sung
+  status: 'CHUA_CO' | 'DA_TAI_LEN' | 'CHO_KIEM_TRA' | 'HOP_LE' | 'YEU_CAU_BO_SUNG';
+  fileUrls?: string[];
+  feedbackNote?: string; // Lý do yêu cầu bổ sung hoặc ghi chú kiểm tra
+  checkedBy?: string;
+  checkedAt?: string;
+}
+
+// Phiên bản hồ sơ theo thời gian (Audit version snapshot)
+export interface DocumentVersion {
+  versionNumber: number; // V1, V2, V3...
+  title: string; // Tên mốc / Hành động (VD: Khởi tạo đề nghị, Duyệt hạn mức 80%, Chi đợt 1...)
+  timestamp: string;
+  changedById?: string;
+  changedByName: string;
+  reason?: string; // Lý do điều chỉnh (VD: Duyệt 80% theo hạn mức, Bổ sung khối lượng phát sinh...)
+  changesSummary: Array<{
+    field: string;
+    label: string;
+    before: any;
+    after: any;
+  }>;
+  snapshot: {
+    contractValue: number;
+    approvedAmount?: number;
+    paidAmount?: number;
+    settledAmount?: number;
+    docStatus: string;
+    paymentStatus: string;
+    fileUrls?: string[];
+  };
+}
+
 export interface DocumentTrack {
   id: string;
   projectId?: string;
@@ -1050,7 +1112,7 @@ export interface DocumentTrack {
   beforeTaxAmount?: number; // Giá trị trước thuế
   vatRate?: number; // % VAT (0, 8, 10, v.v.)
   vatAmount?: number; // Tiền VAT
-  totalAmount?: number; // Tổng tiền đã gồm VAT (= contractValue)
+  totalAmount?: number; // Tổng tiền đã gồm VAT (= contractValue đề nghị ban đầu)
   paidAmount?: number; // Đã thanh toán (đầu vào) hoặc Đã thu (đầu ra)
   remainingAmount?: number; // Còn phải trả (đầu vào) hoặc Còn phải thu (đầu ra)
   acceptedAmount?: number; // Giá trị đã nghiệm thu (đầu ra)
@@ -1059,6 +1121,28 @@ export interface DocumentTrack {
   actualPaymentDate?: string | null; // Ngày thanh toán thực tế / Ngày nhận tiền thực tế
   paymentRefId?: string; // Liên kết Yêu cầu thanh toán / Chi phí / Đơn mua hàng / Hợp đồng
   
+  // === QUẢN TRỊ 3 NGUYÊN TẮC: PHIÊN BẢN - NGHĨA VỤ TIỀN - DÒNG THỜI GIAN ===
+  // 1. Đối chiếu nghĩa vụ tiền cố định
+  initialProposedAmount?: number; // Giá trị đề nghị / hợp đồng ban đầu (V1 - KHÔNG ĐƯỢC GHI ĐÈ)
+  approvedAmount?: number; // Được duyệt thanh toán
+  unapprovedAmount?: number; // Chưa được duyệt (= initialProposedAmount - approvedAmount)
+  settledAmount?: number; // Đã quyết toán thực tế
+  pendingSettlementAmount?: number; // Còn phải quyết toán (= paidAmount - settledAmount)
+  remainingPayableUnderApproval?: number; // Còn được thanh toán theo mức duyệt (= approvedAmount - paidAmount)
+  
+  // 2. Danh sách đợt thanh toán (Installments)
+  installments?: DocumentPaymentInstallment[];
+
+  // 3. Checklist chứng từ & chữ ký bắt buộc
+  checklist?: DocumentChecklistItem[];
+
+  // 4. Lịch sử & Phiên bản (V1, V2, V3...)
+  versions?: DocumentVersion[];
+  currentVersion?: number;
+
+  // 5. Trạng thái ký xác nhận dòng tiền
+  signatureStatus?: 'CHUA_KY' | 'CHO_KY_XAC_NHAN' | 'DA_KY' | 'DANG_DOI_SOAT';
+
   /** Thời điểm hồ sơ được tạo, không thay đổi khi hồ sơ được chỉnh sửa. */
   createdAt?: string;
   createdById?: string;
