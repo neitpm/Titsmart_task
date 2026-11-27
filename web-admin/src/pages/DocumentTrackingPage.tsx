@@ -5,6 +5,7 @@ import { useRealtimeStore } from '../services/realtimeStore';
 import { useAuthStore, hasPermission, canManageItem, isDirector, isSystemAdmin } from '../services/authStore';
 import { Toast } from '../components/common/Toast';
 import { ConfirmModal } from '../components/common/ConfirmModal';
+import { Modal } from '../components/common/Modal';
 import { ImportExportDropdown } from '../components/common/ImportExportDropdown';
 import { PullToRefresh } from '../components/common/PullToRefresh';
 import { DocumentTrack } from '../types';
@@ -93,6 +94,12 @@ export const DocumentTrackingPage: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalFlow, setModalFlow] = useState<DocumentFlow>('input');
   const [editingDoc, setEditingDoc] = useState<DocumentTrack | null>(null);
+  const [classificationDialog, setClassificationDialog] = useState<{
+    doc: DocumentTrack;
+    targetFlow: 'input' | 'output';
+  } | null>(null);
+  const [classificationReason, setClassificationReason] = useState('Phân loại lại hồ sơ lịch sử');
+  const [isClassifying, setIsClassifying] = useState(false);
 
   // Modal xem chi tiết 4 tab (Tổng quan, Đợt thanh toán, Checklist, Phiên bản)
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
@@ -165,33 +172,37 @@ export const DocumentTrackingPage: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const handleClassifyDoc = async (doc: DocumentTrack, targetFlow: 'input' | 'output') => {
+  const handleClassifyDoc = (doc: DocumentTrack, targetFlow: 'input' | 'output') => {
+    setClassificationReason('Phân loại lại hồ sơ lịch sử');
+    setClassificationDialog({ doc, targetFlow });
+  };
+
+  const submitClassification = async () => {
+    if (!classificationDialog) return;
+    const { doc, targetFlow } = classificationDialog;
     const targetLabel = targetFlow === 'input' ? 'Hồ sơ đầu vào (phải trả)' : 'Hồ sơ đầu ra (phải thu)';
-    const hasFinancialActivity = Number(doc.paidAmount ?? doc.prepayAmount ?? 0) > 0;
-    const reason = window.prompt(
-      `Xác nhận phân loại ${doc.contractNo || doc.contractName} thành ${targetLabel}.\n` +
-      `${hasFinancialActivity ? 'Hồ sơ đã có phát sinh tiền: thao tác này chỉ đổi luồng hiển thị, không điều chỉnh số tiền. ' : ''}` +
-      'Nhập lý do phân loại:',
-      'Phân loại lại hồ sơ lịch sử'
-    );
-    if (reason === null) return;
+    const reason = classificationReason.trim() || 'Phân loại lại hồ sơ lịch sử';
 
     try {
+      setIsClassifying(true);
       const actor = user?.name || user?.username || 'Người dùng';
       await updateDocumentTrack(doc.id, {
         flowType: targetFlow,
-        flowClassificationReason: reason.trim() || 'Phân loại lại hồ sơ lịch sử',
+        flowClassificationReason: reason,
         flowClassifiedAt: new Date().toISOString(),
         flowClassifiedBy: actor,
         side: targetFlow === 'input' ? 'Bên trả' : 'Bên nhận'
       });
       logActivity(
-        `Phân loại hồ sơ ${doc.contractNo || doc.contractName}: Chưa phân loại → ${targetFlow === 'input' ? 'Đầu vào' : 'Đầu ra'}. Lý do: ${reason.trim() || 'Phân loại lại hồ sơ lịch sử'}`,
+        `Phân loại hồ sơ ${doc.contractNo || doc.contractName}: Chưa phân loại → ${targetFlow === 'input' ? 'Đầu vào' : 'Đầu ra'}. Lý do: ${reason}`,
         doc.projectCode || 'COMPANY'
       );
       triggerToast(`Đã chuyển hồ sơ sang ${targetLabel}.`, 'success');
+      setClassificationDialog(null);
     } catch (err: any) {
       triggerToast(`Không thể phân loại hồ sơ: ${err?.message || 'Xin thử lại'}`, 'warning');
+    } finally {
+      setIsClassifying(false);
     }
   };
 
@@ -501,6 +512,57 @@ export const DocumentTrackingPage: React.FC = () => {
           triggerToast={triggerToast}
         />
       )}
+
+      <Modal
+        isOpen={!!classificationDialog}
+        onClose={() => !isClassifying && setClassificationDialog(null)}
+        title="Xác nhận phân loại hồ sơ"
+        icon="rule"
+        size="md"
+      >
+        {classificationDialog && (() => {
+          const { doc, targetFlow } = classificationDialog;
+          const hasFinancialActivity = Number(doc.paidAmount ?? doc.prepayAmount ?? 0) > 0;
+          const targetLabel = targetFlow === 'input' ? 'Hồ sơ đầu vào (phải trả)' : 'Hồ sơ đầu ra (phải thu)';
+          return (
+            <div className="space-y-4">
+              <div className="text-sm text-slate-700 leading-6">
+                Xác nhận chuyển <strong>{doc.contractNo || doc.contractName || 'hồ sơ này'}</strong> sang <strong className="text-primary">{targetLabel}</strong>.
+              </div>
+              {hasFinancialActivity && (
+                <div className="border-l-4 border-amber-400 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                  Hồ sơ đã có phát sinh tiền. Thao tác này chỉ đổi luồng hiển thị, không điều chỉnh số tiền hoặc các đợt thanh toán.
+                </div>
+              )}
+              <label className="block text-xs font-bold text-slate-700">
+                Lý do phân loại
+                <textarea
+                  value={classificationReason}
+                  onChange={event => setClassificationReason(event.target.value)}
+                  rows={3}
+                  disabled={isClassifying}
+                  className="mt-1.5 w-full resize-y rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-normal text-slate-800 outline-none focus:border-primary focus:ring-1 focus:ring-primary disabled:bg-slate-100"
+                  placeholder="Nhập lý do để lưu vào nhật ký hoạt động"
+                />
+              </label>
+              <div className="flex justify-end gap-2 border-t border-slate-200 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setClassificationDialog(null)}
+                  disabled={isClassifying}
+                  className="rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                >Hủy</button>
+                <button
+                  type="button"
+                  onClick={submitClassification}
+                  disabled={isClassifying}
+                  className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary/90 disabled:opacity-60"
+                >{isClassifying ? 'Đang lưu...' : 'Xác nhận phân loại'}</button>
+              </div>
+            </div>
+          );
+        })()}
+      </Modal>
 
       {/* 5. MODAL XÁC NHẬN XÓA */}
       <ConfirmModal
