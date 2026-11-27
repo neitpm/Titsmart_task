@@ -3558,13 +3558,41 @@ const hasSyncedRef = useRef(false);
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <p className="text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
+              <div className="text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
                 <span className="flex items-center gap-1">
                   <span className="material-symbols-outlined text-primary text-[16px]">assignment_ind</span>
                   Người đảm nhiệm
+                  {assigningUserIds.length > 0 && (
+                    <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-blue-100 text-blue-800">
+                      {assigningUserIds.length}
+                    </span>
+                  )}
                 </span>
-                <span className="text-[10px] text-slate-400 font-normal">(Bắt buộc)</span>
-              </p>
+                <div className="flex items-center gap-2">
+                  {assigningTaskEngineers.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const visibleIds = assigningTaskEngineers.map(e => e.id);
+                        const isAllSelected = visibleIds.every(id => assigningUserIds.includes(id));
+                        if (isAllSelected) {
+                          setAssigningUserIds([]);
+                        } else {
+                          setAssigningUserIds(visibleIds);
+                          // Nếu đã là người đảm nhiệm thì xóa khỏi follower
+                          setAssigningFollowerIds(prev => prev.filter(id => !visibleIds.includes(id)));
+                        }
+                      }}
+                      className="text-[11px] text-primary hover:underline font-bold cursor-pointer"
+                    >
+                      {assigningTaskEngineers.length > 0 && assigningTaskEngineers.every(e => assigningUserIds.includes(e.id))
+                        ? 'Bỏ chọn tất cả'
+                        : 'Chọn tất cả'}
+                    </button>
+                  )}
+                  <span className="text-[10px] text-slate-400 font-normal">(Bắt buộc)</span>
+                </div>
+              </div>
               <div className="relative mb-1.5">
                 <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-[15px]">search</span>
                 <input
@@ -3619,13 +3647,39 @@ const hasSyncedRef = useRef(false);
             </div>
 
             <div>
-              <p className="text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
+              <div className="text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
                 <span className="flex items-center gap-1">
                   <span className="material-symbols-outlined text-amber-600 text-[16px]">visibility</span>
                   Người theo dõi (CC)
+                  {assigningFollowerIds.length > 0 && (
+                    <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-amber-100 text-amber-900">
+                      {assigningFollowerIds.length}
+                    </span>
+                  )}
                 </span>
-                <span className="text-[10px] text-slate-400 font-normal">(Tùy chọn)</span>
-              </p>
+                <div className="flex items-center gap-2">
+                  {assigningTaskEngineers.filter(e => !assigningUserIds.includes(e.id)).length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const availableIds = assigningTaskEngineers.filter(e => !assigningUserIds.includes(e.id)).map(e => e.id);
+                        const isAllFollowers = availableIds.every(id => assigningFollowerIds.includes(id));
+                        if (isAllFollowers) {
+                          setAssigningFollowerIds([]);
+                        } else {
+                          setAssigningFollowerIds(availableIds);
+                        }
+                      }}
+                      className="text-[11px] text-amber-700 hover:underline font-bold cursor-pointer"
+                    >
+                      {assigningTaskEngineers.filter(e => !assigningUserIds.includes(e.id)).every(e => assigningFollowerIds.includes(e.id))
+                        ? 'Bỏ chọn tất cả'
+                        : 'Chọn tất cả'}
+                    </button>
+                  )}
+                  <span className="text-[10px] text-slate-400 font-normal">(Tùy chọn)</span>
+                </div>
+              </div>
               <div className="relative mb-1.5">
                 <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-[15px]">search</span>
                 <input

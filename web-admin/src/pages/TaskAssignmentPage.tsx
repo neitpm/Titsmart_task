@@ -2613,7 +2613,27 @@ export const TaskAssignmentPage: React.FC = () => {
               
               <div className="flex flex-col gap-1.5">
                 <div className="flex items-center justify-between">
-                  <label className="text-sm font-bold text-slate-700">Chọn người phụ trách <span className="text-red-500">*</span></label>
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm font-bold text-slate-700">Chọn người phụ trách <span className="text-red-500">*</span></label>
+                    {assignableEngineers.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const allIds = assignableEngineers.map(e => e.id);
+                          const isAll = allIds.every(id => selectedEngineerIds.includes(id));
+                          if (isAll) {
+                            setSelectedEngineerIds([]);
+                          } else {
+                            setSelectedEngineerIds(allIds);
+                            setBatchFollowerIds(prev => prev.filter(id => !allIds.includes(id)));
+                          }
+                        }}
+                        className="text-xs text-primary hover:underline font-bold cursor-pointer"
+                      >
+                        {assignableEngineers.every(e => selectedEngineerIds.includes(e.id)) ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
+                      </button>
+                    )}
+                  </div>
                   {assignableEngineers.length > 3 && (
                     <div className="relative">
                       <input
