@@ -1940,7 +1940,7 @@ export const TaskAssignmentPage: React.FC = () => {
               >
                 <option value="all">-- Tất cả Dự án --</option>
                 {projects.map(p => {
-                  const prio = p.priority === 'urgent' ? '🔥 [Cấp 1] ' : (p.priority === 'high' ? '⚡ [Cấp 2] ' : '');
+                  const prio = p.priority === 'urgent' ? '[Cấp 1] ' : (p.priority === 'high' ? '[Cấp 2] ' : '');
                   return <option key={p.id} value={p.code}>{prio}{p.name}</option>;
                 })}
               </CustomSelect>

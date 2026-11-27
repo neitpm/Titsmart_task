@@ -2815,7 +2815,7 @@ const hasSyncedRef = useRef(false);
                 >
                   <option value="all">Tất cả dự án</option>
                   {projects.map((p) => {
-                    const prio = p.priority === 'urgent' ? '🔥 [Cấp 1] ' : (p.priority === 'high' ? '⚡ [Cấp 2] ' : '');
+                    const prio = p.priority === 'urgent' ? '[Cấp 1] ' : (p.priority === 'high' ? '[Cấp 2] ' : '');
                     return (
                       <option key={p.id || p.code} value={p.code}>
                         {prio}{p.name || p.code}

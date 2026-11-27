@@ -1332,8 +1332,8 @@ export const ProjectManagementPage: React.FC = () => {
             title="Lọc theo mức độ ưu tiên dự án"
           >
             <option value="all">-- Ưu tiên: Tất cả --</option>
-            <option value="urgent">🔥 Cấp 1 - Trọng điểm</option>
-            <option value="high">⚡ Cấp 2 - Ưu tiên cao</option>
+            <option value="urgent">Cấp 1 - Trọng điểm</option>
+            <option value="high">Cấp 2 - Ưu tiên cao</option>
             <option value="normal">Cấp 3 - Tiêu chuẩn</option>
             <option value="low">Cấp 4 - Ưu tiên thấp</option>
           </CustomSelect>
