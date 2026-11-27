@@ -928,6 +928,7 @@ const hasSyncedRef = useRef(false);
   const [editIssueStatus, setEditIssueStatus] = useState('');
   const [editNotes, setEditNotes] = useState('');
   const [editEngineerId, setEditEngineerId] = useState('');
+  const [editEngineerIds, setEditEngineerIds] = useState<string[]>([]);
   const [editDueDate, setEditDueDate] = useState('');
   const [editParentId, setEditParentId] = useState<string>('');
 
@@ -1100,7 +1101,11 @@ const hasSyncedRef = useRef(false);
     setEditIssue(cleanIssue(t.issue) || '');
     setEditIssueStatus(t.issueStatus || '');
     setEditNotes(t.notes || '');
-    setEditEngineerId(t.assignedEngineerId || '');
+    const parts = t.assignedEngineerName?.split('|') || [];
+    const idsString = parts.length > 1 ? parts[1] : (t.assignedEngineerId || '');
+    const currentAssignedIds = idsString ? idsString.split(',').map(s => s.trim()).filter(Boolean) : [];
+    setEditEngineerIds(currentAssignedIds);
+    setEditEngineerId(currentAssignedIds[0] || t.assignedEngineerId || '');
     const bounds = getTaskTimeBounds(t);
     setEditDueDate(t.dueDate ? String(t.dueDate).split('T')[0] : (bounds.dueDate || ''));
 
@@ -1121,7 +1126,11 @@ const hasSyncedRef = useRef(false);
     if (!editingTask || !editName.trim()) return;
 
     const finalSection = editSectionName === '__CUSTOM__' ? editCustomSection : editSectionName;
-    const eng = engineers.find((e) => e.id === editEngineerId);
+    const selectedEngs = engineers.filter((e) => editEngineerIds.includes(e.id));
+    const finalEngineerId = editEngineerIds.length > 0 ? editEngineerIds[0] : '';
+    const finalEngineerName = selectedEngs.map(e => e.name).join(', ');
+    const finalEngineerIdsStr = editEngineerIds.join(',');
+    const finalAssignedPayload = finalEngineerName + (finalEngineerIdsStr ? '|' + finalEngineerIdsStr : '');
     const nextProgress = editingTask.isSectionHeader ? editingTask.progress : calculateAutoProgressRatio(editPurchaseStatus, editConstrStatus);
 
     // Nếu editingTask là tổng hợp giả lập (synth_sec_...), tìm task thật có cùng STT hoặc tạo mới
@@ -1159,8 +1168,8 @@ const hasSyncedRef = useRef(false);
       }
     }
 
-    const isNewlyAssigned = editEngineerId && editEngineerId !== (editingTask.assignedEngineerId || '');
-    if (!editingTask.isSectionHeader && editEngineerId) {
+    const isNewlyAssigned = editEngineerIds.length > 0 && finalEngineerIdsStr !== (editingTask.assignedEngineerName?.split('|')[1] || editingTask.assignedEngineerId || '');
+    if (!editingTask.isSectionHeader && editEngineerIds.length > 0) {
       const readiness = isTaskReadyForAssignment(editingTask, materialPlans);
       if (!readiness.ready) {
         triggerToast(readiness.reason || 'Hạng mục chưa đủ điều kiện giao việc (cần "Đáp ứng" và "Đã có hàng")!', 'warning');
@@ -1186,8 +1195,8 @@ const hasSyncedRef = useRef(false);
       issue: editIssue,
       issueStatus: editIssueStatus,
       notes: editNotes,
-      assignedEngineerId: editEngineerId,
-      assignedEngineerName: editEngineerId ? (eng?.name || '') : '',
+      assignedEngineerId: finalEngineerId,
+      assignedEngineerName: finalAssignedPayload,
       dueDate: editDueDate ? editDueDate : undefined,
       assignerId: isNewlyAssigned
         ? (authStore.user?.id || editingTask.assignerId) 
@@ -1199,11 +1208,11 @@ const hasSyncedRef = useRef(false);
     });
 
     // Gửi thông báo realtime nếu có giao việc mới qua modal sửa
-    if (editEngineerId && editEngineerId !== (editingTask.assignedEngineerId || '')) {
+    if (editEngineerIds.length > 0 && isNewlyAssigned) {
       const store = useRealtimeStore.getState();
       const assignerName = authStore.user?.name || authStore.user?.username || 'Quản lý';
       const assignerId = authStore.user?.id || '';
-      const targetName = eng?.name || 'nhân sự';
+      const targetName = finalEngineerName || 'nhân sự';
       store.logActivity(`Quản lý ${assignerName} đã GIAO CÔNG VIỆC: "${editName}" cho ${targetName}`, editingTask.projectName || editingTask.projectCode || 'Dự án');
       if (store.addNotification) {
         store.addNotification({
@@ -4068,7 +4077,26 @@ const hasSyncedRef = useRef(false);
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">1. Chọn nhân sự nhận việc (Áp dụng cho {tasksToAssign.length} công việc trong đầu mục):</label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-bold text-slate-700">1. Chọn nhân sự nhận việc (Áp dụng cho {tasksToAssign.length} công việc trong đầu mục):</label>
+                  {targetEngs.length > 0 && (
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (assigningUserIds.length === targetEngs.length) {
+                            setAssigningUserIds([]);
+                          } else {
+                            setAssigningUserIds(targetEngs.map(e => e.id));
+                          }
+                        }}
+                        className="text-[11px] font-bold text-primary hover:text-primary/80 transition-colors cursor-pointer select-none"
+                      >
+                        {assigningUserIds.length === targetEngs.length ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
+                      </button>
+                    </div>
+                  )}
+                </div>
                 <div className="max-h-52 overflow-y-auto border border-slate-200 rounded-lg p-2 space-y-1 bg-slate-50">
                   {targetEngs.length === 0 ? (
                     <div className="p-4 text-center text-xs text-slate-500 font-medium">
@@ -4348,34 +4376,82 @@ const hasSyncedRef = useRef(false);
               </div>
               <div><label className="block font-bold text-slate-700 mb-1">Ghi chú</label><input type="text" value={editNotes} onChange={(e) => setEditNotes(e.target.value)} placeholder="Ghi chú thêm cho dòng công việc" className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none bg-white" /></div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3">
               <div>
                 {(() => {
                   const readiness = isTaskReadyForAssignment(editingTask, materialPlans);
                   return (
                     <>
-                      <div className="flex items-center justify-between mb-1">
-                        <label className="block font-bold text-slate-700">Kỹ sư phụ trách</label>
-                        {!readiness.ready && (
-                          <span className="text-[10px] text-amber-600 font-semibold bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
-                            Chưa đủ ĐK giao việc
-                          </span>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="block font-bold text-slate-700">
+                          Người đảm nhiệm ({editEngineerIds.length} đã chọn)
+                        </label>
+                        <div className="flex items-center gap-2">
+                          {!readiness.ready && (
+                            <span className="text-[10px] text-amber-600 font-semibold bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                              Chưa đủ ĐK giao việc
+                            </span>
+                          )}
+                          {editingTaskEngineers.length > 0 && readiness.ready && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (editEngineerIds.length === editingTaskEngineers.length) {
+                                  setEditEngineerIds([]);
+                                  setEditEngineerId('');
+                                } else {
+                                  const allIds = editingTaskEngineers.map(e => e.id);
+                                  setEditEngineerIds(allIds);
+                                  setEditEngineerId(allIds[0] || '');
+                                }
+                              }}
+                              className="text-[11px] font-bold text-primary hover:text-primary/80 transition-colors cursor-pointer select-none"
+                            >
+                              {editEngineerIds.length === editingTaskEngineers.length ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <div className={`max-h-40 overflow-y-auto border border-slate-200 rounded-lg p-2 space-y-1 ${!readiness.ready ? 'bg-slate-100 opacity-70 pointer-events-none' : 'bg-slate-50'}`}>
+                        {editingTaskEngineers.length === 0 ? (
+                          <div className="p-3 text-center text-xs text-slate-500 font-medium">
+                            Dự án này chưa có thành viên nào.
+                          </div>
+                        ) : (
+                          editingTaskEngineers.map((eng) => {
+                            const isChecked = editEngineerIds.includes(eng.id);
+                            return (
+                              <label key={eng.id} className="flex items-center gap-2 p-1.5 hover:bg-slate-200/60 rounded cursor-pointer transition-colors">
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  onChange={(e) => {
+                                    if (!readiness.ready) {
+                                      triggerToast(readiness.reason || 'Hạng mục chưa đủ điều kiện giao việc (cần "Đáp ứng" và "Đã có hàng")!', 'warning');
+                                      return;
+                                    }
+                                    if (e.target.checked) {
+                                      const next = [...editEngineerIds, eng.id];
+                                      setEditEngineerIds(next);
+                                      setEditEngineerId(next[0] || '');
+                                    } else {
+                                      const next = editEngineerIds.filter(id => id !== eng.id);
+                                      setEditEngineerIds(next);
+                                      setEditEngineerId(next[0] || '');
+                                    }
+                                  }}
+                                  className="rounded border-slate-300 text-primary focus:ring-primary"
+                                />
+                                <div className="flex-1 min-w-0 flex items-center justify-between">
+                                  <span className="text-xs font-bold text-slate-700 truncate">{eng.name}</span>
+                                  <span className="text-[10px] text-slate-400">{eng.title || 'Nhân viên'}</span>
+                                </div>
+                              </label>
+                            );
+                          })
                         )}
                       </div>
-                      <CustomSelect 
-                        value={editEngineerId} 
-                        onChange={(e) => {
-                          if (e.target.value && !readiness.ready) {
-                            triggerToast(readiness.reason || 'Hạng mục chưa đủ điều kiện giao việc (cần "Đáp ứng" và "Đã có hàng")!', 'warning');
-                            return;
-                          }
-                          setEditEngineerId(e.target.value);
-                        }} 
-                        className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:outline-none ${!readiness.ready ? 'bg-slate-50' : 'bg-white'}`}
-                      >
-                        <option value="">-- Chưa giao --</option>
-                        {editingTaskEngineers.map((eng) => (<option key={eng.id} value={eng.id}>{eng.name} ({eng.title})</option>))}
-                      </CustomSelect>
                       {!readiness.ready && (
                         <p className="text-[11px] text-amber-600 mt-1">
                           * Cần <b>Đáp ứng</b> và <b>Đã có hàng</b> để giao việc.

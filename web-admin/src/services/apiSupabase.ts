@@ -599,7 +599,22 @@ export const api = {
       try {
         const data = await fetchAllRows('tasks', '*', projectId ? { column: 'project_code', value: projectId } : undefined);
         return mapArray(data || []).map((t: any) => {
-        // Parse followers from notes tag [FOLLOWERS:id1,id2:::name1,name2] or sourceRow
+          // Parse assignees from notes tag [ASSIGNED_USERS:id1,id2:::name1,name2]
+          const assignedMatch = t.notes.match(/\[ASSIGNED_USERS:([^\]]+)\]/i);
+          if (assignedMatch) {
+            const rawAssigned = assignedMatch[1];
+            const parts = rawAssigned.split(':::');
+            const aIds = parts[0] || '';
+            const aNames = parts[1] || '';
+            if (aIds || aNames) {
+              t.assignedEngineerName = aNames + (aIds ? '|' + aIds : '');
+              if (!t.assignedEngineerId && aIds) {
+                t.assignedEngineerId = aIds.split(',')[0].trim();
+              }
+            }
+          }
+
+          // Parse followers from notes tag [FOLLOWERS:id1,id2:::name1,name2] or sourceRow
         if (t.notes && typeof t.notes === 'string') {
           const match = t.notes.match(/\[FOLLOWERS:([^\]]+)\]/i);
           if (match) {
@@ -679,6 +694,17 @@ export const api = {
       if (payload.assigned_engineer_id === '') payload.assigned_engineer_id = null;
       if (payload.assigner_id === '') payload.assigner_id = null;
       if (payload.reviewer_id === '') payload.reviewer_id = null;
+
+      // Encode multiple assigned engineers safely in notes
+      if (data.assignedEngineerName && String(data.assignedEngineerName).includes('|')) {
+        const parts = String(data.assignedEngineerName).split('|');
+        const names = parts[0] || '';
+        const ids = parts[1] || data.assignedEngineerId || '';
+        const assignedTag = `[ASSIGNED_USERS:${ids}:::${names}]`;
+        if (!payload.notes || !payload.notes.includes('[ASSIGNED_USERS:')) {
+          payload.notes = (payload.notes ? payload.notes + '\n' : '') + assignedTag;
+        }
+      }
 
       // Encode followers safely in notes
       if (data.followerIds && Array.isArray(data.followerIds) && data.followerIds.length > 0) {
@@ -808,6 +834,15 @@ export const api = {
         if (payload.assigned_engineer_id === '') payload.assigned_engineer_id = null;
         if (payload.assigner_id === '') payload.assigner_id = null;
         if (payload.reviewer_id === '') payload.reviewer_id = null;
+        if (data.assignedEngineerName && String(data.assignedEngineerName).includes('|')) {
+          const parts = String(data.assignedEngineerName).split('|');
+          const names = parts[0] || '';
+          const ids = parts[1] || data.assignedEngineerId || '';
+          const assignedTag = `[ASSIGNED_USERS:${ids}:::${names}]`;
+          if (!payload.notes || !payload.notes.includes('[ASSIGNED_USERS:')) {
+            payload.notes = (payload.notes ? payload.notes + '\n' : '') + assignedTag;
+          }
+        }
         if (data.followerIds && Array.isArray(data.followerIds) && data.followerIds.length > 0) {
           const followerTag = `[FOLLOWERS:${data.followerIds.join(',')}:::${(data.followerNames || []).join(',')}]`;
           if (!payload.notes || !payload.notes.includes('[FOLLOWERS:')) {
@@ -865,6 +900,34 @@ export const api = {
       if (payload.assigned_engineer_id === '') payload.assigned_engineer_id = null;
       if (payload.assigner_id === '') payload.assigner_id = null;
       if (payload.reviewer_id === '') payload.reviewer_id = null;
+
+      if (data.assignedEngineerName !== undefined || data.assignedEngineerId !== undefined) {
+        let existingNotes = payload.notes || '';
+        existingNotes = existingNotes.replace(/\[ASSIGNED_USERS:[^\]]*\]/g, '').trim();
+        const engNameStr = String(data.assignedEngineerName || '');
+        if (engNameStr.includes('|')) {
+          const parts = engNameStr.split('|');
+          const names = parts[0] || '';
+          const ids = parts[1] || data.assignedEngineerId || '';
+          if (ids || names) {
+            const assignedTag = `[ASSIGNED_USERS:${ids}:::${names}]`;
+            payload.notes = (existingNotes ? existingNotes + '\n' : '') + assignedTag;
+          } else {
+            payload.notes = existingNotes;
+          }
+        } else if (data.assignedEngineerId) {
+          // Giao đơn 1 người
+          if (engNameStr) {
+            const assignedTag = `[ASSIGNED_USERS:${data.assignedEngineerId}:::${engNameStr}]`;
+            payload.notes = (existingNotes ? existingNotes + '\n' : '') + assignedTag;
+          } else {
+            payload.notes = existingNotes;
+          }
+        } else {
+          // Bỏ giao việc
+          payload.notes = existingNotes;
+        }
+      }
 
       if (data.followerIds && Array.isArray(data.followerIds)) {
         const followerTag = `[FOLLOWERS:${data.followerIds.join(',')}:::${(data.followerNames || []).join(',')}]`;
