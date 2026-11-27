@@ -901,63 +901,6 @@ export const PersonnelPage: React.FC = () => {
         </div>
       </section>
 
-      {/* THANH TAB ĐIỀU HƯỚNG CHÍNH: TỔNG QUAN | PHÒNG BAN | NHÂN SỰ */}
-      <div className="bg-white border-b border-slate-200 px-3 md:px-4 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-1 overflow-x-auto custom-scrollbar">
-          {/* Tab 1: Tổng quan */}
-          <button
-            type="button"
-            onClick={() => handleSelectTab('overview')}
-            className={`py-2.5 px-3.5 text-xs font-bold border-b-2 transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
-              activeTab === 'overview'
-                ? 'border-primary text-primary bg-blue-50/50'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            <span className="material-symbols-outlined text-[17px]">grid_view</span>
-            <span>Tổng quan</span>
-          </button>
-
-          {/* Tab 2: Phòng ban */}
-          <button
-            type="button"
-            onClick={() => handleSelectTab('department')}
-            className={`py-2.5 px-3.5 text-xs font-bold border-b-2 transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
-              activeTab === 'department'
-                ? 'border-primary text-primary bg-blue-50/50'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            <span className="material-symbols-outlined text-[17px]">corporate_fare</span>
-            <span>Phòng ban</span>
-            <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-blue-100 text-blue-800 font-bold">
-              {departments.filter(d => d.status === 'ACTIVE').length}
-            </span>
-          </button>
-
-          {/* Tab 3: Nhân sự */}
-          <button
-            type="button"
-            onClick={() => handleSelectTab('list')}
-            className={`py-2.5 px-3.5 text-xs font-bold border-b-2 transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
-              activeTab === 'list'
-                ? 'border-primary text-primary bg-blue-50/50'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            <span className="material-symbols-outlined text-[17px]">groups</span>
-            <span>Nhân sự</span>
-            <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-slate-100 text-slate-700 font-bold">
-              {engineers.filter(e => e.role !== 'Quản trị viên' && e.username !== 'admin').length}
-            </span>
-          </button>
-        </div>
-
-        <div className="hidden sm:flex items-center gap-2 text-xs text-slate-500">
-          <span>Tổng số: <b className="text-slate-800">{engineers.length}</b> tài khoản</span>
-        </div>
-      </div>
-
       {/* NỘI DUNG THEO TỪNG TAB */}
       {activeTab === 'overview' && (
         <PullToRefresh onRefresh={async () => { await Promise.all([fetchEngineers(), fetchProjects(), fetchDepartments()]); }} className="flex-1 overflow-y-auto">
