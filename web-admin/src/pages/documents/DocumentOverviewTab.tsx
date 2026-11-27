@@ -189,9 +189,9 @@ export const DocumentOverviewTab: React.FC<DocumentOverviewTabProps> = ({
   const hasData = inputDocs.length > 0 || outputDocs.length > 0;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* KHỐI 1: KPI CƠ BẢN ĐỐI CHIẾU NGHĨA VỤ TIỀN THỰC TẾ */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {/* Phân hệ 1: Hồ sơ đầu vào */}
         <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
@@ -332,7 +332,7 @@ export const DocumentOverviewTab: React.FC<DocumentOverviewTabProps> = ({
       )}
 
       {/* KHỐI 3: BỐN DANH SÁCH CẢNH BÁO KIỂM SOÁT BẮT BUỘC (2x2 GRID) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {/* 1. Hồ sơ thiếu chứng từ */}
         <div className="bg-white border border-slate-200 rounded-xl p-3.5 shadow-xs">
           <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-100">
