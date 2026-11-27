@@ -350,25 +350,21 @@ export const DocumentTrackingPage: React.FC = () => {
             />
 
             {isAllowedToManage && (
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => handleOpenNew('input')}
-                  className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow-2xs cursor-pointer transition"
-                  title="Thêm hồ sơ đầu vào (Công ty phải trả)"
+              <div className="flex items-center">
+                <CustomSelect
+                  value=""
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === 'input' || val === 'output') {
+                      handleOpenNew(val);
+                    }
+                  }}
+                  className="text-xs px-2.5 py-1.5 border border-slate-300 rounded-lg bg-white text-slate-700 font-semibold focus:border-primary focus:ring-1 focus:ring-primary shadow-xs cursor-pointer min-w-[140px]"
                 >
-                  <span className="material-symbols-outlined text-[15px]">upload_file</span>
-                  <span className="hidden sm:inline">Hồ sơ đầu vào</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleOpenNew('output')}
-                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow-2xs cursor-pointer transition"
-                  title="Thêm hồ sơ đầu ra (Thu tiền từ khách/CĐT)"
-                >
-                  <span className="material-symbols-outlined text-[15px]">download_for_offline</span>
-                  <span className="hidden sm:inline">Hồ sơ đầu ra</span>
-                </button>
+                  <option value="" disabled>+ Thêm hồ sơ mới...</option>
+                  <option value="input">Hồ sơ đầu vào (Phải trả)</option>
+                  <option value="output">Hồ sơ đầu ra (Phải thu)</option>
+                </CustomSelect>
               </div>
             )}
           </div>
@@ -393,23 +389,21 @@ export const DocumentTrackingPage: React.FC = () => {
             />
 
             {isAllowedToManage && (
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => handleOpenNew('input')}
-                  className="px-2.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer shadow-2xs"
+              <div className="flex items-center">
+                <CustomSelect
+                  value=""
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === 'input' || val === 'output') {
+                      handleOpenNew(val);
+                    }
+                  }}
+                  className="text-xs px-2.5 py-1.5 border border-slate-300 rounded-lg bg-white text-slate-700 font-semibold focus:border-primary focus:ring-1 focus:ring-primary shadow-xs cursor-pointer min-w-[140px]"
                 >
-                  <span className="material-symbols-outlined text-[14px]">add</span>
-                  <span>Đầu vào</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleOpenNew('output')}
-                  className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer shadow-2xs"
-                >
-                  <span className="material-symbols-outlined text-[14px]">add</span>
-                  <span>Đầu ra</span>
-                </button>
+                  <option value="" disabled>+ Thêm hồ sơ mới...</option>
+                  <option value="input">Hồ sơ đầu vào (Phải trả)</option>
+                  <option value="output">Hồ sơ đầu ra (Phải thu)</option>
+                </CustomSelect>
               </div>
             )}
           </div>
