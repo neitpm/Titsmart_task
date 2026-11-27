@@ -274,29 +274,6 @@ export const DocumentFlowTable: React.FC<DocumentFlowTableProps> = ({
               </button>
             )}
           </div>
-
-          {/* Cụm thao tác bên phải */}
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              type="button"
-              onClick={onExportExcel}
-              className="text-xs px-3 py-1.5 border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 rounded-lg font-semibold flex items-center gap-1.5 cursor-pointer shadow-2xs"
-            >
-              <span className="material-symbols-outlined text-emerald-600 text-[16px]">file_download</span>
-              <span>Xuất Excel</span>
-            </button>
-
-            {isAllowedToManage && (
-              <button
-                type="button"
-                onClick={onOpenNew}
-                className="text-xs px-3.5 py-1.5 bg-primary text-white hover:bg-primary/90 rounded-lg font-bold flex items-center gap-1.5 cursor-pointer shadow-xs"
-              >
-                <span className="material-symbols-outlined text-[16px]">add</span>
-                <span>{flow === 'input' ? 'Thêm hồ sơ đầu vào' : 'Thêm hồ sơ đầu ra'}</span>
-              </button>
-            )}
-          </div>
         </div>
 
         {/* Thanh tóm tắt số liệu & kết quả */}
