@@ -599,95 +599,97 @@ export const api = {
       try {
         const data = await fetchAllRows('tasks', '*', projectId ? { column: 'project_code', value: projectId } : undefined);
         return mapArray(data || []).map((t: any) => {
+          const notesStr = (t.notes && typeof t.notes === 'string') ? t.notes : '';
+
           // Parse assignees from notes tag [ASSIGNED_USERS:id1,id2:::name1,name2]
-          const assignedMatch = t.notes.match(/\[ASSIGNED_USERS:([^\]]+)\]/i);
-          if (assignedMatch) {
-            const rawAssigned = assignedMatch[1];
-            const parts = rawAssigned.split(':::');
-            const aIds = parts[0] || '';
-            const aNames = parts[1] || '';
-            if (aIds || aNames) {
-              t.assignedEngineerName = aNames + (aIds ? '|' + aIds : '');
-              if (!t.assignedEngineerId && aIds) {
-                t.assignedEngineerId = aIds.split(',')[0].trim();
+          if (notesStr) {
+            const assignedMatch = notesStr.match(/\[ASSIGNED_USERS:([^\]]+)\]/i);
+            if (assignedMatch) {
+              const rawAssigned = assignedMatch[1];
+              const parts = rawAssigned.split(':::');
+              const aIds = parts[0] || '';
+              const aNames = parts[1] || '';
+              if (aIds || aNames) {
+                t.assignedEngineerName = aNames + (aIds ? '|' + aIds : '');
+                if (!t.assignedEngineerId && aIds) {
+                  t.assignedEngineerId = aIds.split(',')[0].trim();
+                }
               }
             }
-          }
 
-          // Parse followers from notes tag [FOLLOWERS:id1,id2:::name1,name2] or sourceRow
-        if (t.notes && typeof t.notes === 'string') {
-          const match = t.notes.match(/\[FOLLOWERS:([^\]]+)\]/i);
-          if (match) {
-            const raw = match[1];
-            let idPart = '';
-            let namePart = '';
-            if (raw.includes(':::')) {
-              const parts = raw.split(':::');
-              idPart = parts[0] || '';
-              namePart = parts[1] || '';
-            } else if (raw.includes('|||')) {
-              const parts = raw.split('|||');
-              idPart = parts[0] || '';
-              namePart = parts[1] || '';
-            } else if (raw.includes('|')) {
-              const parts = raw.split('|');
-              idPart = parts[0] || '';
-              namePart = parts[1] || '';
-            } else {
-              idPart = raw;
+            // Parse followers from notes tag [FOLLOWERS:id1,id2:::name1,name2] or sourceRow
+            const match = notesStr.match(/\[FOLLOWERS:([^\]]+)\]/i);
+            if (match) {
+              const raw = match[1];
+              let idPart = '';
+              let namePart = '';
+              if (raw.includes(':::')) {
+                const parts = raw.split(':::');
+                idPart = parts[0] || '';
+                namePart = parts[1] || '';
+              } else if (raw.includes('|||')) {
+                const parts = raw.split('|||');
+                idPart = parts[0] || '';
+                namePart = parts[1] || '';
+              } else if (raw.includes('|')) {
+                const parts = raw.split('|');
+                idPart = parts[0] || '';
+                namePart = parts[1] || '';
+              } else {
+                idPart = raw;
+              }
+              const ids = idPart.split(',').map((s: string) => s.replace(/^[:|]+|[:|]+$/g, '').trim()).filter(Boolean);
+              const names = namePart.split(',').map((s: string) => s.replace(/^[:|]+|[:|]+$/g, '').trim()).filter(Boolean);
+              if (ids.length > 0 && (!t.followerIds || t.followerIds.length === 0)) {
+                t.followerIds = ids;
+              }
+              if (names.length > 0 && (!t.followerNames || t.followerNames.length === 0)) {
+                t.followerNames = names;
+              }
             }
-            const ids = idPart.split(',').map((s: string) => s.replace(/^[:|]+|[:|]+$/g, '').trim()).filter(Boolean);
-            const names = namePart.split(',').map((s: string) => s.replace(/^[:|]+|[:|]+$/g, '').trim()).filter(Boolean);
-            if (ids.length > 0 && (!t.followerIds || t.followerIds.length === 0)) {
-              t.followerIds = ids;
+
+            // Parse assigner from notes tag [ASSIGNER:id:::name]
+            const assignerMatch = notesStr.match(/\[ASSIGNER:([^\]]+)\]/i);
+            if (assignerMatch) {
+              const rawAssigner = assignerMatch[1];
+              const parts = rawAssigner.split(':::');
+              if (!t.assignerId && parts[0]) t.assignerId = parts[0];
+              if (!t.assignerName && parts[1]) t.assignerName = parts[1];
             }
-            if (names.length > 0 && (!t.followerNames || t.followerNames.length === 0)) {
-              t.followerNames = names;
+
+            // Parse start date from notes tag [START_DATE:YYYY-MM-DD]
+            const startDateMatch = notesStr.match(/\[START_DATE:([^\]]+)\]/i);
+            if (startDateMatch && !t.startDate) {
+              t.startDate = startDateMatch[1].trim();
+            }
+
+            // Parse due date from notes tag [DUE_DATE:YYYY-MM-DD]
+            const dueDateMatch = notesStr.match(/\[DUE_DATE:([^\]]+)\]/i);
+            if (dueDateMatch && !t.dueDate) {
+              t.dueDate = dueDateMatch[1].trim();
             }
           }
-
-          // Parse assigner from notes tag [ASSIGNER:id:::name]
-          const assignerMatch = t.notes.match(/\[ASSIGNER:([^\]]+)\]/i);
-          if (assignerMatch) {
-            const rawAssigner = assignerMatch[1];
-            const parts = rawAssigner.split(':::');
-            if (!t.assignerId && parts[0]) t.assignerId = parts[0];
-            if (!t.assignerName && parts[1]) t.assignerName = parts[1];
+          if (t.sourceRow && typeof t.sourceRow === 'object') {
+            if (t.sourceRow.followerIds && (!t.followerIds || t.followerIds.length === 0)) {
+              t.followerIds = t.sourceRow.followerIds;
+            }
+            if (t.sourceRow.followerNames && (!t.followerNames || t.followerNames.length === 0)) {
+              t.followerNames = t.sourceRow.followerNames;
+            }
+            if (t.sourceRow.assignerId && !t.assignerId) {
+              t.assignerId = t.sourceRow.assignerId;
+            }
+            if (t.sourceRow.assignerName && !t.assignerName) {
+              t.assignerName = t.sourceRow.assignerName;
+            }
           }
-
-          // Parse start date from notes tag [START_DATE:YYYY-MM-DD]
-          const startDateMatch = t.notes.match(/\[START_DATE:([^\]]+)\]/i);
-          if (startDateMatch && !t.startDate) {
-            t.startDate = startDateMatch[1].trim();
-          }
-
-          // Parse due date from notes tag [DUE_DATE:YYYY-MM-DD]
-          const dueDateMatch = t.notes.match(/\[DUE_DATE:([^\]]+)\]/i);
-          if (dueDateMatch && !t.dueDate) {
-            t.dueDate = dueDateMatch[1].trim();
-          }
-        }
-        if (t.sourceRow && typeof t.sourceRow === 'object') {
-          if (t.sourceRow.followerIds && (!t.followerIds || t.followerIds.length === 0)) {
-            t.followerIds = t.sourceRow.followerIds;
-          }
-          if (t.sourceRow.followerNames && (!t.followerNames || t.followerNames.length === 0)) {
-            t.followerNames = t.sourceRow.followerNames;
-          }
-          if (t.sourceRow.assignerId && !t.assignerId) {
-            t.assignerId = t.sourceRow.assignerId;
-          }
-          if (t.sourceRow.assignerName && !t.assignerName) {
-            t.assignerName = t.sourceRow.assignerName;
-          }
-        }
-        return t;
-      });
-    } catch (err) {
-      console.warn('[Tasks] Error fetching tasks:', err);
-      return [];
-    }
-  },
+          return t;
+        });
+      } catch (err) {
+        console.warn('[Tasks] Error fetching tasks:', err);
+        return [];
+      }
+    },
     create: async (data: any) => {
       const payload = toSnakeCase(data);
       if (payload.parent_id === '') payload.parent_id = null;
@@ -4421,53 +4423,9 @@ export const api = {
 
   branding: {
     get: async (): Promise<{ companyName?: string; companySlogan?: string; companyLogo?: string | null; hotline?: string; address?: string; adminEmail?: string; internalCategories?: any; updatedAt?: string } | null> => {
-      try {
-        const companyId = getCurrentCompanyId();
-        // 1. Thử lấy từ bảng company_branding theo companyId
-        const { data: brandingData, error: brandingError } = await supabase
-          .from('company_branding')
-          .select('company_name, company_slogan, company_logo, hotline, address, email, updated_at')
-          .eq('company_id', companyId)
-          .maybeSingle();
-
-        if (!brandingError && brandingData && (brandingData.company_name || brandingData.company_logo)) {
-          return {
-            companyName: brandingData.company_name,
-            companySlogan: brandingData.company_slogan,
-            companyLogo: brandingData.company_logo,
-            hotline: brandingData.hotline,
-            address: brandingData.address,
-            adminEmail: brandingData.email,
-            updatedAt: brandingData.updated_at
-          };
-        }
-
-        // 2. Thử lấy từ bảng companies theo companyId
-        const { data, error } = await supabase
-          .from('companies')
-          .select('name, slogan, logo_url, hotline, address, admin_email, internal_categories, updated_at')
-          .eq('id', companyId)
-          .maybeSingle();
-
-        if (!error && data && (data.name || data.logo_url)) {
-          return {
-            companyName: data.name,
-            companySlogan: data.slogan,
-            companyLogo: data.logo_url,
-            hotline: data.hotline,
-            address: data.address,
-            adminEmail: data.admin_email,
-            internalCategories: data.internal_categories || {},
-            updatedAt: data.updated_at
-          };
-        }
-      } catch (err) {
-        console.warn('[Branding] Failed to fetch company profile from companies/company_branding table:', err);
-      }
-
-      // Chỉ đọc từ fallback config.json nếu đang ở default company TITSMART
-      const activeCompanyId = getCurrentCompanyId();
-      if (activeCompanyId === '00000000-0000-0000-0000-000000000001') {
+      // 1. Nếu ở môi trường Cloud Supabase (hoặc DB không có bảng multi-tenant companies/company_branding):
+      // Đọc trực tiếp từ public config.json trên Storage để tránh lỗi 404
+      if (isCloudSupabase) {
         try {
           const storageUrl = `${supabase.storage.from('titsmart-images').getPublicUrl('branding/config.json').data.publicUrl}?t=${Date.now()}`;
           const res = await fetch(storageUrl, { cache: 'no-store' });
@@ -4478,14 +4436,81 @@ export const api = {
                 companyName: cfg.companyName,
                 companySlogan: cfg.companySlogan,
                 companyLogo: cfg.companyLogo,
+                hotline: cfg.hotline || '',
+                address: cfg.address || '',
+                adminEmail: cfg.adminEmail || '',
                 updatedAt: cfg.updatedAt
               };
             }
           }
         } catch (e) {
-          // Fallback sang activity_logs nếu có
+          console.warn('[Branding] Failed to read cloud branding config:', e);
         }
+        return null;
       }
+
+      try {
+        const companyId = getCurrentCompanyId();
+        // 2. Thử lấy từ bảng company_branding theo companyId (Local multi-tenant)
+        if (companyId) {
+          const { data: brandingData, error: brandingError } = await supabase
+            .from('company_branding')
+            .select('company_name, company_slogan, company_logo, hotline, address, email, updated_at')
+            .eq('company_id', companyId)
+            .maybeSingle();
+
+          if (!brandingError && brandingData && (brandingData.company_name || brandingData.company_logo)) {
+            return {
+              companyName: brandingData.company_name,
+              companySlogan: brandingData.company_slogan,
+              companyLogo: brandingData.company_logo,
+              hotline: brandingData.hotline,
+              address: brandingData.address,
+              adminEmail: brandingData.email,
+              updatedAt: brandingData.updated_at
+            };
+          }
+
+          // 3. Thử lấy từ bảng companies theo companyId
+          const { data, error } = await supabase
+            .from('companies')
+            .select('name, slogan, logo_url, hotline, address, admin_email, internal_categories, updated_at')
+            .eq('id', companyId)
+            .maybeSingle();
+
+          if (!error && data && (data.name || data.logo_url)) {
+            return {
+              companyName: data.name,
+              companySlogan: data.slogan,
+              companyLogo: data.logo_url,
+              hotline: data.hotline,
+              address: data.address,
+              adminEmail: data.admin_email,
+              internalCategories: data.internal_categories || {},
+              updatedAt: data.updated_at
+            };
+          }
+        }
+      } catch (err) {
+        console.warn('[Branding] Failed to fetch company profile from companies/company_branding table:', err);
+      }
+
+      // Fallback sang storage config
+      try {
+        const storageUrl = `${supabase.storage.from('titsmart-images').getPublicUrl('branding/config.json').data.publicUrl}?t=${Date.now()}`;
+        const res = await fetch(storageUrl, { cache: 'no-store' });
+        if (res.ok) {
+          const cfg = await res.json();
+          if (cfg && (cfg.companyName || cfg.companySlogan || cfg.companyLogo !== undefined)) {
+            return {
+              companyName: cfg.companyName,
+              companySlogan: cfg.companySlogan,
+              companyLogo: cfg.companyLogo,
+              updatedAt: cfg.updatedAt
+            };
+          }
+        }
+      } catch (e) {}
 
       return null;
     },
