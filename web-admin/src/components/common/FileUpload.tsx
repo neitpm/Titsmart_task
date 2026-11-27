@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { deleteStorageFiles, uploadAttachment } from '../../utils/fileUploadHelper';
 
@@ -13,11 +13,28 @@ interface FileUploadProps {
   buttonText?: string;
   buttonIcon?: string;
   variant?: 'light' | 'solid';
+  enableCameraOption?: boolean;
 }
 
-export const FileUpload: React.FC<FileUploadProps> = ({ label, name, value: initialValue, onChange, className = '', multiple = false, onUploadStateChange, buttonText = 'Tải lên tệp', buttonIcon = 'upload', variant = 'light' }) => {
+export const FileUpload: React.FC<FileUploadProps> = ({ 
+  label, 
+  name, 
+  value: initialValue, 
+  onChange, 
+  className = '', 
+  multiple = false, 
+  onUploadStateChange, 
+  buttonText = 'Tải lên tệp', 
+  buttonIcon = 'upload', 
+  variant = 'light',
+  enableCameraOption = true
+}) => {
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState('');
+  const [showAttachMenu, setShowAttachMenu] = useState(false);
+  
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   
   // Normalize initialValue to array for internal state
   const getInitialArray = () => {
@@ -91,19 +108,87 @@ export const FileUpload: React.FC<FileUploadProps> = ({ label, name, value: init
       {name && <input type="hidden" name={name} value={multiple ? localValues.join(',') : localValues[0] || ''} />}
       
       <div className="flex flex-col gap-2">
-        <div className="flex items-center gap-3">
-          <label className={`cursor-pointer relative overflow-hidden inline-flex items-center gap-2 px-4 py-2 font-semibold text-sm rounded-lg transition-all ${variant === 'solid' ? 'bg-primary text-white hover:bg-primary/90 shadow-sm' : 'bg-primary/10 text-primary hover:bg-primary/20'} ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
-            <span className="material-symbols-outlined text-[18px]">{buttonIcon}</span>
-            {buttonText}
-            <input 
-              type="file" 
-              accept="*/*"
-              multiple={multiple}
-              onChange={handleUpload}
-              disabled={isUploading}
-              className="absolute inset-0 w-[200%] h-[200%] -top-[50%] -left-[50%] opacity-0 cursor-pointer"
-            />
-          </label>
+        <div className="relative inline-block">
+          {enableCameraOption ? (
+            <>
+              <button
+                type="button"
+                onClick={() => setShowAttachMenu(!showAttachMenu)}
+                disabled={isUploading}
+                className={`cursor-pointer inline-flex items-center gap-2 px-3 py-1.5 font-bold text-xs rounded-lg transition-all ${
+                  variant === 'solid'
+                    ? 'bg-primary text-white hover:bg-primary/90 shadow-xs'
+                    : 'bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 shadow-2xs'
+                } ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                <span className="material-symbols-outlined text-[17px]">{buttonIcon}</span>
+                <span>{buttonText}</span>
+                <span className="material-symbols-outlined text-[15px] opacity-70">expand_more</span>
+              </button>
+
+              {/* Popover Menu: Chụp ảnh mới / Chọn từ thư viện */}
+              {showAttachMenu && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setShowAttachMenu(false)} />
+                  <div className="absolute left-0 top-full mt-1 z-50 bg-white rounded-xl shadow-2xl border border-slate-200 p-1.5 flex flex-col gap-1 min-w-[200px] animate-in fade-in zoom-in-95 duration-150">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowAttachMenu(false);
+                        cameraInputRef.current?.click();
+                      }}
+                      className="flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-emerald-50 hover:text-emerald-900 rounded-lg transition-colors text-left cursor-pointer"
+                    >
+                      <span className="material-symbols-outlined text-emerald-600 text-lg">photo_camera</span>
+                      <span>Chụp ảnh mới</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowAttachMenu(false);
+                        fileInputRef.current?.click();
+                      }}
+                      className="flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-blue-50 hover:text-blue-900 rounded-lg transition-colors text-left cursor-pointer"
+                    >
+                      <span className="material-symbols-outlined text-blue-600 text-lg">image</span>
+                      <span>Chọn từ thư viện / File</span>
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {/* Hidden inputs cho chụp camera và chọn file */}
+              <input
+                ref={cameraInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={handleUpload}
+              />
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="*/*"
+                multiple={multiple}
+                className="hidden"
+                onChange={handleUpload}
+              />
+            </>
+          ) : (
+            <label className={`cursor-pointer relative overflow-hidden inline-flex items-center gap-2 px-4 py-2 font-semibold text-sm rounded-lg transition-all ${variant === 'solid' ? 'bg-primary text-white hover:bg-primary/90 shadow-sm' : 'bg-primary/10 text-primary hover:bg-primary/20'} ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
+              <span className="material-symbols-outlined text-[18px]">{buttonIcon}</span>
+              {buttonText}
+              <input 
+                type="file" 
+                accept="*/*"
+                multiple={multiple}
+                onChange={handleUpload}
+                disabled={isUploading}
+                className="absolute inset-0 w-[200%] h-[200%] -top-[50%] -left-[50%] opacity-0 cursor-pointer"
+              />
+            </label>
+          )}
         </div>
         
         {localValues.length > 0 && (

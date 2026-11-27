@@ -1114,7 +1114,7 @@ export const api = {
       }
 
       // Loại bỏ các trường không thuộc bảng inventory_transactions
-      const allowedKeys = ['id', 'type', 'date', 'material_id', 'material_code', 'material_name', 'specs', 'category', 'unit', 'quantity', 'source_or_project', 'receiver_name', 'notes', 'created_at'];
+      const allowedKeys = ['id', 'type', 'date', 'material_id', 'material_code', 'material_name', 'specs', 'category', 'unit', 'quantity', 'unit_price', 'total_price', 'source_or_project', 'receiver_name', 'notes', 'created_at'];
       const sanitizedPayload: any = {};
       for (const key of Object.keys(payload)) {
         if (allowedKeys.includes(key)) {
@@ -1218,7 +1218,7 @@ export const api = {
     },
     updateTransaction: async (id: string, data: any) => {
       const payload = toSnakeCase(data);
-      const allowedKeys = ['type', 'date', 'material_id', 'material_code', 'material_name', 'specs', 'category', 'unit', 'quantity', 'source_or_project', 'receiver_name', 'notes', 'updated_at', 'updated_by'];
+      const allowedKeys = ['type', 'date', 'material_id', 'material_code', 'material_name', 'specs', 'category', 'unit', 'quantity', 'unit_price', 'total_price', 'source_or_project', 'receiver_name', 'notes', 'updated_at', 'updated_by'];
       const sanitizedPayload: any = {};
       for (const key of Object.keys(payload)) {
         if (allowedKeys.includes(key)) {

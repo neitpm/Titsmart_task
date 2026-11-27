@@ -382,6 +382,8 @@ export const MaterialTrackingPage: React.FC = () => {
     col_import: 85,
     col_export: 85,
     col_stock: 95,
+    col_unit_price: 105,
+    col_stock_value: 120,
     col_notes: 120,
     col_actions: 90,
   }), []);
@@ -832,6 +834,7 @@ export const MaterialTrackingPage: React.FC = () => {
   const [txFilterProject, setTxFilterProject] = useState('all');
   const [txMaterialId, setTxMaterialId] = useState('');
   const [txQuantity, setTxQuantity] = useState(1);
+  const [txUnitPrice, setTxUnitPrice] = useState<number>(0);
   const [txDate, setTxDate] = useState(new Date().toISOString().split('T')[0]);
   const [txSourceOrProject, setTxSourceOrProject] = useState('');
   const [txReceiverName, setTxReceiverName] = useState('');
@@ -1132,52 +1135,73 @@ export const MaterialTrackingPage: React.FC = () => {
     let title = '';
     let sheetName = 'VatTu';
     
-    if (activeTab === 'OVERVIEW') {
-      data = filteredMaterials.map((material, idx) => ({
-        'STT': idx + 1,
-        'Mã vật tư': material.code,
-        'Tên vật tư / thiết bị': material.name,
-        'Mô tả / quy cách': material.englishName || '',
-        'Tồn đầu kỳ': material.initialStock || 0,
-        'Tổng nhập': material.totalImport || 0,
-        'Tổng xuất': material.totalExport || 0,
-        'Tồn hiện tại': material.currentStock || material.initialStock || 0,
-        'Đơn vị': material.unit,
-        'Tình trạng mua hàng': normalizePurchaseStatus(material.status),
-        'Tình trạng thi công': normalizeConstructionStatus(material.constrStatus),
-        'Nhà cung cấp': material.supplier || '',
-      }));
+    if (activeTab === 'OVERVIEW' || activeTab === 'STOCK') {
+      data = filteredMaterials.map((material, idx) => {
+        const currentStock = (material.initialStock || 0) + (material.totalImport || 0) - (material.totalExport || 0);
+        const unitPrice = material.unitPrice || 0;
+        const stockValue = currentStock * unitPrice;
+        return {
+          'STT': idx + 1,
+          'Mã vật tư': material.code,
+          'Tên vật tư / thiết bị': material.name,
+          'Mô tả / quy cách': material.englishName || material.specs || '',
+          'Tồn đầu kỳ': material.initialStock || 0,
+          'Tổng nhập': material.totalImport || 0,
+          'Tổng xuất': material.totalExport || 0,
+          'Tồn hiện tại': currentStock,
+          'Đơn giá (đ)': unitPrice,
+          'Giá trị tồn (đ)': stockValue,
+          'Đơn vị': material.unit,
+          'Tình trạng mua hàng': normalizePurchaseStatus(material.status),
+          'Tình trạng thi công': normalizeConstructionStatus(material.constrStatus),
+          'Nhà cung cấp': material.supplier || '',
+        };
+      });
       filename = `Ton_Kho_Tong_Hop_${new Date().toISOString().split('T')[0]}.xlsx`;
       title = 'BÁO CÁO TỒN KHO TỔNG HỢP VẬT TƯ';
       sheetName = 'TonKhoTongHop';
     } else if (activeTab === 'IMPORT') {
-      data = imports.map((tx, idx) => ({
-        'STT': idx + 1,
-        'Ngày Nhập': tx.date,
-        'Mã Vật Tư': tx.materialCode,
-        'Tên Vật Tư': tx.materialName,
-        'Quy Cách / Thông Số': tx.specs || '',
-        'ĐVT': tx.unit,
-        'Số Lượng Nhập': tx.quantity,
-        'Nguồn Nhập / Dự Án Dư': tx.sourceOrProject,
-        'Ghi Chú': tx.notes || ''
-      }));
+      data = imports.map((tx, idx) => {
+        const mat = materials.find(m => m.id === tx.materialId);
+        const unitPrice = tx.unitPrice !== undefined ? tx.unitPrice : (mat?.unitPrice || 0);
+        const totalPrice = tx.totalPrice !== undefined ? tx.totalPrice : (tx.quantity * unitPrice);
+        return {
+          'STT': idx + 1,
+          'Ngày Nhập': tx.date,
+          'Mã Vật Tư': tx.materialCode,
+          'Tên Vật Tư': tx.materialName,
+          'Quy Cách / Thông Số': tx.specs || '',
+          'ĐVT': tx.unit,
+          'Số Lượng Nhập': tx.quantity,
+          'Đơn Giá (đ)': unitPrice,
+          'Thành Tiền (đ)': totalPrice,
+          'Nguồn Nhập / Dự Án Dư': tx.sourceOrProject,
+          'Ghi Chú': tx.notes || ''
+        };
+      });
       filename = `Nhat_Ky_Nhap_Kho_${new Date().toISOString().split('T')[0]}.xlsx`;
       title = 'NHẬT KÝ NHẬP KHO VẬT TƯ';
       sheetName = 'NhapKho';
     } else if (activeTab === 'EXPORT') {
-      data = exports.map((tx, idx) => ({
-        'STT': idx + 1,
-        'Ngày Xuất': tx.date,
-        'Mã Vật Tư': tx.materialCode,
-        'Tên Vật Tư': tx.materialName,
-        'Quy Cách / Thông Số': tx.specs || '',
-        'ĐVT': tx.unit,
-        'Số Lượng Xuất': tx.quantity,
-        'Mã Dự Án / Tên Công Trình': tx.sourceOrProject,
-        'Người Nhận Vật Tư': tx.receiverName || '',
-        'Ghi Chú': tx.notes || ''
-      }));
+      data = exports.map((tx, idx) => {
+        const mat = materials.find(m => m.id === tx.materialId);
+        const unitPrice = tx.unitPrice !== undefined ? tx.unitPrice : (mat?.unitPrice || 0);
+        const totalPrice = tx.totalPrice !== undefined ? tx.totalPrice : (tx.quantity * unitPrice);
+        return {
+          'STT': idx + 1,
+          'Ngày Xuất': tx.date,
+          'Mã Vật Tư': tx.materialCode,
+          'Tên Vật Tư': tx.materialName,
+          'Quy Cách / Thông Số': tx.specs || '',
+          'ĐVT': tx.unit,
+          'Số Lượng Xuất': tx.quantity,
+          'Đơn Giá (đ)': unitPrice,
+          'Thành Tiền (đ)': totalPrice,
+          'Mã Dự Án / Tên Công Trình': tx.sourceOrProject,
+          'Người Nhận Vật Tư': tx.receiverName || '',
+          'Ghi Chú': tx.notes || ''
+        };
+      });
       filename = `Nhat_Ky_Xuat_Kho_${new Date().toISOString().split('T')[0]}.xlsx`;
       title = 'NHẬT KÝ XUẤT KHO VẬT TƯ';
       sheetName = 'XuatKho';
@@ -1307,6 +1331,7 @@ export const MaterialTrackingPage: React.FC = () => {
     setTransactionType(type);
     setTxMaterialId('');
     setTxQuantity(1);
+    setTxUnitPrice(0);
     setTxDate(new Date().toISOString().split('T')[0]);
     setTxSourceOrProject('');
     setTxReceiverName('');
@@ -1325,6 +1350,7 @@ export const MaterialTrackingPage: React.FC = () => {
       setLoading(true);
       setLoadingMessage('Đang xử lý...');
       try {
+        const calculatedTotalPrice = Number(txQuantity || 0) * Number(txUnitPrice || 0);
         await addInventoryTransaction({
           type: transactionType,
           date: txDate,
@@ -1334,6 +1360,8 @@ export const MaterialTrackingPage: React.FC = () => {
           specs: material.specs || material.englishName || '',
           unit: material.unit,
           quantity: txQuantity,
+          unitPrice: txUnitPrice,
+          totalPrice: calculatedTotalPrice,
           sourceOrProject: txSourceOrProject,
           receiverName: txReceiverName,
           notes: txNotes,
@@ -1343,7 +1371,6 @@ export const MaterialTrackingPage: React.FC = () => {
           initialStock: material.initialStock || 0,
           category: material.category || '',
           volume: material.volume || 0,
-          unitPrice: material.unitPrice || 0,
           supplier: material.supplier || '',
         } as any);
         setIsTransactionModalOpen(false);
@@ -1397,7 +1424,7 @@ export const MaterialTrackingPage: React.FC = () => {
       )}
             {!projectId && (
         <>
-          <header className="sticky top-0 z-30 border-b border-slate-200 bg-white px-3 py-2.5 flex items-center justify-between">
+          <header className="sticky top-0 z-30 border-b border-slate-200 bg-white px-3 py-2 flex items-center justify-between gap-3">
             <div className="flex items-center gap-1.5 shrink-0">
               <span className="page-title text-sm md:text-base font-extrabold text-slate-900 border-l-4 border-primary pl-2 shrink-0">
                 Tổng kho
@@ -1732,6 +1759,14 @@ export const MaterialTrackingPage: React.FC = () => {
 
         {activeTab === 'STOCK' && (
           <>
+            <div className="px-3 py-1.5 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600 shrink-0">
+              <div className="flex items-center gap-2">
+                <span>Tìm thấy <b className="text-slate-900">{filteredMaterials.length}</b> mặt hàng</span>
+              </div>
+              <div className="flex items-center gap-3 font-medium">
+                <div>Tổng giá trị tồn kho: <b className="text-emerald-700 font-mono font-bold">{filteredMaterials.reduce((sum, m) => sum + (m.currentStock ?? m.initialStock ?? 0) * (m.unitPrice || 0), 0).toLocaleString('vi-VN')} đ</b></div>
+              </div>
+            </div>
             <PullToRefresh onRefresh={async () => { await fetchMaterials(projectId); }} className="overflow-auto table-scrollbar custom-scrollbar flex-1 pb-16 md:pb-0">
               <table className="w-full text-left border-collapse table-fixed min-w-[1100px]">
                 <colgroup>
@@ -1746,6 +1781,8 @@ export const MaterialTrackingPage: React.FC = () => {
                   <col style={{ width: colWidths.col_import }} />
                   <col style={{ width: colWidths.col_export }} />
                   <col style={{ width: colWidths.col_stock }} />
+                  <col style={{ width: colWidths.col_unit_price }} />
+                  <col style={{ width: colWidths.col_stock_value }} />
                   <col style={{ width: colWidths.col_notes }} />
                   <col style={{ width: colWidths.col_actions }} />
                 </colgroup>
@@ -1800,6 +1837,14 @@ export const MaterialTrackingPage: React.FC = () => {
                      <span>Tồn Kho</span>
                      <ColumnResizeHandle colKey="col_stock" onResizeStart={startColResize} />
                    </th>
+                   <th className="p-1.5 md:p-2 text-right bg-slate-50 relative group/th">
+                     <span>Đơn Giá (đ)</span>
+                     <ColumnResizeHandle colKey="col_unit_price" onResizeStart={startColResize} />
+                   </th>
+                   <th className="p-1.5 md:p-2 text-right bg-slate-50 relative group/th">
+                     <span>Giá Trị Tồn (đ)</span>
+                     <ColumnResizeHandle colKey="col_stock_value" onResizeStart={startColResize} />
+                   </th>
                    <th className="p-1.5 md:p-2 bg-slate-50 relative group/th">
                      <span>Ghi Chú</span>
                      <ColumnResizeHandle colKey="col_notes" onResizeStart={startColResize} />
@@ -1810,6 +1855,9 @@ export const MaterialTrackingPage: React.FC = () => {
                <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-700">
                   {filteredMaterials.map((material, index) => {
                     const purchase = normalizePurchaseStatus(material.status);
+                    const currentStock = (material.initialStock || 0) + (material.totalImport || 0) - (material.totalExport || 0);
+                    const unitPrice = material.unitPrice || 0;
+                    const stockValue = currentStock * unitPrice;
                     return (
                       <tr key={material.id} onClick={() => openEditMaterial(material)} className="hover:bg-blue-50/50 transition-colors align-top cursor-pointer">
                         {!projectId && <td className="p-2 md:p-3.5"><span className="px-1.5 py-0.5 rounded font-bold text-[10px] bg-slate-100 text-slate-600 inline-block" title={material.projectName || 'Kho Tổng'}>{material.projectName || 'Kho Tổng'}</span></td>}
@@ -1830,7 +1878,9 @@ export const MaterialTrackingPage: React.FC = () => {
                         <td className="p-2 md:p-3.5 text-right text-slate-500">{material.initialStock || 0}</td>
                         <td className="p-2 md:p-3.5 text-right text-emerald-600 font-bold">+{material.totalImport || 0}</td>
                         <td className="p-2 md:p-3.5 text-right text-amber-600 font-bold">-{material.totalExport || 0}</td>
-                        <td className="p-2 md:p-3.5 text-right font-bold text-primary text-sm">{((material.initialStock || 0) + (material.totalImport || 0) - (material.totalExport || 0)).toLocaleString('vi-VN')}</td>
+                        <td className="p-2 md:p-3.5 text-right font-bold text-primary text-sm">{currentStock.toLocaleString('vi-VN')}</td>
+                        <td className="p-2 md:p-3.5 text-right font-mono font-medium text-slate-700">{unitPrice > 0 ? unitPrice.toLocaleString('vi-VN') : '-'}</td>
+                        <td className="p-2 md:p-3.5 text-right font-mono font-bold text-emerald-700">{stockValue > 0 ? stockValue.toLocaleString('vi-VN') : '0'}</td>
                         <td className="p-2 md:p-3.5 text-slate-600 text-xs max-w-xs truncate" title={material.notes || ''}>{material.notes || '-'}</td>
                         <td className="p-2 md:p-3.5 text-center" onClick={(event) => event.stopPropagation()}>
                           <div className="flex justify-center gap-1.5">
@@ -1898,26 +1948,35 @@ export const MaterialTrackingPage: React.FC = () => {
                   <th className="p-1.5 md:p-3.5 text-slate-500 bg-slate-50 whitespace-nowrap">Quy Cách</th>
                   <th className="p-1.5 md:p-3.5 text-right bg-slate-50 whitespace-nowrap">S.Lượng Nhập</th>
                   <th className="p-1.5 md:p-3.5 text-center bg-slate-50 whitespace-nowrap">ĐVT</th>
+                  <th className="p-1.5 md:p-3.5 text-right bg-slate-50 whitespace-nowrap">Đơn Giá (đ)</th>
+                  <th className="p-1.5 md:p-3.5 text-right bg-slate-50 whitespace-nowrap">Thành Tiền (đ)</th>
                   {!projectId && <th className="p-1.5 md:p-3.5 bg-slate-50 whitespace-nowrap">Thuộc Dự Án</th>}
                   <th className="p-1.5 md:p-3.5 bg-slate-50 whitespace-nowrap">Nguồn / Nhà Cung Cấp</th>
                   <th className="p-1.5 md:p-3.5 min-w-32 md:min-w-40 bg-slate-50 whitespace-nowrap">Ghi chú</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-700">
-                {imports.map((tx, index) => (
-                  <tr key={tx.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="p-2 md:p-3.5 font-bold text-slate-900 whitespace-nowrap">{tx.date ? new Date(tx.date).toLocaleDateString("vi-VN") : "-"}</td>
-                    <td className="p-2 md:p-3.5 font-mono text-slate-500">{cleanCodeString(tx.materialCode, tx.materialName)}</td>
-                    <td className="p-2 md:p-3.5 font-bold text-slate-800">{tx.materialName}</td>
-                    <td className="p-2 md:p-3.5 text-slate-500">{tx.specs || '-'}</td>
-                    <td className="p-2 md:p-3.5 text-right font-bold text-emerald-600">+{tx.quantity.toLocaleString('vi-VN')}</td>
-                    <td className="p-2 md:p-3.5 text-center text-slate-500">{tx.unit}</td>
-                    {!projectId && <td className="p-2 md:p-3.5 text-slate-600 font-medium">{(materials.find(m => m.id === tx.materialId)?.projectName) || 'Kho Tổng'}</td>}
-                    <td className="p-2 md:p-3.5 text-slate-600">{tx.sourceOrProject || '-'}</td>
-                    <td className="p-2 md:p-3.5 text-slate-500 italic">{tx.notes || '-'}</td>
-                  </tr>
-                ))}
-                {imports.length === 0 && <tr><td colSpan={8} className="p-8 text-center text-slate-500">Chưa có giao dịch nhập kho nào.</td></tr>}
+                {imports.map((tx, index) => {
+                  const txMat = materials.find(m => m.id === tx.materialId);
+                  const unitPrice = tx.unitPrice !== undefined ? tx.unitPrice : (txMat?.unitPrice || 0);
+                  const totalPrice = tx.totalPrice !== undefined ? tx.totalPrice : (tx.quantity * unitPrice);
+                  return (
+                    <tr key={tx.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="p-2 md:p-3.5 font-bold text-slate-900 whitespace-nowrap">{tx.date ? new Date(tx.date).toLocaleDateString("vi-VN") : "-"}</td>
+                      <td className="p-2 md:p-3.5 font-mono text-slate-500">{cleanCodeString(tx.materialCode, tx.materialName)}</td>
+                      <td className="p-2 md:p-3.5 font-bold text-slate-800">{tx.materialName}</td>
+                      <td className="p-2 md:p-3.5 text-slate-500">{tx.specs || '-'}</td>
+                      <td className="p-2 md:p-3.5 text-right font-bold text-emerald-600">+{tx.quantity.toLocaleString('vi-VN')}</td>
+                      <td className="p-2 md:p-3.5 text-center text-slate-500">{tx.unit}</td>
+                      <td className="p-2 md:p-3.5 text-right font-mono font-medium text-slate-700">{unitPrice > 0 ? unitPrice.toLocaleString('vi-VN') : '-'}</td>
+                      <td className="p-2 md:p-3.5 text-right font-mono font-bold text-emerald-700">{totalPrice > 0 ? totalPrice.toLocaleString('vi-VN') : '0'}</td>
+                      {!projectId && <td className="p-2 md:p-3.5 text-slate-600 font-medium">{(txMat?.projectName) || 'Kho Tổng'}</td>}
+                      <td className="p-2 md:p-3.5 text-slate-600">{tx.sourceOrProject || '-'}</td>
+                      <td className="p-2 md:p-3.5 text-slate-500 italic">{tx.notes || '-'}</td>
+                    </tr>
+                  );
+                })}
+                {imports.length === 0 && <tr><td colSpan={10} className="p-8 text-center text-slate-500">Chưa có giao dịch nhập kho nào.</td></tr>}
               </tbody>
             </table>
           </PullToRefresh>
@@ -1937,26 +1996,35 @@ export const MaterialTrackingPage: React.FC = () => {
                   <th className="p-1.5 md:p-3.5 text-slate-500 bg-slate-50 whitespace-nowrap">Quy Cách</th>
                   <th className="p-1.5 md:p-3.5 text-right bg-slate-50 whitespace-nowrap">S.Lượng Xuất</th>
                   <th className="p-1.5 md:p-3.5 text-center bg-slate-50 whitespace-nowrap">ĐVT</th>
+                  <th className="p-1.5 md:p-3.5 text-right bg-slate-50 whitespace-nowrap">Đơn Giá (đ)</th>
+                  <th className="p-1.5 md:p-3.5 text-right bg-slate-50 whitespace-nowrap">Thành Tiền (đ)</th>
                   <th className="p-1.5 md:p-3.5 bg-slate-50 whitespace-nowrap">Dự Án Nhận</th>
                   <th className="p-1.5 md:p-3.5 bg-slate-50 whitespace-nowrap">Người Nhận</th>
                   <th className="p-1.5 md:p-3.5 min-w-32 md:min-w-40 bg-slate-50 whitespace-nowrap">Ghi chú</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-700">
-                {exports.map((tx, index) => (
-                  <tr key={tx.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="p-3.5 font-bold text-slate-900">{tx.date ? new Date(tx.date).toLocaleDateString("vi-VN") : "-"}</td>
-                    <td className="p-3.5 font-mono text-slate-500">{cleanCodeString(tx.materialCode, tx.materialName)}</td>
-                    <td className="p-3.5 font-bold text-slate-800">{tx.materialName}</td>
-                    <td className="p-3.5 text-slate-500">{tx.specs || '-'}</td>
-                    <td className="p-3.5 text-right font-bold text-amber-600">-{tx.quantity.toLocaleString('vi-VN')}</td>
-                    <td className="p-3.5 text-center text-slate-500">{tx.unit}</td>
-                    <td className="p-3.5 font-bold text-slate-700">{tx.sourceOrProject || '-'}</td>
-                    <td className="p-3.5 text-slate-600">{tx.receiverName || '-'}</td>
-                    <td className="p-3.5 text-slate-500 italic">{tx.notes || '-'}</td>
-                  </tr>
-                ))}
-                {exports.length === 0 && <tr><td colSpan={9} className="p-8 text-center text-slate-500">Chưa có giao dịch xuất kho nào.</td></tr>}
+                {exports.map((tx, index) => {
+                  const txMat = materials.find(m => m.id === tx.materialId);
+                  const unitPrice = tx.unitPrice !== undefined ? tx.unitPrice : (txMat?.unitPrice || 0);
+                  const totalPrice = tx.totalPrice !== undefined ? tx.totalPrice : (tx.quantity * unitPrice);
+                  return (
+                    <tr key={tx.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="p-3.5 font-bold text-slate-900">{tx.date ? new Date(tx.date).toLocaleDateString("vi-VN") : "-"}</td>
+                      <td className="p-3.5 font-mono text-slate-500">{cleanCodeString(tx.materialCode, tx.materialName)}</td>
+                      <td className="p-3.5 font-bold text-slate-800">{tx.materialName}</td>
+                      <td className="p-3.5 text-slate-500">{tx.specs || '-'}</td>
+                      <td className="p-3.5 text-right font-bold text-amber-600">-{tx.quantity.toLocaleString('vi-VN')}</td>
+                      <td className="p-3.5 text-center text-slate-500">{tx.unit}</td>
+                      <td className="p-3.5 text-right font-mono font-medium text-slate-700">{unitPrice > 0 ? unitPrice.toLocaleString('vi-VN') : '-'}</td>
+                      <td className="p-3.5 text-right font-mono font-bold text-amber-700">{totalPrice > 0 ? totalPrice.toLocaleString('vi-VN') : '0'}</td>
+                      <td className="p-3.5 font-bold text-slate-700">{tx.sourceOrProject || '-'}</td>
+                      <td className="p-3.5 text-slate-600">{tx.receiverName || '-'}</td>
+                      <td className="p-3.5 text-slate-500 italic">{tx.notes || '-'}</td>
+                    </tr>
+                  );
+                })}
+                {exports.length === 0 && <tr><td colSpan={11} className="p-8 text-center text-slate-500">Chưa có giao dịch xuất kho nào.</td></tr>}
               </tbody>
             </table>
           </PullToRefresh>
@@ -2130,7 +2198,20 @@ export const MaterialTrackingPage: React.FC = () => {
                 Thêm vật tư mới
               </button>
             </div>
-            <CustomSelect required searchable value={txMaterialId} onChange={(e) => setTxMaterialId(e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none bg-white">
+            <CustomSelect 
+              required 
+              searchable 
+              value={txMaterialId} 
+              onChange={(e) => {
+                const selectedId = e.target.value;
+                setTxMaterialId(selectedId);
+                const mat = materials.find(m => m.id === selectedId);
+                if (mat?.unitPrice !== undefined) {
+                  setTxUnitPrice(mat.unitPrice || 0);
+                }
+              }} 
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none bg-white"
+            >
               <option value="">-- Chọn vật tư --</option>
               {materials
                 .filter(m => {
@@ -2151,16 +2232,28 @@ export const MaterialTrackingPage: React.FC = () => {
             </CustomSelect>
           </div>
 
-          {/* 3. Ngày & Số lượng */}
-          <div className="grid grid-cols-2 gap-3">
+          {/* 3. Ngày, Số lượng & Đơn giá */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div>
               <label className="block font-bold text-slate-700 mb-1">Ngày {transactionType === 'IMPORT' ? 'nhập' : 'xuất'} *</label>
               <input type="date" required value={txDate} onChange={(e) => setTxDate(e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none bg-white" />
             </div>
             <div>
               <label className="block font-bold text-slate-700 mb-1">Số lượng *</label>
-              <input type="number" step="any" required min="1" value={txQuantity} onChange={(e) => setTxQuantity(Number(e.target.value))} className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none bg-white" />
+              <input type="number" step="any" required min="0.001" value={txQuantity} onChange={(e) => setTxQuantity(Number(e.target.value))} className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none bg-white font-medium" />
             </div>
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Đơn giá (đ)</label>
+              <input type="number" step="any" min="0" value={txUnitPrice || ''} placeholder="0" onChange={(e) => setTxUnitPrice(Number(e.target.value))} className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none bg-white font-mono" />
+            </div>
+          </div>
+
+          {/* Hiển thị Thành tiền tính tự động */}
+          <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-emerald-50/70 border border-emerald-200 text-xs">
+            <span className="font-semibold text-emerald-800">Thành tiền tạm tính:</span>
+            <span className="font-mono font-extrabold text-sm text-emerald-900">
+              {(Number(txQuantity || 0) * Number(txUnitPrice || 0)).toLocaleString('vi-VN')} đ
+            </span>
           </div>
           <div>
             <label className="block font-bold text-slate-700 mb-1">{transactionType === 'IMPORT' ? 'Nguồn nhập hàng' : 'Dự án / Nơi xuất đến'} *</label>

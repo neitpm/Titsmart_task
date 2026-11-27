@@ -317,6 +317,8 @@ export interface InventoryTransaction {
   category?: string;
   unit: string;
   quantity: number;
+  unitPrice?: number;
+  totalPrice?: number;
   sourceOrProject: string; // Nguồn Nhập hoặc Mã Dự Án xuất
   receiverName?: string; // Người Nhận (đối với xuất kho)
   notes?: string;
