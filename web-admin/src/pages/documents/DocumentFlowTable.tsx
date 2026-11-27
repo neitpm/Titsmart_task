@@ -164,9 +164,9 @@ export const DocumentFlowTable: React.FC<DocumentFlowTableProps> = ({
     filterDateTo;
 
   return (
-    <div className="space-y-3">
+    <div className="flex flex-col h-full w-full">
       {/* 1. Toolbar chuẩn hóa của TITSMART: cuộn ngang có tay kéo */}
-      <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-xs">
+      <div className="bg-white border-b border-slate-200 p-2.5 shadow-2xs shrink-0">
         <div className="flex flex-wrap items-center justify-between gap-2.5">
           {/* Cụm bộ lọc nghiệp vụ bên trái */}
           <div className="flex flex-wrap items-center gap-2 grow">
@@ -337,8 +337,8 @@ export const DocumentFlowTable: React.FC<DocumentFlowTableProps> = ({
       </div>
 
       {/* 2. Bảng dữ liệu có thanh cuộn ngang có tay kéo và kéo giãn độ rộng cột */}
-      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xs">
-        <div className="overflow-x-auto table-scrollbar custom-scrollbar w-full">
+      <div className="bg-white flex-1 overflow-hidden flex flex-col">
+        <div className="overflow-x-auto table-scrollbar custom-scrollbar w-full flex-1">
           <table className="w-full text-xs text-left border-collapse min-w-[1300px]">
             <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200 uppercase text-[11px]">
               <tr>

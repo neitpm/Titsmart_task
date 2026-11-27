@@ -469,14 +469,16 @@ export const DocumentTrackingPage: React.FC = () => {
       </div>
 
       {/* 3. NỘI DUNG TỪNG TAB */}
-      <PullToRefresh onRefresh={async () => { await fetchAccounting(); }} className="flex-1 overflow-y-auto p-2 md:p-3">
+      <PullToRefresh onRefresh={async () => { await fetchAccounting(); }} className="flex-1 overflow-y-auto">
         {activeMainTab === 'overview' && (
-          <DocumentOverviewTab
-            inputDocs={inputDocs}
-            outputDocs={outputDocs}
-            onSelectTab={(tab) => handleSelectMainTab(tab)}
-            onViewDetail={handleViewDetailDoc}
-          />
+          <div className="p-2 md:p-3">
+            <DocumentOverviewTab
+              inputDocs={inputDocs}
+              outputDocs={outputDocs}
+              onSelectTab={(tab) => handleSelectMainTab(tab)}
+              onViewDetail={handleViewDetailDoc}
+            />
+          </div>
         )}
 
         {activeMainTab === 'input' && (
