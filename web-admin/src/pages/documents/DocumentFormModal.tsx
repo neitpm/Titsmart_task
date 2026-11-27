@@ -337,6 +337,9 @@ export const DocumentFormModal: React.FC<DocumentFormModalProps> = ({
             <div>
               <label className="block font-semibold text-slate-700 mb-1">Loại chứng từ / hồ sơ *</label>
               <CustomSelect
+                searchable
+                allowCustomInput
+                placeholder="Chọn hoặc nhập loại chứng từ..."
                 value={subType}
                 onChange={e => setSubType(e.target.value)}
                 className="w-full px-3 py-2 border border-slate-200 bg-white rounded-lg focus:ring-1 focus:ring-primary font-medium text-slate-800"
@@ -596,6 +599,9 @@ export const DocumentFormModal: React.FC<DocumentFormModalProps> = ({
           <div>
             <label className="block font-semibold text-slate-700 mb-1">Trạng thái quy trình *</label>
             <CustomSelect
+              searchable
+              allowCustomInput
+              placeholder="Chọn hoặc nhập trạng thái..."
               value={docStatus}
               onChange={e => setDocStatus(e.target.value)}
               className="w-full px-3 py-2 border border-slate-200 bg-white rounded-lg focus:ring-1 focus:ring-primary font-bold text-slate-800"

@@ -96,7 +96,11 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
         });
       }
     }
-    setSearchTerm("");
+    if (allowCustomInput) {
+      setSearchTerm(value ? String(value) : "");
+    } else {
+      setSearchTerm("");
+    }
     setIsOpen(true);
   };
 
