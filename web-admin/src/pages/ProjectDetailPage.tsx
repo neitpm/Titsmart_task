@@ -191,6 +191,28 @@ export const ProjectDetailPage: React.FC = () => {
         <div id="project-header-actions" className="flex items-center gap-2 shrink-0 justify-end"></div>
       </div>
 
+      {/* MOBILE PROJECT TAB STRIP: Hiển thị đầy đủ tất cả các tab của dự án để chuyển nhanh trên điện thoại */}
+      <div className="md:hidden flex items-center gap-1.5 overflow-x-auto custom-scrollbar px-2 py-1.5 bg-slate-100/90 border-b border-slate-200 shrink-0 select-none z-30">
+        {tabs.map(tab => {
+          const isActive = location.pathname.includes(tab.path) || (project.code && location.pathname.includes(`/projects/${project.code}/${tab.path.split('/').pop()}`));
+          return (
+            <a
+              key={tab.path}
+              href={tab.path}
+              onClick={(e) => handleTabClick(e, tab.path)}
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold whitespace-nowrap shrink-0 transition-all ${
+                isActive
+                  ? 'bg-primary text-white shadow-xs'
+                  : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200/80'
+              }`}
+            >
+              <span className="material-symbols-outlined text-[15px]">{tab.icon}</span>
+              <span>{tab.label}</span>
+            </a>
+          );
+        })}
+      </div>
+
       {/* Content wrapper with Lazy Keep-Alive DOM caching */}
       <div className="flex-1 overflow-hidden flex flex-col min-h-0 relative">
         {/* If standard sub-tab (Overview, Field logs, Diagram, Documents, Inventory), render via Outlet */}

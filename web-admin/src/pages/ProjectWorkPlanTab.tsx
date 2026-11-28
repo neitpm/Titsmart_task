@@ -630,11 +630,11 @@ export const ProjectWorkPlanTab: React.FC = () => {
       )}
 
       {/* THANH ĐIỀU HƯỚNG BỘ LỌC & CHUYỂN THÁNG/TUẦN SÁT MÉP */}
-      <div className="bg-white border-b border-slate-200 px-3 py-1.5 flex flex-wrap items-center justify-between gap-2 shrink-0">
+      <div className="bg-white border-b border-slate-200 px-3 py-1.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shrink-0">
         {/* Bộ lọc bên trái */}
-        <div className="flex flex-wrap items-center gap-2 flex-1 min-w-[260px]">
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 flex-1 w-full sm:w-auto">
           {/* Ô tìm kiếm */}
-          <div className="relative min-w-[170px] max-w-xs flex-1">
+          <div className="relative min-w-[140px] flex-1 sm:max-w-xs">
             <span className="material-symbols-outlined absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 text-[15px]">
               search
             </span>
@@ -651,7 +651,7 @@ export const ProjectWorkPlanTab: React.FC = () => {
           <CustomSelect
             value={assigneeFilter}
             onChange={(e) => setAssigneeFilter(e.target.value)}
-            className="h-[30px] min-w-[140px] rounded-md border border-slate-200 bg-white px-2 text-xs font-semibold text-slate-700 shadow-2xs outline-none focus:border-primary"
+            className="h-[30px] flex-1 sm:flex-none min-w-[120px] rounded-md border border-slate-200 bg-white px-2 text-xs font-semibold text-slate-700 shadow-2xs outline-none focus:border-primary"
           >
             <option value="all">Tất cả nhân sự</option>
             {projectEngineers.map((eng) => (
@@ -665,7 +665,7 @@ export const ProjectWorkPlanTab: React.FC = () => {
           <CustomSelect
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as any)}
-            className="h-[30px] min-w-[130px] rounded-md border border-slate-200 bg-white px-2 text-xs font-semibold text-slate-700 shadow-2xs outline-none focus:border-primary"
+            className="h-[30px] flex-1 sm:flex-none min-w-[120px] rounded-md border border-slate-200 bg-white px-2 text-xs font-semibold text-slate-700 shadow-2xs outline-none focus:border-primary"
           >
             <option value="all">Tất cả trạng thái</option>
             <option value="in_progress">Đang làm</option>
@@ -679,7 +679,7 @@ export const ProjectWorkPlanTab: React.FC = () => {
             <button
               type="button"
               onClick={() => setStatusFilter('all')}
-              className="text-xs text-rose-600 hover:text-rose-700 font-semibold flex items-center gap-0.5 cursor-pointer"
+              className="text-xs text-rose-600 hover:text-rose-700 font-semibold flex items-center gap-0.5 cursor-pointer shrink-0"
             >
               <span className="material-symbols-outlined text-[14px]">close</span>
               <span>Xóa lọc</span>
@@ -688,7 +688,7 @@ export const ProjectWorkPlanTab: React.FC = () => {
         </div>
 
         {/* Cụm điều khiển Tháng/Tuần và Chế độ xem bên phải */}
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 justify-between w-full sm:w-auto overflow-x-auto pb-0.5 sm:pb-0">
           {/* Nút điều hướng tháng / tuần (khi ở chế độ Month hoặc Week) */}
           {viewMode !== 'list' && (
             <div className="flex items-center gap-1">
