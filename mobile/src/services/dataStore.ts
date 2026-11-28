@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Project, Task, Engineer, Issue, FieldLog, DirectMessage, LeaveRequest } from '../types';
+import { Project, Task, Engineer, Issue, FieldLog, DirectMessage, LeaveRequest, AttendanceLog } from '../types';
 import { api } from './apiSupabase';
 import { useAuthStore } from './authStore';
 
@@ -11,6 +11,8 @@ interface DataStoreState {
   fieldLogs: FieldLog[];
   directMessages: DirectMessage[];
   leaves: LeaveRequest[];
+  attendanceLogs: AttendanceLog[];
+  todayAttendance: AttendanceLog | null;
   isLoading: boolean;
   
   fetchProjects: () => Promise<void>;
@@ -20,6 +22,9 @@ interface DataStoreState {
   fetchFieldLogs: () => Promise<void>;
   fetchDirectMessages: () => Promise<void>;
   fetchLeaves: () => Promise<void>;
+  fetchAttendance: () => Promise<void>;
+  checkIn: (input: { projectId?: string; projectName?: string; notes?: string }) => Promise<void>;
+  checkOut: (id: string, notes?: string) => Promise<void>;
   createLeave: (input: { userId: string; userName: string; leaveType: string; startDate: string; endDate: string; totalDays: number; reason: string }) => Promise<void>;
   sendDirectMessage: (msg: {
     senderId: string;
@@ -43,6 +48,8 @@ export const useDataStore = create<DataStoreState>((set, get) => ({
   fieldLogs: [],
   directMessages: [],
   leaves: [],
+  attendanceLogs: [],
+  todayAttendance: null,
   isLoading: false,
 
   filterByUserProjects: (data) => {
@@ -150,6 +157,52 @@ export const useDataStore = create<DataStoreState>((set, get) => ({
     } catch (e) {
       console.error(e);
     }
+  },
+
+  fetchAttendance: async () => {
+    try {
+      const user = useAuthStore.getState().user;
+      if (!user) return;
+      const allLogs = await api.attendance.getAll();
+      const userLogs = (allLogs as AttendanceLog[]).filter(l => 
+        String(l.userId || '') === String(user.id || '') || 
+        (user.name && l.userName && l.userName.trim().toLowerCase() === user.name.trim().toLowerCase())
+      );
+      
+      const today = new Date().toISOString().split('T')[0];
+      const todayRecord = userLogs.find(l => l.checkInTime && l.checkInTime.startsWith(today)) || null;
+
+      set({ 
+        attendanceLogs: userLogs,
+        todayAttendance: todayRecord,
+      });
+    } catch (e) {
+      console.error('Failed to fetch attendance logs:', e);
+    }
+  },
+
+  checkIn: async (input) => {
+    const user = useAuthStore.getState().user;
+    if (!user) throw new Error('Vui lòng đăng nhập trước khi chấm công');
+    const newLog = await api.attendance.checkIn({
+      userId: user.id,
+      userName: user.name || user.username || 'Nhân viên',
+      projectId: input.projectId,
+      projectName: input.projectName,
+      notes: input.notes,
+    });
+    set(state => ({
+      attendanceLogs: [newLog as AttendanceLog, ...state.attendanceLogs],
+      todayAttendance: newLog as AttendanceLog,
+    }));
+  },
+
+  checkOut: async (id, notes) => {
+    const updated = await api.attendance.checkOut(id, { notes });
+    set(state => ({
+      attendanceLogs: state.attendanceLogs.map(l => l.id === id ? (updated as AttendanceLog) : l),
+      todayAttendance: updated as AttendanceLog,
+    }));
   },
 
   sendDirectMessage: async (msg) => {

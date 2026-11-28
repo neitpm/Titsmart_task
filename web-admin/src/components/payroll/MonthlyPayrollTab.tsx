@@ -21,6 +21,7 @@ interface MonthlyPayrollTabProps {
   adjustments: AttendanceAdjustmentRequest[];
   showToast: (msg: string, type: 'success' | 'error' | 'warning' | 'info') => void;
   isAdmin: boolean;
+  onRefresh?: () => Promise<void> | void;
 }
 
 export const MonthlyPayrollTab: React.FC<MonthlyPayrollTabProps> = ({
@@ -29,6 +30,7 @@ export const MonthlyPayrollTab: React.FC<MonthlyPayrollTabProps> = ({
   adjustments,
   showToast,
   isAdmin,
+  onRefresh,
 }) => {
   const { user } = useAuthStore();
   const engineers = useRealtimeStore(state => state.engineers);
@@ -235,6 +237,24 @@ export const MonthlyPayrollTab: React.FC<MonthlyPayrollTabProps> = ({
             </span>
             <span>{showSalaryAmounts ? 'Ẩn số tiền' : 'Hiện số tiền'}</span>
           </button>
+
+          {onRefresh && (
+            <button
+              type="button"
+              onClick={async () => {
+                await onRefresh();
+                await fetchSavedPayrolls();
+                showToast('Đã làm mới dữ liệu chấm công & lương thành công!', 'info');
+              }}
+              className="flex items-center gap-1 px-2 py-1 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-md border border-slate-200 text-xs font-bold transition cursor-pointer"
+              title="Tải lại dữ liệu mới nhất từ máy chủ"
+            >
+              <span className={`material-symbols-outlined text-[15px] ${isLoading ? 'animate-spin text-primary' : ''}`}>
+                refresh
+              </span>
+              <span className="hidden sm:inline">Làm mới</span>
+            </button>
+          )}
         </div>
 
         {/* Chuyển đổi giữa Chế độ cá nhân & Chế độ quản trị (Admin) */}

@@ -119,7 +119,21 @@ const getDuration = (checkIn: string, checkOut?: string) => {
 let cachedLogs: AttendanceLog[] = [];
 let cachedLeaves: LeaveRequest[] = [];
 let cachedAdjustments: AttendanceAdjustmentRequest[] = [];
+let cachedUserId: string | null = null;
 let hasFetchedAttendanceData = false;
+
+export const clearCachedAttendance = () => {
+  cachedLogs = [];
+  cachedLeaves = [];
+  cachedAdjustments = [];
+  cachedUserId = null;
+  hasFetchedAttendanceData = false;
+  try {
+    localStorage.removeItem('titsmart_attendance_logs');
+    localStorage.removeItem('titsmart_leave_requests');
+    localStorage.removeItem('titsmart_attendance_adjustments');
+  } catch {}
+};
 
 export const AttendancePage: React.FC = () => {
   const { user } = useAuthStore();
@@ -1048,6 +1062,15 @@ export const AttendancePage: React.FC = () => {
   }, [showCheckInModal, attendanceConfig]);
 
   useEffect(() => {
+    // Nếu chuyển tài khoản đăng nhập hoặc user thay đổi, xóa sạch cache để nạp lại mới
+    if (user?.id && cachedUserId !== user.id) {
+      cachedUserId = user.id;
+      cachedLogs = [];
+      cachedLeaves = [];
+      cachedAdjustments = [];
+      hasFetchedAttendanceData = false;
+    }
+
     // Nạp dữ liệu ban đầu
     fetchLogs(false);
     fetchLeaves(false);
@@ -1064,10 +1087,13 @@ export const AttendancePage: React.FC = () => {
           const newRow = payload?.new;
           const oldRow = payload?.old;
           const icon = newRow?.icon || oldRow?.icon;
+          if (!icon || icon === 'ATTENDANCE_SESSION') {
+            fetchLogs(false);
+          }
           if (!icon || icon === 'LEAVE_REQUEST') {
             fetchLeaves(false);
           }
-          if (!icon || icon === 'ATTENDANCE_ADJUSTMENT') {
+          if (!icon || icon === 'ATTENDANCE_ADJUSTMENT' || icon === 'ADJUSTMENT_REQUEST') {
             fetchAdjustments();
           }
           if (icon === 'ATTENDANCE_CONFIG') {
@@ -1090,16 +1116,25 @@ export const AttendancePage: React.FC = () => {
       fetchAdjustments();
       fetchLogs(false);
     };
+    const handleUserSwitched = () => {
+      clearCachedAttendance();
+      fetchLogs(true);
+      fetchLeaves(true);
+      fetchAdjustments();
+      fetchAttendanceConfig();
+    };
 
     window.addEventListener('titsmart_leaves_updated', handleLeavesSync);
     window.addEventListener('titsmart_attendance_updated', handleAttendanceSync);
+    window.addEventListener('titsmart_user_switched', handleUserSwitched);
 
     return () => {
       supabase.removeChannel(attendanceChannel);
       window.removeEventListener('titsmart_leaves_updated', handleLeavesSync);
       window.removeEventListener('titsmart_attendance_updated', handleAttendanceSync);
+      window.removeEventListener('titsmart_user_switched', handleUserSwitched);
     };
-  }, []);
+  }, [user?.id]);
 
   const handleCreateAdjustment = async () => {
     if (!user || isSubmitting) return;
@@ -2192,13 +2227,23 @@ export const AttendancePage: React.FC = () => {
               </button>
             </div>
 
-            <MonthlyPayrollTab
-              logs={logs}
-              leaves={leaves}
-              adjustments={adjustments}
-              showToast={showToast}
-              isAdmin={isAdmin}
-            />
+            <PullToRefresh
+              onRefresh={async () => {
+                await Promise.all([fetchLogs(true), fetchLeaves(true), fetchAdjustments()]);
+              }}
+              className="flex-1 w-full"
+            >
+              <MonthlyPayrollTab
+                logs={logs}
+                leaves={leaves}
+                adjustments={adjustments}
+                showToast={showToast}
+                isAdmin={isAdmin}
+                onRefresh={async () => {
+                  await Promise.all([fetchLogs(true), fetchLeaves(true), fetchAdjustments()]);
+                }}
+              />
+            </PullToRefresh>
           </div>
         ) : (
           <div className="flex-1 w-full max-w-full overflow-hidden flex flex-col bg-slate-50">

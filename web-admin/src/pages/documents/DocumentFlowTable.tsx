@@ -16,6 +16,7 @@ import { useTableColumnResize } from '@/services/useTableColumnResize';
 import { FileViewerItem } from '@/components/common/FileViewerItem';
 import { AuditInfoCell } from '@/components/common/AuditInfoCell';
 import { Modal } from '@/components/common/Modal';
+import { StandardFilterToolbar } from '@/components/common/StandardFilterToolbar';
 
 interface DocumentFlowTableProps {
   flow: DocumentFlow;
@@ -50,8 +51,22 @@ export const DocumentFlowTable: React.FC<DocumentFlowTableProps> = ({
   const [filterDueCategory, setFilterDueCategory] = useState<'all' | 'no_due' | 'warning' | 'overdue' | 'completed'>('all');
   const [filterDateFrom, setFilterDateFrom] = useState('');
   const [filterDateTo, setFilterDateTo] = useState('');
+  const [filterPartner, setFilterPartner] = useState('all');
+  const [filterHasFiles, setFilterHasFiles] = useState<'all' | 'has_file' | 'no_file'>('all');
+  const [filterCreator, setFilterCreator] = useState('all');
   const [filePreviewDoc, setFilePreviewDoc] = useState<DocumentTrack | null>(null);
   const [activeFileIndex, setActiveFileIndex] = useState(0);
+
+  // Danh sách đối tác và người tạo duy nhất để chọn trong bộ lọc
+  const partnerOptions = useMemo(() => {
+    const list = Array.from(new Set(documents.map(d => (d.company || '').trim()).filter(Boolean)));
+    return ['all', ...list];
+  }, [documents]);
+
+  const creatorOptions = useMemo(() => {
+    const list = Array.from(new Set(documents.map(d => (d.createdByName || d.createdById || '').trim()).filter(Boolean)));
+    return ['all', ...list];
+  }, [documents]);
 
   // Độ rộng cột
   const defaultColWidths = useMemo(() => ({
@@ -121,9 +136,27 @@ export const DocumentFlowTable: React.FC<DocumentFlowTableProps> = ({
         if (filterDateTo && d > filterDateTo) return false;
       }
 
+      // Lọc theo đối tác
+      if (filterPartner !== 'all') {
+        if ((doc.company || '').trim() !== filterPartner) return false;
+      }
+
+      // Lọc theo có file đính kèm hay không
+      if (filterHasFiles !== 'all') {
+        const docHasFiles = Boolean(doc.fileUrls && doc.fileUrls.length > 0);
+        if (filterHasFiles === 'has_file' && !docHasFiles) return false;
+        if (filterHasFiles === 'no_file' && docHasFiles) return false;
+      }
+
+      // Lọc theo người tạo
+      if (filterCreator !== 'all') {
+        const creator = (doc.createdByName || doc.createdById || '').trim();
+        if (creator !== filterCreator) return false;
+      }
+
       return true;
     });
-  }, [documents, searchTerm, filterSubType, filterStatus, filterDueCategory, filterDateFrom, filterDateTo]);
+  }, [documents, searchTerm, filterSubType, filterStatus, filterDueCategory, filterDateFrom, filterDateTo, filterPartner, filterHasFiles, filterCreator]);
 
   // Thống kê nhanh thanh số liệu dưới toolbar
   const stats = useMemo(() => {
@@ -167,157 +200,150 @@ export const DocumentFlowTable: React.FC<DocumentFlowTableProps> = ({
     filterStatus !== 'all' ||
     filterDueCategory !== 'all' ||
     filterDateFrom ||
-    filterDateTo;
+    filterDateTo ||
+    filterPartner !== 'all' ||
+    filterHasFiles !== 'all' ||
+    filterCreator !== 'all';
+
+  const selectFilters = useMemo(() => {
+    const filters: any[] = [];
+
+    if (!isUnclassified && subTypeOptions.length > 0) {
+      filters.push({
+        id: 'subType',
+        label: 'Loại hồ sơ',
+        value: filterSubType,
+        onChange: setFilterSubType,
+        options: [
+          { value: 'all', label: 'Tất cả loại hồ sơ' },
+          ...subTypeOptions.map(t => ({ value: t, label: t }))
+        ],
+        minWidth: 'min-w-[130px]',
+        maxWidth: 'max-w-[180px]',
+      });
+    }
+
+    if (!isUnclassified && statusOptions.length > 0) {
+      filters.push({
+        id: 'status',
+        label: 'Trạng thái',
+        value: filterStatus,
+        onChange: setFilterStatus,
+        options: [
+          { value: 'all', label: 'Tất cả trạng thái' },
+          ...statusOptions.map(st => ({ value: st, label: st }))
+        ],
+        minWidth: 'min-w-[120px]',
+        maxWidth: 'max-w-[160px]',
+      });
+    }
+
+    filters.push({
+      id: 'dueCategory',
+      label: 'Thời hạn',
+      value: filterDueCategory,
+      onChange: setFilterDueCategory,
+      options: [
+        { value: 'all', label: 'Tất cả thời hạn' },
+        { value: 'no_due', label: 'Chưa xác định hạn' },
+        { value: 'warning', label: '🔔 Sắp đến hạn' },
+        { value: 'overdue', label: '🔴 Quá hạn' },
+        { value: 'completed', label: '✅ Đã hoàn thành' },
+      ],
+      minWidth: 'min-w-[120px]',
+      maxWidth: 'max-w-[170px]',
+    });
+
+    if (partnerOptions.length > 2) {
+      filters.push({
+        id: 'partner',
+        label: 'Đối tác',
+        value: filterPartner,
+        onChange: setFilterPartner,
+        options: partnerOptions.map(p => ({ value: p, label: p === 'all' ? 'Tất cả đối tác' : p })),
+        minWidth: 'min-w-[120px]',
+        maxWidth: 'max-w-[180px]',
+      });
+    }
+
+    filters.push({
+      id: 'hasFiles',
+      label: 'Tệp đính kèm',
+      value: filterHasFiles,
+      onChange: setFilterHasFiles,
+      options: [
+        { value: 'all', label: 'Tất cả tệp' },
+        { value: 'has_file', label: '📎 Có tệp đính kèm' },
+        { value: 'no_file', label: 'Chưa có tệp' },
+      ],
+      minWidth: 'min-w-[110px]',
+      maxWidth: 'max-w-[150px]',
+    });
+
+    if (creatorOptions.length > 2) {
+      filters.push({
+        id: 'creator',
+        label: 'Người tạo',
+        value: filterCreator,
+        onChange: setFilterCreator,
+        options: creatorOptions.map(c => ({ value: c, label: c === 'all' ? 'Tất cả người tạo' : c })),
+        minWidth: 'min-w-[110px]',
+        maxWidth: 'max-w-[160px]',
+      });
+    }
+
+    return filters;
+  }, [isUnclassified, subTypeOptions, statusOptions, filterSubType, filterStatus, filterDueCategory, partnerOptions, filterPartner, filterHasFiles, creatorOptions, filterCreator]);
 
   return (
     <div className="flex flex-col h-full w-full">
-      {/* 1. Toolbar chuẩn hóa của TITSMART: cuộn ngang có tay kéo */}
-      <div className="bg-white border-b border-slate-200 p-2.5 shadow-2xs shrink-0">
-        <div className="flex flex-wrap items-center justify-between gap-2.5">
-          {/* Cụm bộ lọc nghiệp vụ bên trái */}
-          <div className="flex flex-wrap items-center gap-2 grow">
-            {/* Loại hồ sơ */}
-            <div className="min-w-[160px]">
-              <CustomSelect
-                value={filterSubType}
-                onChange={e => setFilterSubType(e.target.value)}
-                className="w-full text-xs px-2.5 py-1.5 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white"
-              >
-                <option value="all">Tất cả loại hồ sơ</option>
-                {subTypeOptions.map(t => (
-                  <option key={t} value={t}>{t}</option>
-                ))}
-              </CustomSelect>
-            </div>
-
-            {/* Trạng thái quy trình */}
-            <div className="min-w-[150px]">
-              <CustomSelect
-                value={filterStatus}
-                onChange={e => setFilterStatus(e.target.value)}
-                className="w-full text-xs px-2.5 py-1.5 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white"
-              >
-                <option value="all">Tất cả trạng thái</option>
-                {statusOptions.map(st => (
-                  <option key={st} value={st}>{st}</option>
-                ))}
-              </CustomSelect>
-            </div>
-
-            {/* Bộ lọc Hạn thanh toán theo quy tắc chuẩn */}
-            <div className="min-w-[170px]">
-              <CustomSelect
-                value={filterDueCategory}
-                onChange={e => setFilterDueCategory(e.target.value as any)}
-                className="w-full text-xs px-2.5 py-1.5 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white font-medium"
-              >
-                <option value="all">Tất cả thời hạn</option>
-                <option value="no_due">Chưa xác định hạn</option>
-                <option value="warning">Sắp đến hạn</option>
-                <option value="overdue">Quá hạn thanh toán</option>
-                <option value="completed">Đã thanh toán / Đã thu đủ</option>
-              </CustomSelect>
-            </div>
-
-            {/* Khoảng ngày */}
-            <div className="flex items-center gap-1 text-xs text-slate-500 bg-slate-50 border border-slate-200 px-2 py-1 rounded-lg">
-              <span className="text-[11px] font-semibold text-slate-600">Từ:</span>
-              <input
-                type="date"
-                value={filterDateFrom}
-                onChange={e => setFilterDateFrom(e.target.value)}
-                className="bg-transparent text-xs outline-none cursor-pointer"
-              />
-              <span className="text-[11px] font-semibold text-slate-600 ml-1">Đến:</span>
-              <input
-                type="date"
-                value={filterDateTo}
-                onChange={e => setFilterDateTo(e.target.value)}
-                className="bg-transparent text-xs outline-none cursor-pointer"
-              />
-            </div>
-
-            {/* Ô tìm kiếm */}
-            <div className="relative min-w-[200px] grow max-w-xs">
-              <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">
-                search
-              </span>
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
-                placeholder="Tìm mã, trích yếu, số HĐ, đối tác..."
-                className="w-full pl-8 pr-3 py-1.5 text-xs border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:ring-1 focus:ring-primary"
-              />
-              {searchTerm && (
-                <button
-                  type="button"
-                  onClick={() => setSearchTerm('')}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
-                >
-                  <span className="material-symbols-outlined text-[14px]">close</span>
-                </button>
-              )}
-            </div>
-
-            {/* Nút xóa lọc */}
-            {hasActiveFilter && (
-              <button
-                type="button"
-                onClick={() => {
-                  setSearchTerm('');
-                  setFilterSubType('all');
-                  setFilterStatus('all');
-                  setFilterDueCategory('all');
-                  setFilterDateFrom('');
-                  setFilterDateTo('');
-                }}
-                className="text-xs px-2.5 py-1.5 text-rose-600 hover:bg-rose-50 border border-rose-200 rounded-lg flex items-center gap-1 font-semibold cursor-pointer transition"
-                title="Xóa toàn bộ bộ lọc"
-              >
-                <span className="material-symbols-outlined text-[14px]">filter_alt_off</span>
-                <span>Xóa lọc</span>
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Thanh tóm tắt số liệu & kết quả */}
-        <div className="mt-2.5 pt-2.5 border-t border-slate-100 flex flex-wrap items-center justify-between text-xs text-slate-600 gap-2">
+      {/* Toolbar chuẩn hóa theo phong cách toàn hệ thống */}
+      <StandardFilterToolbar
+        totalCount={filteredDocs.length}
+        totalCountLabel="hồ sơ"
+        searchQuery={searchTerm}
+        onSearchChange={setSearchTerm}
+        searchPlaceholder="Tìm mã, trích yếu, số HĐ, đối tác..."
+        onResetColumnWidths={resetWidths}
+        selectFilters={selectFilters}
+        dateRange={{
+          label: 'Ngày',
+          fromDate: filterDateFrom,
+          toDate: filterDateTo,
+          onFromChange: setFilterDateFrom,
+          onToChange: setFilterDateTo,
+        }}
+        onResetFilters={hasActiveFilter ? () => {
+          setSearchTerm('');
+          setFilterSubType('all');
+          setFilterStatus('all');
+          setFilterDueCategory('all');
+          setFilterDateFrom('');
+          setFilterDateTo('');
+          setFilterPartner('all');
+          setFilterHasFiles('all');
+          setFilterCreator('all');
+        } : undefined}
+      >
+        {/* Tóm tắt cảnh báo hạn & tổng tiền nằm gọn cùng toolbar, không tạo thêm dòng trống */}
+        <div className="flex items-center gap-3 text-xs text-slate-600 font-medium">
+          {stats.overdueCount > 0 && (
+            <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-700">
+              🔴 {stats.overdueCount} quá hạn
+            </span>
+          )}
+          {stats.warningCount > 0 && (
+            <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-800">
+              🔔 {stats.warningCount} sắp đến hạn
+            </span>
+          )}
           <div className="flex items-center gap-2">
-            <span>Tìm thấy <b>{filteredDocs.length}</b> hồ sơ</span>
-            {stats.overdueCount > 0 && (
-              <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-700">
-                🔴 {stats.overdueCount} quá hạn
-              </span>
-            )}
-            {stats.warningCount > 0 && (
-              <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-800">
-                🔔 {stats.warningCount} sắp đến hạn
-              </span>
-            )}
-            {stats.noDueCount > 0 && (
-              <span className="px-2 py-0.5 rounded-full text-[11px] text-slate-500 bg-slate-100">
-                {stats.noDueCount} chưa định hạn
-              </span>
-            )}
-          </div>
-
-          <div className="flex items-center gap-4 text-xs font-medium">
-            <div>Tổng: <b className="text-slate-900 font-mono">{formatCurrency(stats.totalValue)}</b></div>
-            {!isUnclassified && <div>{paidHeader}: <b className="text-emerald-700 font-mono">{formatCurrency(stats.totalPaid)}</b></div>}
-            {!isUnclassified && <div>{remainHeader}: <b className="text-amber-700 font-mono">{formatCurrency(stats.totalRemain)}</b></div>}
-            <button
-              type="button"
-              onClick={resetWidths}
-              className="text-[11px] text-slate-400 hover:text-slate-600 underline cursor-pointer ml-1"
-              title="Khôi phục độ rộng mặc định của các cột"
-            >
-              Reset cột
-            </button>
+            <span>Tổng: <b className="text-slate-900 font-mono">{formatCurrency(stats.totalValue)}</b></span>
+            {!isUnclassified && <span>| {paidHeader}: <b className="text-emerald-700 font-mono">{formatCurrency(stats.totalPaid)}</b></span>}
+            {!isUnclassified && <span>| {remainHeader}: <b className="text-amber-700 font-mono">{formatCurrency(stats.totalRemain)}</b></span>}
           </div>
         </div>
-      </div>
+      </StandardFilterToolbar>
 
       {/* 2. Bảng dữ liệu có thanh cuộn ngang có tay kéo và kéo giãn độ rộng cột */}
       <div className="bg-white flex-1 overflow-hidden flex flex-col">

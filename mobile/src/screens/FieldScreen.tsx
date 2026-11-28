@@ -4,15 +4,32 @@ import { useDataStore } from '../services/dataStore';
 import { useAuthStore } from '../services/authStore';
 
 export const FieldScreen = () => {
-  const { fieldLogs, fetchFieldLogs, leaves, fetchLeaves, createLeave, isLoading } = useDataStore();
+  const { 
+    fieldLogs, 
+    fetchFieldLogs, 
+    leaves, 
+    fetchLeaves, 
+    createLeave, 
+    attendanceLogs, 
+    todayAttendance, 
+    fetchAttendance, 
+    checkIn, 
+    checkOut, 
+    isLoading 
+  } = useDataStore();
   const user = useAuthStore(state => state.user);
   const [refreshing, setRefreshing] = useState(false);
-  const [isCheckedIn, setIsCheckedIn] = useState(false);
+  const [isSubmittingAttendance, setIsSubmittingAttendance] = useState(false);
+
+  const isCheckedIn = Boolean(todayAttendance && !todayAttendance.checkOutTime);
 
   const loadData = useCallback(async () => {
-    await fetchFieldLogs();
-    await fetchLeaves();
-  }, [fetchFieldLogs, fetchLeaves]);
+    await Promise.all([
+      fetchFieldLogs(),
+      fetchLeaves(),
+      fetchAttendance()
+    ]);
+  }, [fetchFieldLogs, fetchLeaves, fetchAttendance]);
 
   useEffect(() => {
     loadData();
@@ -25,17 +42,59 @@ export const FieldScreen = () => {
   };
 
   const toggleCheckIn = () => {
-    Alert.alert(
-      isCheckedIn ? 'Xác nhận Check-out' : 'Xác nhận Check-in',
-      isCheckedIn ? 'Bạn muốn kết thúc ca làm việc?' : 'Bạn đã có mặt tại công trường?',
-      [
-        { text: 'Hủy', style: 'cancel' },
-        { 
-          text: 'Xác nhận', 
-          onPress: () => setIsCheckedIn(!isCheckedIn)
-        }
-      ]
-    );
+    if (!user) {
+      Alert.alert('Thông báo', 'Vui lòng đăng nhập trước khi chấm công');
+      return;
+    }
+
+    if (isCheckedIn) {
+      Alert.alert(
+        'Xác nhận Check-out',
+        'Bạn muốn kết thúc ca làm việc hôm nay?',
+        [
+          { text: 'Hủy', style: 'cancel' },
+          { 
+            text: 'Xác nhận Check-out', 
+            onPress: async () => {
+              if (!todayAttendance) return;
+              try {
+                setIsSubmittingAttendance(true);
+                await checkOut(todayAttendance.id, 'Check-out qua ứng dụng mobile');
+                Alert.alert('Thành công', 'Đã ghi nhận Check-out thành công!');
+              } catch (e: any) {
+                Alert.alert('Lỗi', e.message || 'Không thể check-out');
+              } finally {
+                setIsSubmittingAttendance(false);
+              }
+            }
+          }
+        ]
+      );
+    } else {
+      Alert.alert(
+        'Xác nhận Check-in',
+        'Ghi nhận bắt đầu ca làm việc hôm nay?',
+        [
+          { text: 'Hủy', style: 'cancel' },
+          { 
+            text: 'Xác nhận Check-in', 
+            onPress: async () => {
+              try {
+                setIsSubmittingAttendance(true);
+                await checkIn({
+                  notes: 'Check-in qua ứng dụng mobile'
+                });
+                Alert.alert('Thành công', 'Đã ghi nhận Check-in thành công!');
+              } catch (e: any) {
+                Alert.alert('Lỗi', e.message || 'Không thể check-in');
+              } finally {
+                setIsSubmittingAttendance(false);
+              }
+            }
+          }
+        ]
+      );
+    }
   };
 
   const handleLeaveRequestPrompt = () => {
@@ -89,13 +148,27 @@ export const FieldScreen = () => {
               </Text>
             </View>
             <TouchableOpacity 
-              style={[styles.checkBtn, isCheckedIn ? styles.checkOutBtn : styles.checkInBtn]}
+              style={[
+                styles.checkBtn, 
+                isCheckedIn ? styles.checkOutBtn : styles.checkInBtn,
+                isSubmittingAttendance && { opacity: 0.6 }
+              ]}
               onPress={toggleCheckIn}
+              disabled={isSubmittingAttendance}
             >
               <Text style={styles.checkBtnText}>
-                {isCheckedIn ? 'CHECK OUT' : 'CHECK IN'}
+                {isSubmittingAttendance ? 'ĐANG XỬ LÝ...' : (isCheckedIn ? 'CHECK OUT' : 'CHECK IN')}
               </Text>
             </TouchableOpacity>
+
+            {todayAttendance && (
+              <View style={{ marginTop: 12, padding: 8, backgroundColor: '#f8fafc', borderRadius: 8, width: '100%' }}>
+                <Text style={{ fontSize: 12, color: '#334155' }}>
+                  Vào: {new Date(todayAttendance.checkInTime).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                  {todayAttendance.checkOutTime ? ` | Ra: ${new Date(todayAttendance.checkOutTime).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}` : ''}
+                </Text>
+              </View>
+            )}
 
             <TouchableOpacity
               style={styles.leaveBtn}

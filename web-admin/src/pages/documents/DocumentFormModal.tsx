@@ -10,7 +10,9 @@ import {
   INPUT_SUBTYPES,
   OUTPUT_SUBTYPES,
   INPUT_STATUSES,
-  OUTPUT_STATUSES
+  OUTPUT_STATUSES,
+  UNCLASSIFIED_SUBTYPES,
+  UNCLASSIFIED_STATUSES
 } from './documentConstants';
 
 interface DocumentFormModalProps {
@@ -91,8 +93,8 @@ export const DocumentFormModal: React.FC<DocumentFormModalProps> = ({
   const [fileUrls, setFileUrls] = useState<string[]>([]);
 
   // Tùy chọn subtype & status dựa theo flow
-  const subTypeOptions = flow === 'input' ? INPUT_SUBTYPES : OUTPUT_SUBTYPES;
-  const statusOptions = flow === 'input' ? INPUT_STATUSES : OUTPUT_STATUSES;
+  const subTypeOptions = flow === 'input' ? INPUT_SUBTYPES : (flow === 'output' ? OUTPUT_SUBTYPES : UNCLASSIFIED_SUBTYPES);
+  const statusOptions = flow === 'input' ? INPUT_STATUSES : (flow === 'output' ? OUTPUT_STATUSES : UNCLASSIFIED_STATUSES);
 
   // Tự động tính tiền VAT và Tổng tiền khi đổi trước thuế hoặc % VAT
   const handleBeforeTaxChange = (val: number) => {
@@ -130,7 +132,7 @@ export const DocumentFormModal: React.FC<DocumentFormModalProps> = ({
       setContractNo(documentData.contractNo || '');
       setContractName(documentData.contractName || '');
       setProjectCode(defaultProjectCode || documentData.projectCode || 'COMPANY');
-      setSubType(documentData.subType || (flow === 'input' ? 'Hóa đơn nhà cung cấp (VAT)' : 'Hợp đồng CĐT / Khách hàng'));
+      setSubType(documentData.subType || (flow === 'input' ? 'Hóa đơn nhà cung cấp (VAT)' : (flow === 'output' ? 'Hợp đồng CĐT / Khách hàng' : 'Hồ sơ chưa phân loại')));
       setPartnerName(documentData.company || '');
       setReceiverName(documentData.receiverName || '');
       setPhone(documentData.phone || '');
@@ -156,7 +158,7 @@ export const DocumentFormModal: React.FC<DocumentFormModalProps> = ({
       setInvoiceDate(documentData.invoiceDate ? documentData.invoiceDate.split('T')[0] : '');
       setPaymentRefId(documentData.paymentRefId || '');
 
-      setDocStatus(documentData.docStatus || (flow === 'input' ? 'Nháp' : 'Nháp'));
+      setDocStatus(documentData.docStatus || (flow === 'unclassified' ? 'Chưa xác định' : 'Nháp'));
       setNotes((documentData.notes || '').replace(/\[STATUS:[^\]]+\]/g, '').trim());
       setFileUrls(documentData.fileUrls || []);
     } else {
@@ -165,7 +167,7 @@ export const DocumentFormModal: React.FC<DocumentFormModalProps> = ({
       setContractNo(`HS-${Date.now().toString().slice(-6)}`);
       setContractName('');
       setProjectCode(defaultProjectCode || 'COMPANY');
-      setSubType(flow === 'input' ? 'Hóa đơn nhà cung cấp (VAT)' : 'Hợp đồng CĐT / Khách hàng');
+      setSubType(flow === 'input' ? 'Hóa đơn nhà cung cấp (VAT)' : (flow === 'output' ? 'Hợp đồng CĐT / Khách hàng' : 'Hồ sơ chưa phân loại'));
       setPartnerName('');
       setReceiverName(user?.name || '');
       setPhone('');
@@ -188,7 +190,7 @@ export const DocumentFormModal: React.FC<DocumentFormModalProps> = ({
       setInvoiceDate('');
       setPaymentRefId('');
 
-      setDocStatus(flow === 'input' ? 'Nháp' : 'Nháp');
+      setDocStatus(flow === 'unclassified' ? 'Chưa xác định' : 'Nháp');
       setNotes('');
       setFileUrls([]);
     }
@@ -241,10 +243,14 @@ export const DocumentFormModal: React.FC<DocumentFormModalProps> = ({
         if (paidAmount >= totalAmount && totalAmount > 0) pStatus = 'Đã thanh toán';
         else if (paidAmount > 0) pStatus = 'Thanh toán một phần';
         else pStatus = 'Chưa thanh toán';
-      } else {
+      } else if (flow === 'output') {
         if (paidAmount >= totalAmount && totalAmount > 0) pStatus = 'Đã thu đủ';
         else if (paidAmount > 0) pStatus = 'Thu một phần';
         else pStatus = 'Chưa thu';
+      } else {
+        if (paidAmount >= totalAmount && totalAmount > 0) pStatus = 'Đã đối soát';
+        else if (paidAmount > 0) pStatus = 'Một phần';
+        else pStatus = 'Chưa phân loại';
       }
 
       // Chuẩn hóa ngày hạn: Nếu rỗng thì truyền null
@@ -284,10 +290,10 @@ export const DocumentFormModal: React.FC<DocumentFormModalProps> = ({
         paymentRefId: paymentRefId.trim() || undefined,
 
         // Trạng thái
-        docStatus: docStatus.trim() || (flow === 'input' ? 'Nháp' : 'Nháp'),
+        docStatus: docStatus.trim() || (flow === 'unclassified' ? 'Chưa xác định' : 'Nháp'),
         paymentStatus: pStatus,
         isCompleted: pStatus.includes('Đã thanh toán') || pStatus.includes('Đã thu đủ') || docStatus === 'Hoàn thành',
-        side: flow === 'input' ? 'Bên trả' : 'Bên nhận',
+        side: flow === 'input' ? 'Bên trả' : (flow === 'output' ? 'Bên nhận' : 'Chưa phân loại'),
         notes: notes.trim(),
         fileUrls: fileUrls
       };
@@ -301,13 +307,23 @@ export const DocumentFormModal: React.FC<DocumentFormModalProps> = ({
     }
   };
 
-  const partnerLabel = flow === 'input' ? 'Nhà cung cấp / Bên thụ hưởng *' : 'Khách hàng / Chủ đầu tư *';
+  const partnerLabel = flow === 'input' 
+    ? 'Nhà cung cấp / Bên thụ hưởng *' 
+    : (flow === 'output' ? 'Khách hàng / Chủ đầu tư *' : 'Đối tác / Bên liên quan');
   const modalTitle = documentData
-    ? (flow === 'input' ? 'Sửa Hồ sơ đầu vào (Công ty phải trả)' : 'Sửa Hồ sơ đầu ra (Bên khác phải trả)')
-    : (flow === 'input' ? 'Tạo Hồ sơ đầu vào mới (Công ty phải trả)' : 'Tạo Hồ sơ đầu ra mới (Thu tiền từ CĐT/Khách)');
+    ? (flow === 'input' 
+        ? 'Sửa Hồ sơ đầu vào (Công ty phải trả)' 
+        : (flow === 'output' 
+            ? 'Sửa Hồ sơ đầu ra (Bên khác phải trả)' 
+            : 'Sửa Hồ sơ chưa phân loại / Không xác định'))
+    : (flow === 'input' 
+        ? 'Tạo Hồ sơ đầu vào mới (Công ty phải trả)' 
+        : (flow === 'output' 
+            ? 'Tạo Hồ sơ đầu ra mới (Thu tiền từ CĐT/Khách)' 
+            : 'Tạo Hồ sơ không xác định (Chưa phân loại)'));
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={modalTitle} icon={flow === 'input' ? 'upload_file' : 'download_for_offline'} size="xl">
+    <Modal isOpen={isOpen} onClose={onClose} title={modalTitle} icon={flow === 'input' ? 'upload_file' : (flow === 'output' ? 'download_for_offline' : 'help_outline')} size="xl">
       <form onSubmit={handleSubmit} className="space-y-4 text-xs">
         {/* Cảnh báo trùng lặp nếu có */}
         {duplicateWarning && (
@@ -449,7 +465,7 @@ export const DocumentFormModal: React.FC<DocumentFormModalProps> = ({
               <span>Giá trị tài chính & Thuế</span>
             </div>
             <div className="text-[12px] font-bold text-slate-700">
-              {flow === 'input' ? 'Còn phải trả: ' : 'Còn phải thu: '}
+              {flow === 'input' ? 'Còn phải trả: ' : (flow === 'output' ? 'Còn phải thu: ' : 'Chưa đối soát: ')}
               <span className={`px-2 py-0.5 rounded font-mono ${remaining > 0 ? 'bg-amber-100 text-amber-900' : 'bg-emerald-100 text-emerald-800'}`}>
                 {remaining.toLocaleString('vi-VN')} đ
               </span>
@@ -533,7 +549,7 @@ export const DocumentFormModal: React.FC<DocumentFormModalProps> = ({
 
             <div>
               <label className="block font-semibold text-slate-700 mb-1">
-                {flow === 'input' ? 'Số tiền đã thanh toán' : 'Số tiền đã thu'}
+                {flow === 'input' ? 'Số tiền đã thanh toán' : (flow === 'output' ? 'Số tiền đã thu' : 'Số tiền đã thanh toán / đã thu')}
               </label>
               <input
                 type="number"
@@ -573,7 +589,7 @@ export const DocumentFormModal: React.FC<DocumentFormModalProps> = ({
 
             <div>
               <label className="block font-bold text-amber-900 mb-1 flex items-center justify-between">
-                <span>{flow === 'input' ? 'Hạn thanh toán' : 'Hạn phải thu'}</span>
+                <span>{flow === 'input' ? 'Hạn thanh toán' : (flow === 'output' ? 'Hạn phải thu' : 'Thời hạn (nếu có)')}</span>
                 {dueDate && (
                   <button
                     type="button"
@@ -600,7 +616,7 @@ export const DocumentFormModal: React.FC<DocumentFormModalProps> = ({
 
             <div>
               <label className="block font-semibold text-slate-700 mb-1">
-                {flow === 'input' ? 'Ngày thanh toán thực tế' : 'Ngày nhận tiền thực tế'}
+                {flow === 'input' ? 'Ngày thanh toán thực tế' : (flow === 'output' ? 'Ngày nhận tiền thực tế' : 'Ngày chi trả / nhận tiền thực tế')}
               </label>
               <input
                 type="date"

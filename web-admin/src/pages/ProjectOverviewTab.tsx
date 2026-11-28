@@ -1,9 +1,62 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useRealtimeStore } from '../services/realtimeStore';
 import { useAuthStore, hasPermission } from '../services/authStore';
-import { isTaskSectionHeaderItem, isTaskActuallyDone, getTaskEffectiveProgress } from '../types';
-import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend, BarChart, Bar, CartesianGrid, XAxis, YAxis } from 'recharts';
+import { isTaskSectionHeaderItem, isTaskActuallyDone, getTaskEffectiveProgress, PurchaseRequest } from '../types';
+import { calculateProjectFinancialPerformance } from '../utils/financialPerformanceUtils';
+import { api } from '../services/apiSupabase';
+import { 
+  ResponsiveContainer, 
+  BarChart, 
+  Bar, 
+  LineChart, 
+  Line, 
+  AreaChart, 
+  Area, 
+  PieChart, 
+  Pie, 
+  Cell, 
+  CartesianGrid, 
+  XAxis, 
+  YAxis, 
+  Tooltip, 
+  Legend, 
+  ComposedChart, 
+  RadialBarChart, 
+  RadialBar, 
+  Treemap 
+} from 'recharts';
+
+interface ChartBoxProps {
+  title: string;
+  badge?: React.ReactNode;
+  icon?: string;
+  onAction?: () => void;
+  actionText?: string;
+  children: React.ReactNode;
+}
+
+const ChartBox: React.FC<ChartBoxProps> = ({ title, badge, icon, onAction, actionText, children }) => (
+  <div className="flex flex-col bg-white rounded-lg border border-slate-200 shadow-2xs h-[320px] min-w-0 w-full overflow-hidden">
+    <div className="bg-slate-50 border-b border-slate-200 px-3.5 py-2 flex items-center justify-between min-w-0 shrink-0">
+      <div className="flex items-center gap-2 min-w-0">
+        {icon && <span className="material-symbols-outlined text-base text-slate-500">{icon}</span>}
+        <span className="text-xs font-bold text-slate-800 uppercase tracking-tight truncate" title={title}>{title}</span>
+      </div>
+      <div className="flex items-center gap-2 shrink-0">
+        {badge}
+        {onAction && actionText && (
+          <button onClick={onAction} className="text-xs font-semibold text-primary hover:underline">
+            {actionText}
+          </button>
+        )}
+      </div>
+    </div>
+    <div className="flex-1 w-full h-[270px] min-w-0 p-2.5 overflow-hidden relative">
+      {children}
+    </div>
+  </div>
+);
 
 export const ProjectOverviewTab: React.FC = () => {
   const { projectId } = useParams();
@@ -13,10 +66,14 @@ export const ProjectOverviewTab: React.FC = () => {
   const expenses = useRealtimeStore(s => s.expenses);
   const engineers = useRealtimeStore(s => s.engineers);
   const materialPlans = useRealtimeStore(s => s.materialPlans);
+  const purchasingPlans = useRealtimeStore(s => s.purchasingPlans);
+  const laborPayrolls = useRealtimeStore(s => s.laborPayrolls);
   const materials = useRealtimeStore(s => s.materials);
   const fetchMaterials = useRealtimeStore(s => s.fetchMaterials);
+  const fetchAccounting = useRealtimeStore(s => s.fetchAccounting);
   const documentTracks = useRealtimeStore(s => s.documentTracks);
   const fieldLogs = useRealtimeStore(s => s.fieldLogs);
+  const issues = useRealtimeStore(s => s.issues);
 
   const user = useAuthStore(s => s.user);
 
@@ -35,11 +92,20 @@ export const ProjectOverviewTab: React.FC = () => {
     });
   }, [projectId, projects]);
 
-  React.useEffect(() => {
-    if (project) {
-      fetchMaterials(project.code || project.id);
-    }
-  }, [project?.id, project?.code, fetchMaterials]);
+  const [purchaseRequests, setPurchaseRequests] = useState<PurchaseRequest[]>([]);
+  const [procurementViewMode, setProcurementViewMode] = useState<'items' | 'volume'>('volume');
+
+  useEffect(() => {
+    let isMounted = true;
+    api.purchaseRequests.getAll().then(list => {
+      if (isMounted && Array.isArray(list)) {
+        setPurchaseRequests(list);
+      }
+    }).catch(err => {
+      console.error('Failed to load purchase requests for overview:', err);
+    });
+    return () => { isMounted = false; };
+  }, [project?.id, project?.code]);
 
   const pCodeUpper = useMemo(() => String(project?.code || '').trim().toUpperCase(), [project?.code]);
   const pIdUpper = useMemo(() => String(project?.id || '').trim().toUpperCase(), [project?.id]);
@@ -51,7 +117,9 @@ export const ProjectOverviewTab: React.FC = () => {
     return Boolean(u && (u === pCodeUpper || u === pIdUpper || u === pNameUpper));
   }, [project, pCodeUpper, pIdUpper, pNameUpper]);
 
-  // --- 1. TIẾN ĐỘ ---
+  // ==========================================
+  // 1. TIẾN ĐỘ & CÔNG VIỆC
+  // ==========================================
   const projTasks = useMemo(() => {
     return tasks.filter(t => isProjectMatch(t.projectCode) && !isTaskSectionHeaderItem(t));
   }, [tasks, isProjectMatch]);
@@ -60,771 +128,907 @@ export const ProjectOverviewTab: React.FC = () => {
     return isTaskActuallyDone(t);
   }, []);
 
-  const actualTotalTasks = projTasks.length > 0 ? projTasks.length : (project?.totalTasks || 0);
-  const actualCompletedTasks = projTasks.length > 0 
-    ? projTasks.filter(isTaskCompleted).length 
-    : (project?.completedTasks || 0);
+  const totalTasks = projTasks.length > 0 ? projTasks.length : (project?.totalTasks || 0);
+  const completedTasks = projTasks.length > 0 ? projTasks.filter(isTaskCompleted).length : (project?.completedTasks || 0);
 
   const calculatedPercent = useMemo(() => {
     if (projTasks.length === 0) return project?.progressPercent || 0;
-    const totalProgressSum = projTasks.reduce((sum, t) => {
-      return sum + Math.round(getTaskEffectiveProgress(t) * 100);
-    }, 0);
+    const totalProgressSum = projTasks.reduce((sum, t) => sum + Math.round(getTaskEffectiveProgress(t) * 100), 0);
     return Math.round(totalProgressSum / projTasks.length);
   }, [projTasks, project?.progressPercent]);
 
-  const totalTasks = actualTotalTasks;
-  const completedTasks = actualCompletedTasks;
   const progressPercent = Math.min(100, Math.max(0, calculatedPercent));
 
-  // --- 2. VẬT TƯ & CHI PHÍ ---
-  const projExpenses = useMemo(() => expenses.filter(e => isProjectMatch(e.projectCode)), [expenses, isProjectMatch]);
-  // Loại trừ dòng "Chuyển quỹ đến..." (không phải chi tiêu thực - chỉ là chuyển nội bộ)
-  const isTransferOut = (e: { content?: string }) =>
-    String(e.content || '').trim().toLowerCase().startsWith('chuyển quỹ đến') ||
-    String(e.content || '').trim().toLowerCase().startsWith('chuyen quy den');
-  const totalExpense = useMemo(() =>
-    projExpenses.filter(e => !isTransferOut(e)).reduce((sum, e) => sum + (e.totalAmount || 0), 0),
-  [projExpenses]);
-  const contractValue = project?.contractValue || 0;
-  const budgetPercent = contractValue > 0 ? Math.min(Math.round((totalExpense / contractValue) * 100), 100) : 0;
+  // Trạng thái công việc
+  const taskStatusCounts = useMemo(() => {
+    let pending = 0;
+    let inProgress = 0;
+    let review = 0;
+    let completed = completedTasks;
+    let overdue = 0;
 
-  // --- 3. HỒ SƠ ---
-  const projDocs = useMemo(() => {
-    return documentTracks 
-      ? documentTracks.filter(d => isProjectMatch(d.projectCode) || isProjectMatch(d.projectId)) 
-      : [];
-  }, [documentTracks, isProjectMatch]);
+    const now = new Date();
+    projTasks.forEach(t => {
+      const isDone = isTaskCompleted(t);
+      if (!isDone) {
+        if (t.dueDate && new Date(t.dueDate).getTime() < now.getTime()) {
+          overdue++;
+        }
+        const st = String(t.status || '').trim().toLowerCase();
+        if (st === 'chờ nghiệm thu' || st === 'review') review++;
+        else if (st === 'đang làm' || st === 'in_progress' || (t.progress && t.progress > 0)) inProgress++;
+        else pending++;
+      }
+    });
+
+    return { pending, inProgress, review, completed, overdue };
+  }, [projTasks, completedTasks, isTaskCompleted]);
+
+  // Biểu đồ vành khuyên Donut Chart (Trạng thái công việc)
+  const taskDonutData = useMemo(() => [
+    { name: 'Hoàn thành', value: taskStatusCounts.completed, color: '#10b981' },
+    { name: 'Đang làm', value: taskStatusCounts.inProgress, color: '#3b82f6' },
+    { name: 'Chờ nghiệm thu', value: taskStatusCounts.review, color: '#f59e0b' },
+    { name: 'Chưa làm', value: taskStatusCounts.pending, color: '#94a3b8' },
+  ].filter(d => d.value > 0), [taskStatusCounts]);
+
+  // Biểu đồ cột ngang (Tiến độ theo phân mục / sectionName)
+  const sectionProgressData = useMemo(() => {
+    const map = new Map<string, { total: number; done: number; progSum: number }>();
+    projTasks.forEach(t => {
+      const sec = t.sectionName || 'Hạng mục chung';
+      if (!map.has(sec)) map.set(sec, { total: 0, done: 0, progSum: 0 });
+      const item = map.get(sec)!;
+      item.total++;
+      if (isTaskCompleted(t)) item.done++;
+      item.progSum += Math.round(getTaskEffectiveProgress(t) * 100);
+    });
+
+    return Array.from(map.entries())
+      .map(([name, val]) => ({
+        name: name.length > 18 ? name.slice(0, 16) + '...' : name,
+        fullName: name,
+        progress: Math.round(val.progSum / val.total),
+        completed: val.done,
+        total: val.total
+      }))
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 6);
+  }, [projTasks, isTaskCompleted]);
+
+  // ==========================================
+  // 2. TÀI CHÍNH, GIÁ VỐN & LỢI NHUẬN (P&L)
+  // ==========================================
+  const financialMetrics = useMemo(() => {
+    return calculateProjectFinancialPerformance(
+      project || null,
+      purchasingPlans,
+      expenses,
+      laborPayrolls,
+      documentTracks,
+      materialPlans
+    );
+  }, [project, purchasingPlans, expenses, laborPayrolls, documentTracks, materialPlans]);
+
+  const contractVal = project?.contractValue || financialMetrics.totalApprovedRevenue || 0;
+  const revenueAccepted = financialMetrics.acceptedRevenue || financialMetrics.totalApprovedRevenue || contractVal;
+  const totalCost = financialMetrics.totalActualCost || 0;
+  const grossProfit = financialMetrics.actualEstimatedProfit || (revenueAccepted - totalCost);
+  const marginPct = financialMetrics.actualGrossMarginPercent || (revenueAccepted > 0 ? (grossProfit / revenueAccepted) * 100 : 0);
+
+  // Biểu đồ so sánh Ngân sách HĐ vs Doanh thu NT vs Chi phí (Grouped Column)
+  const financialComparisonData = useMemo(() => [
+    {
+      category: 'Tài chính Dự án',
+      'Hợp đồng gốc': contractVal,
+      'Đã nghiệm thu': revenueAccepted,
+      'Chi phí thực tế': totalCost,
+      'Lợi nhuận gộp': Math.max(0, grossProfit)
+    }
+  ], [contractVal, revenueAccepted, totalCost, grossProfit]);
+
+  // Biểu đồ cơ cấu chi phí (Donut / Pie)
+  const costBreakdownData = useMemo(() => [
+    { name: 'Vật tư mua sắm', value: financialMetrics.actualPurchasingCommitted, color: '#0284c7' },
+    { name: 'Nhân công', value: financialMetrics.actualLaborCost, color: '#8b5cf6' },
+    { name: 'Chi phí QLDA & khác', value: financialMetrics.actualExpenseCost + financialMetrics.allocatedGeneralCost, color: '#f59e0b' },
+  ].filter(d => d.value > 0), [financialMetrics]);
+
+  // Biểu đồ xu hướng dòng tiền / chi phí theo tháng (Area Chart)
+  const monthlyExpenseTrendData = useMemo(() => {
+    const projExpenses = expenses.filter(e => isProjectMatch(e.projectCode));
+    const map = new Map<string, number>();
+
+    // Khởi tạo 6 tháng gần nhất
+    const now = new Date();
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `T${d.getMonth() + 1}/${d.getFullYear().toString().slice(2)}`;
+      map.set(key, 0);
+    }
+
+    projExpenses.forEach(e => {
+      const dateStr = e.date || (e as any).createdAt;
+      if (dateStr) {
+        const d = new Date(dateStr);
+        const key = `T${d.getMonth() + 1}/${d.getFullYear().toString().slice(2)}`;
+        if (map.has(key)) {
+          map.set(key, (map.get(key) || 0) + (e.totalAmount || 0));
+        }
+      }
+    });
+
+    return Array.from(map.entries()).map(([month, amount]) => ({
+      month,
+      'Chi phí thực chi': amount
+    }));
+  }, [expenses, isProjectMatch]);
+
+  // ==========================================
+  // 3. KHO DỰ ÁN & CUNG ỨNG VẬT TƯ
+  // ==========================================
+  const projWarehouseMaterials = useMemo(() => materials ? materials.filter(m => isProjectMatch(m.projectCode)) : [], [materials, isProjectMatch]);
+  const totalStockCount = projWarehouseMaterials.length;
+  const totalStockQty = useMemo(() => projWarehouseMaterials.reduce((sum, m) => sum + (m.currentStock ?? m.volume ?? 0), 0), [projWarehouseMaterials]);
+
+  // Dữ liệu đặt hàng vật tư & thiết bị dự án (Material Plans & Purchasing Plans)
+  const projMaterialPlans = useMemo(() => {
+    if (!materialPlans) return [];
+    return materialPlans.filter(p => isProjectMatch(p.projectCode) && !(p as any).isHeader && !(p as any).isCategory);
+  }, [materialPlans, isProjectMatch]);
+  const projPurchasingPlans = useMemo(() => purchasingPlans ? purchasingPlans.filter(p => isProjectMatch(p.projectCode)) : [], [purchasingPlans, isProjectMatch]);
+
+  // Map liên kết Yêu cầu mua hàng (Purchase Requests)
+  const itemPurchaseRequestMap = useMemo(() => {
+    const map = new Map<string, { request: PurchaseRequest; itemQuantity: number }>();
+    const norm = (s?: string) => String(s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+
+    const sortedRequests = [...purchaseRequests].sort((a, b) => {
+      const timeA = new Date(a.createdAt || 0).getTime();
+      const timeB = new Date(b.createdAt || 0).getTime();
+      return timeA - timeB;
+    });
+
+    sortedRequests.forEach(req => {
+      if (!req.items || !Array.isArray(req.items)) return;
+      req.items.forEach(it => {
+        const qty = Number(it.quantity || 0);
+        const info = { request: req, itemQuantity: qty };
+        if (it.id) map.set(it.id, info);
+        if (it.stt || it.name) {
+          const key = `${norm(it.stt)}|${norm(it.name)}`;
+          map.set(key, info);
+        }
+      });
+    });
+
+    return map;
+  }, [purchaseRequests]);
+
+  // Thống kê trạng thái đặt hàng (Donut Chart & Metrics) chi tiết theo CẢ Số chủng loại VÀ Khối lượng
+  const orderStatusSummary = useMemo(() => {
+    let totalItems = 0;
+    let itemsOrdered = 0;
+    let itemsRemaining = 0;
+
+    let totalContractVolume = 0;
+    let totalOrderedVolume = 0;
+    let totalRemainingVolume = 0;
+
+    let daCoHangCount = 0;
+    let daDatHangCount = 0;
+    let dangDatHangCount = 0;
+    let dangGiaoCount = 0;
+    let chuaDatHangCount = 0;
+    let khacCount = 0;
+
+    let daCoHangVol = 0;
+    let daDatHangVol = 0;
+    let dangDatHangVol = 0;
+    let dangGiaoVol = 0;
+    let chuaDatHangVol = 0;
+    let khacVol = 0;
+
+    const norm = (s?: string) => String(s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+
+    projMaterialPlans.forEach(p => {
+      totalItems++;
+
+      // Khối lượng hợp đồng (tổng kế hoạch)
+      const contractVol = Number(p.contractVolume ?? (p as any).volume ?? 0);
+      totalContractVolume += contractVol;
+
+      // Tìm thông tin yêu cầu mua hàng liên kết nếu có
+      const prKey = `${norm(p.stt)}|${norm(p.jobContent || (p as any).name)}`;
+      const linkedPR = itemPurchaseRequestMap.get(p.id) || itemPurchaseRequestMap.get(prKey);
+
+      // Khối lượng đã đặt/đề nghị mua trong đợt này
+      let ordVol = 0;
+      if (p.orderedVolume !== undefined && p.orderedVolume !== null && p.orderedVolume > 0) {
+        ordVol = Number(p.orderedVolume);
+      } else if (linkedPR && linkedPR.itemQuantity > 0) {
+        ordVol = Number(linkedPR.itemQuantity);
+      } else if (p.orderedStatus === 'Đã có hàng' || p.orderedStatus === 'Đã đặt hàng' || p.orderedStatus === 'Đang giao') {
+        ordVol = contractVol;
+      }
+
+      totalOrderedVolume += ordVol;
+      const remVol = Math.max(0, contractVol - ordVol);
+      totalRemainingVolume += remVol;
+
+      // Trạng thái đặt hàng
+      let st = (p.orderedStatus || 'Chưa đặt hàng').trim();
+      if (linkedPR?.request?.status) {
+        const prStatus = linkedPR.request.status as string;
+        if (prStatus === 'APPROVED' || prStatus === 'ORDERED') {
+          st = 'Đã đặt hàng';
+        } else if (prStatus === 'PENDING_CHECK' || prStatus === 'CHECKED_WAITING_APPROVAL' || prStatus === 'DRAFT' || prStatus === 'SUBMITTED') {
+          st = 'Đang đặt hàng';
+        }
+      }
+
+      if (st === 'Đã có hàng') {
+        daCoHangCount++;
+        daCoHangVol += contractVol;
+        itemsOrdered++;
+      } else if (st === 'Đã đặt hàng') {
+        daDatHangCount++;
+        daDatHangVol += ordVol > 0 ? ordVol : contractVol;
+        itemsOrdered++;
+      } else if (st === 'Đang đặt hàng') {
+        dangDatHangCount++;
+        dangDatHangVol += ordVol > 0 ? ordVol : contractVol;
+        itemsOrdered++;
+      } else if (st === 'Đang giao') {
+        dangGiaoCount++;
+        dangGiaoVol += ordVol > 0 ? ordVol : contractVol;
+        itemsOrdered++;
+      } else if (st === 'Chưa đặt hàng') {
+        chuaDatHangCount++;
+        chuaDatHangVol += contractVol;
+        itemsRemaining++;
+      } else {
+        khacCount++;
+        khacVol += contractVol;
+      }
+    });
+
+    if (totalItems > 0 && itemsOrdered + itemsRemaining < totalItems) {
+      itemsRemaining = totalItems - itemsOrdered;
+    }
+
+    const volumePercent = totalContractVolume > 0 ? Math.round((totalOrderedVolume / totalContractVolume) * 100) : 0;
+    const itemsPercent = totalItems > 0 ? Math.round((itemsOrdered / totalItems) * 100) : 0;
+
+    // Donut data phân theo Khối lượng (Volume)
+    const donutDataVolume = [
+      { name: 'Đã mua / Đã đặt', value: Math.round(totalOrderedVolume * 10) / 10, color: '#3b82f6' },
+      { name: 'Còn lại chưa mua', value: Math.round(totalRemainingVolume * 10) / 10, color: '#f59e0b' },
+    ].filter(d => d.value > 0);
+
+    // Donut data phân theo Chi tiết Trạng thái
+    const donutDataItems = [
+      { name: 'Đã có hàng', value: daCoHangCount, color: '#10b981' },
+      { name: 'Đang giao / Đã đặt', value: daDatHangCount + dangGiaoCount, color: '#3b82f6' },
+      { name: 'Đang đặt hàng', value: dangDatHangCount, color: '#f59e0b' },
+      { name: 'Chưa đặt hàng', value: chuaDatHangCount, color: '#94a3b8' },
+      { name: 'Khác', value: khacCount, color: '#8b5cf6' },
+    ].filter(d => d.value > 0);
+
+    return {
+      totalItems,
+      itemsOrdered,
+      itemsRemaining,
+      itemsPercent,
+      totalContractVolume,
+      totalOrderedVolume,
+      totalRemainingVolume,
+      volumePercent,
+      daCoHangCount,
+      daDatHangCount,
+      dangGiaoCount,
+      dangDatHangCount,
+      chuaDatHangCount,
+      donutDataVolume,
+      donutDataItems
+    };
+  }, [projMaterialPlans, itemPurchaseRequestMap]);
+
+  // Biểu đồ cơ cấu chủng loại vật tư theo nhóm (Treemap hoặc Column)
+  const materialCategoryData = useMemo(() => {
+    const map = new Map<string, number>();
+    projWarehouseMaterials.forEach(m => {
+      const cat = m.category || m.systemGroup || 'Vật tư chính';
+      map.set(cat, (map.get(cat) || 0) + (m.currentStock ?? m.volume ?? 1));
+    });
+
+    return Array.from(map.entries()).map(([name, size]) => ({
+      name,
+      value: size
+    })).sort((a, b) => b.value - a.value).slice(0, 6);
+  }, [projWarehouseMaterials]);
+
+  // ==========================================
+  // 4. HỒ SƠ PHÁP LÝ & NGHIỆM THU
+  // ==========================================
+  const projDocs = useMemo(() => documentTracks ? documentTracks.filter(d => isProjectMatch(d.projectCode) || isProjectMatch(d.projectId)) : [], [documentTracks, isProjectMatch]);
   const totalDocs = projDocs.length;
 
   const isDocCompleted = React.useCallback((d: typeof documentTracks[number]) => {
     if (d.isCompleted) return true;
     const st = String(d.docStatus || '').toLowerCase();
-    return st.includes('ký') || 
-           st.includes('đủ') || 
-           st.includes('hoàn thành') || 
-           st.includes('duyệt') || 
-           st.includes('đã nhận') ||
-           st === 'done' || 
-           st === 'approved';
+    return st.includes('ký') || st.includes('đủ') || st.includes('hoàn thành') || st.includes('duyệt') || st.includes('đã nhận') || st === 'done' || st === 'approved';
   }, []);
 
   const completedDocs = useMemo(() => projDocs.filter(isDocCompleted).length, [projDocs, isDocCompleted]);
+  const pendingDocs = totalDocs - completedDocs;
   const docPercent = totalDocs > 0 ? Math.round((completedDocs / totalDocs) * 100) : 0;
 
-  // --- 4. KHO DỰ ÁN ---
-  const projMaterialPlans = useMemo(() => materialPlans ? materialPlans.filter(m => isProjectMatch(m.projectCode)) : [], [materialPlans, isProjectMatch]);
-  const projWarehouseMaterials = useMemo(() => materials ? materials.filter(m => isProjectMatch(m.projectCode)) : [], [materials, isProjectMatch]);
+  // Biểu đồ so sánh hồ sơ Đã duyệt vs Đang chờ xử lý theo phân loại (Stacked Bar)
+  const documentTypeData = useMemo(() => {
+    const map = new Map<string, { done: number; pending: number }>();
+    projDocs.forEach(d => {
+      const type = d.docType || (d as any).category || 'Hồ sơ thi công';
+      if (!map.has(type)) map.set(type, { done: 0, pending: 0 });
+      const item = map.get(type)!;
+      if (isDocCompleted(d)) item.done++;
+      else item.pending++;
+    });
 
-  const totalMatEstimate = useMemo(() => projMaterialPlans.reduce((sum, m) => sum + (m.contractVolume || 0), 0), [projMaterialPlans]);
-  
-  // Tính tổng số lượng vật tư đang có trong Kho thực tế (materials)
-  const totalWarehouseStock = useMemo(() => projWarehouseMaterials.reduce((sum, m) => sum + (m.currentStock ?? m.volume ?? 0), 0), [projWarehouseMaterials]);
+    return Array.from(map.entries()).map(([type, counts]) => ({
+      type: type.length > 15 ? type.slice(0, 13) + '...' : type,
+      'Đã duyệt / Ký': counts.done,
+      'Đang xử lý': counts.pending
+    })).slice(0, 5);
+  }, [projDocs, isDocCompleted]);
 
-  // Hiển thị chính xác tổng tồn kho thực tế của Kho dự án (nếu Kho rỗng thì hiển thị 0)
-  const totalMatActual = totalWarehouseStock;
-
-  const matPercent = totalMatEstimate > 0 
-    ? Math.min(Math.round((totalMatActual / totalMatEstimate) * 100), 100) 
-    : (totalMatActual > 0 ? 100 : 0);
-
-  // --- 5. NHẬT KÝ HIỆN TRƯỜNG ---
+  // ==========================================
+  // 5. HIỆN TRƯỜNG & SỰ CỐ
+  // ==========================================
   const projLogs = useMemo(() => fieldLogs ? fieldLogs.filter(l => isProjectMatch(l.projectCode)) : [], [fieldLogs, isProjectMatch]);
-  const totalLogs = projLogs.length;
+  const projIssues = useMemo(() => issues ? issues.filter(i => isProjectMatch(i.projectCode)) : [], [issues, isProjectMatch]);
+  const unresolvedIssues = useMemo(() => projIssues.filter(i => i.status !== 'RESOLVED'), [projIssues]);
 
-  // --- 6. NHÂN SỰ ---
+  // ==========================================
+  // 6. PHÂN CÔNG NHÂN SỰ & TẢI CÔNG VIỆC
+  // ==========================================
+  const cleanStaffName = (raw?: string) => (!raw ? '' : raw.split('|')[0].trim());
+
   const assignedEngineers = useMemo(() => {
     if (!project) return [];
     const isAdminAccount = (eng: any) => {
-      const roleLower = String(eng.role || '').trim().toLowerCase();
-      const usernameLower = String(eng.username || eng.email || '').trim().toLowerCase();
-      const nameLower = String(eng.name || '').trim().toLowerCase();
-      return roleLower === 'admin' || roleLower === 'quản trị viên' || usernameLower === 'admin' || nameLower === 'admin' || nameLower === 'quản trị viên';
+      const r = String(eng.role || '').toLowerCase();
+      const u = String(eng.username || eng.email || '').toLowerCase();
+      const n = String(eng.name || '').toLowerCase();
+      return r === 'admin' || r === 'quản trị viên' || u === 'admin' || n === 'admin';
     };
 
-    const memberNamesFromEngineers = engineers
-      .filter((eng) => {
-        if (isAdminAccount(eng)) return false;
-        const isMember = (Array.isArray(project?.members) && project.members.includes(eng.id)) ||
-                         (Array.isArray(project?.memberIds) && project.memberIds.includes(eng.id));
-        const hasCode = Array.isArray(eng.projectCodes) && eng.projectCodes.some(c => isProjectMatch(c));
-        const hasManaged = eng.managedProjects?.some(p => isProjectMatch(p.code || p.name));
-        const hasMemberProj = eng.memberProjects?.some(p => isProjectMatch(p.code || p.name));
-        return isMember || hasCode || hasManaged || hasMemberProj;
-      })
-      .map((eng) => eng.name);
+    const names = new Set<string>();
+    engineers.forEach(eng => {
+      if (isAdminAccount(eng)) return;
+      const isMem = (Array.isArray(project.members) && project.members.includes(eng.id)) ||
+                    (Array.isArray(project.memberIds) && project.memberIds.includes(eng.id)) ||
+                    (Array.isArray(eng.projectCodes) && eng.projectCodes.some(c => isProjectMatch(c)));
+      if (isMem) names.add(eng.name);
+    });
 
-    // Bổ sung nhân sự đã được giao công việc trong dự án
-    const memberNamesFromTasks: string[] = [];
     projTasks.forEach(t => {
-      const rawEngName = String(t.assignedEngineerName || '').trim();
-      const rawEngId = String(t.assignedEngineerId || '').trim();
-      if (rawEngId) {
-        const eng = engineers.find(e => e.id === rawEngId);
-        if (eng && !isAdminAccount(eng)) {
-          memberNamesFromTasks.push(eng.name);
-        }
-      }
-      if (rawEngName) {
-        const parts = rawEngName.split('|')[0].split(',').map(n => n.trim()).filter(Boolean);
-        parts.forEach(pName => {
-          if (pName.toLowerCase() !== 'admin' && pName.toLowerCase() !== 'quản trị viên') {
-            memberNamesFromTasks.push(pName);
-          }
+      const rawName = String(t.assignedEngineerName || '').trim();
+      if (rawName) {
+        rawName.split('|')[0].split(',').map(cleanStaffName).filter(Boolean).forEach(n => {
+          if (n.toLowerCase() !== 'admin') names.add(n);
         });
       }
     });
 
-    let managerNames: string[] = [];
-    if (project?.managerName && project.managerName !== 'Chưa phân công') {
-      managerNames = project.managerName
-        .split(',')
-        .map(s => s.trim())
-        .filter(s => Boolean(s) && s.toLowerCase() !== 'admin' && s.toLowerCase() !== 'quản trị viên');
-    }
-
-    return Array.from(new Set([...memberNamesFromEngineers, ...memberNamesFromTasks, ...managerNames]));
+    return Array.from(names);
   }, [engineers, project, projTasks, isProjectMatch]);
 
-  const formatCurrency = (val: number) => {
-    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
-  };
-
-  // --- CHART DATA ---
-  const taskStatusData = useMemo(() => {
-    const uncompleted = projTasks.filter(t => !isTaskCompleted(t));
-    const pendingCount = uncompleted.filter(t => {
-      const st = String(t.status || '').trim();
-      return st === 'Chưa làm' || (!t.progress && !t.constrStatus && !t.purchaseStatus);
-    }).length;
-    const inProgressCount = uncompleted.filter(t => {
-      const st = String(t.status || '').trim();
-      return st === 'Đang làm' || (t.progress && t.progress > 0 && t.progress < 1) || (st !== 'Chờ nghiệm thu' && st !== 'Chưa làm');
-    }).length;
-    const waitingReviewCount = uncompleted.filter(t => String(t.status || '').trim() === 'Chờ nghiệm thu').length;
-
-    return [
-      { name: 'Chưa làm', value: pendingCount, color: '#94a3b8' },
-      { name: 'Đang làm', value: inProgressCount, color: '#3b82f6' },
-      { name: 'Chờ nghiệm thu', value: waitingReviewCount, color: '#f59e0b' },
-      { name: 'Hoàn thành', value: completedTasks, color: '#10b981' },
-    ].filter(d => d.value > 0);
-  }, [projTasks, completedTasks, isTaskCompleted]);
-
-  const costChartData = useMemo(() => [
-    { name: 'Ngân sách', value: contractValue, color: '#94a3b8' },
-    { name: 'Đã chi', value: totalExpense, color: '#10b981' }
-  ], [contractValue, totalExpense]);
-
-  const recentLogs = useMemo(() => [...projLogs].sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime()).slice(0, 4), [projLogs]);
-
-  // --- 7. CÔNG VIỆC NHÂN VIÊN ---
-  const assignedTasks = useMemo(() => projTasks.filter(t => t.assignedEngineerId || t.assignedEngineerName || (t.followerIds && t.followerIds.length > 0)), [projTasks]);
-  const totalAssignedTasks = assignedTasks.length;
-  const completedAssignedTasks = useMemo(() => assignedTasks.filter(isTaskCompleted).length, [assignedTasks, isTaskCompleted]);
-  const assignedTaskPercent = totalAssignedTasks > 0 ? Math.round((completedAssignedTasks / totalAssignedTasks) * 100) : 0;
-
-  // --- 8. THỐNG KÊ CÔNG VIỆC THEO TỪNG NHÂN VIÊN ---
-  const cleanStaffName = (raw?: string) => {
-    if (!raw) return '';
-    return raw.split('|')[0].trim();
-  };
-
-  const engineerWorkloadList = useMemo(() => {
-    const map = new Map<string, {
-      id: string;
-      name: string;
-      role: string;
-      avatar?: string;
-      phone?: string;
-      totalTasks: number;
-      completedTasks: number;
-      inProgressTasks: number;
-      pendingTasks: number;
-      completionRate: number;
-    }>();
-
-    // 1. Thêm các nhân sự thuộc dự án
-    engineers.forEach(eng => {
-      const isMember = (Array.isArray(project?.members) && project.members.includes(eng.id)) ||
-                       (Array.isArray(project?.memberIds) && project.memberIds.includes(eng.id)) ||
-                       (Array.isArray(eng.projectCodes) && eng.projectCodes.some(c => isProjectMatch(c))) ||
-                       assignedEngineers.some(ae => cleanStaffName(ae).toLowerCase() === cleanStaffName(eng.name).toLowerCase());
-      
-      const roleLower = String(eng.role || '').toLowerCase();
-      const cleanName = cleanStaffName(eng.name);
-      const nameLower = cleanName.toLowerCase();
-      const userLower = String(eng.username || '').toLowerCase();
-      if (roleLower === 'admin' || roleLower === 'quản trị viên' || nameLower === 'admin' || userLower === 'admin' || !nameLower) return;
-
-      if (isMember) {
-        const key = nameLower;
-        if (!map.has(key)) {
-          map.set(key, {
-            id: eng.id,
-            name: cleanName,
-            role: eng.role || 'Kỹ sư',
-            avatar: eng.avatar,
-            phone: eng.phone,
-            totalTasks: 0,
-            completedTasks: 0,
-            inProgressTasks: 0,
-            pendingTasks: 0,
-            completionRate: 0,
-          });
-        }
-      }
-    });
-
-    // 2. Quét tất cả công việc của dự án để tính số liệu cho nhân viên
+  // Biểu đồ KPI Công việc nhân sự (Bar chart so sánh Xong vs Đang làm)
+  const staffKpiData = useMemo(() => {
+    const map = new Map<string, { done: number; inProgress: number; total: number }>();
+    
     projTasks.forEach(t => {
-      const rawEngName = String(t.assignedEngineerName || '').trim();
-      const rawEngId = String(t.assignedEngineerId || '').trim();
+      const rawName = String(t.assignedEngineerName || '').trim();
       const isDone = isTaskCompleted(t);
-      const st = String(t.status || '').trim().toLowerCase();
-      const isProg = st === 'đang làm' || st === 'in_progress';
+      const isProg = String(t.status || '').toLowerCase().includes('đang');
 
-      // Phân tích định dạng: "Tên 1, Tên 2 | id1, id2"
-      const parts = rawEngName.split('|');
-      const namesPart = parts[0] || '';
-      const idsPart = parts[1] || '';
-
-      const names = namesPart.split(',').map(n => cleanStaffName(n)).filter(Boolean);
-      const ids = idsPart.split(',').map(i => i.trim()).filter(Boolean);
-
-      const targetEntries: { name: string; engObj?: any }[] = [];
-
-      if (names.length > 0) {
-        names.forEach((name, idx) => {
-          const associatedId = ids[idx] || (names.length === 1 ? rawEngId : undefined);
-          const engObj = engineers.find(e => 
-            (associatedId && e.id === associatedId) || 
-            cleanStaffName(e.name).toLowerCase() === name.toLowerCase()
-          );
-          targetEntries.push({
-            name: engObj ? cleanStaffName(engObj.name) : name,
-            engObj
-          });
+      if (rawName) {
+        const names = rawName.split('|')[0].split(',').map(cleanStaffName).filter(Boolean);
+        names.forEach(name => {
+          if (name.toLowerCase() === 'admin') return;
+          if (!map.has(name)) map.set(name, { done: 0, inProgress: 0, total: 0 });
+          const item = map.get(name)!;
+          item.total++;
+          if (isDone) item.done++;
+          else if (isProg) item.inProgress++;
         });
-      } else if (rawEngId) {
-        const engObj = engineers.find(e => e.id === rawEngId);
-        if (engObj) {
-          targetEntries.push({
-            name: cleanStaffName(engObj.name),
-            engObj
-          });
-        }
       }
-
-      // Tránh tính trùng lặp cùng 1 người trong cùng 1 task
-      const handledKeys = new Set<string>();
-
-      targetEntries.forEach(({ name, engObj }) => {
-        const cleanName = cleanStaffName(name);
-        const key = cleanName.toLowerCase();
-        if (!key || key === 'admin' || key === 'quản trị viên' || handledKeys.has(key)) return;
-        handledKeys.add(key);
-
-        if (!map.has(key)) {
-          map.set(key, {
-            id: engObj?.id || key,
-            name: cleanName,
-            role: engObj?.role || 'Kỹ sư',
-            avatar: engObj?.avatar,
-            phone: engObj?.phone,
-            totalTasks: 0,
-            completedTasks: 0,
-            inProgressTasks: 0,
-            pendingTasks: 0,
-            completionRate: 0,
-          });
-        }
-
-        const item = map.get(key)!;
-        item.totalTasks += 1;
-        if (isDone) {
-          item.completedTasks += 1;
-        } else if (isProg) {
-          item.inProgressTasks += 1;
-        } else {
-          item.pendingTasks += 1;
-        }
-      });
     });
 
-    return Array.from(map.values()).map(item => ({
-      ...item,
-      completionRate: item.totalTasks > 0 ? Math.round((item.completedTasks / item.totalTasks) * 100) : 0,
-    })).sort((a, b) => b.totalTasks - a.totalTasks || b.completedTasks - a.completedTasks);
-  }, [engineers, projTasks, project, assignedEngineers]);
+    return Array.from(map.entries())
+      .map(([name, v]) => ({
+        name: name.length > 12 ? name.slice(0, 10) + '...' : name,
+        fullName: name,
+        'Hoàn thành': v.done,
+        'Đang làm': v.inProgress,
+        'Tổng việc': v.total
+      }))
+      .sort((a, b) => b['Tổng việc'] - a['Tổng việc'])
+      .slice(0, 6);
+  }, [projTasks, isTaskCompleted]);
+
+  const formatCurrency = (val: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
+  const formatShortCurrency = (val: number) => {
+    if (Math.abs(val) >= 1_000_000_000) return `${(val / 1_000_000_000).toFixed(2)} tỷ`;
+    if (Math.abs(val) >= 1_000_000) return `${(val / 1_000_000).toFixed(1)} tr`;
+    return val.toLocaleString('vi-VN') + ' đ';
+  };
 
   if (!project) {
     return <div className="p-6 text-center text-slate-500">Không tìm thấy thông tin dự án.</div>;
   }
 
   return (
-    <div className="p-0 m-0 space-y-0 overflow-y-auto bg-slate-50 flex-1">
-      {/* OPTION B: THANH METRIC RIBBON LIỀN MẠCH (DASHBOARD RIBBON) */}
-      <div className="bg-white border-b border-slate-200/90 shadow-2xs overflow-hidden w-full">
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-7 divide-y sm:divide-y-0 divide-slate-100 xl:divide-x divide-slate-100">
+    <div className="p-0 m-0 space-y-2 overflow-y-auto bg-slate-50 flex-1 pb-8 w-full">
+
+      {/* TOP EXECUTIVE METRIC RIBBON */}
+      <div className="bg-white border-b border-slate-200 shadow-2xs w-full">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 divide-y sm:divide-y-0 divide-slate-100 lg:divide-x divide-slate-100">
           
-          {/* 1. Tiến độ công việc */}
-          <div
-            onClick={() => canViewTasks && navigate(`/projects/${project.id}/tasks`)}
-            className={`p-3.5 sm:p-4 flex flex-col justify-between transition-colors ${canViewTasks ? 'cursor-pointer hover:bg-slate-50/80 group' : 'cursor-default'}`}
-          >
-            <div className="flex items-center justify-between gap-1 mb-1.5">
-              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-tight group-hover:text-blue-600 transition-colors truncate">
-                Tiến độ
-              </span>
+          <div onClick={() => canViewTasks && navigate(`/projects/${project.id}/tasks`)} className="p-3.5 flex flex-col justify-between cursor-pointer hover:bg-blue-50/40 group">
+            <div className="flex items-center justify-between gap-1 mb-1">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-tight group-hover:text-blue-600 truncate">1. Tiến độ việc</span>
               <span className="w-6 h-6 rounded-md bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
                 <span className="material-symbols-outlined text-[15px]">fact_check</span>
               </span>
             </div>
-            <div className="my-1">
-              <div className="text-2xl font-black text-slate-900 leading-none">{progressPercent}%</div>
+            <div className="my-1 flex items-baseline gap-1.5">
+              <span className="text-2xl font-black text-slate-900 leading-none">{progressPercent}%</span>
+              {taskStatusCounts.overdue > 0 && <span className="text-[10px] font-bold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded">{taskStatusCounts.overdue} trễ</span>}
             </div>
             <div className="mt-1">
               <div className="w-full bg-slate-100 rounded-full h-1.5 mb-1 overflow-hidden">
-                <div className="bg-blue-500 h-1.5 rounded-full transition-all duration-500" style={{ width: `${progressPercent}%` }} />
+                <div className="bg-blue-600 h-1.5 rounded-full transition-all duration-500" style={{ width: `${progressPercent}%` }} />
               </div>
-              <p className="text-[10px] text-slate-400 font-semibold truncate">{completedTasks}/{totalTasks} công việc</p>
+              <p className="text-[10px] text-slate-400 font-semibold truncate">{completedTasks}/{totalTasks} việc xong</p>
             </div>
           </div>
 
-          {/* 2. Công việc nhân viên */}
-          <div
-            onClick={() => {
-              if (canAssignTasks) navigate(`/task-assignment?tab=project_tasks&status=in_progress&project=${encodeURIComponent(project.code)}`);
-              else if (canViewTasks) navigate(`/projects/${project.id}/tasks?status=in_progress`);
-            }}
-            className={`p-3.5 sm:p-4 flex flex-col justify-between transition-colors ${(canAssignTasks || canViewTasks) ? 'cursor-pointer hover:bg-slate-50/80 group' : 'cursor-default'}`}
-          >
-            <div className="flex items-center justify-between gap-1 mb-1.5">
-              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-tight group-hover:text-primary transition-colors truncate">
-                Giao việc
-              </span>
-              <span className="w-6 h-6 rounded-md bg-sky-50 text-sky-600 flex items-center justify-center shrink-0">
-                <span className="material-symbols-outlined text-[15px]">assignment_ind</span>
-              </span>
-            </div>
-            <div className="my-1">
-              <div className="text-2xl font-black text-slate-900 leading-none">{assignedTaskPercent}%</div>
-            </div>
-            <div className="mt-1">
-              <div className="w-full bg-slate-100 rounded-full h-1.5 mb-1 overflow-hidden">
-                <div className="bg-primary h-1.5 rounded-full transition-all duration-500" style={{ width: `${assignedTaskPercent}%` }} />
-              </div>
-              <p className="text-[10px] text-slate-400 font-semibold truncate">{completedAssignedTasks}/{totalAssignedTasks} đã giao</p>
-            </div>
-          </div>
-
-          {/* 3. Vật tư & Chi phí */}
-          <div
-            onClick={() => navigate(`/projects/${project.id}/cost-plan`)}
-            className="p-3.5 sm:p-4 flex flex-col justify-between cursor-pointer hover:bg-slate-50/80 group transition-colors"
-          >
-            <div className="flex items-center justify-between gap-1 mb-1.5">
-              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-tight group-hover:text-emerald-600 transition-colors truncate">
-                Vật tư & Chi phí
-              </span>
+          <div onClick={() => navigate(`/projects/${project.id}/cost-plan`)} className="p-3.5 flex flex-col justify-between cursor-pointer hover:bg-emerald-50/40 group">
+            <div className="flex items-center justify-between gap-1 mb-1">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-tight group-hover:text-emerald-600 truncate">2. Doanh thu NT</span>
               <span className="w-6 h-6 rounded-md bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-                <span className="material-symbols-outlined text-[15px]">account_balance_wallet</span>
+                <span className="material-symbols-outlined text-[15px]">request_quote</span>
               </span>
             </div>
             <div className="my-1">
-              <div className="text-lg sm:text-xl font-black text-slate-900 leading-none truncate" title={formatCurrency(totalExpense)}>
-                {formatCurrency(totalExpense)}
+              <div className="text-lg font-black text-slate-900 leading-none truncate" title={formatCurrency(revenueAccepted)}>
+                {formatShortCurrency(revenueAccepted)}
               </div>
             </div>
             <div className="mt-1">
               <div className="w-full bg-slate-100 rounded-full h-1.5 mb-1 overflow-hidden">
-                <div className="bg-emerald-500 h-1.5 rounded-full transition-all duration-500" style={{ width: `${budgetPercent}%` }} />
+                <div className="bg-emerald-500 h-1.5 rounded-full transition-all duration-500" style={{ width: `${contractVal ? Math.min(100, Math.round((revenueAccepted / contractVal) * 100)) : 100}%` }} />
               </div>
-              <p className="text-[10px] text-slate-400 font-semibold truncate">{budgetPercent}% hợp đồng</p>
+              <p className="text-[10px] text-slate-400 font-semibold truncate">HĐ: {formatShortCurrency(contractVal)}</p>
             </div>
           </div>
 
-          {/* 4. Hồ sơ */}
-          <div
-            onClick={() => navigate(`/projects/${project.id}/documents`)}
-            className="p-3.5 sm:p-4 flex flex-col justify-between cursor-pointer hover:bg-slate-50/80 group transition-colors"
-          >
-            <div className="flex items-center justify-between gap-1 mb-1.5">
-              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-tight group-hover:text-rose-600 transition-colors truncate">
-                Hồ sơ
+          <div onClick={() => navigate(`/projects/${project.id}/cost-plan`)} className="p-3.5 flex flex-col justify-between cursor-pointer hover:bg-indigo-50/40 group">
+            <div className="flex items-center justify-between gap-1 mb-1">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-tight group-hover:text-indigo-600 truncate">3. Chi phí / Lãi P&L</span>
+              <span className="w-6 h-6 rounded-md bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-[15px]">trending_up</span>
               </span>
+            </div>
+            <div className="my-1 flex items-baseline justify-between gap-1">
+              <span className="text-lg font-black text-slate-900 leading-none truncate" title={formatCurrency(totalCost)}>
+                {formatShortCurrency(totalCost)}
+              </span>
+              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${grossProfit >= 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
+                {marginPct.toFixed(1)}%
+              </span>
+            </div>
+            <div className="mt-1">
+              <p className={`text-[10px] font-semibold truncate ${grossProfit >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                Lãi gộp: {formatShortCurrency(grossProfit)}
+              </p>
+            </div>
+          </div>
+
+          <div onClick={() => navigate(`/projects/${project.id}/inventory`)} className="p-3.5 flex flex-col justify-between cursor-pointer hover:bg-amber-50/40 group">
+            <div className="flex items-center justify-between gap-1 mb-1">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-tight group-hover:text-amber-600 truncate">4. Kho dự án</span>
+              <span className="w-6 h-6 rounded-md bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-[15px]">inventory_2</span>
+              </span>
+            </div>
+            <div className="my-1 flex items-baseline gap-1.5">
+              <span className="text-2xl font-black text-slate-900 leading-none">{totalStockCount}</span>
+              <span className="text-xs text-slate-400 font-semibold">mã ({totalStockQty.toLocaleString('vi-VN')} đv)</span>
+            </div>
+            <div className="mt-1">
+              <p className="text-[10px] text-slate-400 font-semibold truncate">Tồn kho đang kiểm soát</p>
+            </div>
+          </div>
+
+          <div onClick={() => navigate(`/projects/${project.id}/documents`)} className="p-3.5 flex flex-col justify-between cursor-pointer hover:bg-rose-50/40 group">
+            <div className="flex items-center justify-between gap-1 mb-1">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-tight group-hover:text-rose-600 truncate">5. Hồ sơ A-B</span>
               <span className="w-6 h-6 rounded-md bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
                 <span className="material-symbols-outlined text-[15px]">file_present</span>
               </span>
             </div>
-            <div className="my-1">
-              <div className="text-2xl font-black text-slate-900 leading-none">{totalDocs}</div>
+            <div className="my-1 flex items-baseline gap-1.5">
+              <span className="text-2xl font-black text-slate-900 leading-none">{docPercent}%</span>
+              <span className="text-xs text-slate-400 font-semibold">({completedDocs}/{totalDocs})</span>
             </div>
             <div className="mt-1">
               <div className="w-full bg-slate-100 rounded-full h-1.5 mb-1 overflow-hidden">
                 <div className="bg-rose-500 h-1.5 rounded-full transition-all duration-500" style={{ width: `${docPercent}%` }} />
               </div>
-              <p className="text-[10px] text-slate-400 font-semibold truncate">{completedDocs}/{totalDocs} hoàn thành</p>
+              <p className="text-[10px] text-slate-400 font-semibold truncate">Còn {pendingDocs} hồ sơ chưa duyệt</p>
             </div>
           </div>
 
-          {/* 5. Kho Dự Án */}
-          <div
-            onClick={() => navigate(`/projects/${project.id}/inventory`)}
-            className="p-3.5 sm:p-4 flex flex-col justify-between cursor-pointer hover:bg-slate-50/80 group transition-colors"
-          >
-            <div className="flex items-center justify-between gap-1 mb-1.5">
-              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-tight group-hover:text-amber-600 transition-colors truncate">
-                Kho dự án
-              </span>
-              <span className="w-6 h-6 rounded-md bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
-                <span className="material-symbols-outlined text-[15px]">inventory_2</span>
-              </span>
-            </div>
-            <div className="my-1">
-              <div className="text-2xl font-black text-slate-900 leading-none truncate" title={totalMatActual.toLocaleString('vi-VN')}>
-                {totalMatActual.toLocaleString('vi-VN')}
-              </div>
-            </div>
-            <div className="mt-1">
-              <div className="w-full bg-slate-100 rounded-full h-1.5 mb-1 overflow-hidden">
-                <div className="bg-amber-500 h-1.5 rounded-full transition-all duration-500" style={{ width: `${matPercent}%` }} />
-              </div>
-              <p className="text-[10px] text-slate-400 font-semibold truncate">Dự toán: {totalMatEstimate.toLocaleString('vi-VN')}</p>
-            </div>
-          </div>
-
-          {/* 6. Nhật ký hiện trường */}
-          <div
-            onClick={() => navigate(`/projects/${project.id}/field-logs`)}
-            className="p-3.5 sm:p-4 flex flex-col justify-between cursor-pointer hover:bg-slate-50/80 group transition-colors"
-          >
-            <div className="flex items-center justify-between gap-1 mb-1.5">
-              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-tight group-hover:text-purple-600 transition-colors truncate">
-                Nhật ký
-              </span>
+          <div onClick={() => navigate(`/projects/${project.id}/field-logs`)} className="p-3.5 flex flex-col justify-between cursor-pointer hover:bg-purple-50/40 group">
+            <div className="flex items-center justify-between gap-1 mb-1">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-tight group-hover:text-purple-600 truncate">6. Hiện trường & Sự cố</span>
               <span className="w-6 h-6 rounded-md bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
-                <span className="material-symbols-outlined text-[15px]">add_a_photo</span>
+                <span className="material-symbols-outlined text-[15px]">campaign</span>
               </span>
             </div>
-            <div className="my-1">
-              <div className="text-2xl font-black text-slate-900 leading-none">{totalLogs}</div>
+            <div className="my-1 flex items-baseline gap-1.5">
+              <span className="text-2xl font-black text-slate-900 leading-none">{projLogs.length}</span>
+              <span className="text-xs text-slate-400 font-semibold">nhật ký</span>
+              {unresolvedIssues.length > 0 && <span className="text-[10px] font-bold text-rose-600 bg-rose-100 px-1.5 py-0.5 rounded">{unresolvedIssues.length} sự cố</span>}
             </div>
             <div className="mt-1">
-              <div className="w-full bg-slate-100 rounded-full h-1.5 mb-1 overflow-hidden">
-                <div className="bg-purple-500 h-1.5 rounded-full transition-all duration-500" style={{ width: `${Math.min(100, totalLogs * 10)}%` }} />
-              </div>
-              <p className="text-[10px] text-slate-400 font-semibold truncate">bản ghi nhật ký</p>
-            </div>
-          </div>
-
-          {/* 7. Nhân sự tham gia */}
-          <div className="p-3.5 sm:p-4 flex flex-col justify-between transition-colors group cursor-default">
-            <div className="flex items-center justify-between gap-1 mb-1.5">
-              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-tight group-hover:text-indigo-600 transition-colors truncate">
-                Nhân sự
-              </span>
-              <span className="w-6 h-6 rounded-md bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
-                <span className="material-symbols-outlined text-[15px]">groups</span>
-              </span>
-            </div>
-            <div className="my-1">
-              <div className="text-2xl font-black text-slate-900 leading-none">{assignedEngineers.length}</div>
-            </div>
-            <div className="mt-1">
-              <div className="w-full bg-slate-100 rounded-full h-1.5 mb-1 overflow-hidden">
-                <div className="bg-indigo-500 h-1.5 rounded-full transition-all duration-500" style={{ width: `${Math.min(100, assignedEngineers.length * 15)}%` }} />
-              </div>
-              <p className="text-[10px] text-slate-400 font-semibold truncate">kỹ sư / cán bộ</p>
+              <p className="text-[10px] text-slate-500 font-semibold truncate">{assignedEngineers.length} nhân sự thi công</p>
             </div>
           </div>
 
         </div>
       </div>
 
-      {/* CHARTS */}
-      <div className="p-2 sm:p-3 md:p-3.5 space-y-3 pb-6">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {/* Task Chart */}
-          <div className="bg-white border border-slate-200 rounded-lg p-4 shadow-2xs">
-          <h3 className="text-sm font-bold text-slate-700 mb-4 flex items-center gap-2">
-            <span className="material-symbols-outlined text-lg text-slate-400">donut_large</span>
-            Trạng thái Công việc
-          </h3>
-          <div className="h-[250px]">
-            {taskStatusData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={taskStatusData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius="50%"
-                    outerRadius="80%"
-                    dataKey="value"
-                    stroke="none"
-                    cursor="pointer"
-                    onClick={(entry: any) => {
-                      if (!canAssignTasks && !canViewTasks) return;
-                      const statusMap: Record<string, string> = {
-                        'Đang làm': 'in_progress',
-                        'Chưa làm': 'pending',
-                        'Chờ nghiệm thu': 'review',
-                        'Hoàn thành': 'completed',
-                      };
-                      const status = statusMap[entry?.name] || 'all';
-                      if (canAssignTasks) {
-                        navigate(`/task-assignment?tab=project_tasks&status=${status}&project=${encodeURIComponent(project.code)}`);
-                      } else {
-                        navigate(`/projects/${project.id}/tasks?status=${status}`);
-                      }
-                    }}
-                  >
-                    {taskStatusData.map((e, i) => <Cell key={i} fill={e.color} />)}
-                  </Pie>
-                  <Tooltip wrapperStyle={{ fontSize: '11px' }} />
-                  <Legend verticalAlign="bottom" height={36} iconSize={10} wrapperStyle={{ fontSize: '11px' }} />
-                </PieChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-full flex items-center justify-center text-sm text-slate-400">Chưa có dữ liệu công việc</div>
-            )}
-          </div>
-        </div>
+      {/* CONTAINER CHÍNH */}
+      <div className="p-0 m-0 space-y-2 w-full">
 
-        {/* Info Detail */}
-        <div className="bg-white border border-slate-200 rounded-lg p-4 shadow-2xs space-y-4">
-          <h3 className="text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
-            <span className="material-symbols-outlined text-lg text-slate-400">info</span>
-            Thông tin chi tiết
-          </h3>
-          <div className="grid grid-cols-2 gap-y-4 gap-x-2 text-sm">
-            <div>
-              <p className="text-slate-500 text-xs font-semibold uppercase">Mã dự án</p>
-              <p className="font-bold text-slate-800 mt-1">{project.code}</p>
+        {/* PROJECT INFO HEADER BAR */}
+        <div className="bg-white border-y sm:border border-slate-200 sm:rounded-lg p-2.5 shadow-2xs flex flex-wrap items-center justify-between gap-2 text-xs">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 font-black flex items-center justify-center text-xs">
+              {project.code?.slice(0, 3) || 'DA'}
             </div>
             <div>
-              <p className="text-slate-500 text-xs font-semibold uppercase">Khách hàng</p>
-              <p className="font-bold text-slate-800 mt-1">{project.client || '---'}</p>
-            </div>
-            <div>
-              <p className="text-slate-500 text-xs font-semibold uppercase">Địa điểm</p>
-              <p className="font-bold text-slate-800 mt-1">{project.location || '---'}</p>
-            </div>
-            <div>
-              <p className="text-slate-500 text-xs font-semibold uppercase">Quản lý dự án</p>
-              <p className="font-bold text-slate-800 mt-1">{project.managerName || 'Chưa phân công'}</p>
-            </div>
-            <div>
-              <p className="text-slate-500 text-xs font-semibold uppercase">Trạng thái</p>
-              <p className="font-bold text-slate-800 mt-1">
-                {project.status === 'active' ? 'Đang triển khai' : project.status === 'completed' ? 'Hoàn thành' : 'Tạm dừng'}
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-slate-900 text-sm">{project.name}</span>
+                <span className="px-2 py-0.5 text-[11px] font-semibold bg-slate-100 text-slate-600 rounded">{project.code}</span>
+                <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full uppercase ${project.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-700'}`}>
+                  {project.status === 'active' ? 'Đang triển khai' : 'Hoàn thành'}
+                </span>
+              </div>
+              <p className="text-slate-500 text-[11px] mt-0.5">
+                CĐT: <strong className="text-slate-700">{project.client || '---'}</strong> • Địa điểm: <strong className="text-slate-700">{project.location || '---'}</strong> • Chỉ huy trưởng / PM: <strong className="text-slate-700">{project.managerName || 'Chưa phân công'}</strong>
               </p>
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* WIDGETS DƯỚI CÙNG */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Cost Bar Chart */}
-        <div className="bg-white border border-slate-200 rounded-lg p-4 shadow-2xs">
-          <h3 className="text-sm font-bold text-slate-700 mb-4 flex items-center gap-2">
-            <span className="material-symbols-outlined text-lg text-slate-400">bar_chart</span>
-            Biểu đồ Chi phí
-          </h3>
-          <div className="h-[250px]">
+          <div className="flex items-center gap-2">
+            <button onClick={() => navigate(`/projects/${project.id}/plan`)} className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-xs font-semibold flex items-center gap-1">
+              <span className="material-symbols-outlined text-sm">calendar_month</span> Kế hoạch
+            </button>
+            <button onClick={() => navigate(`/projects/${project.id}/diagram`)} className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-xs font-semibold flex items-center gap-1">
+              <span className="material-symbols-outlined text-sm">architecture</span> Sơ đồ
+            </button>
+          </div>
+        </div>
+
+        {/* HỆ THỐNG BIỂU ĐỒ ĐIỀU HÀNH TOÀN DIỆN (GRID 6 BIỂU ĐỒ - 3 CỘT x 2 HÀNG) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2 w-full px-0">
+
+          {/* BIỂU ĐỒ 1: CƠ CẤU & TỶ LỆ TRẠNG THÁI CÔNG VIỆC (Donut Chart) */}
+          <ChartBox 
+            title="1. Cơ cấu Trạng thái Công việc" 
+            icon="donut_large"
+            actionText="Chi tiết"
+            onAction={() => navigate(`/projects/${project.id}/tasks`)}
+            badge={<span className="text-[11px] font-bold text-slate-500">{totalTasks} việc</span>}
+          >
+            {taskDonutData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={taskDonutData} cx="50%" cy="48%" innerRadius="50%" outerRadius="78%" dataKey="value" stroke="none">
+                    {taskDonutData.map((e, i) => <Cell key={i} fill={e.color} />)}
+                  </Pie>
+                  <Tooltip wrapperStyle={{ fontSize: '11px' }} />
+                  <Legend verticalAlign="bottom" height={30} iconSize={9} wrapperStyle={{ fontSize: '11px' }} />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex items-center justify-center text-xs text-slate-400">Chưa có công việc</div>
+            )}
+          </ChartBox>
+
+          {/* BIỂU ĐỒ 2: TIẾN ĐỘ THI CÔNG THEO HẠNG MỤC (Horizontal Bar Chart) */}
+          <ChartBox 
+            title="2. Tiến độ theo Phân mục chính (%)" 
+            icon="align_horizontal_left"
+            actionText="Xem việc"
+            onAction={() => navigate(`/projects/${project.id}/tasks`)}
+            badge={<span className="text-[11px] font-bold text-blue-600">{progressPercent}% tổng thể</span>}
+          >
+            {sectionProgressData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={sectionProgressData} layout="vertical" margin={{ top: 5, right: 35, left: 10, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
+                  <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 10, fill: '#64748b' }} unit="%" />
+                  <YAxis type="category" dataKey="name" width={110} tick={{ fontSize: 10, fill: '#475569' }} axisLine={false} tickLine={false} />
+                  <Tooltip formatter={(val: number) => [`${val}%`, 'Tiến độ']} wrapperStyle={{ fontSize: '11px' }} />
+                  <Bar dataKey="progress" fill="#2563eb" radius={[0, 4, 4, 0]} maxBarSize={16} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex items-center justify-center text-xs text-slate-400">Chưa có dữ liệu phân mục</div>
+            )}
+          </ChartBox>
+
+          {/* BIỂU ĐỒ 3: SO SÁNH GIÁ TRỊ TÀI CHÍNH (Grouped Column Chart) */}
+          <ChartBox 
+            title="3. So sánh Doanh thu - Chi phí - Lãi gộp" 
+            icon="bar_chart"
+            actionText="Bảng P&L"
+            onAction={() => navigate(`/projects/${project.id}/cost-plan`)}
+            badge={<span className={`text-[11px] font-bold ${grossProfit >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>{marginPct.toFixed(1)}% lãi</span>}
+          >
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={costChartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} tickFormatter={(val) => `${(val / 1000000).toFixed(0)}M`} />
-                <Tooltip 
-                  cursor={{ fill: 'transparent' }}
-                  formatter={(value: number) => formatCurrency(value)}
-                  contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                />
-                <Bar dataKey="value" radius={[6, 6, 0, 0]} maxBarSize={80}>
-                  {costChartData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Bar>
+              <BarChart data={financialComparisonData} margin={{ top: 15, right: 15, left: 10, bottom: 15 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis dataKey="category" tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 10, fill: '#64748b' }} tickFormatter={formatShortCurrency} axisLine={false} tickLine={false} />
+                <Tooltip formatter={(val: number) => formatCurrency(val)} wrapperStyle={{ fontSize: '11px' }} />
+                <Legend verticalAlign="bottom" height={28} iconSize={9} wrapperStyle={{ fontSize: '11px' }} />
+                <Bar dataKey="Hợp đồng gốc" fill="#94a3b8" radius={[4, 4, 0, 0]} maxBarSize={38} />
+                <Bar dataKey="Đã nghiệm thu" fill="#0284c7" radius={[4, 4, 0, 0]} maxBarSize={38} />
+                <Bar dataKey="Chi phí thực tế" fill="#f43f5e" radius={[4, 4, 0, 0]} maxBarSize={38} />
+                <Bar dataKey="Lợi nhuận gộp" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={38} />
               </BarChart>
             </ResponsiveContainer>
-          </div>
-        </div>
+          </ChartBox>
 
-        {/* Field Logs Timeline */}
-        <div className="bg-white border border-slate-200 rounded-lg p-4 shadow-2xs space-y-4">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-sm font-bold text-slate-700 flex items-center gap-2">
-              <span className="material-symbols-outlined text-lg text-slate-400">history</span>
-              Nhật ký hiện trường gần đây
-            </h3>
-            <button onClick={() => navigate(`/projects/${project.id}/field-logs`)} className="text-xs font-semibold text-primary hover:underline">
-              Xem tất cả
-            </button>
-          </div>
-          <div className="space-y-4">
-            {recentLogs.length > 0 ? recentLogs.map((log, idx) => (
-              <div key={log.id} className="relative pl-6">
-                {/* Timeline line */}
-                {idx !== recentLogs.length - 1 && (
-                  <div className="absolute left-1.5 top-5 bottom-[-16px] w-px bg-slate-200"></div>
-                )}
-                {/* Dot */}
-                <div className="absolute left-0 top-1 w-3 h-3 rounded-full bg-primary border-2 border-white shadow-sm"></div>
-                {/* Content */}
-                <div className="text-[11px] text-slate-500 mb-1">{new Date(log.timestamp).toLocaleString('vi-VN')}</div>
-                <div className="text-sm text-slate-700 font-medium line-clamp-2">{log.note || 'Không có nội dung'}</div>
-                {log.images && log.images.length > 0 && (
-                  <div className="flex gap-2 mt-2">
-                    {log.images.slice(0, 3).map((img, i) => (
-                      <div key={i} className="w-10 h-10 rounded border border-slate-200 bg-slate-100 overflow-hidden flex items-center justify-center">
-                        <span className="material-symbols-outlined text-slate-400 text-sm">image</span>
-                      </div>
-                    ))}
-                    {log.images.length > 3 && (
-                      <div className="w-10 h-10 rounded border border-slate-200 bg-slate-50 flex items-center justify-center text-xs text-slate-500 font-medium">
-                        +{log.images.length - 3}
-                      </div>
-                    )}
-                  </div>
-                )}
+          {/* BIỂU ĐỒ 4: XU HƯỚNG DÒNG CHI THEO THỜI GIAN (Area Chart / Trend) */}
+          <ChartBox 
+            title="4. Xu hướng Chi phí 6 Tháng gần nhất" 
+            icon="show_chart"
+            actionText="Chi phí"
+            onAction={() => navigate(`/projects/${project.id}/cost-plan?tab=EXPENSE`)}
+            badge={<span className="text-[11px] font-bold text-slate-500">{formatShortCurrency(totalCost)}</span>}
+          >
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={monthlyExpenseTrendData} margin={{ top: 10, right: 20, left: 10, bottom: 5 }}>
+                <defs>
+                  <linearGradient id="costGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.4}/>
+                    <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0.0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis dataKey="month" tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 10, fill: '#64748b' }} tickFormatter={formatShortCurrency} axisLine={false} tickLine={false} />
+                <Tooltip formatter={(val: number) => formatCurrency(val)} wrapperStyle={{ fontSize: '11px' }} />
+                <Area type="monotone" dataKey="Chi phí thực chi" stroke="#0284c7" strokeWidth={2} fillOpacity={1} fill="url(#costGradient)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </ChartBox>
+
+          {/* BIỂU ĐỒ 5: HỒ SƠ PHÁP LÝ & DUYỆT NGHIỆM THU (Stacked Column Chart) */}
+          <ChartBox 
+            title="5. Phân bổ Hồ sơ A-B (Đã duyệt vs Đang xử lý)" 
+            icon="file_present"
+            actionText="Quản lý"
+            onAction={() => navigate(`/projects/${project.id}/documents`)}
+            badge={<span className="text-[11px] font-bold text-rose-600">{completedDocs}/{totalDocs} bộ</span>}
+          >
+            {documentTypeData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={documentTypeData} margin={{ top: 10, right: 15, left: 0, bottom: 15 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis dataKey="type" tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 10, fill: '#64748b' }} allowDecimals={false} axisLine={false} tickLine={false} />
+                  <Tooltip wrapperStyle={{ fontSize: '11px' }} />
+                  <Legend verticalAlign="bottom" height={28} iconSize={9} wrapperStyle={{ fontSize: '11px' }} />
+                  <Bar dataKey="Đã duyệt / Ký" stackId="a" fill="#10b981" radius={[0, 0, 0, 0]} maxBarSize={40} />
+                  <Bar dataKey="Đang xử lý" stackId="a" fill="#f59e0b" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex items-center justify-center text-xs text-slate-400">Chưa có hồ sơ dự án</div>
+            )}
+          </ChartBox>
+
+          {/* BIỂU ĐỒ 6: KPI & KHỐI LƯỢNG CÔNG VIỆC NHÂN SỰ (Grouped Bar Chart) */}
+          <ChartBox 
+            title="6. Tải công việc theo Kỹ sư / Cán bộ" 
+            icon="groups"
+            actionText="Phân công"
+            onAction={() => navigate(`/task-assignment?tab=project_tasks&project=${encodeURIComponent(project.code)}`)}
+            badge={<span className="text-[11px] font-bold text-slate-500">{assignedEngineers.length} nhân sự</span>}
+          >
+            {staffKpiData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={staffKpiData} margin={{ top: 10, right: 15, left: 0, bottom: 15 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 10, fill: '#64748b' }} allowDecimals={false} axisLine={false} tickLine={false} />
+                  <Tooltip wrapperStyle={{ fontSize: '11px' }} />
+                  <Legend verticalAlign="bottom" height={28} iconSize={9} wrapperStyle={{ fontSize: '11px' }} />
+                  <Bar dataKey="Hoàn thành" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={25} />
+                  <Bar dataKey="Đang làm" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={25} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex items-center justify-center text-xs text-slate-400">Chưa có phân công việc</div>
+            )}
+          </ChartBox>
+
+          {/* BIỂU ĐỒ 7: THỐNG KÊ ĐẶT HÀNG & CUNG ỨNG VẬT TƯ (Tỉ lệ đã mua vs còn lại) */}
+          <ChartBox 
+            title="7. Thống kê Đặt hàng & Mua sắm" 
+            icon="shopping_cart_checkout"
+            actionText="Xem chi tiết"
+            onAction={() => navigate(`/projects/${project.id}/cost-plan`)}
+            badge={
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setProcurementViewMode(prev => prev === 'volume' ? 'items' : 'volume')}
+                  className="px-2 py-0.5 text-[10px] font-semibold rounded bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 transition-colors cursor-pointer"
+                  title="Nhấn để chuyển đổi giữa thống kê theo Số lượng đặt và Phân loại trạng thái"
+                >
+                  {procurementViewMode === 'volume' ? '📊 Khối lượng' : '📋 Chủng loại'}
+                </button>
+                <span className="text-[11px] font-bold text-primary">
+                  {procurementViewMode === 'volume' ? `${orderStatusSummary.volumePercent}% tiến độ mua` : `${orderStatusSummary.itemsPercent}% đã xử lý`}
+                </span>
               </div>
-            )) : (
-              <div className="text-sm text-slate-400 italic text-center py-4">Chưa có nhật ký nào</div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* SECTION: CÔNG VIỆC NHÂN VIÊN */}
-      <div className="bg-white border border-slate-200 rounded-lg p-4 shadow-2xs space-y-4">
-        <div className="flex justify-between items-center mb-2">
-          <h3 className="text-sm font-bold text-slate-700 flex items-center gap-2">
-            <span className="material-symbols-outlined text-lg text-slate-400">assignment_ind</span>
-            Công việc nhân viên ({engineerWorkloadList.length})
-          </h3>
-          <div className="flex items-center gap-4">
-            {canAssignTasks && (
-              <button
-                onClick={() => navigate(`/task-assignment?tab=project_tasks&status=in_progress&project=${encodeURIComponent(project.code)}`)}
-                className="text-xs font-semibold text-primary hover:underline flex items-center gap-1"
-              >
-                <span className="material-symbols-outlined text-sm">tune</span>
-                Bảng phân công
-              </button>
-            )}
-            {canViewTasks && (
-              <button
-                onClick={() => navigate(`/projects/${project.id}/tasks`)}
-                className="text-xs font-semibold text-primary hover:underline flex items-center gap-1"
-              >
-                <span className="material-symbols-outlined text-sm">list_alt</span>
-                Tất cả công việc
-              </button>
-            )}
-          </div>
-        </div>
-
-        {engineerWorkloadList.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 pt-1">
-            {engineerWorkloadList.map((eng, idx) => (
-              <div
-                key={eng.id || idx}
-                onClick={() => {
-                  if (canAssignTasks) {
-                    navigate(`/task-assignment?tab=project_tasks&status=in_progress&project=${encodeURIComponent(project.code)}&highlight=${encodeURIComponent(eng.name)}`);
-                  } else if (canViewTasks) {
-                    navigate(`/projects/${project.id}/tasks`);
-                  }
-                }}
-                className={`bg-slate-50 hover:bg-white rounded-xl p-4 border border-slate-200 transition-all flex flex-col justify-between group ${
-                  (canAssignTasks || canViewTasks) ? 'cursor-pointer hover:border-primary/40 hover:shadow-md' : 'cursor-default'
-                }`}
-              >
-                {/* Employee Header */}
-                <div className="flex items-start justify-between gap-2 mb-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-primary/10 text-primary font-bold text-sm flex items-center justify-center shrink-0 border border-primary/20">
-                      {eng.avatar ? (
-                        <img src={eng.avatar} alt={eng.name} className="w-full h-full object-cover rounded-full" />
-                      ) : (
-                        eng.name.split(' ').slice(-2).map(n => n[0]).join('').toUpperCase() || 'NV'
-                      )}
-                    </div>
-                    <div className="min-w-0">
-                      <h4 className="text-sm font-bold text-slate-800 truncate group-hover:text-primary transition-colors" title={eng.name}>
-                        {eng.name}
-                      </h4>
-                      <p className="text-xs text-slate-400 truncate">{eng.role || 'Kỹ sư'}</p>
-                    </div>
-                  </div>
-                  <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full shrink-0 ${
-                    eng.completionRate === 100 && eng.totalTasks > 0
-                      ? 'bg-emerald-100 text-emerald-700'
-                      : eng.completionRate > 0
-                      ? 'bg-blue-100 text-blue-700'
-                      : eng.totalTasks > 0
-                      ? 'bg-amber-100 text-amber-700'
-                      : 'bg-slate-100 text-slate-500'
-                  }`}>
-                    {eng.totalTasks > 0 ? `${eng.completionRate}%` : 'Chưa giao'}
-                  </span>
-                </div>
-
-                {/* Progress Bar */}
-                <div className="my-2">
-                  <div className="flex justify-between items-center text-xs mb-1">
-                    <span className="text-slate-500 font-medium">Tiến độ hoàn thành</span>
-                    <span className="font-bold text-slate-700">{eng.completedTasks}/{eng.totalTasks} việc</span>
-                  </div>
-                  <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
-                    <div
-                      className={`h-2 rounded-full transition-all duration-300 ${
-                        eng.completionRate === 100
-                          ? 'bg-emerald-500'
-                          : 'bg-primary'
-                      }`}
-                      style={{ width: `${eng.totalTasks > 0 ? eng.completionRate : 0}%` }}
-                    ></div>
+            }
+          >
+            <div className="flex flex-col h-full">
+              {/* Thẻ tóm tắt Số lượng mua / Còn lại */}
+              <div className="grid grid-cols-3 gap-1.5 px-3 pt-2 pb-1 bg-slate-50 border-b border-slate-100 text-center shrink-0">
+                <div className="bg-white p-1 rounded border border-slate-200">
+                  <div className="text-[10px] text-slate-500 font-medium">Tổng nhu cầu</div>
+                  <div className="text-xs font-bold text-slate-800">
+                    {procurementViewMode === 'volume'
+                      ? orderStatusSummary.totalContractVolume.toLocaleString('vi-VN')
+                      : `${orderStatusSummary.totalItems} vật tư`}
                   </div>
                 </div>
-
-                {/* Task Breakdown Badges */}
-                <div className="grid grid-cols-3 gap-1.5 pt-2 border-t border-slate-200/60 text-center">
-                  <div className="bg-emerald-50/80 rounded px-1 py-1">
-                    <span className="block text-[10px] text-emerald-600 font-semibold">Xong</span>
-                    <span className="text-xs font-bold text-emerald-700">{eng.completedTasks}</span>
+                <div className="bg-blue-50/70 p-1 rounded border border-blue-200">
+                  <div className="text-[10px] text-blue-700 font-medium">Đã mua / Đặt</div>
+                  <div className="text-xs font-bold text-blue-700">
+                    {procurementViewMode === 'volume'
+                      ? orderStatusSummary.totalOrderedVolume.toLocaleString('vi-VN')
+                      : `${orderStatusSummary.itemsOrdered} mục`}
                   </div>
-                  <div className="bg-blue-50/80 rounded px-1 py-1">
-                    <span className="block text-[10px] text-blue-600 font-semibold">Đang làm</span>
-                    <span className="text-xs font-bold text-blue-700">{eng.inProgressTasks}</span>
-                  </div>
-                  <div className="bg-slate-100 rounded px-1 py-1">
-                    <span className="block text-[10px] text-slate-500 font-semibold">Chưa làm</span>
-                    <span className="text-xs font-bold text-slate-700">{eng.pendingTasks}</span>
+                </div>
+                <div className="bg-amber-50/70 p-1 rounded border border-amber-200">
+                  <div className="text-[10px] text-amber-700 font-medium">Còn lại chưa mua</div>
+                  <div className="text-xs font-bold text-amber-700">
+                    {procurementViewMode === 'volume'
+                      ? orderStatusSummary.totalRemainingVolume.toLocaleString('vi-VN')
+                      : `${orderStatusSummary.itemsRemaining} mục`}
                   </div>
                 </div>
               </div>
-            ))}
+
+              {/* Biểu đồ Donut / Pie */}
+              <div className="flex-1 min-h-0 relative">
+                {(procurementViewMode === 'volume' ? orderStatusSummary.donutDataVolume : orderStatusSummary.donutDataItems).length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie 
+                        data={procurementViewMode === 'volume' ? orderStatusSummary.donutDataVolume : orderStatusSummary.donutDataItems} 
+                        cx="50%" 
+                        cy="46%" 
+                        innerRadius="46%" 
+                        outerRadius="72%" 
+                        dataKey="value" 
+                        stroke="none"
+                      >
+                        {(procurementViewMode === 'volume' ? orderStatusSummary.donutDataVolume : orderStatusSummary.donutDataItems).map((e, i) => (
+                          <Cell key={i} fill={e.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip 
+                        formatter={(val: any) => [
+                          typeof val === 'number' ? val.toLocaleString('vi-VN') : val, 
+                          procurementViewMode === 'volume' ? 'Khối lượng' : 'Số đầu mục'
+                        ]}
+                        wrapperStyle={{ fontSize: '11px' }} 
+                      />
+                      <Legend verticalAlign="bottom" height={26} iconSize={8} wrapperStyle={{ fontSize: '11px' }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-full flex items-center justify-center text-xs text-slate-400">Chưa có dữ liệu đặt hàng</div>
+                )}
+              </div>
+            </div>
+          </ChartBox>
+
+        </div>
+
+        {/* BẢNG TỔNG HỢP CÔNG VIỆC TRỌNG TÂM & NHẬT KÝ HIỆN TRƯỜNG DƯỚI CÙNG */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          
+          {/* Card: Công việc có hạn chót gần nhất */}
+          <div className="bg-white border border-slate-200 rounded-lg p-3.5 shadow-2xs flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-bold text-slate-800 uppercase tracking-tight flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-sm text-rose-600">alarm</span>
+                  Công việc trọng tâm & Hạn xử lý
+                </span>
+                <button onClick={() => navigate(`/projects/${project.id}/tasks`)} className="text-xs font-semibold text-primary hover:underline">
+                  Xem tất cả việc ({totalTasks})
+                </button>
+              </div>
+
+              <div className="space-y-1.5">
+                {projTasks.filter(t => !isTaskCompleted(t)).slice(0, 4).map(t => {
+                  const isOver = t.dueDate && new Date(t.dueDate).getTime() < new Date().getTime();
+                  return (
+                    <div key={t.id} onClick={() => navigate(`/projects/${project.id}/tasks`)} className="p-2 bg-slate-50 hover:bg-slate-100 rounded border border-slate-100 flex items-center justify-between text-xs cursor-pointer">
+                      <div className="min-w-0 flex-1 pr-2">
+                        <div className="font-semibold text-slate-800 truncate">{t.name}</div>
+                        <div className="text-[10px] text-slate-400 mt-0.5">
+                          Phụ trách: <strong className="text-slate-600">{cleanStaffName(t.assignedEngineerName) || 'Chưa giao'}</strong> • Hạn: <strong className={isOver ? 'text-rose-600' : 'text-slate-600'}>{t.dueDate ? new Date(t.dueDate).toLocaleDateString('vi-VN') : 'Không'}</strong>
+                        </div>
+                      </div>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded shrink-0 ${isOver ? 'bg-rose-100 text-rose-700' : 'bg-blue-100 text-blue-700'}`}>
+                        {Math.round(getTaskEffectiveProgress(t) * 100)}%
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
-        ) : (
-          <div className="text-center py-8 bg-slate-50 rounded-xl border border-dashed border-slate-200">
-            <span className="material-symbols-outlined text-4xl text-slate-300 mb-2">group_off</span>
-            <p className="text-sm font-medium text-slate-500">Chưa có nhân sự nào được phân công công việc trong dự án này</p>
-            <button
-              onClick={() => navigate(`/task-assignment?highlight=${encodeURIComponent(project.name || project.code)}`)}
-              className="mt-3 inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-primary text-white rounded-lg text-xs font-semibold hover:bg-primary/90 transition-colors shadow-sm"
-            >
-              <span className="material-symbols-outlined text-sm">add</span>
-              Phân công công việc ngay
-            </button>
+
+          {/* Card: Nhật ký công trường & sự cố */}
+          <div className="bg-white border border-slate-200 rounded-lg p-3.5 shadow-2xs flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-bold text-slate-800 uppercase tracking-tight flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-sm text-purple-600">history_edu</span>
+                  Nhật ký & Sự cố hiện trường mới nhất
+                </span>
+                <button onClick={() => navigate(`/projects/${project.id}/field-logs`)} className="text-xs font-semibold text-primary hover:underline">
+                  Nhật ký ({projLogs.length})
+                </button>
+              </div>
+
+              <div className="space-y-1.5">
+                {projLogs.slice(0, 3).map(l => (
+                  <div key={l.id} onClick={() => navigate(`/projects/${project.id}/field-logs`)} className="p-2 bg-slate-50 hover:bg-slate-100 rounded border border-slate-100 text-xs cursor-pointer">
+                    <div className="flex justify-between items-center text-[10px] text-slate-400 mb-0.5">
+                      <span>{l.createdByName || 'Kỹ sư công trường'}</span>
+                      <span>{new Date(l.timestamp).toLocaleDateString('vi-VN')}</span>
+                    </div>
+                    <p className="text-slate-700 font-medium truncate">{l.note || 'Không có mô tả'}</p>
+                  </div>
+                ))}
+                {projLogs.length === 0 && (
+                  <div className="text-center py-4 text-xs text-slate-400">Chưa có nhật ký công trường</div>
+                )}
+              </div>
+            </div>
           </div>
-        )}
-      </div>
+
+        </div>
+
       </div>
 
     </div>

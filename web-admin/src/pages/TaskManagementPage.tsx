@@ -786,10 +786,34 @@ const hasSyncedRef = useRef(false);
     setAssignNote('');
     const bounds = getTaskTimeBounds(t);
     setAssignDueDate(t.dueDate ? String(t.dueDate).split('T')[0] : (bounds.dueDate || ''));
-    const parts = t.assignedEngineerName?.split('|') || [];
-    const idsString = parts.length > 1 ? parts[1] : t.assignedEngineerId;
-    setAssigningUserIds(idsString ? idsString.split(',') : []);
-    setAssigningFollowerIds(t.followerIds || []);
+    
+    // Parse ID người đảm nhiệm từ assignedEngineerName hoặc notes tag [ASSIGNED_USERS:...]
+    let ids: string[] = [];
+    if (t.assignedEngineerName && t.assignedEngineerName.includes('|')) {
+      const parts = t.assignedEngineerName.split('|');
+      ids = (parts[1] || '').split(',').map(s => s.trim()).filter(Boolean);
+    } else if (t.notes && t.notes.includes('[ASSIGNED_USERS:')) {
+      const match = t.notes.match(/\[ASSIGNED_USERS:([^\]]+)\]/i);
+      if (match) {
+        const parts = match[1].split(':::');
+        ids = (parts[0] || '').split(',').map(s => s.trim()).filter(Boolean);
+      }
+    }
+    if (ids.length === 0 && t.assignedEngineerId) {
+      ids = String(t.assignedEngineerId).split(',').map(s => s.trim()).filter(Boolean);
+    }
+    setAssigningUserIds(ids);
+
+    // Parse người theo dõi
+    let followers: string[] = t.followerIds || [];
+    if (followers.length === 0 && t.notes && t.notes.includes('[FOLLOWERS:')) {
+      const match = t.notes.match(/\[FOLLOWERS:([^\]]+)\]/i);
+      if (match) {
+        const parts = match[1].split(':::');
+        followers = (parts[0] || '').split(',').map(s => s.trim()).filter(Boolean);
+      }
+    }
+    setAssigningFollowerIds(followers);
   };
 
   const handleAssignFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -3143,26 +3167,53 @@ const hasSyncedRef = useRef(false);
                     ))
                   );
 
-                  // Tên người được giao có thể không được lưu ở tasks (đây là
-                  // trường hiển thị), còn ID vẫn được lưu. Luôn suy ra tên từ
-                  // danh sách nhân sự để cột GIAO VIỆC không bị trống sau khi
-                  // tải lại dữ liệu.
-                  const assignmentParts = String(t.assignedEngineerName || '').split('|');
-                  const assignedIds = (assignmentParts.length > 1
-                    ? assignmentParts[1]
-                    : (t.assignedEngineerId || '')
-                  ).split(',').map((id: string) => id.trim()).filter(Boolean);
-                  const assignedNames = (assignmentParts[0] || '')
-                    .split(',').map((name: string) => name.trim()).filter(Boolean);
+                  // Parse danh sách người đảm nhiệm (hỗ trợ cả assignedEngineerName format 'name1, name2|id1,id2', tag [ASSIGNED_USERS:...], và assignedEngineerId)
+                  let parsedIds: string[] = [];
+                  let parsedNames: string[] = [];
+
+                  if (t.assignedEngineerName && t.assignedEngineerName.includes('|')) {
+                    const parts = t.assignedEngineerName.split('|');
+                    parsedNames = (parts[0] || '').split(',').map((s: string) => s.trim()).filter(Boolean);
+                    parsedIds = (parts[1] || '').split(',').map((s: string) => s.trim()).filter(Boolean);
+                  } else if (t.notes && t.notes.includes('[ASSIGNED_USERS:')) {
+                    const match = t.notes.match(/\[ASSIGNED_USERS:([^\]]+)\]/i);
+                    if (match) {
+                      const parts = match[1].split(':::');
+                      parsedIds = (parts[0] || '').split(',').map((s: string) => s.trim()).filter(Boolean);
+                      parsedNames = (parts[1] || '').split(',').map((s: string) => s.trim()).filter(Boolean);
+                    }
+                  }
+
+                  if (parsedIds.length === 0 && t.assignedEngineerId) {
+                    parsedIds = String(t.assignedEngineerId).split(',').map((s: string) => s.trim()).filter(Boolean);
+                  }
+                  if (parsedNames.length === 0 && t.assignedEngineerName && !t.assignedEngineerName.includes('|')) {
+                    parsedNames = String(t.assignedEngineerName).split(',').map((s: string) => s.trim()).filter(Boolean);
+                  }
+
                   const resolveEngineerLabel = (value: string) => {
-                    const engineer = engineers.find((item) => item.id === value);
+                    const engineer = engineers.find((item) => item.id === value || item.name === value || (item as any).username === value);
                     const looksLikeUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
                     return engineer?.name || (looksLikeUuid ? 'Chưa xác định nhân sự' : value);
                   };
-                  const resolvedAssignedNames = assignedNames.length > 0
-                    ? assignedNames.map(resolveEngineerLabel)
-                    : assignedIds.map(resolveEngineerLabel);
-                  const hasAssignment = assignedIds.length > 0 || resolvedAssignedNames.length > 0;
+
+                  const resolvedAssignedNames: string[] = [];
+                  if (parsedIds.length > 0) {
+                    parsedIds.forEach((id, idx) => {
+                      const resolved = resolveEngineerLabel(id);
+                      if (resolved && resolved !== 'Chưa xác định nhân sự') {
+                        resolvedAssignedNames.push(resolved);
+                      } else if (parsedNames[idx]) {
+                        resolvedAssignedNames.push(parsedNames[idx]);
+                      } else if (resolved) {
+                        resolvedAssignedNames.push(resolved);
+                      }
+                    });
+                  } else if (parsedNames.length > 0) {
+                    parsedNames.forEach(n => resolvedAssignedNames.push(resolveEngineerLabel(n)));
+                  }
+
+                  const hasAssignment = parsedIds.length > 0 || resolvedAssignedNames.length > 0;
 
                   const rowClass = `group hover:bg-slate-100 transition-colors border-b border-slate-50 ${isHighlighted ? 'highlighted-task-row system-row-highlighted' : rowBg}`;
 

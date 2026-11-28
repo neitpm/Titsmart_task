@@ -82,9 +82,9 @@ export const FinancialPerformanceTab: React.FC<FinancialPerformanceTabProps> = (
   }
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-slate-50 overflow-hidden text-slate-800">
+    <div className="flex-1 flex flex-col h-full bg-white overflow-hidden text-slate-800 p-0 m-0 w-full">
       {/* 1. TOP STATS BAR: 4 TRỤ CỘT TÀI CHÍNH */}
-      <div className="bg-white border-b border-slate-200 px-3 py-2.5 shrink-0 shadow-2xs">
+      <div className="bg-white border-b border-slate-200 px-2 py-2 shrink-0 shadow-2xs w-full">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
           {/* Card 1: DOANH THU & ĐẦU RA */}
           <div className="p-2.5 rounded-lg border border-blue-100 bg-blue-50/40 relative overflow-hidden">
@@ -310,11 +310,11 @@ export const FinancialPerformanceTab: React.FC<FinancialPerformanceTabProps> = (
       </div>
 
       {/* 3. NỘI DUNG TỪNG CHẾ ĐỘ XEM */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar">
+      <div className="flex-1 overflow-y-auto p-0 space-y-0 custom-scrollbar w-full">
         {activeViewMode === 'OVERVIEW' && (
-          <div className="space-y-3">
+          <div className="space-y-0 w-full">
             {/* Bảng so sánh 2 Lớp: Kế hoạch vs Thực tế */}
-            <div className="bg-white border border-slate-200 rounded-lg overflow-hidden shadow-2xs">
+            <div className="bg-white border-b border-slate-200 rounded-none overflow-hidden shadow-2xs w-full">
               <div className="px-3 py-2 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="material-symbols-outlined text-primary text-[20px]">table_chart</span>
@@ -451,8 +451,8 @@ export const FinancialPerformanceTab: React.FC<FinancialPerformanceTabProps> = (
             </div>
 
             {/* Biểu đồ trực quan hóa */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2 bg-white border border-slate-200 rounded-xl p-4 shadow-2xs">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-0 border-b border-slate-200 divide-y lg:divide-y-0 lg:divide-x divide-slate-200 bg-white w-full">
+              <div className="lg:col-span-2 bg-white p-3 shadow-none">
                 <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3 flex items-center gap-1.5">
                   <span className="material-symbols-outlined text-primary text-[18px]">bar_chart</span>
                   So sánh Kế hoạch vs Thực tế (Doanh thu - Giá vốn - Lợi nhuận)
@@ -471,7 +471,7 @@ export const FinancialPerformanceTab: React.FC<FinancialPerformanceTabProps> = (
                 </div>
               </div>
 
-              <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs flex flex-col">
+              <div className="bg-white p-3 shadow-none flex flex-col">
                 <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3 flex items-center gap-1.5">
                   <span className="material-symbols-outlined text-amber-500 text-[18px]">pie_chart</span>
                   Cơ cấu giá vốn thực tế
@@ -513,8 +513,8 @@ export const FinancialPerformanceTab: React.FC<FinancialPerformanceTabProps> = (
         )}
 
         {activeViewMode === 'BREAKDOWN' && (
-          <div className="space-y-3">
-            <div className="bg-white border border-slate-200 rounded-lg p-3.5 shadow-2xs space-y-3">
+          <div className="space-y-0 w-full">
+            <div className="bg-white border-b border-slate-200 rounded-none p-3 shadow-none space-y-3 w-full">
               <h3 className="text-sm font-extrabold text-slate-800 uppercase tracking-wide flex items-center gap-2">
                 <span className="material-symbols-outlined text-primary">account_tree</span>
                 Chi tiết các danh mục cấu thành giá vốn và phụ lục
@@ -583,8 +583,8 @@ export const FinancialPerformanceTab: React.FC<FinancialPerformanceTabProps> = (
         )}
 
         {activeViewMode === 'CASHFLOW' && (
-          <div className="space-y-3">
-            <div className="bg-white border border-slate-200 rounded-lg p-3.5 shadow-2xs space-y-3">
+          <div className="space-y-0 w-full">
+            <div className="bg-white border-b border-slate-200 rounded-none p-3 shadow-none space-y-3 w-full">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-extrabold text-slate-800 uppercase tracking-wide flex items-center gap-2">
                   <span className="material-symbols-outlined text-primary">account_balance</span>
@@ -600,20 +600,20 @@ export const FinancialPerformanceTab: React.FC<FinancialPerformanceTabProps> = (
                 Một dự án có thể đã phát sinh lợi nhuận cao (nghiệm thu đạt 90%), nhưng dòng tiền vẫn có thể tạm thời âm nếu Chủ đầu tư chưa giải ngân thanh toán đợt.
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
-                <div className="p-4 rounded-xl border border-emerald-200 bg-emerald-50/30">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
+                <div className="p-3 rounded-lg border border-emerald-200 bg-emerald-50/30">
                   <div className="text-xs font-bold text-emerald-800 mb-1">DÒNG TIỀN VÀO (INFLOW)</div>
                   <div className="text-lg font-black text-emerald-950">{formatMoney(metrics.cashInflow)} đ</div>
                   <p className="text-[11px] text-slate-500 mt-2">Tổng số tiền CĐT đã chuyển khoản / thanh toán vào tài khoản.</p>
                 </div>
 
-                <div className="p-4 rounded-xl border border-rose-200 bg-rose-50/30">
+                <div className="p-3 rounded-lg border border-rose-200 bg-rose-50/30">
                   <div className="text-xs font-bold text-rose-800 mb-1">DÒNG TIỀN RA (OUTFLOW)</div>
                   <div className="text-lg font-black text-rose-950">{formatMoney(metrics.cashOutflow)} đ</div>
                   <p className="text-[11px] text-slate-500 mt-2">Đã thanh toán cho nhà cung cấp vật tư, công nhật và chi phí.</p>
                 </div>
 
-                <div className="p-4 rounded-xl border border-purple-200 bg-purple-50/30">
+                <div className="p-3 rounded-lg border border-purple-200 bg-purple-50/30">
                   <div className="text-xs font-bold text-purple-800 mb-1">DÒNG TIỀN RÒNG (NET CASH FLOW)</div>
                   <div className={`text-lg font-black ${metrics.netCashFlow >= 0 ? 'text-purple-950' : 'text-rose-700'}`}>
                     {formatMoney(metrics.netCashFlow)} đ
@@ -625,8 +625,8 @@ export const FinancialPerformanceTab: React.FC<FinancialPerformanceTabProps> = (
               </div>
 
               {/* Bảng công nợ 2 đầu */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-3">
-                <div className="border border-slate-200 rounded-xl p-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                <div className="border border-slate-200 rounded-lg p-3">
                   <div className="font-bold text-xs text-slate-800 mb-2 flex items-center gap-1.5">
                     <span className="material-symbols-outlined text-blue-600 text-[18px]">call_received</span>
                     CÔNG NỢ PHẢI THU (CHỦ ĐẦU TƯ / KHÁCH HÀNG)
@@ -647,7 +647,7 @@ export const FinancialPerformanceTab: React.FC<FinancialPerformanceTabProps> = (
                   </div>
                 </div>
 
-                <div className="border border-slate-200 rounded-xl p-4">
+                <div className="border border-slate-200 rounded-lg p-3">
                   <div className="font-bold text-xs text-slate-800 mb-2 flex items-center gap-1.5">
                     <span className="material-symbols-outlined text-amber-600 text-[18px]">call_made</span>
                     CÔNG NỢ PHẢI TRẢ (NHÀ CUNG CẤP & THẦU PHỤ)

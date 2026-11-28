@@ -2,6 +2,23 @@ import { DocumentTrack } from '@/types';
 
 export type DocumentFlow = 'input' | 'output' | 'unclassified';
 
+export const UNCLASSIFIED_SUBTYPES = [
+  'Hồ sơ chưa phân loại',
+  'Hợp đồng / Thỏa thuận chung',
+  'Chứng từ tạm / Bàn giao tạm',
+  'Biên bản / Công văn',
+  'Hồ sơ đang chờ xác nhận',
+  'Khác'
+];
+
+export const UNCLASSIFIED_STATUSES = [
+  'Chưa xác định',
+  'Chờ phân loại',
+  'Đang đối soát',
+  'Đang bổ sung hồ sơ',
+  'Khác'
+];
+
 export const INPUT_SUBTYPES = [
   'Báo giá nhà cung cấp',
   'Đơn đặt hàng (PO)',
@@ -66,7 +83,7 @@ export const generateDefaultChecklist = (flow: DocumentFlow, subType?: string): 
       { id: 'chk-6', itemType: 'QUYET_TOAN', title: 'Bảng quyết toán / Chứng từ hoàn ứng', isRequired: false, status: 'CHUA_CO' },
       { id: 'chk-7', itemType: 'CHU_KY', title: 'Chữ ký / Biên lai xác nhận bên nhận tiền', isRequired: true, status: 'CHUA_CO' }
     ];
-  } else {
+  } else if (flow === 'output') {
     return [
       { id: 'chk-out-1', itemType: 'HOP_DONG', title: 'Hợp đồng kinh tế / Phụ lục ký với CĐT', isRequired: true, status: 'CHUA_CO' },
       { id: 'chk-out-2', itemType: 'KHOI_LUONG', title: 'Hồ sơ khối lượng hoàn thành', isRequired: true, status: 'CHUA_CO' },
@@ -75,6 +92,11 @@ export const generateDefaultChecklist = (flow: DocumentFlow, subType?: string): 
       { id: 'chk-out-5', itemType: 'DE_NGHI_THU', title: 'Đề nghị thanh toán gửi CĐT / Khách hàng', isRequired: true, status: 'CHUA_CO' },
       { id: 'chk-out-6', itemType: 'SAO_KE_TIEN_VE', title: 'Sao kê ngân hàng / Giấy báo Có tiền về', isRequired: true, status: 'CHUA_CO' },
       { id: 'chk-out-7', itemType: 'BIEN_BAN_DOI_CHIEU', title: 'Biên bản đối chiếu công nợ / Xác nhận 2 bên', isRequired: true, status: 'CHUA_CO' }
+    ];
+  } else {
+    return [
+      { id: 'chk-unc-1', itemType: 'GIAY_TO', title: 'Giấy tờ / Hồ sơ gốc cần xác minh', isRequired: true, status: 'CHUA_CO' },
+      { id: 'chk-unc-2', itemType: 'BIEN_BAN', title: 'Biên bản làm việc / Giao nhận', isRequired: false, status: 'CHUA_CO' }
     ];
   }
 };

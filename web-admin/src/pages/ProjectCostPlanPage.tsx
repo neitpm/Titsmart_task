@@ -2899,50 +2899,6 @@ export const ProjectCostPlanPage: React.FC = () => {
         {/* EXPENSE & PAYMENT REQUEST TAB (Gộp vào 1 tab Chi phí) */}
         {(activeTab === 'EXPENSE' || activeTab === 'PAYMENT_REQUEST') && (
           <div className="h-full overflow-y-auto overflow-x-hidden custom-scrollbar bg-white flex flex-col pb-16 md:pb-0" id="expense-unified-view">
-            {/* THANH ĐIỀU HƯỚNG GỘP: PHIẾU CHI VÀ YÊU CẦU CHI */}
-            <div className="flex items-center justify-between px-3 md:px-5 pt-2 pb-0 bg-white border-b border-slate-200 shrink-0">
-              <div className="flex items-center gap-4 text-xs font-bold">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveTab('EXPENSE');
-                    setSearchParams(prev => {
-                      const next = new URLSearchParams(prev);
-                      next.set('tab', 'EXPENSE');
-                      return next;
-                    });
-                  }}
-                  className={`py-2 border-b-2 flex items-center gap-1.5 transition-colors cursor-pointer ${
-                    activeTab === 'EXPENSE'
-                      ? 'border-primary text-primary'
-                      : 'border-transparent text-slate-500 hover:text-slate-800'
-                  }`}
-                >
-                  <span className="material-symbols-outlined text-[16px]">receipt_long</span>
-                  <span>Sổ chi phí & Cấp quỹ</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveTab('PAYMENT_REQUEST');
-                    setSearchParams(prev => {
-                      const next = new URLSearchParams(prev);
-                      next.set('tab', 'PAYMENT_REQUEST');
-                      return next;
-                    });
-                  }}
-                  className={`py-2 border-b-2 flex items-center gap-1.5 transition-colors cursor-pointer ${
-                    activeTab === 'PAYMENT_REQUEST'
-                      ? 'border-primary text-primary'
-                      : 'border-transparent text-slate-500 hover:text-slate-800'
-                  }`}
-                >
-                  <span className="material-symbols-outlined text-[16px]">request_quote</span>
-                  <span>Yêu cầu thanh toán</span>
-                </button>
-              </div>
-            </div>
-
             {/* NỘI DUNG 1: YÊU CẦU THANH TOÁN */}
             {activeTab === 'PAYMENT_REQUEST' ? (
               <PaymentRequestTab

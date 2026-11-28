@@ -20,7 +20,7 @@ export const ProjectDetailPage: React.FC = () => {
       const tab = sp.get('tab');
       if (tab === 'DOCS') return 'Chứng từ';
       if (tab === 'FINANCE') return 'Thanh toán';
-      if (tab === 'EXPENSE') return 'Chi phí';
+      if (tab === 'EXPENSE') return 'Sổ chi phí & Cấp quỹ';
       if (tab === 'PAYMENT_REQUEST') return 'Yêu cầu thanh toán';
       if (tab === 'FINANCIAL_PERFORMANCE' || tab === 'PROFIT') return 'Hiệu quả tài chính';
       return 'Đặt hàng';

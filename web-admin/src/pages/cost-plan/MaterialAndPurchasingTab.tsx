@@ -439,6 +439,79 @@ export const MaterialAndPurchasingTab: React.FC<MaterialAndPurchasingTabProps> =
     return purchasingMatchMap.get(sttKey);
   };
 
+  // Map mỗi vật tư với Yêu cầu mua hàng mới nhất gắn với nó
+  const itemPurchaseRequestMap = useMemo(() => {
+    const map = new Map<string, { request: PurchaseRequest; itemStatus: string; statusLabel: string }>();
+    const norm = (s?: string) => String(s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+
+    const mapRequestStatusToOrderStatus = (reqStatus: string): string => {
+      switch (reqStatus) {
+        case 'PENDING_CHECK':
+          return 'Đang xem xét';
+        case 'CHECKED_WAITING_APPROVAL':
+          return 'Đang đặt hàng';
+        case 'APPROVED':
+          return 'Đang đặt hàng';
+        case 'ORDERED':
+          return 'Đã đặt hàng';
+        case 'REJECTED':
+          return 'Chưa đặt hàng';
+        default:
+          return 'Đang đặt hàng';
+      }
+    };
+
+    const getRequestStatusLabel = (reqStatus: string): string => {
+      switch (reqStatus) {
+        case 'PENDING_CHECK':
+          return 'Chờ KT';
+        case 'CHECKED_WAITING_APPROVAL':
+          return 'Chờ duyệt mua';
+        case 'APPROVED':
+          return 'Đã duyệt mua';
+        case 'ORDERED':
+          return 'Đã đặt hàng';
+        case 'REJECTED':
+          return 'Bị từ chối';
+        default:
+          return reqStatus;
+      }
+    };
+
+    // Sắp xếp các yêu cầu từ cũ đến mới để yêu cầu mới nhất sẽ ghi đè lên trước đó
+    const sortedRequests = [...purchaseRequests].sort((a, b) => {
+      const timeA = new Date(a.createdAt || 0).getTime();
+      const timeB = new Date(b.createdAt || 0).getTime();
+      return timeA - timeB;
+    });
+
+    sortedRequests.forEach(req => {
+      if (!req.items || !Array.isArray(req.items)) return;
+      const computedOrderStatus = mapRequestStatusToOrderStatus(req.status);
+      const label = getRequestStatusLabel(req.status);
+
+      req.items.forEach(it => {
+        const info = { request: req, itemStatus: computedOrderStatus, statusLabel: label };
+        if (it.id) {
+          map.set(it.id, info);
+        }
+        if (it.stt || it.name) {
+          const key = `${norm(it.stt)}|${norm(it.name)}`;
+          map.set(key, info);
+        }
+      });
+    });
+
+    return map;
+  }, [purchaseRequests]);
+
+  const findItemPurchaseRequest = (plan: ProjectMaterialPlan) => {
+    if (itemPurchaseRequestMap.has(plan.id)) return itemPurchaseRequestMap.get(plan.id);
+    const norm = (s?: string) => String(s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    const key = `${norm(plan.stt)}|${norm(plan.jobContent || (plan as any).name)}`;
+    return itemPurchaseRequestMap.get(key);
+  };
+
   const parentOptions = useMemo(() => {
     const parents = data.filter(p => isParentRow(p));
     return [{ id: 'all', label: 'Tất cả' }, ...parents.map(p => ({ id: p.id, label: p.jobContent }))];
@@ -455,10 +528,16 @@ export const MaterialAndPurchasingTab: React.FC<MaterialAndPurchasingTabProps> =
   const invoiceStatusOptions = useMemo(() => ['all', ...Array.from(new Set(purchasingData.map(p => p.invoiceStatus).filter(Boolean)))], [purchasingData]);
   const docsOptions = [
     { id: 'all', label: 'Tất cả' },
+    { id: 'has_any_doc', label: 'Có chứng từ' },
+    { id: 'no_doc', label: 'Chưa có chứng từ' },
+    { id: 'has_co', label: 'Có CO' },
     { id: 'missing_co', label: 'Thiếu CO' },
+    { id: 'has_cq', label: 'Có CQ' },
     { id: 'missing_cq', label: 'Thiếu CQ' },
+    { id: 'has_fire', label: 'Có PCCC' },
     { id: 'missing_fire', label: 'Thiếu PCCC' },
-    { id: 'not_dispatched', label: 'Chưa về CT' }
+    { id: 'has_stamp', label: 'Có tem KĐ' },
+    { id: 'missing_stamp', label: 'Thiếu tem KĐ' },
   ];
 
 
@@ -514,10 +593,28 @@ export const MaterialAndPurchasingTab: React.FC<MaterialAndPurchasingTabProps> =
     setVisibleLimit(tablePageSize || 25);
   }, [tablePageSize]);
 
+  // Keep track of data counts so we only reset pagination when items are added or deleted,
+  // NOT when individual cells or statuses are edited/updated in-place!
+  const prevDataCountRef = useRef(data.length);
+  const prevPurchasingCountRef = useRef(purchasingData.length);
+
   useEffect(() => {
+    const isCountChanged = data.length !== prevDataCountRef.current || purchasingData.length !== prevPurchasingCountRef.current;
+    prevDataCountRef.current = data.length;
+    prevPurchasingCountRef.current = purchasingData.length;
+
+    // Only reset page if the filter/tab changed or if count of items changed
+    if (isCountChanged) {
+      setTablePage(1);
+      setVisibleLimit(tablePageSize || 25);
+    }
+  }, [data.length, purchasingData.length]);
+
+  useEffect(() => {
+    // Reset page when user explicitly changes active subtab or search/filter
     setTablePage(1);
     setVisibleLimit(tablePageSize || 25);
-  }, [data, purchasingData, activeSubTab, statusFilter, searchQuery]);
+  }, [activeSubTab, statusFilter, searchQuery, filterParent, filterUnit, filterProgress, filterOrder, filterModel, filterOrigin, filterDocs, filterExpectedDateFrom, filterExpectedDateTo, filterPaymentDateFrom, filterPaymentDateTo, filterContractStatus, filterPaymentDate, filterInvoiceStatus]);
 
   const toggleSection = (sectionKey: string) => {
     setCollapsedSections(prev => {
@@ -650,10 +747,17 @@ export const MaterialAndPurchasingTab: React.FC<MaterialAndPurchasingTabProps> =
     if (filterDocs && filterDocs !== 'all') {
       filtered = filtered.filter(p => {
          if (isParentRow(p)) return true;
+         const hasAny = Boolean(p.docCo || p.docCq || p.docFireInspection || hasDocFiles(p, 'STAMP') || getCustomDocs(p).length > 0);
+         if (filterDocs === 'has_any_doc') return hasAny;
+         if (filterDocs === 'no_doc') return !hasAny;
+         if (filterDocs === 'has_co') return Boolean(p.docCo);
          if (filterDocs === 'missing_co') return !p.docCo;
+         if (filterDocs === 'has_cq') return Boolean(p.docCq);
          if (filterDocs === 'missing_cq') return !p.docCq;
+         if (filterDocs === 'has_fire') return Boolean(p.docFireInspection);
          if (filterDocs === 'missing_fire') return !p.docFireInspection;
-         if (filterDocs === 'not_dispatched') return !p.dispatchToSite;
+         if (filterDocs === 'has_stamp') return hasDocFiles(p, 'STAMP');
+         if (filterDocs === 'missing_stamp') return !hasDocFiles(p, 'STAMP');
          return true;
       });
     }
@@ -840,7 +944,7 @@ export const MaterialAndPurchasingTab: React.FC<MaterialAndPurchasingTabProps> =
       return 0;
     };
 
-    const sortedFiltered = filtered.sort((a, b) => {
+    const sortedFiltered = [...filtered].sort((a, b) => {
       const sttComp = compareTaskStt(a.stt, b.stt);
       if (sttComp !== 0) return sttComp;
       const orderA = orderTagValue(a.notes);
@@ -849,7 +953,9 @@ export const MaterialAndPurchasingTab: React.FC<MaterialAndPurchasingTabProps> =
       const posA = originalOrderMap.get(a.id) ?? 0;
       const posB = originalOrderMap.get(b.id) ?? 0;
       if (posA !== posB) return posA - posB;
-      return (a.jobContent || '').localeCompare(b.jobContent || '', 'vi', { numeric: true, sensitivity: 'base' });
+      const contentComp = (a.jobContent || '').localeCompare(b.jobContent || '', 'vi', { numeric: true, sensitivity: 'base' });
+      if (contentComp !== 0) return contentComp;
+      return String(a.id).localeCompare(String(b.id));
     });
     return { filteredData: sortedFiltered, resolveParentId, getSectionIndexForItem };
   }, [data, searchQuery, statusFilter, filterParent, filterUnit, filterProgress, filterOrder, filterModel, filterOrigin, filterDocs, filterExpectedDateFrom, filterExpectedDateTo, filterPaymentDateFrom, filterPaymentDateTo, filterContractStatus, filterPaymentDate, filterInvoiceStatus, purchasingMatchMap]);
@@ -1034,6 +1140,15 @@ export const MaterialAndPurchasingTab: React.FC<MaterialAndPurchasingTabProps> =
           `Từ chối Yêu cầu mua hàng [${req.code}]: ${note || 'Không duyệt'}`,
           req.projectCode || selectedProject || 'Dự án'
         );
+      }
+
+      // Cập nhật trạng thái vật tư thành "Chưa đặt hàng" khi bị từ chối
+      if (req.items && req.items.length > 0) {
+        for (const item of req.items) {
+          if (item.id) {
+            await onUpdateMaterial(item.id, { orderedStatus: 'Chưa đặt hàng' });
+          }
+        }
       }
 
       setPurchaseRequests(prev => prev.map(r => r.id === req.id ? updated : r));
@@ -1378,7 +1493,7 @@ export const MaterialAndPurchasingTab: React.FC<MaterialAndPurchasingTabProps> =
     const flattenTree = (nodes: any[], currentDepth: number = 0, prefix: string = '', visited = new Set<string>()) => {
       if (currentDepth > 15) return; // Safety guard against OOM crash
 
-      nodes.sort((a, b) => {
+      [...nodes].sort((a, b) => {
         const orderTagValue = (notes?: string): number | null => {
           const m = String(notes || '').match(/\[order:([\d.]+)\]/);
           return m ? parseFloat(m[1]) : null;
@@ -1390,7 +1505,9 @@ export const MaterialAndPurchasingTab: React.FC<MaterialAndPurchasingTabProps> =
         }
         const sttCompare = compareTaskStt(a.stt, b.stt);
         if (sttCompare !== 0) return sttCompare;
-        return (a.jobContent || a.name || '').localeCompare(b.jobContent || b.name || '', 'vi', { numeric: true, sensitivity: 'base' });
+        const nameComp = (a.jobContent || a.name || '').localeCompare(b.jobContent || b.name || '', 'vi', { numeric: true, sensitivity: 'base' });
+        if (nameComp !== 0) return nameComp;
+        return String(a.id).localeCompare(String(b.id));
       });
 
       nodes.forEach((node, idx) => {
@@ -1636,15 +1753,44 @@ export const MaterialAndPurchasingTab: React.FC<MaterialAndPurchasingTabProps> =
               minWidth: 'min-w-[70px]',
               maxWidth: 'max-w-[110px]',
             }] : []),
-            ...(subTab === 'DOCS' ? [{
-              id: 'docs',
-              label: 'Chứng từ',
-              value: filterDocs,
-              onChange: setFilterDocs,
-              options: docsOptions.map(d => ({ value: d.id, label: d.label })),
-              minWidth: 'min-w-[70px]',
-              maxWidth: 'max-w-[120px]',
-            }] : []),
+            ...(subTab === 'DOCS' ? [
+              {
+                id: 'docs',
+                label: 'Chứng từ',
+                value: filterDocs,
+                onChange: setFilterDocs,
+                options: docsOptions.map(d => ({ value: d.id, label: d.label })),
+                minWidth: 'min-w-[85px]',
+                maxWidth: 'max-w-[145px]',
+              },
+              {
+                id: 'model',
+                label: 'Mã hiệu / Model',
+                value: filterModel,
+                onChange: setFilterModel,
+                options: modelOptions.map(m => ({ value: m, label: m === 'all' ? 'Tất cả mã hiệu' : m })),
+                minWidth: 'min-w-[85px]',
+                maxWidth: 'max-w-[130px]',
+              },
+              {
+                id: 'origin',
+                label: 'Xuất xứ',
+                value: filterOrigin,
+                onChange: setFilterOrigin,
+                options: originOptions.map(o => ({ value: o, label: o === 'all' ? 'Tất cả xuất xứ' : o })),
+                minWidth: 'min-w-[80px]',
+                maxWidth: 'max-w-[125px]',
+              },
+              {
+                id: 'order',
+                label: 'TT Đặt hàng',
+                value: filterOrder,
+                onChange: setFilterOrder,
+                options: orderOptions.map(o => ({ value: o, label: o === 'all' ? 'Tất cả ĐH' : o })),
+                minWidth: 'min-w-[80px]',
+                maxWidth: 'max-w-[125px]',
+              }
+            ] : []),
           ]}
           dateRange={
             subTab === 'TECH'
@@ -1678,6 +1824,8 @@ export const MaterialAndPurchasingTab: React.FC<MaterialAndPurchasingTabProps> =
             setFilterPaymentDateTo('');
             setFilterInvoiceStatus('all');
             setFilterDocs('all');
+            setFilterModel('all');
+            setFilterOrigin('all');
           }}
           actionButtons={
             <>
@@ -1897,8 +2045,10 @@ export const MaterialAndPurchasingTab: React.FC<MaterialAndPurchasingTabProps> =
                             let currentTech = getTechNote(rawNotes).replace(/\[tech-status:[^\]]+\]/gi, '').trim();
                             if (targetVal) currentTech = `${currentTech} [tech-status:${targetVal}]`.trim();
                             const docNote = getDocNoteFull(rawNotes);
-                            const newNotes = docNote ? `${currentTech} [DOC-NOTE]${docNote}` : currentTech;
-                            onUpdateMaterial(plan.id, { techSpecStatus: targetVal, notes: newNotes });
+                            const orderTagMatch = rawNotes.match(/\[order:[\d.]+\]/);
+                            const orderTag = orderTagMatch && !currentTech.includes(orderTagMatch[0]) ? ` ${orderTagMatch[0]}` : '';
+                            const newNotes = (docNote ? `${currentTech} [DOC-NOTE]${docNote}` : currentTech) + orderTag;
+                            onUpdateMaterial(plan.id, { techSpecStatus: targetVal, notes: newNotes.trim() });
                           });
                           showToast(`Đã gán Tình trạng "${val}" thành công cho ${targetList.length} vật tư!`, 'success');
                           e.target.value = '';
@@ -1913,30 +2063,8 @@ export const MaterialAndPurchasingTab: React.FC<MaterialAndPurchasingTabProps> =
                     </div>
                   </th>
                   <th style={{ width: 55, borderRight: '1px solid #94a3b8', borderBottom: '1px solid #94a3b8' }} className="bg-slate-50 bg-clip-padding px-1 py-1.5 text-center leading-tight">KL ĐẶT HÀNG</th>
-                  <th style={{ width: 135, borderRight: '1px solid #94a3b8', borderBottom: '1px solid #94a3b8' }} className="bg-slate-50 bg-clip-padding px-1 py-1 text-center leading-tight">
-                    <div className="flex flex-col items-center gap-1">
-                      <span>TT ĐẶT HÀNG</span>
-                      <CustomSelect
-                        value=""
-                        onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
-                          const val = e.target.value;
-                          if (!val) return;
-                          const targetList = selectableItems;
-                          if (targetList.length === 0) return;
-                          targetList.forEach((plan: ProjectMaterialPlan) => {
-                            onUpdateMaterial(plan.id, { orderedStatus: val });
-                          });
-                          showToast(`Đã gán TT Đặt hàng "${val}" thành công cho ${targetList.length} vật tư!`, 'success');
-                          e.target.value = '';
-                        }}
-                        className="h-6 w-full border border-blue-400 rounded px-1 py-0 bg-blue-50 text-blue-800 text-[10px] font-bold shadow-xs hover:bg-blue-100 transition-colors normal-case cursor-pointer"
-                      >
-                        <option value="" className="bg-white text-slate-700 font-normal">-- Gán nhanh --</option>
-                        {PURCHASE_STATUS_OPTIONS.map(opt => (
-                          <option key={opt} value={opt} className={getStatusColorStyle(opt)}>{opt}</option>
-                        ))}
-                      </CustomSelect>
-                    </div>
+                  <th style={{ width: 135, borderRight: '1px solid #94a3b8', borderBottom: '1px solid #94a3b8' }} className="bg-slate-50 bg-clip-padding px-1 py-1.5 text-center leading-tight">
+                    <span>TT ĐẶT HÀNG</span>
                   </th>
                   <th style={{ width: 85, borderRight: '1px solid #94a3b8', borderBottom: '1px solid #94a3b8' }} className="bg-slate-50 bg-clip-padding px-1 py-1.5 text-center leading-tight">NGÀY CÓ HÀNG</th>
                   <th style={{ minWidth: 100, borderRight: '1px solid #94a3b8', borderBottom: '1px solid #94a3b8' }} className="bg-slate-50 bg-clip-padding px-1 py-1.5 text-center leading-tight">GHI CHÚ</th>
@@ -2265,8 +2393,11 @@ export const MaterialAndPurchasingTab: React.FC<MaterialAndPurchasingTabProps> =
                                            let currentTech = getTechNote(rawNotes).replace(/\[tech-status:[^\]]+\]/gi, '').trim();
                                            if (val) currentTech = `${currentTech} [tech-status:${val}]`.trim();
                                            const docNote = getDocNoteFull(rawNotes);
-                                           const newNotes = docNote ? `${currentTech} [DOC-NOTE]${docNote}` : currentTech;
-                                           onUpdateMaterial(plan.id, { techSpecStatus: val, notes: newNotes });
+                                           // Preserve any existing [order:...] tag from rawNotes so the row sorting never changes
+                                           const orderTagMatch = rawNotes.match(/\[order:[\d.]+\]/);
+                                           const orderTag = orderTagMatch && !currentTech.includes(orderTagMatch[0]) ? ` ${orderTagMatch[0]}` : '';
+                                           const newNotes = (docNote ? `${currentTech} [DOC-NOTE]${docNote}` : currentTech) + orderTag;
+                                           onUpdateMaterial(plan.id, { techSpecStatus: val, notes: newNotes.trim() });
                                          }}
                                          className={`w-full min-w-0 rounded border px-1 py-0.5 text-[10px] font-bold focus:ring-2 focus:ring-primary focus:outline-none focus:bg-white transition-colors ${style}`}
                                        >
@@ -2300,6 +2431,28 @@ export const MaterialAndPurchasingTab: React.FC<MaterialAndPurchasingTabProps> =
                               <td className="p-0 align-middle text-center border-r border-slate-200">
                                 <div className="p-1">
                                   {(() => {
+                                    const linkedPR = findItemPurchaseRequest(plan);
+                                    // Nếu mục này đã được lập yêu cầu mua hàng, hiển thị huy hiệu tự động cập nhật theo yêu cầu mua hàng
+                                    if (linkedPR) {
+                                      const autoStatus = linkedPR.itemStatus;
+                                      const badgeStyle = getStatusColorStyle(autoStatus);
+                                      return (
+                                        <div
+                                          onClick={() => setIsPurchaseRequestListModalOpen(true)}
+                                          className={`w-full min-w-0 rounded border px-1 py-1 text-[10px] font-bold transition-all shadow-2xs flex flex-col items-center justify-center cursor-pointer hover:opacity-90 ${badgeStyle}`}
+                                          title={`Tự động đồng bộ theo Yêu cầu mua hàng [${linkedPR.request.code}]: ${linkedPR.statusLabel}. Click để xem danh sách yêu cầu mua hàng.`}
+                                        >
+                                          <div className="flex items-center gap-0.5 leading-tight">
+                                            <span className="material-symbols-outlined text-[11px] text-amber-600">receipt_long</span>
+                                            <span className="truncate">{autoStatus}</span>
+                                          </div>
+                                          <span className="text-[9px] font-normal opacity-75 truncate scale-95">
+                                            {linkedPR.request.code} ({linkedPR.statusLabel})
+                                          </span>
+                                        </div>
+                                      );
+                                    }
+
                                     const currentStatus = plan.orderedStatus || 'Chưa đặt hàng';
                                     const btnStyle = getStatusColorStyle(currentStatus);
                                     return (

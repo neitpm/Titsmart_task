@@ -744,7 +744,7 @@ export const api = {
       const TASK_DB_COLUMNS = new Set([
         'id','stt','code','name','project_code','project_name','volume','unit','progress','status',
         'purchase_status','constr_status','tech_spec_status','issue','issue_status',
-        'is_done','parent_id','notes','assigner_id','assigned_engineer_id',
+        'is_done','parent_id','notes','assigner_id','assigned_engineer_id','assigned_engineer_name',
         'reviewer_id','due_date','priority','is_section_header','section_name',
         'created_at','updated_by','updated_at',
       ]);
@@ -981,7 +981,7 @@ export const api = {
       const TASK_DB_COLUMNS = new Set([
         'id','stt','code','name','project_code','project_name','volume','unit','progress','status',
         'purchase_status','constr_status','tech_spec_status','issue','issue_status',
-        'is_done','parent_id','notes','assigner_id','assigned_engineer_id',
+        'is_done','parent_id','notes','assigner_id','assigned_engineer_id','assigned_engineer_name',
         'reviewer_id','due_date','priority','is_section_header','section_name',
         'created_at','updated_by','updated_at',
       ]);

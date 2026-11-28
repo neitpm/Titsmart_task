@@ -165,19 +165,6 @@ export const StandardFilterToolbar: React.FC<StandardFilterToolbarProps> = ({
 
       {/* KHU VỰC BÊN PHẢI: TÌM KIẾM NHANH + NÚT THAO TÁC + IMPORT/EXPORT */}
       <div className="flex items-center gap-1.5 md:ml-auto shrink-0 flex-nowrap justify-end">
-        {/* Nút khôi phục độ rộng cột nếu bảng có kéo cột */}
-        {onResetColumnWidths && (
-          <button
-            type="button"
-            onClick={onResetColumnWidths}
-            className="h-8 px-2 border border-slate-200 rounded bg-white hover:bg-slate-50 text-slate-600 hover:text-slate-900 text-[11px] font-bold flex items-center gap-1 shrink-0 cursor-pointer shadow-2xs"
-            title="Khôi phục lại độ rộng mặc định của các cột trong bảng này"
-          >
-            <span className="material-symbols-outlined text-[14px]">view_column</span>
-            <span className="hidden xl:inline">Cột mặc định</span>
-          </button>
-        )}
-
         {/* Ô tìm kiếm nhanh */}
         {onSearchChange && (
           <div className="relative w-36 sm:w-44 lg:w-48 h-8 flex items-center shrink-0">

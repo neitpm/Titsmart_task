@@ -644,6 +644,14 @@ export const useAuthStore = create<AuthStoreState>((set, get) => ({
     saveSession(user);
     set({ user });
 
+    // Xóa sạch cache người dùng cũ để nạp mới hoàn toàn theo tài khoản vừa đăng nhập
+    try {
+      localStorage.removeItem('titsmart_attendance_logs');
+      localStorage.removeItem('titsmart_leave_requests');
+      localStorage.removeItem('titsmart_attendance_adjustments');
+      window.dispatchEvent(new CustomEvent('titsmart_user_switched', { detail: { userId: user.id } }));
+    } catch {}
+
     // Tự động làm mới nhận diện thương hiệu công ty (Branding) và danh sách dữ liệu theo tenant
     import('./uiStore').then(({ useUIStore }) => {
       useUIStore.getState().fetchBrandingFromCloud();

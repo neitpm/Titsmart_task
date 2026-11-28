@@ -155,7 +155,7 @@ export const DocumentTrackingPage: React.FC = () => {
   }, [projectScopedDocs]);
 
   // Handlers mở modal tạo mới
-  const handleOpenNew = (flow: 'input' | 'output') => {
+  const handleOpenNew = (flow: DocumentFlow) => {
     setModalFlow(flow);
     setEditingDoc(null);
     setIsModalOpen(true);
@@ -163,10 +163,6 @@ export const DocumentTrackingPage: React.FC = () => {
 
   const handleEditDoc = (doc: DocumentTrack) => {
     const flow = resolveDocumentFlow(doc);
-    if (flow === 'unclassified') {
-      triggerToast('Vui lòng xác nhận hồ sơ là Đầu vào hoặc Đầu ra trước khi chỉnh sửa.', 'warning');
-      return;
-    }
     setModalFlow(flow);
     setEditingDoc(doc);
     setIsModalOpen(true);
@@ -404,8 +400,8 @@ export const DocumentTrackingPage: React.FC = () => {
                   value=""
                   onChange={(e) => {
                     const val = e.target.value;
-                    if (val === 'input' || val === 'output') {
-                      handleOpenNew(val);
+                    if (val === 'input' || val === 'output' || val === 'unclassified') {
+                      handleOpenNew(val as DocumentFlow);
                     }
                   }}
                   className="text-xs px-2.5 py-1.5 border border-slate-300 rounded-lg bg-white text-slate-700 font-semibold focus:border-primary focus:ring-1 focus:ring-primary shadow-xs cursor-pointer min-w-[140px]"
@@ -413,6 +409,7 @@ export const DocumentTrackingPage: React.FC = () => {
                   <option value="" disabled>+ Thêm hồ sơ mới...</option>
                   <option value="input">Hồ sơ đầu vào (Phải trả)</option>
                   <option value="output">Hồ sơ đầu ra (Phải thu)</option>
+                  <option value="unclassified">Hồ sơ không xác định</option>
                 </CustomSelect>
               </div>
             )}
@@ -437,8 +434,8 @@ export const DocumentTrackingPage: React.FC = () => {
                   value=""
                   onChange={(e) => {
                     const val = e.target.value;
-                    if (val === 'input' || val === 'output') {
-                      handleOpenNew(val);
+                    if (val === 'input' || val === 'output' || val === 'unclassified') {
+                      handleOpenNew(val as DocumentFlow);
                     }
                   }}
                   className="text-xs px-2.5 py-1.5 border border-slate-300 rounded-lg bg-white text-slate-700 font-semibold focus:border-primary focus:ring-1 focus:ring-primary shadow-xs cursor-pointer min-w-[140px]"
@@ -446,6 +443,7 @@ export const DocumentTrackingPage: React.FC = () => {
                   <option value="" disabled>+ Thêm hồ sơ mới...</option>
                   <option value="input">Hồ sơ đầu vào (Phải trả)</option>
                   <option value="output">Hồ sơ đầu ra (Phải thu)</option>
+                  <option value="unclassified">Hồ sơ không xác định</option>
                 </CustomSelect>
               </div>
             )}
@@ -477,7 +475,7 @@ export const DocumentTrackingPage: React.FC = () => {
             onEdit={handleEditDoc}
             onDelete={handleDeleteDoc}
             onViewDetail={handleViewDetailDoc}
-            onOpenNew={() => activeMainTab !== 'unclassified' && handleOpenNew(activeMainTab as 'input' | 'output')}
+            onOpenNew={() => handleOpenNew(activeMainTab as DocumentFlow)}
             onExportExcel={handleExportCurrentExcel}
             isAllowedToManage={isAllowedToManage}
             onClassify={handleClassifyDoc}

@@ -216,6 +216,30 @@ export const constructionProgressScore = (status?: string) => {
 export const calculateAutoProgressPercent = (purchaseStatus?: string, constrStatus?: string) =>
   Math.round((purchaseProgressScore(purchaseStatus) * 0.5 + constructionProgressScore(constrStatus) * 0.5) * 100);
 
+export interface AttendanceLog {
+  id: string;
+  userId: string;
+  userName: string;
+  projectId?: string;
+  projectName?: string;
+  checkInTime: string;
+  checkOutTime?: string | null;
+  checkInImage?: string | null;
+  checkOutImage?: string | null;
+  notes?: string | null;
+  attendanceType?: 'time' | 'shift';
+  workLocationType?: 'office' | 'field' | 'remote';
+  shiftId?: string | null;
+  shiftName?: string | null;
+  shiftStatus?: string;
+  shiftLateMinutes?: number;
+  checkInLat?: number | null;
+  checkInLng?: number | null;
+  checkInLocationName?: string | null;
+  checkInDistanceMeters?: number | null;
+  checkInWithinRadius?: boolean | null;
+}
+
 export type AttendanceMode = 'time' | 'shift' | 'hybrid';
 export type GpsRequirement = 'none' | 'record_only' | 'strict';
 

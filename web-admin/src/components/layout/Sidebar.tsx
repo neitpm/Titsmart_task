@@ -189,14 +189,35 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
           },
           {
             label: 'Chi phí',
-            path: `/projects/${currentProject.id}/cost-plan?tab=EXPENSE`,
             icon: 'receipt_long',
             isActive: (pathname: string, search: string) => {
               if (!pathname.includes('/cost-plan')) return false;
               const sp = new URLSearchParams(search);
               const tab = sp.get('tab');
               return tab === 'EXPENSE' || tab === 'PAYMENT_REQUEST';
-            }
+            },
+            children: [
+              {
+                label: 'Sổ chi phí',
+                path: `/projects/${currentProject.id}/cost-plan?tab=EXPENSE`,
+                icon: 'receipt_long',
+                isActive: (pathname: string, search: string) => {
+                  if (!pathname.includes('/cost-plan')) return false;
+                  const sp = new URLSearchParams(search);
+                  return sp.get('tab') === 'EXPENSE';
+                }
+              },
+              {
+                label: 'Yêu cầu chi',
+                path: `/projects/${currentProject.id}/cost-plan?tab=PAYMENT_REQUEST`,
+                icon: 'request_quote',
+                isActive: (pathname: string, search: string) => {
+                  if (!pathname.includes('/cost-plan')) return false;
+                  const sp = new URLSearchParams(search);
+                  return sp.get('tab') === 'PAYMENT_REQUEST';
+                }
+              }
+            ]
           },
           {
             label: 'Hiệu quả tài chính',
@@ -212,14 +233,35 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
         ] : [
           {
             label: 'Chi phí',
-            path: `/projects/${currentProject.id}/cost-plan?tab=EXPENSE`,
             icon: 'receipt_long',
             isActive: (pathname: string, search: string) => {
               if (!pathname.includes('/cost-plan')) return false;
               const sp = new URLSearchParams(search);
               const tab = sp.get('tab');
               return tab === 'EXPENSE' || tab === 'PAYMENT_REQUEST';
-            }
+            },
+            children: [
+              {
+                label: 'Sổ chi phí',
+                path: `/projects/${currentProject.id}/cost-plan?tab=EXPENSE`,
+                icon: 'receipt_long',
+                isActive: (pathname: string, search: string) => {
+                  if (!pathname.includes('/cost-plan')) return false;
+                  const sp = new URLSearchParams(search);
+                  return sp.get('tab') === 'EXPENSE';
+                }
+              },
+              {
+                label: 'Yêu cầu chi',
+                path: `/projects/${currentProject.id}/cost-plan?tab=PAYMENT_REQUEST`,
+                icon: 'request_quote',
+                isActive: (pathname: string, search: string) => {
+                  if (!pathname.includes('/cost-plan')) return false;
+                  const sp = new URLSearchParams(search);
+                  return sp.get('tab') === 'PAYMENT_REQUEST';
+                }
+              }
+            ]
           }
         ])
       ];
@@ -621,7 +663,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
         }}
         className={`hidden md:flex fixed left-0 top-0 h-[100dvh] transition-[width,box-shadow] duration-200 ease-out will-change-[width] flex-col border-r border-slate-200 bg-white z-[100] ${
           !isSidebarExpanded && isSidebarHovered ? 'shadow-[4px_0_24px_rgba(0,0,0,0.18)]' : 'shadow-[0_0_15px_rgba(0,0,0,0.05)]'
-        } overflow-x-hidden ${isExpanded ? 'w-[170px]' : 'w-[56px]'}`}
+        } overflow-x-hidden ${isExpanded ? 'w-[185px]' : 'w-[56px]'}`}
       >
         <div className="relative h-12 px-2 flex items-center border-b border-slate-100 min-w-0 flex-shrink-0">
           <div className="flex-1 flex items-center min-w-0 px-1">
@@ -741,6 +783,59 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
                             const active = child.isActive 
                               ? child.isActive(location.pathname, location.search)
                               : location.pathname === child.path;
+                            const hasGrandChildren = child.children && child.children.length > 0;
+                            const isGrandChildActive = hasGrandChildren && child.children.some((gc: any) =>
+                              gc.isActive ? gc.isActive(location.pathname, location.search) : location.pathname === gc.path
+                            );
+
+                            if (hasGrandChildren) {
+                              return (
+                                <div key={child.label} className="flex flex-col space-y-1">
+                                  <div
+                                    className={`flex items-center px-1.5 py-1.5 rounded-md text-[11px] select-none ${
+                                      active || isGrandChildActive
+                                        ? 'text-primary font-bold'
+                                        : 'text-slate-600 font-semibold'
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-1.5 leading-tight">
+                                      <span className={`material-symbols-outlined text-[14px] shrink-0 ${active || isGrandChildActive ? 'text-primary' : 'text-slate-400'}`}>
+                                        {child.icon}
+                                      </span>
+                                      <span className="whitespace-nowrap">{child.label}</span>
+                                    </div>
+                                  </div>
+
+                                  <div className="pl-2.5 pr-0.5 py-0.5 space-y-1 border-l-2 border-blue-200/70 ml-2.5 my-0.5">
+                                    {child.children.map((grandChild: any) => {
+                                      const gcActive = grandChild.isActive
+                                        ? grandChild.isActive(location.pathname, location.search)
+                                        : location.pathname === grandChild.path;
+                                      return (
+                                        <NavLink
+                                          key={grandChild.path}
+                                          to={grandChild.path}
+                                          onClick={() => {
+                                            setOpenSubMenus(prev => ({ ...prev, [item.label]: true, [child.label]: true }));
+                                          }}
+                                          className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md text-[11px] leading-tight select-none transition-all ${
+                                            gcActive
+                                              ? 'text-primary bg-blue-100 font-bold shadow-2xs border border-blue-200/80'
+                                              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-medium'
+                                          }`}
+                                        >
+                                          <span className={`material-symbols-outlined text-[13px] shrink-0 ${gcActive ? 'text-primary' : 'text-slate-400'}`}>
+                                            {grandChild.icon}
+                                          </span>
+                                          <span className="whitespace-normal break-words leading-tight flex-1">{grandChild.label}</span>
+                                        </NavLink>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              );
+                            }
+
                             return (
                               <NavLink
                                 key={child.path}
@@ -748,7 +843,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
                                 onClick={() => {
                                   setOpenSubMenus(prev => ({ ...prev, [item.label]: true }));
                                 }}
-                                className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md text-[11px] transition-all truncate select-none ${
+                                className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md text-[11px] leading-tight transition-all select-none ${
                                   active 
                                     ? 'text-primary bg-blue-50 font-bold shadow-2xs border border-blue-200/80' 
                                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-medium'
@@ -757,7 +852,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
                                 <span className={`material-symbols-outlined text-[14px] shrink-0 ${active ? 'text-primary' : 'text-slate-400'}`}>
                                   {child.icon}
                                 </span>
-                                <span className="truncate">{child.label}</span>
+                                <span className="whitespace-normal break-words leading-tight flex-1">{child.label}</span>
                               </NavLink>
                             );
                           })}
