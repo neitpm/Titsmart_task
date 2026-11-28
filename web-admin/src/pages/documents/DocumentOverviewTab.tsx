@@ -209,7 +209,7 @@ export const DocumentOverviewTab: React.FC<DocumentOverviewTabProps> = ({
             </button>
           </div>
 
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <div className="bg-slate-50 p-2 rounded-lg border border-slate-100">
               <div className="text-[10px] text-slate-500 font-medium">Đề nghị ban đầu (V1)</div>
               <div className="font-mono font-bold text-xs text-slate-900 mt-1 truncate" title={formatCurrency(inputStats.totalMustPay)}>
@@ -260,7 +260,7 @@ export const DocumentOverviewTab: React.FC<DocumentOverviewTabProps> = ({
             </button>
           </div>
 
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <div className="bg-slate-50 p-2 rounded-lg border border-slate-100">
               <div className="text-[10px] text-slate-500 font-medium">HĐ/Dự toán ban đầu</div>
               <div className="font-mono font-bold text-xs text-slate-900 mt-1 truncate" title={formatCurrency(outputStats.totalMustCollect)}>

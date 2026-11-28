@@ -968,8 +968,25 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
                 );
 
                 return navGroups.map((group, idx) => {
-                  const filteredItems = group.items.filter(item => !visibleBottomPaths.has(item.path));
-                  if (filteredItems.length === 0) return null;
+                  // Lấy toàn bộ items, bao gồm cả children nếu item là nhóm lớn (như Vật tư & Chi phí)
+                  const flatItems: any[] = [];
+                  group.items.forEach((item: any) => {
+                    if (item.children && Array.isArray(item.children)) {
+                      item.children.forEach((child: any) => {
+                        if (child.children && Array.isArray(child.children)) {
+                          child.children.forEach((gc: any) => {
+                            if (!visibleBottomPaths.has(gc.path)) flatItems.push(gc);
+                          });
+                        } else if (!visibleBottomPaths.has(child.path)) {
+                          flatItems.push(child);
+                        }
+                      });
+                    } else if (!visibleBottomPaths.has(item.path)) {
+                      flatItems.push(item);
+                    }
+                  });
+
+                  if (flatItems.length === 0) return null;
 
                   return (
                     <div key={group.title || idx} className="space-y-2">
@@ -979,7 +996,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isExpanded: isExpandedProp, to
                         </div>
                       )}
                       <div className="grid grid-cols-4 gap-2">
-                        {filteredItems.map((item) => (
+                        {flatItems.map((item) => (
                           <NavLink
                             key={item.path}
                             to={item.path}

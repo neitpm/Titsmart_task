@@ -1305,15 +1305,15 @@ export const ProjectManagementPage: React.FC = () => {
         </div>
       </header>
 
-      <section className="border-b border-slate-200 bg-white px-3 py-2 flex flex-wrap items-center justify-between gap-2 relative z-10 shrink-0">
-        {/* Nhóm bộ lọc bên trái: Phân loại + Ưu tiên + Ngày */}
-        <div className="flex items-center gap-2 flex-wrap min-w-0">
+      <section className="border-b border-slate-200 bg-white px-3 py-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2 relative z-10 shrink-0">
+        {/* Nhóm bộ lọc: Phân loại + Ưu tiên + Ngày */}
+        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap min-w-0 w-full sm:w-auto">
 
           {/* Bộ lọc phân loại dự án */}
           <CustomSelect
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
-            className="h-[34px] min-w-[135px] max-w-[180px] rounded-lg border border-slate-200 bg-white px-2 text-xs font-bold text-slate-700 shadow-2xs outline-none focus:border-primary shrink-0"
+            className="h-[34px] flex-1 sm:flex-none min-w-[125px] sm:max-w-[180px] rounded-lg border border-slate-200 bg-white px-2 text-xs font-bold text-slate-700 shadow-2xs outline-none focus:border-primary shrink-0"
             title="Lọc theo phân loại dự án"
           >
             <option value="all">-- Phân loại: Tất cả --</option>
@@ -1328,7 +1328,7 @@ export const ProjectManagementPage: React.FC = () => {
           <CustomSelect
             value={priorityFilter}
             onChange={(e) => setPriorityFilter(e.target.value as any)}
-            className="h-[34px] min-w-[135px] max-w-[165px] rounded-lg border border-slate-200 bg-white px-2 text-xs font-bold text-slate-700 shadow-2xs outline-none focus:border-primary shrink-0"
+            className="h-[34px] flex-1 sm:flex-none min-w-[125px] sm:max-w-[165px] rounded-lg border border-slate-200 bg-white px-2 text-xs font-bold text-slate-700 shadow-2xs outline-none focus:border-primary shrink-0"
             title="Lọc theo mức độ ưu tiên dự án"
           >
             <option value="all">-- Ưu tiên: Tất cả --</option>
@@ -1339,7 +1339,7 @@ export const ProjectManagementPage: React.FC = () => {
           </CustomSelect>
 
           {/* Bộ lọc dải ngày (Từ ngày ... Đến ngày ...) */}
-          <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-lg px-2 py-0.5 h-[34px] shadow-2xs text-xs shrink-0">
+          <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-lg px-2 py-0.5 h-[34px] shadow-2xs text-xs shrink-0 max-w-full overflow-x-auto">
             <span className="text-slate-400 font-medium whitespace-nowrap text-[11px] ml-0.5">Từ</span>
             <input
               type="date"
@@ -1371,9 +1371,9 @@ export const ProjectManagementPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Nhóm thao tác bên phải: Ô tìm kiếm + Nút Tạo dự án mới */}
-        <div className="flex items-center gap-2 shrink-0 ml-auto">
-          <div className="relative w-44 sm:w-52 md:w-60 flex items-center min-w-0">
+        {/* Nhóm thao tác: Ô tìm kiếm + Nút Tạo dự án mới */}
+        <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto sm:ml-auto">
+          <div className="relative flex-1 sm:w-48 md:w-60 flex items-center min-w-0">
             <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-base">search</span>
             <input
               type="text"
@@ -1415,7 +1415,8 @@ export const ProjectManagementPage: React.FC = () => {
                 className="flex items-center justify-center gap-1 bg-primary text-white px-3 h-[34px] rounded-lg text-xs font-bold hover:opacity-90 active:scale-95 shadow-xs whitespace-nowrap shrink-0 cursor-pointer"
               >
                 <span className="material-symbols-outlined text-[16px]">add</span>
-                <span>Tạo dự án mới</span>
+                <span className="hidden xs:inline">Tạo dự án mới</span>
+                <span className="xs:hidden">Tạo mới</span>
               </button>
           )}
         </div>

@@ -2844,6 +2844,41 @@ export const ProjectCostPlanPage: React.FC = () => {
 
       {/* TAB CONTENTS */}
       <div className="bg-white border-b border-slate-200 shadow-2xs overflow-hidden flex-1 flex flex-col">
+        {/* MOBILE SUB-NAVIGATION BAR FOR COST PLAN */}
+        <div className="md:hidden flex items-center gap-1 overflow-x-auto custom-scrollbar px-2 py-1.5 bg-slate-50 border-b border-slate-200 shrink-0 select-none">
+          {[
+            { key: 'TECH', label: 'Đặt hàng', icon: 'list_alt' },
+            { key: 'DOCS', label: 'Chứng từ', icon: 'description' },
+            ...(user?.role !== 'engineer' ? [{ key: 'FINANCE', label: 'Thanh toán', icon: 'payments' }] : []),
+            { key: 'EXPENSE', label: 'Sổ chi phí', icon: 'receipt_long' },
+            { key: 'PAYMENT_REQUEST', label: 'Yêu cầu chi', icon: 'request_quote' },
+            ...(user?.role !== 'engineer' ? [{ key: 'PROFIT', label: 'Hiệu quả', icon: 'trending_up' }] : [])
+          ].map(tab => {
+            const isActive = activeTab === tab.key || (tab.key === 'PROFIT' && activeTab === 'FINANCIAL_PERFORMANCE');
+            return (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => {
+                  setActiveTab(tab.key);
+                  setSearchParams(prev => {
+                    const next = new URLSearchParams(prev);
+                    next.set('tab', tab.key);
+                    return next;
+                  });
+                }}
+                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap shrink-0 transition-all ${
+                  isActive
+                    ? 'bg-primary text-white shadow-2xs'
+                    : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                }`}
+              >
+                <span className="material-symbols-outlined text-[15px]">{tab.icon}</span>
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
         {/* FINANCIAL PERFORMANCE & PROFITABILITY TAB */}
         {(activeTab === 'PROFIT' || activeTab === 'FINANCIAL_PERFORMANCE') && (
           <FinancialPerformanceTab selectedProjectCode={selectedProject} />
