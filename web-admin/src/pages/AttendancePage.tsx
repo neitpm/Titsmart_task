@@ -1847,11 +1847,11 @@ export const AttendancePage: React.FC = () => {
           <button
             type="button"
             onClick={() => setShowCheckInModal(true)}
-            className="flex items-center gap-1 px-3 py-1 bg-primary text-white font-bold text-xs rounded-lg shadow-sm active:scale-95 transition-all"
+            className="flex items-center justify-center gap-1 px-2.5 py-1 bg-primary text-white font-bold text-xs rounded-lg shadow-sm active:scale-95 transition-all"
             title="Chấm công"
           >
-            <span className="material-symbols-outlined text-[17px]">fingerprint</span>
-            <span>Chấm công</span>
+            <span className="material-symbols-outlined text-[18px]">fingerprint</span>
+            <span className="hidden xs:inline">Chấm công</span>
           </button>
         </div>
       </div>

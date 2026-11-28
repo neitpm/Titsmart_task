@@ -232,10 +232,10 @@ export const MonthlyPayrollTab: React.FC<MonthlyPayrollTabProps> = ({
             className="flex items-center gap-1 px-2.5 py-1 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-md border border-slate-200 text-xs font-bold transition cursor-pointer"
             title={showSalaryAmounts ? 'Ẩn số tiền lương bảo mật' : 'Hiển thị số tiền lương'}
           >
-            <span className="material-symbols-outlined text-[15px]">
+            <span className="material-symbols-outlined text-[16px]">
               {showSalaryAmounts ? 'visibility_off' : 'visibility'}
             </span>
-            <span>{showSalaryAmounts ? 'Ẩn số tiền' : 'Hiện số tiền'}</span>
+            <span className="hidden sm:inline">{showSalaryAmounts ? 'Ẩn số tiền' : 'Hiện số tiền'}</span>
           </button>
 
           {onRefresh && (
@@ -341,9 +341,10 @@ export const MonthlyPayrollTab: React.FC<MonthlyPayrollTabProps> = ({
                 type="button"
                 onClick={() => setViewingSlipItem(myPayrollItem)}
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded text-xs font-semibold shadow-2xs transition cursor-pointer"
+                title="Xem & In phiếu A4"
               >
-                <span className="material-symbols-outlined text-[15px]">print</span>
-                Xem & In phiếu A4
+                <span className="material-symbols-outlined text-[16px]">print</span>
+                <span className="hidden sm:inline">Xem & In phiếu A4</span>
               </button>
 
               {myPayrollItem.signatureStatus !== 'signed' && (
@@ -352,18 +353,20 @@ export const MonthlyPayrollTab: React.FC<MonthlyPayrollTabProps> = ({
                     type="button"
                     onClick={() => setDisputingItem(myPayrollItem)}
                     className="flex items-center gap-1 px-3 py-1.5 bg-white hover:bg-slate-50 text-amber-800 border border-amber-300 rounded text-xs font-semibold transition cursor-pointer"
+                    title="Phản hồi khiếu nại"
                   >
-                    <span className="material-symbols-outlined text-[15px]">chat_bubble_outline</span>
-                    Phản hồi
+                    <span className="material-symbols-outlined text-[16px]">chat_bubble_outline</span>
+                    <span className="hidden sm:inline">Phản hồi</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setSigningItem(myPayrollItem)}
-                    className="flex items-center gap-1.5 px-3.5 py-1.5 bg-primary hover:bg-blue-800 text-white rounded text-xs font-bold shadow-2xs transition cursor-pointer"
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 bg-primary hover:bg-blue-800 text-white rounded text-xs font-bold shadow-2xs transition cursor-pointer active:scale-95"
+                    title="Ký xác nhận"
                   >
                     <span className="material-symbols-outlined text-[16px]">draw</span>
-                    Ký xác nhận
+                    <span>Ký xác nhận</span>
                   </button>
                 </>
               )}
