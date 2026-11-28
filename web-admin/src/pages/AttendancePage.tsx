@@ -1785,24 +1785,80 @@ export const AttendancePage: React.FC = () => {
   return (
     <div className="flex flex-col flex-1 min-h-0 bg-slate-100 overflow-hidden">
       {/* Header */}
-      <header className="sticky top-0 z-30 border-b border-slate-200 bg-white px-2 py-1.5 md:py-0 md:h-12 flex items-center justify-between gap-1.5 shrink-0 pr-14 sm:pr-16">
+      <header className="sticky top-0 z-30 border-b border-slate-200 bg-white px-3 py-2 flex items-center justify-between gap-1.5 shrink-0 pr-14 sm:pr-16">
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-          <div className="flex items-center gap-1.5 shrink-0">
-            <span className="page-title text-xs sm:text-sm md:text-base font-extrabold text-slate-900 border-l-4 border-primary pl-2 shrink-0">
-              Công và lương
-            </span>
-            <span className="material-symbols-outlined text-slate-400 text-[13px] shrink-0 select-none">
-              arrow_forward_ios
-            </span>
-            <h1 className="text-xs sm:text-sm md:text-base font-bold text-slate-700 shrink-0">
-              {mainTab === 'overview' ? 'Tổng quan' : mainTab === 'attendance' ? 'Chấm công' : mainTab === 'leave' ? 'Xin nghỉ' : mainTab === 'payroll' ? 'Bảng lương' : 'Bù công'}
-            </h1>
-          </div>
+          <span className="page-title text-sm md:text-base font-extrabold text-slate-900 border-l-4 border-primary pl-2 shrink-0">
+            Công và lương
+          </span>
+          <span className="material-symbols-outlined text-slate-400 text-[13px] shrink-0 select-none">
+            arrow_forward_ios
+          </span>
+          <h1 className="text-sm md:text-base font-bold text-slate-700 shrink-0">
+            {mainTab === 'overview' ? 'Tổng quan' : mainTab === 'attendance' ? (attendanceSubTab === 'timesheet' ? 'Bảng chấm công' : 'Nhật ký vào/ra') : mainTab === 'leave' ? 'Xin nghỉ' : mainTab === 'payroll' ? 'Bảng lương' : 'Bù công'}
+          </h1>
         </div>
       </header>
 
+      {/* MOBILE ATTENDANCE SUB-NAV (Chỉ 1 thanh duy nhất, gọn gàng, không lặp lại) */}
+      <div className="md:hidden flex items-center justify-between px-3 py-1.5 bg-slate-50 border-b border-slate-200 shrink-0 gap-2">
+        {mainTab === 'attendance' ? (
+          <div className="flex items-center gap-1 bg-white p-0.5 rounded-lg border border-slate-200 text-xs shadow-2xs">
+            <button
+              type="button"
+              onClick={() => setAttendanceSubTab('timesheet')}
+              className={`px-3 py-1 rounded-md font-bold text-xs transition-all ${
+                attendanceSubTab === 'timesheet'
+                  ? 'bg-primary text-white shadow-2xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Bảng chấm công
+            </button>
+            <button
+              type="button"
+              onClick={() => setAttendanceSubTab('logs')}
+              className={`px-3 py-1 rounded-md font-bold text-xs transition-all ${
+                attendanceSubTab === 'logs'
+                  ? 'bg-primary text-white shadow-2xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Nhật ký vào/ra
+            </button>
+          </div>
+        ) : (
+          <div className="text-xs font-bold text-slate-700">
+            {mainTab === 'leave' ? 'Đơn xin nghỉ phép' : mainTab === 'adjustment' ? 'Chấm công bù' : 'Tổng quan'}
+          </div>
+        )}
+
+        <div className="flex items-center gap-1.5 shrink-0">
+          {canViewAll && mainTab === 'attendance' && attendanceSubTab === 'timesheet' && (
+            <button
+              type="button"
+              onClick={() => setShowConfigModal(true)}
+              className="w-8 h-8 flex items-center justify-center bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg border border-indigo-200 shadow-2xs"
+              title="Cài đặt chấm công"
+            >
+              <span className="material-symbols-outlined text-lg">tune</span>
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={() => setShowCheckInModal(true)}
+            className="flex items-center gap-1 px-3 py-1 bg-primary text-white font-bold text-xs rounded-lg shadow-sm active:scale-95 transition-all"
+            title="Chấm công"
+          >
+            <span className="material-symbols-outlined text-[17px]">fingerprint</span>
+            <span>Chấm công</span>
+          </button>
+        </div>
+      </div>
+
+      {/* DESKTOP TOOLBAR (Chỉ hiển thị trên Desktop >= 768px) */}
       {mainTab !== 'overview' && (
-        <section className="border-b border-slate-200 bg-white px-3 py-1.5 flex flex-wrap items-center justify-between gap-2 shrink-0">
+        <section className="hidden md:flex border-b border-slate-200 bg-white px-3 py-1.5 flex-wrap items-center justify-between gap-2 shrink-0">
           <div className="flex items-center gap-2">
             {mainTab === 'attendance' && (
               <CustomSelect
@@ -2199,34 +2255,6 @@ export const AttendancePage: React.FC = () => {
         attendanceSubTab === 'timesheet' ? (
           /* BẢNG CHẤM CÔNG & LƯƠNG TRỰC TIẾP TRONG TAB CHẤM CÔNG */
           <div className="flex-1 w-full max-w-full overflow-y-auto bg-slate-50 flex flex-col">
-            {/* Mobile sub-tab switcher for Attendance */}
-            <div className="bg-white border-b border-slate-200 px-3 py-1.5 flex items-center justify-between gap-2 sm:hidden shrink-0">
-              <div className="flex items-center gap-1 bg-blue-50/80 p-0.5 rounded-md border border-blue-200/80 text-xs">
-                <button
-                  type="button"
-                  onClick={() => setAttendanceSubTab('timesheet')}
-                  className="px-2.5 py-0.5 rounded font-bold text-xs bg-primary text-white shadow-xs"
-                >
-                  Bảng chấm công
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAttendanceSubTab('logs')}
-                  className="px-2.5 py-0.5 rounded font-bold text-xs text-slate-600 hover:text-slate-900"
-                >
-                  Nhật ký vào/ra
-                </button>
-              </div>
-
-              <button
-                onClick={() => setShowCheckInModal(true)}
-                className="flex items-center justify-center gap-1 px-2.5 py-1 bg-primary text-white font-bold text-xs rounded-lg shadow-sm"
-              >
-                <span className="material-symbols-outlined text-[16px]">fingerprint</span>
-                Chấm công
-              </button>
-            </div>
-
             <PullToRefresh
               onRefresh={async () => {
                 await Promise.all([fetchLogs(true), fetchLeaves(true), fetchAdjustments()]);
@@ -2247,26 +2275,6 @@ export const AttendancePage: React.FC = () => {
           </div>
         ) : (
           <div className="flex-1 w-full max-w-full overflow-hidden flex flex-col bg-slate-50">
-            {/* Mobile sub-tab switcher for Attendance */}
-            <div className="bg-white border-b border-slate-200 px-3 py-1.5 flex items-center justify-between gap-2 sm:hidden shrink-0">
-              <div className="flex items-center gap-1 bg-blue-50/80 p-0.5 rounded-md border border-blue-200/80 text-xs">
-                <button
-                  type="button"
-                  onClick={() => setAttendanceSubTab('timesheet')}
-                  className="px-2.5 py-0.5 rounded font-bold text-xs text-slate-600 hover:text-slate-900"
-                >
-                  Bảng chấm công
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAttendanceSubTab('logs')}
-                  className="px-2.5 py-0.5 rounded font-bold text-xs bg-primary text-white shadow-xs"
-                >
-                  Nhật ký vào/ra
-                </button>
-              </div>
-            </div>
-
             {/* Check-in / Check-out & Search Bar (Mobile only) */}
           <div className="bg-white border-b border-slate-200 shadow-xs shrink-0 md:hidden">
             <div className="px-3 py-2 sm:px-4 sm:py-2 flex items-center justify-between gap-2">
